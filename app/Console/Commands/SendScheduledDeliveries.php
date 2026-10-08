@@ -36,7 +36,10 @@ class SendScheduledDeliveries extends Command
             ->whereNull('delivered_at') // not delivered yet
             ->with(['contact', 'message', 'team']) // eager load relations
             ->orderBy('scheduled_for', 'asc')
-            ->limit(config('services.email.processing.deliveries_per_send_run', 20)) // ~20 emails/minute
+            ->limit(max(
+                (int) config('services.email.processing.deliveries_per_send_run', 20),
+                (int) config('services.email.processing.fast_deliveries_per_send_run', 1000),
+            ))
             ->get();
 
         if ($dueDeliveries->isEmpty())
@@ -51,16 +54,28 @@ class SendScheduledDeliveries extends Command
 
         $successCount = 0;
         $errorCount = 0;
+        $queuedByPace = [];
         $dispatcher = app(MessageDeliveryDispatcher::class);
 
         foreach ($dueDeliveries as $delivery)
         {
+            $pace = $delivery->team?->sendsMailerWithoutSpacing()
+                ? 'scale'
+                : ($delivery->team?->getEmailPlan()->value ?? 'basic');
+            $limit = $delivery->team?->mailerDispatchBatch()
+                ?? (int) config('services.email.processing.deliveries_per_send_run', 5);
+            if (($queuedByPace[$pace] ?? 0) >= $limit)
+            {
+                continue;
+            }
+
             try
             {
                 $dispatcher->enqueue(delivery: $delivery, withEnqueueJitter: false);
 
                 $this->info("   ✅ Queued delivery {$delivery->id} to {$delivery->contact->email}");
                 $successCount++;
+                $queuedByPace[$pace] = ($queuedByPace[$pace] ?? 0) + 1;
             } catch (\Exception $e)
             {
                 $this->error("   ❌ Failed to queue delivery {$delivery->id}: {$e->getMessage()}");

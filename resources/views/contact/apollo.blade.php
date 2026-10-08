@@ -400,9 +400,6 @@ $(function() {
                     return '<span class="text-muted">—</span>';
                 }},
                 { data: null, title: 'Acciones', orderable: false, className: 'text-center', render: function(row) {
-                    if (!canImportProspects) {
-                        return '<div class="d-flex justify-content-center align-items-center"><a href="javascript:;" class="text-muted btn-show-credits-modal" title="{{ __("Importar") }}"><i class="ti ti-user-plus ti-sm me-2"></i></a></div>';
-                    }
                     return '<div class="d-flex justify-content-center align-items-center"><a href="javascript:;" class="text-body btn-add-person" data-id="' + (row.id || '') + '" title="Importar"><i class="ti ti-user-plus ti-sm me-2"></i></a></div>';
                 }}
             ],
@@ -543,10 +540,6 @@ $(function() {
     });
 
     $(document).on('click', '#btn-import-selected', function() {
-        if (!canImportProspects) {
-            new bootstrap.Modal(document.getElementById('prospectCreditsModal')).show();
-            return;
-        }
         var selected = getSelectedRowData();
         if (selected.length === 0) return;
         pendingImportAction = { type: 'bulk', selected: selected };
@@ -558,10 +551,6 @@ $(function() {
     });
 
     $(document).on('click', '#people-results-card .btn-add-person', function() {
-        if (!canImportProspects) {
-            new bootstrap.Modal(document.getElementById('prospectCreditsModal')).show();
-            return;
-        }
         var tr = $(this).closest('tr');
         if (apolloTable && tr.length) {
             var row = apolloTable.row(tr).data();

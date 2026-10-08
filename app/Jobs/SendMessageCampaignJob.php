@@ -39,11 +39,17 @@ class SendMessageCampaignJob implements ShouldQueue
     public $timeout = 120;
 
     /**
+     * Manual resend from the deliveries table. Sends even when the message is paused.
+     */
+    public bool $manualResend = false;
+
+    /**
      * Create a new job instance.
      */
-    public function __construct(MessageDelivery $messageDelivery)
+    public function __construct(MessageDelivery $messageDelivery, bool $manualResend = false)
     {
         $this->messageDelivery = $messageDelivery;
+        $this->manualResend = $manualResend;
 
         $fallback = config('message_delivery_dispatch.fallback_queue');
         if (is_string($fallback) && $fallback !== '')
@@ -109,7 +115,7 @@ class SendMessageCampaignJob implements ShouldQueue
             return false;
         }
 
-        if (! $this->messageDelivery->message->status_id)
+        if (! $this->manualResend && ! $this->messageDelivery->message->status_id)
         {
             return false;
         }

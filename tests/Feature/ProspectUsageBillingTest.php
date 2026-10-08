@@ -22,7 +22,6 @@ class ProspectUsageBillingTest extends TestCase
         $team->addProspectCreditsFromPurchase(10);
 
         $this->assertTrue($team->decrementProspectCredits(3));
-        $this->assertFalse($team->fresh()->decrementProspectCredits(20));
 
         $this->assertDatabaseHas('prospect_usage_logs', [
             'team_id' => $team->id,
@@ -45,6 +44,10 @@ class ProspectUsageBillingTest extends TestCase
         $this->assertSame(3, $prospect['quantity']);
         $this->assertSame(45, $prospect['amount_cents']);
         $this->assertSame('3 créditos', $prospect['detail']);
+
+        $this->assertTrue($team->fresh()->decrementProspectCredits(20));
+        $this->assertSame(23, (int) ProspectUsageLog::query()->sum('count'));
+        $this->assertSame(0, $team->fresh()->getRemainingProspectCredits());
     }
 
     public function test_a_later_rate_does_not_reprice_earlier_credits(): void

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Enums\EmailPlan;
+use App\Jobs\SendMessageCampaignJob;
 use App\Mail\TestMessageMail;
 use App\Models\Category;
 use App\Models\Contact;
@@ -16,6 +17,7 @@ use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Database\Seeders\MessageTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -617,6 +619,123 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('data.0.status_key', 'failed');
     }
 
+    public function test_temporary_failures_are_counted_apart_from_permanent_ones(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Con buzón lleno',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        $full = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'lleno@example.test',
+        ]);
+        $invalid = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'roto@example.test',
+        ]);
+
+        $fullDelivery = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $full->id,
+            'status_id' => 1,
+        ]);
+        $fullDelivery->markAsError('452 4.2.2 Mailbox full');
+
+        $invalidDelivery = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $invalid->id,
+            'status_id' => 1,
+        ]);
+        $invalidDelivery->markAsError('550 5.1.1 User unknown');
+
+        $this->assertSame('soft', $fullDelivery->fresh()->bounce_type);
+        $this->assertSame('hard', $invalidDelivery->fresh()->bounce_type);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id)
+            ->assertOk()
+            ->assertJsonPath('data.stats.temporary', 1)
+            ->assertJsonPath('data.stats.failed', 1);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries?status=temporary')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.contact_email', 'lleno@example.test')
+            ->assertJsonPath('data.0.status_key', 'temporary');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries?status=failed')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.contact_email', 'roto@example.test');
+    }
+
+    public function test_unsubscribed_stat_counts_lost_contacts_and_filters_them(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        $lostStatusId = (int) ContactStatus::query()->where('name', 'Perdido')->value('id');
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Con baja',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        $lost = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'baja@example.test',
+            'status_id' => $lostStatusId,
+        ]);
+        $kept = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'sigue@example.test',
+        ]);
+
+        foreach ([$lost, $kept] as $contact)
+        {
+            MessageDelivery::query()->create([
+                'team_id' => $team->id,
+                'message_id' => $message->id,
+                'contact_id' => $contact->id,
+                'status_id' => 3,
+                'sent_at' => now(),
+                'delivered_at' => now(),
+            ]);
+        }
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id)
+            ->assertOk()
+            ->assertJsonPath('data.stats.unsubscribed', 1);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries?status=unsubscribed')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.contact_email', 'baja@example.test');
+    }
+
     public function test_can_update_target_when_message_has_deliveries(): void
     {
         [$user, $team, $token] = $this->adminWithToken();
@@ -849,5 +968,53 @@ class MessageApiWriteTest extends TestCase
         $this->assertFalse($contact->storedChannelValid('whatsapp'));
         $this->assertSame('whatsapp', $contact->lastOutboundMessage()['channel'] ?? null);
         $this->assertSame('Nota previa', data_get($contact->data, 'notes'));
+    }
+
+    public function test_resend_clears_the_failure_and_queues_a_manual_send(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        Bus::fake();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'ivan@example.test',
+        ]);
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Aviso',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        $delivery = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 4,
+            'sent_at' => now(),
+            'error_message' => 'Call to undefined method App\\Models\\Team::allowsCustomMessageSender()',
+            'email_provider' => 'smtp',
+            'provider_message_id' => 'old-id',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message/'.$message->id.'/deliveries/'.$delivery->id.'/resend')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $delivery->refresh();
+        $this->assertSame(1, (int) $delivery->status_id);
+        $this->assertNull($delivery->error_message);
+        $this->assertNull($delivery->provider_message_id);
+        $this->assertNull($delivery->email_provider);
+
+        Bus::assertDispatched(SendMessageCampaignJob::class, function (SendMessageCampaignJob $job) use ($delivery): bool
+        {
+            return (int) $job->messageDelivery->id === (int) $delivery->id
+                && $job->manualResend === true;
+        });
     }
 }

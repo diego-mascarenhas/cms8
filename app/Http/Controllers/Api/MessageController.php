@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\MessageDeliverySendProfile;
 use App\Http\Controllers\Api\Concerns\ChecksTeamModule;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\GenerateMailerNewsRequest;
@@ -16,6 +17,7 @@ use App\Services\Mail\MailerNewsGenerationService;
 use App\Services\Mail\MessageCampaignActivationService;
 use App\Services\Mail\MessageCampaignTestSendService;
 use App\Services\MailBabyService;
+use App\Services\MessageDeliveryDispatcher;
 use App\Support\MessageTemplateMergeFields;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -418,7 +420,7 @@ class MessageController extends Controller
             'search' => 'nullable|string|max:255',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:50',
-            'status' => 'nullable|string|in:sent,delivered,opened,clicked,failed',
+            'status' => 'nullable|string|in:sent,delivered,opened,clicked,failed,temporary,unsubscribed',
         ]);
 
         $paginator = $this->campaignMessages->paginateDeliveries(
@@ -510,6 +512,73 @@ class MessageController extends Controller
                 'error_message' => $row->error_message,
                 'bounce_reason' => $row->bounce_reason,
             ],
+        ]);
+    }
+
+    public function resendDelivery(Request $request, int $id, int $delivery): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        $message = Message::query()
+            ->where('team_id', $team->id)
+            ->find($id);
+
+        if (! $message)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Message not found'),
+            ], 404);
+        }
+
+        $row = MessageDelivery::query()
+            ->where('message_id', $message->id)
+            ->find($delivery);
+
+        if (! $row)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Delivery not found'),
+            ], 404);
+        }
+
+        $row->update([
+            'status_id' => 1,
+            'sent_at' => now(),
+            'delivered_at' => null,
+            'opened_at' => null,
+            'clicked_at' => null,
+            'complained_at' => null,
+            'bounced_at' => null,
+            'delivery_status' => null,
+            'error_message' => null,
+            'error_type' => null,
+            'bounce_type' => null,
+            'bounce_reason' => null,
+            'provider_message_id' => null,
+            'email_provider' => null,
+        ]);
+
+        app(MessageDeliveryDispatcher::class)->enqueue(
+            delivery: $row,
+            profile: MessageDeliverySendProfile::Message,
+            withEnqueueJitter: false,
+            manualResend: true,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'El correo se va a reenviar.',
         ]);
     }
 

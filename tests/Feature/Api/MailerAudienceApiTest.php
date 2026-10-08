@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Jobs\ValidateAudienceEmailDomainsJob;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactStatus;
@@ -11,11 +12,14 @@ use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
 use App\Models\Module;
 use App\Models\User;
+use App\Services\Mail\EmailDomainDns;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
+use Database\Seeders\MessageTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -224,6 +228,32 @@ class MailerAudienceApiTest extends TestCase
             $contact->fresh()->categories()->orderBy('categories.id')->pluck('categories.id')->all(),
         );
         $this->assertSame($leadStatusId, (int) $contact->fresh()->status_id);
+    }
+
+    public function test_clearing_the_email_removes_the_contact_from_the_audience(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'lucia.garcia@cliente.com')
+            ->firstOrFail();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/mailer/audience/'.$contact->id, [
+                'name' => 'Lucía',
+                'email' => '',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.email', '')
+            ->assertJsonPath('data.can_send', false);
+
+        $this->assertNull($contact->fresh()->email);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience?search='.rawurlencode('lucia.garcia@cliente.com'))
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 0);
     }
 
     public function test_can_add_category_when_another_contact_shares_the_email(): void
@@ -616,8 +646,239 @@ class MailerAudienceApiTest extends TestCase
         ]);
     }
 
+    public function test_audience_filters_failed_addresses_and_temporary_errors(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Caido',
+            'email' => 'nadie@missing.test',
+            'creator_id' => $user->id,
+            'data' => [
+                'channels' => [
+                    'email' => [
+                        'address' => 'nadie@missing.test',
+                        'valid' => false,
+                        'domain' => 'missing',
+                        'reason' => Contact::EMAIL_DOMAIN_MISSING,
+                    ],
+                ],
+            ],
+        ]);
+        $legacy = Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Viejo',
+            'email' => 'viejo@missing.test',
+            'creator_id' => $user->id,
+            'data' => [
+                'channels' => [
+                    'email' => [
+                        'address' => 'viejo@missing.test',
+                        'valid' => false,
+                        'reason' => Contact::EMAIL_DOMAIN_MISSING,
+                    ],
+                ],
+            ],
+        ]);
+        $this->assertFalse($legacy->fresh()->emailDomainOk());
+
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Lleno',
+            'email' => 'lleno@cliente.com',
+            'creator_id' => $user->id,
+            'data' => [
+                'channels' => [
+                    'email' => [
+                        'address' => 'lleno@cliente.com',
+                        'domain' => 'ok',
+                        'last_error' => [
+                            'message' => 'mailbox full',
+                            'at' => now()->toIso8601String(),
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $failed = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience?issue=failed')
+            ->assertOk();
+        $failedEmails = collect($failed->json('data'))->pluck('email');
+        $this->assertTrue($failedEmails->contains('nadie@missing.test'));
+        $this->assertFalse($failedEmails->contains('lleno@cliente.com'));
+        $this->assertFalse($failedEmails->contains('lucia.garcia@cliente.com'));
+        $this->assertFalse($failed->json('data.0.email_domain_ok'));
+
+        $errors = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience?issue=error')
+            ->assertOk();
+        $errorEmails = collect($errors->json('data'))->pluck('email');
+        $this->assertTrue($errorEmails->contains('lleno@cliente.com'));
+        $this->assertFalse($errorEmails->contains('nadie@missing.test'));
+        $this->assertTrue($errors->json('data.0.email_domain_ok'));
+
+        $validated = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience?issue=validated')
+            ->assertOk();
+        $validatedEmails = collect($validated->json('data'))->pluck('email');
+        $this->assertTrue($validatedEmails->contains('lleno@cliente.com'));
+        $this->assertFalse($validatedEmails->contains('lucia.garcia@cliente.com'));
+        $this->assertFalse($validatedEmails->contains('nadie@missing.test'));
+
+        $unchecked = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience?issue=unchecked')
+            ->assertOk();
+        $uncheckedEmails = collect($unchecked->json('data'))->pluck('email');
+        $this->assertTrue($uncheckedEmails->contains('lucia.garcia@cliente.com'));
+        $this->assertFalse($uncheckedEmails->contains('lleno@cliente.com'));
+        $this->assertFalse($uncheckedEmails->contains('nadie@missing.test'));
+        $this->assertFalse($uncheckedEmails->contains('viejo@missing.test'));
+    }
+
     public function test_guest_cannot_list_audience(): void
     {
         $this->getJson('/api/mailer/audience')->assertUnauthorized();
+    }
+
+    public function test_validating_domains_marks_missing_ones_and_leaves_bounces(): void
+    {
+        [$user, $team] = $this->adminWithToken();
+        $this->seed(MessageTypeSeeder::class);
+
+        $this->app->instance(EmailDomainDns::class, new class extends EmailDomainDns
+        {
+            protected function hasRecord(string $domain, string $type): bool
+            {
+                return $domain === 'cliente.com';
+            }
+        });
+
+        $missing = Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Sin dominio',
+            'email' => 'nadie@missing.test',
+            'creator_id' => $user->id,
+            'data' => ['notes' => 'Nota previa'],
+        ]);
+        $present = Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Con dominio',
+            'email' => 'ana@cliente.com',
+            'creator_id' => $user->id,
+        ]);
+        $bounced = Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Rebotado',
+            'email' => 'fuera@cliente.com',
+            'creator_id' => $user->id,
+            'data' => [
+                'channels' => [
+                    'email' => [
+                        'address' => 'fuera@cliente.com',
+                        'valid' => false,
+                        'reason' => 'user unknown',
+                    ],
+                ],
+            ],
+        ]);
+
+        (new ValidateAudienceEmailDomainsJob((int) $team->id))->handle(app(EmailDomainDns::class));
+
+        $missing->refresh();
+        $this->assertFalse($missing->storedChannelValid('email'));
+        $this->assertFalse($missing->emailDomainOk());
+        $this->assertSame(Contact::EMAIL_DOMAIN_MISSING, $missing->data->channels->email->reason);
+        $this->assertSame('Nota previa', $missing->data->notes);
+
+        $present->refresh();
+        $this->assertNotFalse($present->storedChannelValid('email'));
+        $this->assertTrue($present->emailDomainOk());
+
+        $bounced->refresh();
+        $this->assertFalse($bounced->storedChannelValid('email'));
+        $this->assertSame('user unknown', $bounced->data->channels->email->reason);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Dominios',
+            'text' => '<p>Hola</p>',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $audienceIds = $message->audienceContactsQuery()->pluck('contacts.id');
+        $this->assertFalse($audienceIds->contains($missing->id));
+        $this->assertTrue($audienceIds->contains($present->id));
+        $this->assertFalse($audienceIds->contains($bounced->id));
+
+        $this->app->instance(EmailDomainDns::class, new class extends EmailDomainDns
+        {
+            protected function hasRecord(string $domain, string $type): bool
+            {
+                return in_array($domain, ['cliente.com', 'missing.test'], true);
+            }
+        });
+        (new ValidateAudienceEmailDomainsJob((int) $team->id))->handle(app(EmailDomainDns::class));
+        $missing->refresh();
+        $this->assertNull($missing->data->channels->email->valid);
+        $this->assertTrue($missing->emailDomainOk());
+        $this->assertTrue($message->audienceContactsQuery()->pluck('contacts.id')->contains($missing->id));
+    }
+
+    public function test_validate_domains_queues_the_check(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+        Bus::fake();
+
+        $this->app->instance(EmailDomainDns::class, new class extends EmailDomainDns
+        {
+            public array $types = [];
+
+            protected function hasRecord(string $domain, string $type): bool
+            {
+                $this->types[] = $type;
+
+                return $type === 'MX' && $domain === 'cliente.com';
+            }
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/mailer/audience/validate-domains')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('running', true);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience')
+            ->assertOk()
+            ->assertJsonPath('domain_check.running', true);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/mailer/audience/validate-domains')
+            ->assertOk()
+            ->assertJsonPath('running', true);
+
+        Bus::assertDispatchedTimes(ValidateAudienceEmailDomainsJob::class, 1);
+
+        $job = null;
+        Bus::assertDispatched(ValidateAudienceEmailDomainsJob::class, function (ValidateAudienceEmailDomainsJob $dispatched) use (&$job, $team): bool
+        {
+            $job = $dispatched;
+
+            return $dispatched->teamId === (int) $team->id;
+        });
+
+        $job->handle(app(EmailDomainDns::class));
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience')
+            ->assertOk()
+            ->assertJsonPath('domain_check.running', false);
+
+        $dns = app(EmailDomainDns::class);
+        $this->assertNotEmpty($dns->types);
+        $this->assertSame(['MX'], array_values(array_unique($dns->types)));
     }
 }

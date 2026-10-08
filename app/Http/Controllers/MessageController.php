@@ -953,6 +953,8 @@ class MessageController extends Controller
 
             // First, reschedule ALL pending deliveries to send now
             $baseTime = now();
+            $message->loadMissing('team');
+            $spacingSeconds = $message->team?->mailerSendSpacingSeconds() ?? (86400 / 3000);
             $allPending = MessageDelivery::where('message_id', $id)
                 ->where('status_id', 1) // only pending, not failed
                 ->whereNull('delivered_at')
@@ -963,17 +965,18 @@ class MessageController extends Controller
             {
                 // Stagger via scheduled_for so SendMessageCampaignJob can release(); do not set sent_at until mail is sent
                 $delivery->update([
-                    'scheduled_for' => $baseTime->copy()->addSeconds($index * 3),
+                    'scheduled_for' => $baseTime->copy()->addSeconds((int) round($index * $spacingSeconds)),
                     'sent_at' => null,
                 ]);
             }
 
-            // Then, queue first 100 immediately
+            $queueLimit = $message->team?->mailerDispatchBatch()
+                ?? (int) config('services.email.processing.deliveries_per_send_run', 5);
             $deliveries = MessageDelivery::where('message_id', $id)
                 ->where('status_id', 1) // only pending, not failed
                 ->whereNull('delivered_at')
                 ->with(['contact', 'message', 'team'])
-                ->limit(100)
+                ->limit($queueLimit)
                 ->get();
 
             $queued = 0;

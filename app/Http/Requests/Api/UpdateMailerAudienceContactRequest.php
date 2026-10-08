@@ -19,7 +19,8 @@ class UpdateMailerAudienceContactRequest extends FormRequest
         $email = $this->input('email');
         if (is_string($email))
         {
-            $this->merge(['email' => Str::lower(trim($email))]);
+            $trimmed = Str::lower(trim($email));
+            $this->merge(['email' => $trimmed === '' ? null : $trimmed]);
         }
     }
 
@@ -30,10 +31,11 @@ class UpdateMailerAudienceContactRequest extends FormRequest
     {
         $teamId = (int) ($this->user()?->currentTeam?->id ?? 0);
         $contactId = (int) $this->route('id');
-        $email = (string) $this->input('email');
+        $email = $this->input('email');
+        $email = is_string($email) ? $email : '';
 
-        $emailRules = ['required', 'email:rfc', 'max:255'];
-        if (! $this->emailUnchangedForContact($contactId, $teamId, $email))
+        $emailRules = ['nullable', 'email:rfc', 'max:255'];
+        if ($email !== '' && ! $this->emailUnchangedForContact($contactId, $teamId, $email))
         {
             $emailRules[] = Rule::unique('contacts', 'email')
                 ->where(fn ($query) => $query->where('team_id', $teamId))
@@ -73,7 +75,6 @@ class UpdateMailerAudienceContactRequest extends FormRequest
     {
         return [
             'name.required' => __('El nombre es obligatorio.'),
-            'email.required' => __('El email es obligatorio.'),
             'email.email' => __('Ingresá un email válido.'),
             'email.unique' => __('Ese email ya está en la audiencia.'),
         ];

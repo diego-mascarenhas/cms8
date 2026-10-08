@@ -117,6 +117,11 @@ class ProcessActiveCampaigns extends Command
         $deliveryIndex = MessageDelivery::where('message_id', $message->id)
             ->whereNull('campaign_id')
             ->count();
+        $message->loadMissing('team');
+        $spacingSeconds = $message->team?->mailerSendSpacingSeconds() ?? (86400 / 3000);
+        $jitterSeconds = $message->team?->mailerSendJitterSeconds() ?? 0;
+        $maxDeliveries = $message->team?->mailerCreateBatch()
+            ?? (int) config('services.email.processing.deliveries_per_campaign_run', 30);
 
         foreach ($validContacts as $contact)
         {
@@ -137,19 +142,14 @@ class ProcessActiveCampaigns extends Command
                     continue;
                 }
 
-                // Calculate scheduled time based on the last delivery + random interval
-                $baseMinutes = config('services.email.delay.base_minutes', 1);
-                $maxRandomSeconds = config('services.email.delay.random_seconds', 60);
-
-                $delayMinutes = $deliveryIndex * $baseMinutes;
-                $randomSeconds = rand(0, $maxRandomSeconds);
-                $scheduledTime = $baseTime->copy()->addMinutes($delayMinutes)->addSeconds($randomSeconds);
+                $extraSeconds = (int) round(($deliveryIndex * $spacingSeconds) + ($jitterSeconds > 0 ? rand(0, $jitterSeconds) : 0));
+                $scheduledTime = $baseTime->copy()->addSeconds($extraSeconds);
 
                 // Ensure scheduled time respects minimum hours between emails
                 $nextAvailableTime = $message->getNextAvailableTimeForContact($contact);
                 if ($scheduledTime->lt($nextAvailableTime))
                 {
-                    $scheduledTime = $nextAvailableTime->copy()->addMinutes($delayMinutes)->addSeconds($randomSeconds);
+                    $scheduledTime = $nextAvailableTime->copy()->addSeconds($extraSeconds);
                 }
 
                 $scheduledTime = $message->alignScheduledTimeWithSendingSchedule($scheduledTime);
@@ -172,8 +172,6 @@ class ProcessActiveCampaigns extends Command
                     'scheduled_at' => $scheduledTime,
                 ]);
 
-                // Create multiple deliveries per run but limit to avoid overload
-                $maxDeliveries = config('services.email.processing.deliveries_per_campaign_run', 30); // Max 30 per campaign per run
                 if ($createdCount >= $maxDeliveries)
                 {
                     break;

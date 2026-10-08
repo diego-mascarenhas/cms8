@@ -157,6 +157,46 @@ enum EmailPlan: string
     }
 
     /**
+     * Seconds between sends. Scale is immediate. Basic is 3,000 per day.
+     * Foundation is 20,000 every 12 hours.
+     */
+    public function sendSpacingSeconds(): float
+    {
+        return match ($this)
+        {
+            self::SCALE => 0.0,
+            self::FOUNDATION => (12 * 3600) / 20000,
+            default => 86400 / 3000,
+        };
+    }
+
+    /**
+     * How many deliveries to create on each five-minute pass.
+     */
+    public function sendCreateBatch(): int
+    {
+        return match ($this)
+        {
+            self::SCALE => 1000,
+            self::FOUNDATION => 200,
+            default => 30,
+        };
+    }
+
+    /**
+     * How many due deliveries to hand to the queue each minute.
+     */
+    public function sendDispatchBatch(): int
+    {
+        return match ($this)
+        {
+            self::SCALE => 1000,
+            self::FOUNDATION => 40,
+            default => 5,
+        };
+    }
+
+    /**
      * Get EmailPlan from Stripe price ID (humano_pricing, then subscription_products).
      */
     public static function fromStripePriceId(?string $priceId): self
