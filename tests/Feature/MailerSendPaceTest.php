@@ -74,6 +74,38 @@ class MailerSendPaceTest extends TestCase
         );
     }
 
+    public function test_the_pace_line_follows_the_latest_sends(): void
+    {
+        $message = $this->messageWithContacts(EmailPlan::SCALE, 'live');
+        $contacts = Contact::query()->where('team_id', $message->team_id)->orderBy('id')->get();
+
+        $this->assertNull($message->currentSendPaceText());
+
+        foreach ($contacts as $index => $contact)
+        {
+            MessageDelivery::query()->create([
+                'team_id' => $message->team_id,
+                'message_id' => $message->id,
+                'contact_id' => $contact->id,
+                'status_id' => 3,
+                'sent_at' => now()->subSeconds(4 - ($index * 2)),
+                'scheduled_for' => now()->subSeconds(4 - ($index * 2)),
+            ]);
+        }
+
+        $this->assertSame('Cada 2 segundos', $message->currentSendPaceText());
+
+        MessageDelivery::query()->where('message_id', $message->id)->update([
+            'sent_at' => now()->subSeconds(20),
+        ]);
+
+        $this->assertSame('Inmediata', $message->currentSendPaceText());
+
+        $message->update(['status_id' => 0]);
+
+        $this->assertNull($message->fresh()->currentSendPaceText());
+    }
+
     public function test_scale_sends_reached_contacts_immediately_and_paces_the_rest(): void
     {
         $message = $this->messageWithContacts(EmailPlan::SCALE, 'known');

@@ -339,7 +339,7 @@ class CampaignMessageApiService
             'from_name' => $overrideName !== '' ? $overrideName : null,
             'from_address' => $overrideAddress !== '' ? $overrideAddress : null,
             'custom_sender_allowed' => $team->allowsCustomMessageSender(),
-            'send_pace' => $team->mailerSendPaceText(),
+            'send_pace' => $message->currentSendPaceText() ?? $team->mailerSendPaceText(),
             'sender' => [
                 'from_name' => $fromName,
                 'from_address' => $fromAddress,
