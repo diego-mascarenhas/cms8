@@ -817,7 +817,10 @@ class MessageController extends Controller
                 ];
             }
 
-            $updateData = ['status_id' => 1];
+            $updateData = [
+                'status_id' => 1,
+                'pause_reason' => null,
+            ];
 
             if (! $message->started_at)
             {
@@ -887,11 +890,11 @@ class MessageController extends Controller
             $message = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
 
             // Update message status to inactive/paused
-            $message->update(['status_id' => 0]);
+            $message->pauseWithReason(Message::PAUSE_REASON_MANUAL);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Campaña pausada exitosamente',
+                'message' => Message::PAUSE_REASON_MANUAL,
             ]);
         } catch (\Exception $e)
         {

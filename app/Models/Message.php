@@ -18,7 +18,13 @@ class Message extends Model
 
     protected $table = 'messages';
 
-    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'template_id', 'text', 'from_name', 'from_address', 'mail_html', 'status_id', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at', 'scheduled_send_at'];
+    public const PAUSE_REASON_SPAM = 'Se pausó porque el proveedor marcó el mensaje como spam.';
+
+    public const PAUSE_REASON_ERRORS = 'Se pausó por errores seguidos al enviar.';
+
+    public const PAUSE_REASON_MANUAL = 'La pausaste manualmente.';
+
+    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'template_id', 'text', 'from_name', 'from_address', 'mail_html', 'status_id', 'pause_reason', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at', 'scheduled_send_at'];
 
     protected $casts = [
         'status_id' => 'boolean',
@@ -566,13 +572,18 @@ class Message extends Model
     /**
      * Pause campaign due to critical errors
      */
-    public function pauseForErrors(string $reason = 'Critical errors detected'): void
+    public function pauseWithReason(string $reason): void
     {
         $this->update([
-            'status_id' => 0, // inactive/paused
+            'status_id' => 0,
+            'pause_reason' => $reason,
         ]);
+    }
 
-        // Log the pause
+    public function pauseForErrors(string $reason = self::PAUSE_REASON_ERRORS): void
+    {
+        $this->pauseWithReason($reason);
+
         \Log::warning('📛 Campaign paused automatically', [
             'message_id' => $this->id,
             'message_name' => $this->name,
@@ -591,7 +602,7 @@ class Message extends Model
         {
             if ($this->status_id)
             {
-                $this->pauseForErrors('Provider classified the message as spam.');
+                $this->pauseForErrors(self::PAUSE_REASON_SPAM);
             }
 
             return;
@@ -613,7 +624,7 @@ class Message extends Model
         // Check if we should pause after this error
         if ($this->shouldPauseForErrors())
         {
-            $this->pauseForErrors('Critical error: '.substr($errorMessage, 0, 100));
+            $this->pauseForErrors(self::PAUSE_REASON_ERRORS);
         }
     }
 }

@@ -45,7 +45,10 @@ class MessageCampaignActivationService
                 ];
             }
 
-            $updateData = ['status_id' => 1];
+            $updateData = [
+                'status_id' => 1,
+                'pause_reason' => null,
+            ];
 
             if (! $message->started_at)
             {
@@ -98,11 +101,11 @@ class MessageCampaignActivationService
     {
         try
         {
-            $message->update(['status_id' => 0]);
+            $message->pauseWithReason(Message::PAUSE_REASON_MANUAL);
 
             return [
                 'success' => true,
-                'message' => 'Campaña pausada exitosamente',
+                'message' => Message::PAUSE_REASON_MANUAL,
             ];
         } catch (\Exception $e)
         {
