@@ -118,9 +118,32 @@ class ProcessActiveCampaigns extends Command
             ->whereNull('campaign_id')
             ->count();
         $message->loadMissing('team');
-        $spacingSeconds = $message->team?->mailerSendSpacingSeconds() ?? (86400 / 3000);
-        $jitterSeconds = $message->team?->mailerSendJitterSeconds() ?? 0;
-        $maxDeliveries = $message->team?->mailerCreateBatch()
+        $team = $message->team;
+        $fast = (bool) $team?->sendsMailerWithoutSpacing();
+        $spacingSeconds = $team?->mailerSendSpacingSeconds() ?? (86400 / 3000);
+        $jitterSeconds = $team?->mailerSendJitterSeconds() ?? 0;
+        $coldSpacing = $team?->mailerSpacingSecondsForContact(false) ?? $spacingSeconds;
+        $reached = $fast
+            ? $message->previouslyReachedContactIds($validContactIds)
+            : [];
+        if ($fast)
+        {
+            $validContacts = $validContacts
+                ->sortBy(fn ($contact): string => sprintf(
+                    '%d-%08d',
+                    isset($reached[$contact->id]) ? 0 : 1,
+                    $contact->id,
+                ))
+                ->values();
+        }
+        $coldIndex = $fast
+            ? MessageDelivery::query()
+                ->where('message_id', $message->id)
+                ->whereNull('campaign_id')
+                ->when($reached !== [], fn ($query) => $query->whereNotIn('contact_id', array_keys($reached)))
+                ->count()
+            : 0;
+        $maxDeliveries = $team?->mailerCreateBatch()
             ?? (int) config('services.email.processing.deliveries_per_campaign_run', 30);
 
         foreach ($validContacts as $contact)
@@ -142,7 +165,18 @@ class ProcessActiveCampaigns extends Command
                     continue;
                 }
 
-                $extraSeconds = (int) round(($deliveryIndex * $spacingSeconds) + ($jitterSeconds > 0 ? rand(0, $jitterSeconds) : 0));
+                $previouslyReached = isset($reached[$contact->id]);
+                if ($fast && $previouslyReached)
+                {
+                    $extraSeconds = 0;
+                } elseif ($fast)
+                {
+                    $extraSeconds = (int) round(($coldIndex + 1) * $coldSpacing);
+                    $coldIndex++;
+                } else
+                {
+                    $extraSeconds = (int) round(($deliveryIndex * $spacingSeconds) + ($jitterSeconds > 0 ? rand(0, $jitterSeconds) : 0));
+                }
                 $scheduledTime = $baseTime->copy()->addSeconds($extraSeconds);
 
                 // Ensure scheduled time respects minimum hours between emails

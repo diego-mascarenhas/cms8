@@ -245,6 +245,34 @@ class Message extends Model
     }
 
     /**
+     * Contacts who already received, opened, or clicked a message from this team.
+     *
+     * @param  array<int>  $contactIds
+     * @return array<int, true>
+     */
+    public function previouslyReachedContactIds(array $contactIds): array
+    {
+        if ($contactIds === [])
+        {
+            return [];
+        }
+
+        return MessageDelivery::query()
+            ->where('team_id', $this->team_id)
+            ->whereIn('contact_id', $contactIds)
+            ->where(function (Builder $query): void
+            {
+                $query->whereNotNull('delivered_at')
+                    ->orWhereNotNull('opened_at')
+                    ->orWhereNotNull('clicked_at');
+            })
+            ->distinct()
+            ->pluck('contact_id')
+            ->mapWithKeys(fn ($id): array => [(int) $id => true])
+            ->all();
+    }
+
+    /**
      * Check if this message can be sent to a specific contact based on the minimum hours between emails
      */
     public function canSendToContact(\App\Models\Contact $contact): bool

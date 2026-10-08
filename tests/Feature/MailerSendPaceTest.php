@@ -58,25 +58,95 @@ class MailerSendPaceTest extends TestCase
         $this->assertSame(2, (int) $foundationTimes[0]->diffInSeconds($foundationTimes[1]));
 
         $this->assertCount(2, $scaleTimes);
+        $this->assertSame(2, (int) $scaleTimes[0]->diffInSeconds($scaleTimes[1]));
+
         $this->assertSame(
-            $scaleTimes[0]->format('Y-m-d H:i:s'),
-            $scaleTimes[1]->format('Y-m-d H:i:s'),
+            'Cada 29 segundos',
+            $basic->team->mailerSendPaceText(),
+        );
+        $this->assertSame(
+            'Cada 2 segundos',
+            $foundation->team->mailerSendPaceText(),
+        );
+        $this->assertSame(
+            'Inmediata para quienes ya recibieron o abrieron un correo. Cada 2 segundos para el resto.',
+            $scale->team->mailerSendPaceText(),
         );
     }
 
-    public function test_a_whitelisted_team_schedules_at_maximum_speed(): void
+    public function test_scale_sends_reached_contacts_immediately_and_paces_the_rest(): void
+    {
+        $message = $this->messageWithContacts(EmailPlan::SCALE, 'known');
+        $contacts = Contact::query()->where('team_id', $message->team_id)->orderBy('id')->get();
+        $known = $contacts[0];
+        $cold = $contacts[1];
+        $prior = Message::withoutGlobalScopes()->create([
+            'team_id' => $message->team_id,
+            'name' => 'Prior',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $message->team_id,
+            'message_id' => $prior->id,
+            'contact_id' => $known->id,
+            'status_id' => 3,
+            'sent_at' => now()->subDay(),
+            'delivered_at' => now()->subDay(),
+            'scheduled_for' => now()->subDay(),
+        ]);
+
+        Artisan::call('campaigns:process-active', ['--message' => $message->id]);
+
+        $knownTime = MessageDelivery::query()
+            ->where('message_id', $message->id)
+            ->where('contact_id', $known->id)
+            ->first()
+            ->scheduled_for;
+        $coldTime = MessageDelivery::query()
+            ->where('message_id', $message->id)
+            ->where('contact_id', $cold->id)
+            ->first()
+            ->scheduled_for;
+
+        $this->assertSame($message->started_at->format('Y-m-d H:i:s'), $knownTime->format('Y-m-d H:i:s'));
+        $this->assertTrue($coldTime->greaterThan($knownTime));
+        $this->assertSame(2, (int) $knownTime->diffInSeconds($coldTime));
+    }
+
+    public function test_a_whitelisted_team_paces_new_addresses_and_sends_known_ones_immediately(): void
     {
         $message = $this->messageWithContacts(EmailPlan::FREE, 'listed');
         config(['humano_pricing.plan_access_team_ids' => [(int) $message->team_id]]);
+        $known = Contact::query()->where('team_id', $message->team_id)->orderBy('id')->first();
+        $prior = Message::withoutGlobalScopes()->create([
+            'team_id' => $message->team_id,
+            'name' => 'Prior',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $message->team_id,
+            'message_id' => $prior->id,
+            'contact_id' => $known->id,
+            'status_id' => 2,
+            'opened_at' => now()->subDay(),
+            'scheduled_for' => now()->subDay(),
+        ]);
 
         Artisan::call('campaigns:process-active', ['--message' => $message->id]);
 
         $times = $this->scheduledTimes($message->id);
 
         $this->assertCount(2, $times);
+        $this->assertSame(2, (int) $times[0]->diffInSeconds($times[1]));
         $this->assertSame(
+            $message->started_at->format('Y-m-d H:i:s'),
             $times[0]->format('Y-m-d H:i:s'),
-            $times[1]->format('Y-m-d H:i:s'),
         );
     }
 
