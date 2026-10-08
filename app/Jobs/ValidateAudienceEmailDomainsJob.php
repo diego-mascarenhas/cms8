@@ -51,11 +51,65 @@ class ValidateAudienceEmailDomainsJob implements ShouldQueue
         $state = Cache::get(self::cacheKey($teamId));
         $running = self::isRunning($teamId);
 
+        if (! $running || ! is_array($state))
+        {
+            return [
+                'running' => false,
+                'total' => 0,
+                'checked' => 0,
+            ];
+        }
+
+        $total = (int) ($state['total'] ?? 0);
+        $checked = (int) ($state['checked'] ?? 0);
+        $startedAt = (string) ($state['started_at'] ?? '');
+        $validated = self::countCheckedSince($teamId, $startedAt);
+        if ($validated > $checked)
+        {
+            $checked = min($total, $validated);
+            $state['checked'] = $checked;
+            if ($total > 0 && $checked >= $total)
+            {
+                Cache::forget(self::cacheKey($teamId));
+
+                return [
+                    'running' => false,
+                    'total' => 0,
+                    'checked' => 0,
+                ];
+            }
+
+            Cache::put(self::cacheKey($teamId), $state, now()->addMinutes(self::RUN_MINUTES));
+        }
+
         return [
-            'running' => $running,
-            'total' => $running && is_array($state) ? (int) ($state['total'] ?? 0) : 0,
-            'checked' => $running && is_array($state) ? (int) ($state['checked'] ?? 0) : 0,
+            'running' => true,
+            'total' => $total,
+            'checked' => $checked,
         ];
+    }
+
+    public static function alignTotal(int $teamId, string $token, int $total): void
+    {
+        $key = self::cacheKey($teamId);
+        Cache::lock($key.':lock', 10)->block(5, function () use ($key, $token, $total): void
+        {
+            $state = Cache::get($key);
+            if (! is_array($state) || (string) ($state['token'] ?? '') !== $token)
+            {
+                return;
+            }
+
+            $state['total'] = $total;
+            if ($total < 1 || (int) ($state['checked'] ?? 0) >= $total)
+            {
+                Cache::forget($key);
+
+                return;
+            }
+
+            Cache::put($key, $state, now()->addMinutes(self::RUN_MINUTES));
+        });
     }
 
     public static function markRunning(int $teamId, string $token, int $total = 0): void
@@ -98,6 +152,8 @@ class ValidateAudienceEmailDomainsJob implements ShouldQueue
 
         if ($this->startedAt !== '' && $this->checkedDuringThisRun($contact))
         {
+            $this->advance(1);
+
             return;
         }
 
@@ -109,12 +165,6 @@ class ValidateAudienceEmailDomainsJob implements ShouldQueue
 
     public function failed(?\Throwable $exception): void
     {
-        $contact = $this->contact();
-        if ($contact instanceof Contact && $this->startedAt !== '' && $this->checkedDuringThisRun($contact))
-        {
-            return;
-        }
-
         $this->advance(1);
     }
 
@@ -167,6 +217,20 @@ class ValidateAudienceEmailDomainsJob implements ShouldQueue
                 return;
             }
 
+            if ($this->contactId > 0)
+            {
+                $counted = is_array($state['counted'] ?? null) ? $state['counted'] : [];
+                $contactKey = (string) $this->contactId;
+                if (isset($counted[$contactKey]))
+                {
+                    return;
+                }
+
+                $counted[$contactKey] = 1;
+                $state['counted'] = $counted;
+                $count = 1;
+            }
+
             $total = (int) ($state['total'] ?? 0);
             $state['checked'] = min($total, (int) ($state['checked'] ?? 0) + $count);
             if ($total > 0 && (int) $state['checked'] >= $total)
@@ -208,5 +272,20 @@ class ValidateAudienceEmailDomainsJob implements ShouldQueue
         $checkedAt = $data['channels']['email']['checked_at'] ?? null;
 
         return is_string($checkedAt) && $checkedAt !== '' ? $checkedAt : null;
+    }
+
+    private static function countCheckedSince(int $teamId, string $startedAt): int
+    {
+        if ($startedAt === '')
+        {
+            return 0;
+        }
+
+        return Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereNotNull('email')
+            ->where('email', '!=', '')
+            ->where('data->channels->email->checked_at', '>=', $startedAt)
+            ->count();
     }
 }

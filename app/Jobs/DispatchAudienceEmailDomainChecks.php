@@ -43,13 +43,15 @@ class DispatchAudienceEmailDomainChecks implements ShouldQueue
             return;
         }
 
+        $dispatched = 0;
+
         Contact::withoutGlobalScopes()
             ->where('team_id', $this->teamId)
             ->whereNotNull('email')
             ->where('email', '!=', '')
             ->orderBy('id')
             ->select(['id'])
-            ->chunkById(200, function ($contacts): void
+            ->chunkById(200, function ($contacts) use (&$dispatched): void
             {
                 foreach ($contacts as $contact)
                 {
@@ -59,7 +61,10 @@ class DispatchAudienceEmailDomainChecks implements ShouldQueue
                         $this->startedAt,
                         (int) $contact->id,
                     );
+                    $dispatched++;
                 }
             });
+
+        ValidateAudienceEmailDomainsJob::alignTotal($this->teamId, $this->token, $dispatched);
     }
 }
