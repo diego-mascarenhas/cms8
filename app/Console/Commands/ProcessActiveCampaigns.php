@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class ProcessActiveCampaigns extends Command
@@ -107,12 +108,12 @@ class ProcessActiveCampaigns extends Command
         }
 
         // Step 2: Create deliveries for contacts that meet criteria and don't have one yet
-        $lastDelivery = MessageDelivery::where('message_id', $message->id)
+        $lastSentAt = MessageDelivery::where('message_id', $message->id)
             ->whereNull('campaign_id')
-            ->orderBy('sent_at', 'desc')
-            ->first();
+            ->whereNotNull('sent_at')
+            ->max('sent_at');
 
-        $baseTime = $lastDelivery ? $lastDelivery->sent_at : $message->started_at;
+        $baseTime = $lastSentAt ? Carbon::parse($lastSentAt) : $message->started_at;
         $createdCount = 0;
         $deliveryIndex = MessageDelivery::where('message_id', $message->id)
             ->whereNull('campaign_id')
@@ -143,8 +144,6 @@ class ProcessActiveCampaigns extends Command
                 ->when($reached !== [], fn ($query) => $query->whereNotIn('contact_id', array_keys($reached)))
                 ->count()
             : 0;
-        $maxDeliveries = $team?->mailerCreateBatch()
-            ?? (int) config('services.email.processing.deliveries_per_campaign_run', 30);
 
         foreach ($validContacts as $contact)
         {
@@ -156,15 +155,6 @@ class ProcessActiveCampaigns extends Command
 
             if (! $existingDelivery)
             {
-                // Check if we can send to this contact based on minimum hours between emails
-                if (! $message->canSendToContact($contact))
-                {
-                    $nextAvailableTime = $message->getNextAvailableTimeForContact($contact);
-                    $this->info("   ⏰ Skipping {$contact->email} - next available: {$nextAvailableTime->format('Y-m-d H:i:s')}");
-
-                    continue;
-                }
-
                 $previouslyReached = isset($reached[$contact->id]);
                 if ($fast && $previouslyReached)
                 {
@@ -205,11 +195,6 @@ class ProcessActiveCampaigns extends Command
                     'contact_email' => $contact->email,
                     'scheduled_at' => $scheduledTime,
                 ]);
-
-                if ($createdCount >= $maxDeliveries)
-                {
-                    break;
-                }
             }
         }
 

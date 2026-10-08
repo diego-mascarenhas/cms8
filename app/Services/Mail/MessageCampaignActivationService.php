@@ -6,6 +6,7 @@ use App\Enums\CampaignStatus;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\Team;
+use Illuminate\Support\Facades\Artisan;
 
 class MessageCampaignActivationService
 {
@@ -53,6 +54,10 @@ class MessageCampaignActivationService
 
             $message->update($updateData);
 
+            Artisan::call('campaigns:process-active', [
+                '--message' => $message->id,
+            ]);
+
             $message->load('campaigns');
             foreach ($message->campaigns as $campaign)
             {
@@ -63,8 +68,6 @@ class MessageCampaignActivationService
                 }
             }
 
-            $contactsCount = $message->audienceContactsQuery()->count();
-
             $pendingDeliveries = MessageDelivery::where('message_id', $message->id)
                 ->where(function ($query)
                 {
@@ -73,15 +76,7 @@ class MessageCampaignActivationService
                 })
                 ->count();
 
-            $responseMessage = 'Campaña activada exitosamente. ';
-
-            if ($pendingDeliveries > 0)
-            {
-                $responseMessage .= "{$pendingDeliveries} envíos pendientes serán enviados por el programador.";
-            } else
-            {
-                $responseMessage .= "{$contactsCount} contactos serán procesados por el programador.";
-            }
+            $responseMessage = 'Campaña activada. '.$pendingDeliveries.' envíos quedaron en la cola.';
 
             return [
                 'success' => true,

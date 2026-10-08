@@ -9,6 +9,7 @@ use App\Http\Requests\Api\StoreMailerAudienceContactRequest;
 use App\Http\Requests\Api\StoreMailerAudienceListRequest;
 use App\Http\Requests\Api\UpdateMailerAudienceContactRequest;
 use App\Http\Requests\StoreContactInteractionRequest;
+use App\Jobs\DispatchAudienceEmailDomainChecks;
 use App\Jobs\ValidateAudienceEmailDomainsJob;
 use App\Models\Category;
 use App\Models\Contact;
@@ -28,6 +29,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -52,14 +54,20 @@ class MailerAudienceController extends Controller
         if (! ValidateAudienceEmailDomainsJob::isRunning($teamId))
         {
             $token = (string) Str::uuid();
-            ValidateAudienceEmailDomainsJob::markRunning($teamId, $token);
-            ValidateAudienceEmailDomainsJob::dispatch($teamId, $token)->afterResponse();
+            ValidateAudienceEmailDomainsJob::markRunning(
+                $teamId,
+                $token,
+                ValidateAudienceEmailDomainsJob::countContacts($teamId),
+            );
+            $state = Cache::get(ValidateAudienceEmailDomainsJob::cacheKey($teamId));
+            $startedAt = is_array($state) ? (string) ($state['started_at'] ?? '') : '';
+            DispatchAudienceEmailDomainChecks::dispatch($teamId, $token, $startedAt)->afterResponse();
         }
 
         return response()->json([
             'success' => true,
-            'running' => true,
             'message' => 'Estamos revisando los dominios. Los que no tengan MX quedan fuera del envío.',
+            ...ValidateAudienceEmailDomainsJob::progress($teamId),
         ]);
     }
 
@@ -127,9 +135,7 @@ class MailerAudienceController extends Controller
             'lists' => $this->listsForTeam((int) $team->id),
             'status_stats' => $this->statusStats((int) $team->id),
             'usage' => $team->getMailerUsageSummary(),
-            'domain_check' => [
-                'running' => ValidateAudienceEmailDomainsJob::isRunning((int) $team->id),
-            ],
+            'domain_check' => ValidateAudienceEmailDomainsJob::progress((int) $team->id),
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Jobs\DispatchAudienceEmailDomainChecks;
 use App\Jobs\ValidateAudienceEmailDomainsJob;
 use App\Models\Category;
 use App\Models\Contact;
@@ -20,6 +21,7 @@ use Database\Seeders\LanguageSeeder;
 use Database\Seeders\MessageTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -784,7 +786,7 @@ class MailerAudienceApiTest extends TestCase
             ],
         ]);
 
-        (new ValidateAudienceEmailDomainsJob((int) $team->id))->handle(app(EmailDomainDns::class));
+        $this->checkAudienceDomains((int) $team->id);
 
         $missing->refresh();
         $this->assertFalse($missing->storedChannelValid('email'));
@@ -820,7 +822,7 @@ class MailerAudienceApiTest extends TestCase
                 return in_array($domain, ['cliente.com', 'missing.test'], true);
             }
         });
-        (new ValidateAudienceEmailDomainsJob((int) $team->id))->handle(app(EmailDomainDns::class));
+        $this->checkAudienceDomains((int) $team->id);
         $missing->refresh();
         $this->assertNull($missing->data->channels->email->valid);
         $this->assertTrue($missing->emailDomainOk());
@@ -829,56 +831,168 @@ class MailerAudienceApiTest extends TestCase
 
     public function test_validate_domains_queues_the_check(): void
     {
-        [, $team, $token] = $this->adminWithToken();
+        [$user, $team, $token] = $this->adminWithToken();
         Bus::fake();
 
-        $this->app->instance(EmailDomainDns::class, new class extends EmailDomainDns
+        $dns = new class extends EmailDomainDns
         {
             public array $types = [];
+
+            public array $checked = [];
+
+            public int $teamId = 0;
 
             protected function hasRecord(string $domain, string $type): bool
             {
                 $this->types[] = $type;
+                $state = Cache::get(ValidateAudienceEmailDomainsJob::cacheKey($this->teamId));
+                $this->checked[] = is_array($state) ? (int) ($state['checked'] ?? 0) : -1;
 
                 return $type === 'MX' && $domain === 'cliente.com';
             }
-        });
+        };
+        $dns->teamId = (int) $team->id;
+        $this->app->instance(EmailDomainDns::class, $dns);
+
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Ana',
+            'email' => 'ana@cliente.com',
+            'creator_id' => $user->id,
+        ]);
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Luis',
+            'email' => 'luis@otro.test',
+            'creator_id' => $user->id,
+        ]);
+        $total = ValidateAudienceEmailDomainsJob::countContacts((int) $team->id);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/mailer/audience/validate-domains')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('running', true);
+            ->assertJsonPath('running', true)
+            ->assertJsonPath('total', $total)
+            ->assertJsonPath('checked', 0);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/mailer/audience')
             ->assertOk()
-            ->assertJsonPath('domain_check.running', true);
+            ->assertJsonPath('domain_check.running', true)
+            ->assertJsonPath('domain_check.total', $total)
+            ->assertJsonPath('domain_check.checked', 0);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/mailer/audience/validate-domains')
             ->assertOk()
             ->assertJsonPath('running', true);
 
-        Bus::assertDispatchedTimes(ValidateAudienceEmailDomainsJob::class, 1);
+        Bus::assertDispatchedTimes(DispatchAudienceEmailDomainChecks::class, 1);
+        Bus::assertNotDispatched(ValidateAudienceEmailDomainsJob::class);
 
-        $job = null;
-        Bus::assertDispatched(ValidateAudienceEmailDomainsJob::class, function (ValidateAudienceEmailDomainsJob $dispatched) use (&$job, $team): bool
+        $dispatcher = null;
+        Bus::assertDispatched(DispatchAudienceEmailDomainChecks::class, function (DispatchAudienceEmailDomainChecks $dispatched) use (&$dispatcher, $team): bool
         {
-            $job = $dispatched;
+            $dispatcher = $dispatched;
 
             return $dispatched->teamId === (int) $team->id;
         });
 
-        $job->handle(app(EmailDomainDns::class));
+        $dispatcher->handle();
+
+        $jobs = [];
+        Bus::assertDispatched(ValidateAudienceEmailDomainsJob::class, function (ValidateAudienceEmailDomainsJob $dispatched) use (&$jobs, $team): bool
+        {
+            $jobs[] = $dispatched;
+
+            return $dispatched->teamId === (int) $team->id && $dispatched->contactId > 0;
+        });
+        $this->assertCount($total, $jobs);
+
+        foreach ($jobs as $job)
+        {
+            $job->handle(app(EmailDomainDns::class));
+        }
+
+        $this->assertNotEmpty($dns->checked);
+        $this->assertSame(0, $dns->checked[0]);
+        $this->assertLessThan($total, max($dns->checked));
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/mailer/audience')
             ->assertOk()
-            ->assertJsonPath('domain_check.running', false);
+            ->assertJsonPath('domain_check.running', false)
+            ->assertJsonPath('domain_check.checked', 0);
 
-        $dns = app(EmailDomainDns::class);
         $this->assertNotEmpty($dns->types);
         $this->assertSame(['MX'], array_values(array_unique($dns->types)));
+    }
+
+    public function test_a_retry_keeps_the_count_and_skips_domains_already_checked(): void
+    {
+        [$user, $team] = $this->adminWithToken();
+        $startedAt = now()->subMinute()->toIso8601String();
+        $total = ValidateAudienceEmailDomainsJob::countContacts((int) $team->id) + 2;
+        ValidateAudienceEmailDomainsJob::markRunning((int) $team->id, 'resume', $total);
+
+        $done = Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Ya',
+            'email' => 'ya@dominio-ya.test',
+            'creator_id' => $user->id,
+        ]);
+        $done->applyEmailDomainCheck(true);
+
+        $pending = Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Falta',
+            'email' => 'falta@dominio-falta.test',
+            'creator_id' => $user->id,
+        ]);
+
+        $dns = new class extends EmailDomainDns
+        {
+            public array $domains = [];
+
+            public int $teamId = 0;
+
+            protected function hasRecord(string $domain, string $type): bool
+            {
+                $this->domains[] = $domain;
+
+                return true;
+            }
+        };
+        $dns->teamId = (int) $team->id;
+
+        $doneJob = new ValidateAudienceEmailDomainsJob((int) $team->id, 'resume', $startedAt, (int) $done->id);
+        $doneJob->handle($dns);
+        $this->assertSame([], $dns->domains);
+
+        $pendingJob = new ValidateAudienceEmailDomainsJob((int) $team->id, 'resume', $startedAt, (int) $pending->id);
+        $pendingJob->handle($dns);
+        $this->assertSame(['dominio-falta.test'], $dns->domains);
+        $this->assertSame(1, ValidateAudienceEmailDomainsJob::progress((int) $team->id)['checked']);
+
+        $dns->domains = [];
+        $pendingJob->handle($dns);
+        $this->assertSame([], $dns->domains);
+        $this->assertSame(1, ValidateAudienceEmailDomainsJob::progress((int) $team->id)['checked']);
+    }
+
+    private function checkAudienceDomains(int $teamId): void
+    {
+        $dns = app(EmailDomainDns::class);
+        Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereNotNull('email')
+            ->where('email', '!=', '')
+            ->orderBy('id')
+            ->pluck('id')
+            ->each(function ($id) use ($teamId, $dns): void
+            {
+                (new ValidateAudienceEmailDomainsJob($teamId, '', '', (int) $id))->handle($dns);
+            });
     }
 }

@@ -273,6 +273,39 @@ class Message extends Model
     }
 
     /**
+     * Pace of the last sends, while the campaign is actually sending.
+     */
+    public function currentSendPaceText(): ?string
+    {
+        if (! $this->status_id)
+        {
+            return null;
+        }
+
+        $sentAt = MessageDelivery::query()
+            ->where('message_id', $this->id)
+            ->whereNotNull('sent_at')
+            ->where('sent_at', '>=', now()->subMinutes(2))
+            ->orderByDesc('sent_at')
+            ->limit(2)
+            ->get(['sent_at'])
+            ->pluck('sent_at');
+
+        if ($sentAt->count() < 2)
+        {
+            return null;
+        }
+
+        $seconds = (int) round(abs($sentAt[0]->diffInSeconds($sentAt[1])));
+        if ($seconds < 1)
+        {
+            return 'Inmediata';
+        }
+
+        return 'Cada '.$seconds.' segundos';
+    }
+
+    /**
      * Check if this message can be sent to a specific contact based on the minimum hours between emails
      */
     public function canSendToContact(\App\Models\Contact $contact): bool
