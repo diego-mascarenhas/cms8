@@ -909,7 +909,7 @@ class MessageApiWriteTest extends TestCase
 
     public function test_permanent_email_failure_is_stored_on_the_contact_and_left_out_of_later_sends(): void
     {
-        [$user, $team] = $this->adminWithToken();
+        [$user, $team, $token] = $this->adminWithToken();
 
         $this->assertFalse(Schema::hasColumn('contacts', 'engagment'));
 
@@ -951,6 +951,44 @@ class MessageApiWriteTest extends TestCase
         $contact->refresh();
         $this->assertFalse($contact->storedChannelValid('email'));
         $this->assertSame('Invalid email address', $contact->storedChannelLastError('email'));
+
+        $spam = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'spam-retry@example.test',
+        ]);
+        $spam->recordOutboundChannel(
+            'email',
+            'spam-retry@example.test',
+            null,
+            'failed',
+            '550 This message was classified as rSPAM and may not be delivered',
+        );
+        $this->assertNotNull($spam->fresh()->storedChannelLastError('email'));
+        $spam->recordOutboundChannel('email', 'spam-retry@example.test', null, 'sent', 'Aviso');
+        $this->assertNull($spam->fresh()->storedChannelLastError('email'));
+
+        $sent = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $spam->id,
+            'status_id' => 1,
+            'sent_at' => now(),
+        ]);
+        $spam->recordOutboundChannel(
+            'email',
+            'spam-retry@example.test',
+            null,
+            'failed',
+            '550 This message was classified as rSPAM and may not be delivered',
+        );
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries?search=spam-retry@example.test')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $sent->id)
+            ->assertJsonPath('data.0.status_key', 'sent')
+            ->assertJsonPath('data.0.email_last_error', null);
         $this->assertFalse(
             $message->audienceContactsQuery()->whereKey($contact->id)->exists(),
         );

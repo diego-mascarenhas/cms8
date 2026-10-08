@@ -412,6 +412,37 @@ trait HasEmailLimits
         return $this->getEmailPlan()->sendSpacingSeconds();
     }
 
+    /**
+     * Scale sends known recipients immediately. Addresses with no prior delivery use the Foundation gap.
+     */
+    public function mailerSpacingSecondsForContact(bool $previouslyReached): float
+    {
+        if ($this->sendsMailerWithoutSpacing() && ! $previouslyReached)
+        {
+            return EmailPlan::FOUNDATION->sendSpacingSeconds();
+        }
+
+        return $this->mailerSendSpacingSeconds();
+    }
+
+    public function mailerSendPaceText(): string
+    {
+        if ($this->sendsMailerWithoutSpacing())
+        {
+            $seconds = (int) round(EmailPlan::FOUNDATION->sendSpacingSeconds());
+
+            return 'Inmediata para quienes ya recibieron o abrieron un correo. Cada '.$seconds.' segundos para el resto.';
+        }
+
+        $seconds = (int) round($this->mailerSendSpacingSeconds());
+        if ($seconds < 1)
+        {
+            return 'Inmediata';
+        }
+
+        return 'Cada '.$seconds.' segundos';
+    }
+
     public function mailerSendJitterSeconds(): int
     {
         return 0;

@@ -83,7 +83,7 @@ class CampaignMessageApiService
             'has_clicked' => $delivery->clicked_at !== null,
             'in_list60' => $delivery->contact?->list60 !== null,
             'email_valid' => $delivery->contact?->storedChannelValid('email'),
-            'email_last_error' => $delivery->contact?->storedChannelLastError('email'),
+            'email_last_error' => $this->deliveryFailureText($delivery),
         ];
     }
 
@@ -189,6 +189,23 @@ class CampaignMessageApiService
 
         return "COALESCE(message_deliveries.bounce_type, '') = 'soft'"
             ." OR (COALESCE(message_deliveries.bounce_type, '') NOT IN ('hard', 'complaint', 'block') AND ({$likeSql}))";
+    }
+
+    private function deliveryFailureText(MessageDelivery $delivery): ?string
+    {
+        $key = $this->deliveryStatusKey($delivery);
+        if ($key !== 'failed' && $key !== 'temporary')
+        {
+            return null;
+        }
+
+        $message = trim((string) $delivery->error_message);
+        if ($message !== '')
+        {
+            return $message;
+        }
+
+        return $delivery->contact?->storedChannelLastError('email');
     }
 
     private function deliveryStatusKey(MessageDelivery $delivery): string
@@ -322,6 +339,7 @@ class CampaignMessageApiService
             'from_name' => $overrideName !== '' ? $overrideName : null,
             'from_address' => $overrideAddress !== '' ? $overrideAddress : null,
             'custom_sender_allowed' => $team->allowsCustomMessageSender(),
+            'send_pace' => $team->mailerSendPaceText(),
             'sender' => [
                 'from_name' => $fromName,
                 'from_address' => $fromAddress,

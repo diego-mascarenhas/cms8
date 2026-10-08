@@ -34,6 +34,10 @@ class SendScheduledDeliveries extends Command
         $dueDeliveries = MessageDelivery::where('status_id', 1) // pending
             ->where('scheduled_for', '<=', now())
             ->whereNull('delivered_at') // not delivered yet
+            ->whereHas('message', function ($query): void
+            {
+                $query->where('status_id', 1);
+            })
             ->with(['contact', 'message', 'team']) // eager load relations
             ->orderBy('scheduled_for', 'asc')
             ->limit(max(
