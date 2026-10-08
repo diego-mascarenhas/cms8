@@ -417,6 +417,7 @@ class MessageController extends Controller
             'search' => 'nullable|string|max:255',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:50',
+            'status' => 'nullable|string|in:sent,delivered,opened,clicked,failed',
         ]);
 
         $paginator = $this->campaignMessages->paginateDeliveries(
@@ -424,6 +425,7 @@ class MessageController extends Controller
             trim((string) ($validated['search'] ?? '')),
             (int) ($validated['page'] ?? 1),
             (int) ($validated['per_page'] ?? 10),
+            isset($validated['status']) ? (string) $validated['status'] : null,
         );
         $paginator->setPath($request->url());
         $paginator->appends($request->query());

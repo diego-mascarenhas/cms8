@@ -408,6 +408,108 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('pagination.total', 0);
     }
 
+    public function test_delivery_status_filter_finds_failed_rows_outside_the_first_page(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'With a failure',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        $failedContact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'name' => 'Fallido Unico',
+            'email' => 'fallido@example.test',
+        ]);
+
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $failedContact->id,
+            'status_id' => 4,
+            'sent_at' => now()->subHour(),
+        ])->forceFill([
+            'created_at' => now()->subHour(),
+            'updated_at' => now()->subHour(),
+        ])->save();
+
+        $resentContact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'reenviado@example.test',
+        ]);
+
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $resentContact->id,
+            'status_id' => 4,
+            'sent_at' => now()->subHours(2),
+        ])->forceFill([
+            'created_at' => now()->subHours(2),
+            'updated_at' => now()->subHours(2),
+        ])->save();
+
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $resentContact->id,
+            'status_id' => 1,
+            'sent_at' => now(),
+            'delivered_at' => now(),
+        ])->forceFill([
+            'created_at' => now()->subMinutes(30),
+            'updated_at' => now()->subMinutes(30),
+        ])->save();
+
+        foreach (range(1, 11) as $index)
+        {
+            $contact = Contact::factory()->create([
+                'team_id' => $team->id,
+                'creator_id' => $user->id,
+                'responsible_id' => $user->id,
+                'email' => "ok{$index}@example.test",
+            ]);
+
+            MessageDelivery::query()->create([
+                'team_id' => $team->id,
+                'message_id' => $message->id,
+                'contact_id' => $contact->id,
+                'status_id' => 2,
+                'sent_at' => now(),
+                'delivered_at' => now(),
+            ]);
+        }
+
+        $page = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries');
+
+        $page->assertOk()
+            ->assertJsonPath('pagination.total', 14)
+            ->assertJsonPath('pagination.current_page', 1);
+        $this->assertNotContains(
+            'fallido@example.test',
+            collect($page->json('data'))->pluck('contact_email')->all(),
+        );
+
+        $failed = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries?status=failed');
+
+        $failed->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('pagination.last_page', 1)
+            ->assertJsonPath('data.0.contact_email', 'fallido@example.test')
+            ->assertJsonPath('data.0.status_key', 'failed');
+    }
+
     public function test_can_update_target_when_message_has_deliveries(): void
     {
         [$user, $team, $token] = $this->adminWithToken();

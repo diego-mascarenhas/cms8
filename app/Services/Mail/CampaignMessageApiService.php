@@ -31,7 +31,7 @@ class CampaignMessageApiService
             ->paginate($perPage, ['*'], 'page', $page);
     }
 
-    public function paginateDeliveries(Message $message, string $search, int $page, int $perPage): LengthAwarePaginator
+    public function paginateDeliveries(Message $message, string $search, int $page, int $perPage, ?string $status = null): LengthAwarePaginator
     {
         $perPage = min(max($perPage, 1), 50);
 
@@ -47,6 +47,8 @@ class CampaignMessageApiService
                     ->orWhere('email', 'like', '%'.$search.'%');
             });
         }
+
+        $this->applyDeliveryStatusFilter($query, $status);
 
         $paginator = $query
             ->orderByDesc('created_at')
@@ -80,6 +82,64 @@ class CampaignMessageApiService
             'has_clicked' => $delivery->clicked_at !== null,
             'in_list60' => $delivery->contact?->list60 !== null,
         ];
+    }
+
+    /**
+     * Same buckets as {@see self::computeAndPersistStats()}, so a stat click lists those rows.
+     */
+    private function applyDeliveryStatusFilter(Builder $query, ?string $status): void
+    {
+        if ($status === null || $status === '')
+        {
+            return;
+        }
+
+        if ($status === 'sent')
+        {
+            $query->whereNotNull('sent_at')->where('sent_at', '<=', now());
+
+            return;
+        }
+
+        if ($status === 'delivered')
+        {
+            $query->whereNotNull('delivered_at');
+
+            return;
+        }
+
+        if ($status === 'opened')
+        {
+            $query->whereNotNull('opened_at');
+
+            return;
+        }
+
+        if ($status === 'clicked')
+        {
+            $query->whereNotNull('clicked_at');
+
+            return;
+        }
+
+        if ($status === 'failed')
+        {
+            $query->where('message_deliveries.status_id', 4)
+                ->whereNotExists(function ($later): void
+                {
+                    $later->selectRaw('1')
+                        ->from('message_deliveries as later_deliveries')
+                        ->whereColumn('later_deliveries.message_id', 'message_deliveries.message_id')
+                        ->whereColumn('later_deliveries.contact_id', 'message_deliveries.contact_id')
+                        ->whereColumn('later_deliveries.id', '!=', 'message_deliveries.id')
+                        ->whereColumn('later_deliveries.created_at', '>', 'message_deliveries.created_at')
+                        ->where(function ($success): void
+                        {
+                            $success->whereNotNull('later_deliveries.delivered_at')
+                                ->orWhere('later_deliveries.status_id', 1);
+                        });
+                });
+        }
     }
 
     private function deliveryStatusKey(MessageDelivery $delivery): string
