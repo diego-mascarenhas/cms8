@@ -969,16 +969,35 @@ class MailerAudienceApiTest extends TestCase
         $doneJob = new ValidateAudienceEmailDomainsJob((int) $team->id, 'resume', $startedAt, (int) $done->id);
         $doneJob->handle($dns);
         $this->assertSame([], $dns->domains);
+        $this->assertSame(1, ValidateAudienceEmailDomainsJob::progress((int) $team->id)['checked']);
 
         $pendingJob = new ValidateAudienceEmailDomainsJob((int) $team->id, 'resume', $startedAt, (int) $pending->id);
         $pendingJob->handle($dns);
         $this->assertSame(['dominio-falta.test'], $dns->domains);
-        $this->assertSame(1, ValidateAudienceEmailDomainsJob::progress((int) $team->id)['checked']);
+        $this->assertSame(2, ValidateAudienceEmailDomainsJob::progress((int) $team->id)['checked']);
 
         $dns->domains = [];
         $pendingJob->handle($dns);
         $this->assertSame([], $dns->domains);
-        $this->assertSame(1, ValidateAudienceEmailDomainsJob::progress((int) $team->id)['checked']);
+        $this->assertSame(2, ValidateAudienceEmailDomainsJob::progress((int) $team->id)['checked']);
+    }
+
+    public function test_progress_closes_when_the_saved_checks_already_cover_the_total(): void
+    {
+        [$user, $team] = $this->adminWithToken();
+        $contact = Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Listo',
+            'email' => 'listo@dominio-listo.test',
+            'creator_id' => $user->id,
+        ]);
+        ValidateAudienceEmailDomainsJob::markRunning((int) $team->id, 'stuck', 1);
+        $contact->applyEmailDomainCheck(true);
+
+        $progress = ValidateAudienceEmailDomainsJob::progress((int) $team->id);
+
+        $this->assertFalse($progress['running']);
+        $this->assertFalse(ValidateAudienceEmailDomainsJob::isRunning((int) $team->id));
     }
 
     private function checkAudienceDomains(int $teamId): void
