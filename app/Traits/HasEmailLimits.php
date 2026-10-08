@@ -390,6 +390,54 @@ trait HasEmailLimits
     }
 
     /**
+     * Scale submits the whole campaign at once. Complimentary teams get that pace too.
+     */
+    public function sendsMailerWithoutSpacing(): bool
+    {
+        if ($this->hasComplimentaryPlanAccess())
+        {
+            return true;
+        }
+
+        return $this->getEmailPlan() === EmailPlan::SCALE;
+    }
+
+    public function mailerSendSpacingSeconds(): float
+    {
+        if ($this->sendsMailerWithoutSpacing())
+        {
+            return max(0, (float) config('services.email.delay.fast_spacing_seconds', 0));
+        }
+
+        return $this->getEmailPlan()->sendSpacingSeconds();
+    }
+
+    public function mailerSendJitterSeconds(): int
+    {
+        return 0;
+    }
+
+    public function mailerCreateBatch(): int
+    {
+        if ($this->sendsMailerWithoutSpacing())
+        {
+            return (int) config('services.email.processing.fast_deliveries_per_campaign_run', 1000);
+        }
+
+        return $this->getEmailPlan()->sendCreateBatch();
+    }
+
+    public function mailerDispatchBatch(): int
+    {
+        if ($this->sendsMailerWithoutSpacing())
+        {
+            return (int) config('services.email.processing.fast_deliveries_per_send_run', 1000);
+        }
+
+        return $this->getEmailPlan()->sendDispatchBatch();
+    }
+
+    /**
      * Get contact limit
      */
     public function getContactLimit(): int
