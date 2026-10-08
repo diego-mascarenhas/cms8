@@ -54,7 +54,6 @@ class DemoPerformanceInsightsSeederTest extends TestCase
             'status_id' => 1,
             'country' => 724,
             'language' => 'es',
-            'engagment' => 'temperate',
             'user_id' => $admin->id,
         ]);
 

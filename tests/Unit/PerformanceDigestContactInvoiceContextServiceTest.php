@@ -62,7 +62,6 @@ class PerformanceDigestContactInvoiceContextServiceTest extends TestCase
             'status_id' => 1,
             'country' => 724,
             'language' => 'es',
-            'engagment' => 'temperate',
             'user_id' => $user->id,
         ]);
 
@@ -119,7 +118,6 @@ class PerformanceDigestContactInvoiceContextServiceTest extends TestCase
             'status_id' => 1,
             'country' => 724,
             'language' => 'es',
-            'engagment' => 'temperate',
             'user_id' => $user->id,
         ]);
 
@@ -187,7 +185,6 @@ class PerformanceDigestContactInvoiceContextServiceTest extends TestCase
             'status_id' => 1,
             'country' => 724,
             'language' => 'es',
-            'engagment' => 'temperate',
             'user_id' => $user->id,
         ]);
 
@@ -254,7 +251,6 @@ class PerformanceDigestContactInvoiceContextServiceTest extends TestCase
             'status_id' => 1,
             'country' => 724,
             'language' => 'es',
-            'engagment' => 'temperate',
             'user_id' => $user->id,
         ]);
 

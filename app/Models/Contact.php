@@ -35,7 +35,6 @@ class Contact extends Model implements HasMedia
         'source_id',
         'birthday',
         'profile',
-        'engagment',
         'country',
         'language',
         'creator_id',

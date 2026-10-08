@@ -18,6 +18,7 @@ use Database\Seeders\MessageTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -790,6 +791,8 @@ class MessageApiWriteTest extends TestCase
     public function test_permanent_email_failure_is_stored_on_the_contact_and_left_out_of_later_sends(): void
     {
         [$user, $team] = $this->adminWithToken();
+
+        $this->assertFalse(Schema::hasColumn('contacts', 'engagment'));
 
         $contact = Contact::factory()->create([
             'team_id' => $team->id,
