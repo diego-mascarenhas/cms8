@@ -1,0 +1,1019 @@
+<?php
+
+namespace App\Services\Marketing;
+
+use App\Models\Contact;
+use App\Models\Currency;
+use App\Models\Enterprise;
+use App\Models\ExchangeRate;
+use App\Models\Invoice;
+use App\Models\Team;
+use App\Services\Finance\FinanceCfoBriefService;
+use App\Services\Finance\InvoiceAnalyticsService;
+use App\Support\AiTasks;
+use App\Support\RevisionAlphaOrganization;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
+use Throwable;
+
+use function Laravel\Ai\agent;
+
+class CmoBriefService
+{
+    public function __construct(
+        private readonly InvoiceAnalyticsService $invoiceAnalyticsService,
+    ) {}
+
+    /**
+     * @var array{team: int, year: int, context: array<string, mixed>}|null
+     */
+    private ?array $contextMemo = null;
+
+    /**
+     * @return list<array{key: string, title: string, hint: string, fields?: array<string, string>}>
+     */
+    public static function blocks(): array
+    {
+        return [
+            ['key' => 'situation', 'title' => 'cmo_situation', 'hint' => 'cmo_situation_hint'],
+            ['key' => 'dafo', 'title' => 'cmo_dafo', 'hint' => 'cmo_dafo_hint', 'fields' => [
+                'fortalezas' => 'cfo_analysis_strengths',
+                'debilidades' => 'cfo_analysis_weaknesses',
+                'oportunidades' => 'cfo_analysis_opportunities',
+                'amenazas' => 'cfo_analysis_threats',
+            ]],
+            ['key' => 'came', 'title' => 'cmo_came', 'hint' => 'cmo_came_hint', 'fields' => [
+                'corregir' => 'cmo_came_correct',
+                'afrontar' => 'cmo_came_face',
+                'mantener' => 'cmo_came_keep',
+                'explotar' => 'cmo_came_exploit',
+            ]],
+            ['key' => 'eisenhower', 'title' => 'cmo_eisenhower', 'hint' => 'cmo_eisenhower_hint', 'fields' => [
+                'c1' => 'cmo_eisenhower_c1',
+                'c2' => 'cmo_eisenhower_c2',
+                'c3' => 'cmo_eisenhower_c3',
+                'c4' => 'cmo_eisenhower_c4',
+            ]],
+            ['key' => 'empathy', 'title' => 'cmo_empathy', 'hint' => 'cmo_empathy_hint', 'fields' => [
+                'thinks' => 'cmo_empathy_thinks',
+                'hears' => 'cmo_empathy_hears',
+                'sees' => 'cmo_empathy_sees',
+                'says' => 'cmo_empathy_says',
+                'pains' => 'cmo_empathy_pains',
+                'gains' => 'cmo_empathy_gains',
+            ]],
+            ['key' => 'value_proposition', 'title' => 'cmo_value', 'hint' => 'cmo_value_hint', 'fields' => [
+                'products' => 'cmo_vpc_products',
+                'gain_creators' => 'cmo_vpc_gain_creators',
+                'pain_relievers' => 'cmo_vpc_pain_relievers',
+                'gains' => 'cmo_vpc_gains',
+                'pains' => 'cmo_vpc_pains',
+                'jobs' => 'cmo_vpc_jobs',
+            ]],
+            ['key' => 'business_model', 'title' => 'cmo_bmc', 'hint' => 'cmo_bmc_hint', 'fields' => [
+                'segments' => 'cmo_bmc_segments',
+                'value' => 'cmo_bmc_value',
+                'channels' => 'cmo_bmc_channels',
+                'relationships' => 'cmo_bmc_relationships',
+                'revenue' => 'cmo_bmc_revenue',
+                'resources' => 'cmo_bmc_resources',
+                'activities' => 'cmo_bmc_activities',
+                'partners' => 'cmo_bmc_partners',
+                'costs' => 'cmo_bmc_costs',
+            ]],
+            ['key' => 'lean_canvas', 'title' => 'cmo_lean', 'hint' => 'cmo_lean_hint'],
+            ['key' => 'interviews', 'title' => 'cmo_interviews', 'hint' => 'cmo_interviews_hint'],
+            ['key' => 'interview_summary', 'title' => 'cmo_interview_summary', 'hint' => 'cmo_interview_summary_hint'],
+            ['key' => 'icp', 'title' => 'cmo_icp', 'hint' => 'cmo_icp_hint'],
+            ['key' => 'buyer_persona', 'title' => 'cmo_persona', 'hint' => 'cmo_persona_hint'],
+            ['key' => 'lookalike', 'title' => 'cmo_lookalike', 'hint' => 'cmo_lookalike_hint'],
+            ['key' => 'ansoff', 'title' => 'cmo_ansoff', 'hint' => 'cmo_ansoff_hint', 'fields' => [
+                'penetration' => 'cmo_ansoff_penetration',
+                'product' => 'cmo_ansoff_product',
+                'market' => 'cmo_ansoff_market',
+                'diversification' => 'cmo_ansoff_diversification',
+            ]],
+            ['key' => 'pest', 'title' => 'cmo_pest', 'hint' => 'cmo_pest_hint'],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function storedAnalysis(Team $team, int $year): ?array
+    {
+        $stored = $team->getSetting($this->settingKey($year));
+
+        if (! is_array($stored))
+        {
+            return null;
+        }
+
+        $analysis = $this->normalize($stored);
+
+        if (! $this->hasContent($analysis) && $analysis['brief'] === '')
+        {
+            return null;
+        }
+
+        return $analysis;
+    }
+
+    /**
+     * @return array{state: string, phase: string, message: string, started_at: string}
+     */
+    public function runStatus(Team $team, int $year): array
+    {
+        $stored = $team->getSetting($this->runKey($year));
+        $stored = is_array($stored) ? $stored : [];
+        $state = (string) ($stored['state'] ?? 'idle');
+        $phase = (string) ($stored['phase'] ?? '');
+        $startedAt = (string) ($stored['started_at'] ?? '');
+
+        if ($state === 'running' && $startedAt !== '')
+        {
+            try
+            {
+                if (Carbon::parse($startedAt)->lt(now()->subSeconds(900)))
+                {
+                    $state = 'idle';
+                    $phase = '';
+                }
+            } catch (Throwable)
+            {
+                $state = 'idle';
+            }
+        }
+
+        return [
+            'state' => $state,
+            'phase' => $phase,
+            'message' => $phase !== '' ? (string) __('app.cmo_phase_'.$phase) : '',
+            'started_at' => $startedAt,
+        ];
+    }
+
+    public function begin(Team $team, int $year): bool
+    {
+        if ($this->runStatus($team, $year)['state'] === 'running')
+        {
+            return false;
+        }
+
+        $this->mark($team, $year, 'running', 'queued', true);
+
+        return true;
+    }
+
+    public function generate(Team $team, int $year): void
+    {
+        $merged = [];
+
+        try
+        {
+            $this->mark($team, $year, 'running', 'context');
+            $context = $this->context($team, $year);
+
+            foreach ($this->generationGroups() as $phase => $keys)
+            {
+                $this->mark($team, $year, 'running', $phase);
+                $parsed = $this->parse($this->ask($context, $keys));
+
+                if ($parsed === null)
+                {
+                    throw new RuntimeException('CMO reply was not JSON.');
+                }
+
+                foreach ($keys as $key)
+                {
+                    if (array_key_exists($key, $parsed))
+                    {
+                        $merged[$key] = $parsed[$key];
+                    }
+                }
+
+                $this->storeAnalysis($team, $year, $merged);
+            }
+
+            $this->mark($team, $year, 'done', 'done');
+        } catch (Throwable $exception)
+        {
+            Log::error('CmoBriefService::generate failed', [
+                'team_id' => $team->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            if ($merged !== [])
+            {
+                $this->storeAnalysis($team, $year, $merged);
+            }
+
+            $this->mark($team, $year, 'failed', 'failed');
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function present(string $text): ?array
+    {
+        return $this->parse($text);
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @param  list<string>  $keys
+     */
+    private function ask(array $context, array $keys): string
+    {
+        $schema = $this->schemaFor($keys);
+        $instructions = <<<TXT
+Eres el CMO de la empresa. Responde solo con JSON válido, en español, sin markdown.
+El método es el de marketing comercial digital B2B de Adquiria (https://adquiria.net/).
+Usa únicamente los números y los nombres del contexto. No inventes importes, clientes, cargos, países, porcentajes, entrevistas, sentimientos ni un presupuesto de marketing. Si un dato no está, dilo en esa frase.
+No hables de correo, WhatsApp, tickets ni de la lista de 60.
+El capital social y el colchón de meses son hitos: no propongas gasto nuevo de publicidad como si el colchón ya existiera.
+Si not_loaded.customer_interviews es 0, entrevistas, resumen y mapa de empatía dicen que no hay entrevistas cargadas. No describas lo que un cliente piensa, oye, ve o siente.
+empathy es el mapa: thinks, hears, sees, says, pains, gains. Si no hay entrevistas, los seis dicen que no hay entrevistas cargadas.
+Si not_loaded.macro_environment es false, PEST dice que el entorno macro no está cargado. No cites tipos de interés, leyes ni desempleo de memoria.
+Si not_loaded.product_margin es false, no des un margen por producto. El margen del contexto es el de la empresa.
+Si not_loaded.client_employee_count y client_company_revenue son false, el perfil de cliente ideal no inventa empleados ni facturación del cliente. Usa país, localidad, repetición de compra e importe facturado.
+google_analytics null: no hables de visitas. publications con posts_last_90_days 0: di que no hay publicaciones en la agenda.
+Rellena solo estas claves. Cada valor es un texto:
+{$schema}
+situation resume productos por peso, margen de la empresa y cada cuánto compra el cliente.
+came: corregir debilidades, afrontar amenazas, mantener fortalezas, explotar oportunidades. Cada frase nombra la cifra que la justifica.
+eisenhower: c1 urgente e importante, c2 importante y no urgente, c3 urgente y no importante, c4 ni urgente ni importante. Solo tareas que salen del contexto (llamados, publicaciones, conversión, productos).
+lookalike agrupa la audiencia ya cliente por país y por compra repetida. No inventes un cluster.
+ansoff: penetración, desarrollo de producto, desarrollo de mercado, diversificación. Si no hay un segundo mercado o producto en el contexto, la diversificación dice que no hay evidencia.
+business_model son los nueve bloques del lienzo: segments, value, channels, relationships, revenue, resources, activities, partners, costs. Cada bloque nombra la cifra del contexto que lo sostiene. El contexto no trae socios: partners dice que no hay socios cargados.
+value_proposition es el lienzo de propuesta de valor: products, gain_creators, pain_relievers, gains, pains, jobs. products usa el mix y el margen de la empresa. Si no hay entrevistas, gains, pains, jobs, gain_creators y pain_relievers dicen que no hay entrevistas cargadas. No inventes dolores ni ganancias.
+TXT;
+
+        $userMessage = "CONTEXTO COMERCIAL\n\n".json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+        try
+        {
+            $agent = agent(
+                instructions: $instructions,
+                messages: [],
+                tools: [],
+            );
+            $response = AiTasks::prompt($agent, $userMessage, 60, 'assistant');
+            $text = trim((string) ($response->text ?? ''));
+        } catch (Throwable $exception)
+        {
+            Log::error('CmoBriefService::ask failed', ['error' => $exception->getMessage()]);
+
+            throw new RuntimeException('CMO request failed.', 0, $exception);
+        }
+
+        if ($text === '')
+        {
+            throw new RuntimeException('CMO reply was empty.');
+        }
+
+        return $text;
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function generationGroups(): array
+    {
+        return [
+            'diagnosis' => ['situation', 'dafo', 'came', 'pest'],
+            'people' => ['eisenhower', 'empathy', 'interviews', 'interview_summary'],
+            'audience' => ['icp', 'buyer_persona', 'lookalike', 'value_proposition'],
+            'growth' => ['business_model', 'lean_canvas', 'ansoff'],
+        ];
+    }
+
+    /**
+     * @param  list<string>  $keys
+     */
+    private function schemaFor(array $keys): string
+    {
+        $shape = [];
+
+        foreach (self::blocks() as $block)
+        {
+            if (! in_array($block['key'], $keys, true))
+            {
+                continue;
+            }
+
+            if (! isset($block['fields']))
+            {
+                $shape[$block['key']] = '';
+
+                continue;
+            }
+
+            $shape[$block['key']] = array_fill_keys(array_keys($block['fields']), '');
+        }
+
+        return (string) json_encode($shape, JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function storeAnalysis(Team $team, int $year, array $payload): void
+    {
+        $analysis = $this->normalize($payload);
+        $analysis['brief'] = $this->readable($analysis);
+        $analysis['generated_at'] = now()->toIso8601String();
+        $team->setSetting($this->settingKey($year), $analysis, [
+            'type' => 'json',
+            'group' => 'marketing',
+        ]);
+    }
+
+    private function mark(Team $team, int $year, string $state, string $phase, bool $freshStart = false): void
+    {
+        $current = $freshStart ? [] : $team->getSetting($this->runKey($year));
+        $current = is_array($current) ? $current : [];
+        $startedAt = (string) ($current['started_at'] ?? '');
+
+        $team->setSetting($this->runKey($year), [
+            'state' => $state,
+            'phase' => $phase,
+            'started_at' => $startedAt !== '' ? $startedAt : now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ], [
+            'type' => 'json',
+            'group' => 'marketing',
+        ]);
+    }
+
+    private function runKey(int $year): string
+    {
+        return 'marketing_cmo_run_'.$year;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function context(Team $team, int $year): array
+    {
+        if ($this->contextMemo !== null && $this->contextMemo['team'] === (int) $team->id && $this->contextMemo['year'] === $year)
+        {
+            return $this->contextMemo['context'];
+        }
+
+        $report = $this->invoiceAnalyticsService->buildYearReport($team->id, $year);
+        $currency = (string) $report['reporting_currency'];
+        $purchase = $this->purchasePattern($team, $year, $currency);
+        $entered = Contact::withoutGlobalScope('team')
+            ->withoutGlobalScope('ownership')
+            ->where('team_id', $team->id)
+            ->whereYear('created_at', $year);
+
+        $context = [
+            'year' => $report['year'],
+            'currency' => $currency,
+            'method' => 'Adquiria',
+            'products' => array_map(fn (array $category): array => [
+                'name' => $category['name'],
+                'amount' => round((float) $category['total'], 2),
+                'share_percent' => round((float) $category['share_percent'], 1),
+            ], array_slice($report['income_categories'], 0, 8)),
+            'company' => [
+                'income' => round((float) $report['summary']['income'], 2),
+                'expense' => round((float) $report['summary']['expense'], 2),
+                'profit' => round((float) $report['summary']['profit'], 2),
+                'margin_percent' => round((float) $report['summary']['margin_percent'], 1),
+                'prior_year_income' => round((float) $report['summary']['prior_year_income'], 2),
+            ],
+            'purchase' => $purchase['totals'],
+            'clients_by_country' => $this->clientsByCountry($team),
+            'top_clients' => $purchase['top_clients'],
+            'interlocutors' => $this->interlocutors($team),
+            'leads_entered_this_year' => (clone $entered)->count(),
+            'leads_converted_to_client_this_year' => (clone $entered)->where('status_id', 5)->count(),
+            'open_leads' => Contact::withoutGlobalScope('team')
+                ->withoutGlobalScope('ownership')
+                ->where('team_id', $team->id)
+                ->whereIn('status_id', [1, 2])
+                ->count(),
+            'clients' => Contact::withoutGlobalScope('team')
+                ->withoutGlobalScope('ownership')
+                ->where('team_id', $team->id)
+                ->where('status_id', 5)
+                ->count(),
+            'publications' => app(FinanceCfoBriefService::class)->publications($team),
+            'google_analytics' => app(FinanceCfoBriefService::class)->googleAnalytics($team),
+            'commercial_work' => $this->commercialWork($team),
+            'constraints' => [
+                'cushion_months' => (int) config('organization.subsistence.cushion_months', 6),
+                'share_capital' => (float) config('organization.subsistence.share_capital_eur', 3000),
+                'share_capital_minimum' => (float) config('organization.subsistence.share_capital_minimum_eur', 3000),
+            ],
+            'customer_interviews' => 0,
+            'not_loaded' => [
+                'customer_interviews' => 0,
+                'client_employee_count' => false,
+                'client_company_revenue' => false,
+                'macro_environment' => false,
+                'product_margin' => false,
+                'marketing_budget' => false,
+            ],
+        ];
+
+        $this->contextMemo = [
+            'team' => (int) $team->id,
+            'year' => $year,
+            'context' => $context,
+        ];
+
+        return $context;
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public function businessCanvas(Team $team, int $year): array
+    {
+        $context = $this->context($team, $year);
+        $currency = (string) $context['currency'];
+        $company = is_array($context['company'] ?? null) ? $context['company'] : [];
+        $products = is_array($context['products'] ?? null) ? $context['products'] : [];
+        $purchase = is_array($context['purchase'] ?? null) ? $context['purchase'] : [];
+        $work = is_array($context['commercial_work'] ?? null) ? $context['commercial_work'] : null;
+        $publications = is_array($context['publications'] ?? null) ? $context['publications'] : [];
+        $analytics = is_array($context['google_analytics'] ?? null) ? $context['google_analytics'] : null;
+
+        $productLines = [];
+
+        foreach (array_slice($products, 0, 8) as $product)
+        {
+            if (! is_array($product))
+            {
+                continue;
+            }
+
+            $productLines[] = (string) $product['name'].' · '.\App\Helpers\Helpers::formatDecimal((float) ($product['amount'] ?? 0)).' '.$currency.' · '.number_format((float) ($product['share_percent'] ?? 0), 1, ',', '.').' %';
+        }
+
+        $countries = [];
+
+        foreach (array_slice(is_array($context['clients_by_country'] ?? null) ? $context['clients_by_country'] : [], 0, 6) as $row)
+        {
+            if (! is_array($row))
+            {
+                continue;
+            }
+
+            $name = trim((string) ($row['country'] ?? ''));
+            $countries[] = ($name !== '' ? $name : __('app.cmo_bmc_unknown_country')).' · '.(int) ($row['enterprises'] ?? 0);
+        }
+
+        $people = [];
+
+        foreach ($work['tasks'] ?? [] as $task)
+        {
+            if (! is_array($task))
+            {
+                continue;
+            }
+
+            $person = trim((string) ($task['person'] ?? ''));
+
+            if ($person === '')
+            {
+                continue;
+            }
+
+            $people[$person] = ($people[$person] ?? 0) + (float) ($task['hours'] ?? 0);
+        }
+
+        $activities = [];
+
+        foreach ($work['tasks'] ?? [] as $task)
+        {
+            if (! is_array($task) || trim((string) ($task['name'] ?? '')) === '')
+            {
+                continue;
+            }
+
+            $activities[] = (string) $task['name'].' · '.(string) ($task['person'] ?? '').' · '.number_format((float) ($task['hours'] ?? 0), 1, ',', '.').' h';
+        }
+
+        if (is_array($work) && (int) ($work['day_call_minimum'] ?? 0) > 0)
+        {
+            $activities[] = __('app.cmo_bmc_call_window', [
+                'day' => (int) $work['day_call_minimum'],
+                'window' => (string) ($work['call_window'] ?? ''),
+                'owner' => (string) ($work['call_owner'] ?? ''),
+            ]);
+        }
+
+        $channels = [
+            __('app.cmo_bmc_posts', [
+                'last' => (int) ($publications['posts_last_90_days'] ?? 0),
+                'next' => (int) ($publications['posts_next_90_days'] ?? 0),
+            ]),
+        ];
+
+        if ($analytics !== null)
+        {
+            $channels[] = __('app.cmo_bmc_visits', [
+                'visitors' => (int) ($analytics['visitors'] ?? 0),
+                'views' => (int) ($analytics['page_views'] ?? 0),
+            ]);
+
+            foreach (array_slice(is_array($analytics['top_pages'] ?? null) ? $analytics['top_pages'] : [], 0, 3) as $page)
+            {
+                if (! is_array($page) || trim((string) ($page['title'] ?? '')) === '')
+                {
+                    continue;
+                }
+
+                $channels[] = (string) $page['title'].' · '.(int) ($page['views'] ?? 0);
+            }
+        }
+
+        $resources = [];
+
+        foreach ($people as $person => $hours)
+        {
+            $resources[] = $person.' · '.number_format($hours, 1, ',', '.').' h';
+        }
+
+        return [
+            'segments' => array_values(array_filter([
+                __('app.cmo_bmc_clients', ['count' => (int) ($context['clients'] ?? 0)]),
+                ...$countries,
+            ])),
+            'value' => array_values(array_filter([
+                ...$productLines,
+                __('app.cmo_bmc_margin', ['margin' => number_format((float) ($company['margin_percent'] ?? 0), 1, ',', '.')]),
+            ])),
+            'channels' => $channels,
+            'relationships' => array_values(array_filter([
+                __('app.cmo_bmc_repeat', ['count' => (int) ($purchase['repeat_clients'] ?? 0)]),
+                __('app.cmo_bmc_single', ['count' => (int) ($purchase['single_clients'] ?? 0)]),
+                (int) ($context['customer_interviews'] ?? 0) === 0 ? __('app.cmo_bmc_no_interviews') : '',
+            ])),
+            'revenue' => array_values(array_filter([
+                \App\Helpers\Helpers::formatDecimal((float) ($company['income'] ?? 0)).' '.$currency,
+                __('app.cmo_bmc_invoices', ['count' => (int) ($purchase['invoices'] ?? 0)]),
+                ...$productLines,
+            ])),
+            'resources' => $resources !== [] ? $resources : [__('app.cmo_bmc_no_resources')],
+            'activities' => $activities !== [] ? $activities : [__('app.cmo_bmc_no_resources')],
+            'partners' => [__('app.cmo_bmc_no_partners')],
+            'costs' => [
+                __('app.cmo_bmc_expense', [
+                    'amount' => \App\Helpers\Helpers::formatDecimal((float) ($company['expense'] ?? 0)),
+                    'currency' => $currency,
+                ]),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public function valueCanvas(Team $team, int $year): array
+    {
+        $context = $this->context($team, $year);
+        $currency = (string) $context['currency'];
+        $company = is_array($context['company'] ?? null) ? $context['company'] : [];
+        $products = [];
+
+        foreach (array_slice(is_array($context['products'] ?? null) ? $context['products'] : [], 0, 8) as $product)
+        {
+            if (! is_array($product))
+            {
+                continue;
+            }
+
+            $products[] = (string) $product['name'].' · '.\App\Helpers\Helpers::formatDecimal((float) ($product['amount'] ?? 0)).' '.$currency.' · '.number_format((float) ($product['share_percent'] ?? 0), 1, ',', '.').' %';
+        }
+
+        $products[] = __('app.cmo_bmc_margin', [
+            'margin' => number_format((float) ($company['margin_percent'] ?? 0), 1, ',', '.'),
+        ]);
+        $missing = __('app.cmo_vpc_no_interviews');
+
+        return [
+            'products' => $products,
+            'gain_creators' => [$missing],
+            'pain_relievers' => [$missing],
+            'gains' => [$missing],
+            'pains' => [$missing],
+            'jobs' => [$missing],
+        ];
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public function empathyCanvas(Team $team, int $year): array
+    {
+        $context = $this->context($team, $year);
+        $missing = (int) ($context['customer_interviews'] ?? 0) === 0
+            ? __('app.cmo_vpc_no_interviews')
+            : '';
+        $line = $missing === '' ? [] : [$missing];
+
+        return [
+            'thinks' => $line,
+            'hears' => $line,
+            'sees' => $line,
+            'says' => $line,
+            'pains' => $line,
+            'gains' => $line,
+        ];
+    }
+
+    /**
+     * @return array{
+     *     year: int,
+     *     currency: string,
+     *     income: float,
+     *     profit: float,
+     *     margin_percent: float,
+     *     products: list<array{name: string, amount: float, share_percent: float}>,
+     *     invoices: int,
+     *     repeat_clients: int,
+     *     single_clients: int
+     * }
+     */
+    public function mixChart(Team $team, int $year): array
+    {
+        $report = $this->invoiceAnalyticsService->buildYearReport($team->id, $year);
+        $currency = (string) $report['reporting_currency'];
+        $purchase = $this->purchasePattern($team, $year, $currency);
+        $totals = $purchase['totals'];
+
+        return [
+            'year' => (int) $report['year'],
+            'currency' => $currency,
+            'income' => round((float) $report['summary']['income'], 2),
+            'profit' => round((float) $report['summary']['profit'], 2),
+            'margin_percent' => round((float) $report['summary']['margin_percent'], 1),
+            'products' => array_map(fn (array $category): array => [
+                'name' => (string) $category['name'],
+                'amount' => round((float) $category['total'], 2),
+                'share_percent' => round((float) $category['share_percent'], 1),
+            ], array_slice($report['income_categories'], 0, 8)),
+            'invoices' => (int) $totals['invoices'],
+            'repeat_clients' => (int) $totals['repeat_clients'],
+            'single_clients' => (int) $totals['single_clients'],
+        ];
+    }
+
+    private function settingKey(int $year): string
+    {
+        return 'marketing_cmo_brief_'.$year;
+    }
+
+    /**
+     * @return array{totals: array{invoices: int, repeat_clients: int, single_clients: int, amount: float, unconverted_invoices: int}, top_clients: list<array{name: string, country: string, locality: string, invoices: int, amount: float}>}
+     */
+    private function purchasePattern(Team $team, int $year, string $currency): array
+    {
+        $rows = Invoice::query()
+            ->withoutGlobalScope('team')
+            ->where('invoices.team_id', $team->id)
+            ->where('invoices.operation', 'sell')
+            ->whereYear('invoices.date', $year)
+            ->whereNotIn('invoices.status', InvoiceAnalyticsService::EXCLUDED_INVOICE_STATUSES)
+            ->whereNotNull('invoices.enterprise_id')
+            ->groupBy('invoices.enterprise_id', 'invoices.currency_id')
+            ->selectRaw('invoices.enterprise_id as enterprise_id, invoices.currency_id as currency_id, COUNT(*) as invoices, COALESCE(SUM(invoices.total_amount), 0) as amount')
+            ->get();
+
+        $codes = Currency::query()
+            ->whereIn('id', $rows->pluck('currency_id')->filter()->unique()->all())
+            ->pluck('code', 'id');
+
+        $byEnterprise = [];
+        $invoices = 0;
+        $amount = 0.0;
+        $unconverted = 0;
+
+        foreach ($rows as $row)
+        {
+            $count = (int) $row->invoices;
+            $invoices += $count;
+            $enterpriseId = (int) $row->enterprise_id;
+            $byEnterprise[$enterpriseId]['invoices'] = ($byEnterprise[$enterpriseId]['invoices'] ?? 0) + $count;
+            $byEnterprise[$enterpriseId]['amount'] = $byEnterprise[$enterpriseId]['amount'] ?? 0.0;
+
+            $code = strtoupper(trim((string) ($codes[$row->currency_id] ?? '')));
+            $raw = (float) $row->amount;
+
+            if ($code === '' || ($code !== $currency && ! $this->canConvert($raw, $code, $currency)))
+            {
+                $unconverted += $count;
+
+                continue;
+            }
+
+            $converted = $code === $currency
+                ? $raw
+                : (float) ExchangeRate::convert($raw, $code, $currency);
+            $byEnterprise[$enterpriseId]['amount'] += $converted;
+            $amount += $converted;
+        }
+
+        $repeat = 0;
+        $single = 0;
+
+        foreach ($byEnterprise as $bucket)
+        {
+            if ($bucket['invoices'] >= 2)
+            {
+                $repeat++;
+            } elseif ($bucket['invoices'] === 1)
+            {
+                $single++;
+            }
+        }
+
+        uasort($byEnterprise, function (array $left, array $right): int
+        {
+            return [$right['invoices'], $right['amount']] <=> [$left['invoices'], $left['amount']];
+        });
+
+        $topIds = array_slice(array_keys($byEnterprise), 0, 8);
+        $enterprises = Enterprise::withoutGlobalScope('team')
+            ->whereIn('id', $topIds)
+            ->get(['id', 'name', 'country', 'locality'])
+            ->keyBy('id');
+
+        $top = [];
+
+        foreach ($topIds as $id)
+        {
+            $enterprise = $enterprises->get($id);
+            $bucket = $byEnterprise[$id];
+            $top[] = [
+                'name' => (string) ($enterprise->name ?? ''),
+                'country' => (string) ($enterprise->country ?? ''),
+                'locality' => (string) ($enterprise->locality ?? ''),
+                'invoices' => (int) $bucket['invoices'],
+                'amount' => round((float) $bucket['amount'], 2),
+            ];
+        }
+
+        return [
+            'totals' => [
+                'invoices' => $invoices,
+                'repeat_clients' => $repeat,
+                'single_clients' => $single,
+                'amount' => round($amount, 2),
+                'unconverted_invoices' => $unconverted,
+            ],
+            'top_clients' => $top,
+        ];
+    }
+
+    private function canConvert(float $amount, string $from, string $to): bool
+    {
+        $converted = ExchangeRate::convert($amount, $from, $to);
+
+        if ($converted === null)
+        {
+            return false;
+        }
+
+        return ! ($converted == 0.0 && $amount != 0.0);
+    }
+
+    /**
+     * @return list<array{country: string, enterprises: int}>
+     */
+    private function clientsByCountry(Team $team): array
+    {
+        return Enterprise::withoutGlobalScope('team')
+            ->where('team_id', $team->id)
+            ->where('type_id', 1)
+            ->selectRaw("coalesce(nullif(trim(country), ''), '') as country, COUNT(*) as enterprises")
+            ->groupByRaw("coalesce(nullif(trim(country), ''), '')")
+            ->orderByDesc('enterprises')
+            ->limit(12)
+            ->get()
+            ->map(fn ($row): array => [
+                'country' => (string) $row->country,
+                'enterprises' => (int) $row->enterprises,
+            ])
+            ->all();
+    }
+
+    /**
+     * @return list<array{position: string, people: int}>
+     */
+    private function interlocutors(Team $team): array
+    {
+        return DB::table('contact_enterprise as ce')
+            ->join('contacts as c', 'c.id', '=', 'ce.contact_id')
+            ->where('c.team_id', $team->id)
+            ->whereNull('c.deleted_at')
+            ->where('c.status_id', 5)
+            ->selectRaw("coalesce(nullif(trim(ce.position), ''), '') as position, COUNT(*) as people")
+            ->groupByRaw("coalesce(nullif(trim(ce.position), ''), '')")
+            ->orderByDesc('people')
+            ->limit(12)
+            ->get()
+            ->map(fn ($row): array => [
+                'position' => (string) $row->position,
+                'people' => (int) $row->people,
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array{day_call_minimum: int, week_call_minimum: int, call_window: string, call_owner: string, tasks: list<array{lane: string, name: string, person: string, hours: float}>}|null
+     */
+    private function commercialWork(Team $team): ?array
+    {
+        if (! RevisionAlphaOrganization::appliesTo($team->id))
+        {
+            return null;
+        }
+
+        $catalog = RevisionAlphaOrganization::subsistenceCatalog();
+        $tasks = [];
+
+        foreach (['calls', 'marketing', 'conversion'] as $lane)
+        {
+            foreach ($catalog['tasks'][$lane] ?? [] as $task)
+            {
+                $tasks[] = [
+                    'lane' => $lane,
+                    'name' => (string) ($task['name'] ?? ''),
+                    'person' => (string) ($task['person'] ?? ''),
+                    'hours' => round((float) ($task['hours'] ?? 0), 1),
+                ];
+            }
+        }
+
+        $start = (string) ($catalog['call_start'] ?? '');
+        $end = (string) ($catalog['call_end'] ?? '');
+
+        return [
+            'day_call_minimum' => (int) ($catalog['day_minimum'] ?? 0),
+            'week_call_minimum' => (int) ($catalog['week_minimum'] ?? 0),
+            'call_window' => trim($start.'-'.$end, '-'),
+            'call_owner' => (string) ($catalog['call_owner'] ?? ''),
+            'tasks' => $tasks,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function parse(string $text): ?array
+    {
+        $clean = trim($text);
+        $clean = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', $clean) ?? $clean;
+        $decoded = json_decode($clean, true);
+
+        if (! is_array($decoded) && preg_match('/\{.*\}/s', $clean, $match) === 1)
+        {
+            $decoded = json_decode($match[0], true);
+        }
+
+        if (! is_array($decoded))
+        {
+            return null;
+        }
+
+        return $this->normalize($decoded);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function normalize(array $payload): array
+    {
+        $analysis = [
+            'brief' => $this->plainText($payload['brief'] ?? ''),
+            'generated_at' => $this->plainText($payload['generated_at'] ?? ''),
+        ];
+
+        foreach (self::blocks() as $block)
+        {
+            if (! isset($block['fields']))
+            {
+                $analysis[$block['key']] = $this->plainText($payload[$block['key']] ?? '');
+
+                continue;
+            }
+
+            $source = is_array($payload[$block['key']] ?? null) ? $payload[$block['key']] : [];
+            $analysis[$block['key']] = [];
+
+            foreach (array_keys($block['fields']) as $field)
+            {
+                $analysis[$block['key']][$field] = $this->plainText($source[$field] ?? '');
+            }
+        }
+
+        return $analysis;
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     */
+    public static function hasStoredSections(array $analysis): bool
+    {
+        foreach (self::blocks() as $block)
+        {
+            $value = $analysis[$block['key']] ?? '';
+
+            if (is_string($value) && $value !== '')
+            {
+                return true;
+            }
+
+            if (is_array($value) && implode('', $value) !== '')
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     */
+    private function hasContent(array $analysis): bool
+    {
+        return self::hasStoredSections($analysis);
+    }
+
+    /**
+     * @param  array<string, mixed>  $analysis
+     */
+    private function readable(array $analysis): string
+    {
+        $lines = [];
+
+        foreach (self::blocks() as $block)
+        {
+            $value = $analysis[$block['key']] ?? '';
+
+            if (is_string($value) && $value !== '')
+            {
+                $lines[] = __('app.'.$block['title']).': '.$value;
+            }
+
+            if (! is_array($value))
+            {
+                continue;
+            }
+
+            foreach ($value as $text)
+            {
+                if ($text !== '')
+                {
+                    $lines[] = $text;
+                }
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function plainText(mixed $value): string
+    {
+        if (is_bool($value) || $value === null)
+        {
+            return '';
+        }
+
+        if (is_string($value) || is_numeric($value))
+        {
+            return trim((string) $value);
+        }
+
+        if (! is_array($value))
+        {
+            return '';
+        }
+
+        $parts = [];
+
+        foreach ($value as $item)
+        {
+            $text = $this->plainText($item);
+
+            if ($text !== '')
+            {
+                $parts[] = $text;
+            }
+        }
+
+        return trim(implode(' ', $parts));
+    }
+}

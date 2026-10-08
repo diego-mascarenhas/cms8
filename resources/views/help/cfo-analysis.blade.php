@@ -23,6 +23,8 @@
                     <li>{{ __('help_cfo.subsistence_marketing') }}</li>
                     <li>{{ __('help_cfo.subsistence_conversion') }}</li>
                     <li>{{ __('help_cfo.subsistence_salary') }}</li>
+                    <li>{{ __('help_cfo.subsistence_cushion') }}</li>
+                    <li>{{ __('help_cfo.subsistence_capital') }}</li>
                 </ul>
 
                 <h5 class="mt-4" id="lectura">{{ __('help_cfo.reading_title') }}</h5>
@@ -36,6 +38,14 @@
                     <li>{{ __('help_cfo.reads_publications') }}</li>
                     <li>{{ __('help_cfo.reads_projects') }}</li>
                     <li>{{ __('help_cfo.reads_renewals') }}</li>
+                </ul>
+
+                <h5 class="mt-4" id="cmo">{{ __('help_cfo.cmo_title') }}</h5>
+                <p>{{ __('help_cfo.cmo_body') }} <a href="https://adquiria.net/" target="_blank" rel="noopener">adquiria.net</a>.</p>
+                <ul class="mb-0">
+                    <li>{{ __('help_cfo.cmo_reads') }}</li>
+                    <li>{{ __('help_cfo.cmo_missing') }}</li>
+                    <li>{{ __('help_cfo.cmo_limits') }}</li>
                 </ul>
 
                 <h5 class="mt-4" id="projection">{{ __('help_cfo.projection_title') }}</h5>

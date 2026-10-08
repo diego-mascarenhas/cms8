@@ -37,12 +37,20 @@
                         <i class="ti ti-refresh me-1"></i>{{ __('app.cfo_analysis_refresh') }}
                     </button>
                 </form>
-                <form method="POST" action="{{ route('finance-dashboard.cfo-brief') }}" id="cfo-brief-form">
+                <form method="POST" action="{{ route('strategy.analysis.cfo-brief') }}" id="cfo-brief-form">
                     @csrf
                     <input type="hidden" name="refresh" value="1">
                     <input type="hidden" name="year" value="{{ now()->year }}">
-                    <button type="submit" class="btn btn-label-primary" id="cfo-brief-button">
+                    <button type="submit" class="btn btn-label-primary" id="cfo-brief-button" @disabled(($cfoRun['state'] ?? '') === 'running')>
                         <i class="ti ti-sparkles me-1"></i>{{ __('Ask the CFO') }}
+                    </button>
+                </form>
+                <form method="POST" action="{{ route('strategy.analysis.cmo-brief') }}" id="cmo-brief-form">
+                    @csrf
+                    <input type="hidden" name="refresh" value="1">
+                    <input type="hidden" name="year" value="{{ now()->year }}">
+                    <button type="submit" class="btn btn-label-primary" id="cmo-brief-button" @disabled(($cmoRun['state'] ?? '') === 'running')>
+                        <i class="ti ti-speakerphone me-1"></i>{{ __('Ask the CMO') }}
                     </button>
                 </form>
             @endif
@@ -58,8 +66,58 @@
 
     @include('strategy.partials.subsistence', ['subsistence' => $subsistence ?? null])
 
-    <div class="card mb-4" id="cfo-analysis">
+    <div class="card mb-4" id="cfo-analysis" style="scroll-margin-top: 6rem;">
         <div class="card-body">
+            @if (($cfoRun['state'] ?? '') === 'running')
+                <style>
+                    .cfo-run .ai-loader-overlay { position: relative; overflow: hidden; border-radius: 1rem; background: linear-gradient(135deg, var(--bs-body-bg, #fff) 0%, var(--bs-secondary-bg, #f8f9fa) 100%); border: 1px solid var(--bs-border-color, #e9ecef); }
+                    .cfo-run .ai-loader-core { position: relative; display: flex; align-items: center; justify-content: center; width: 80px; height: 80px; margin: 0 auto 1.25rem; }
+                    .cfo-run .ai-loader-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid transparent; border-top-color: rgba(105, 108, 255, 0.9); animation: cfo-run-spin 1s linear infinite; }
+                    .cfo-run .ai-loader-ring:nth-child(2) { inset: 8px; animation-duration: 1.4s; animation-direction: reverse; }
+                    .cfo-run .ai-loader-ring:nth-child(3) { inset: 16px; animation-duration: 1.8s; }
+                    .cfo-run .ai-loader-icon { position: relative; font-size: 1.75rem; color: rgba(105, 108, 255, 0.95); }
+                    .cfo-run .ai-loader-dots { display: inline-flex; gap: 6px; margin-top: 0.5rem; }
+                    .cfo-run .ai-loader-dots span { width: 6px; height: 6px; border-radius: 50%; background: rgba(105, 108, 255, 0.8); animation: cfo-run-dot 1.2s ease-in-out infinite both; }
+                    .cfo-run .ai-loader-dots span:nth-child(2) { animation-delay: 0.2s; }
+                    .cfo-run .ai-loader-dots span:nth-child(3) { animation-delay: 0.4s; }
+                    @keyframes cfo-run-spin { to { transform: rotate(360deg); } }
+                    @keyframes cfo-run-dot { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+                </style>
+                <div id="cfo-run" class="cfo-run mb-4" data-status-url="{{ route('strategy.analysis.cfo-status', ['year' => now()->year]) }}">
+                    <div class="d-flex justify-content-center">
+                        <div class="ai-loader-overlay p-4 p-md-5 text-center">
+                            <div class="ai-loader-core">
+                                <span class="ai-loader-ring" aria-hidden="true"></span>
+                                <span class="ai-loader-ring" aria-hidden="true"></span>
+                                <span class="ai-loader-ring" aria-hidden="true"></span>
+                                <i class="ti ti-cpu ai-loader-icon" aria-hidden="true"></i>
+                            </div>
+                            <h6 class="mb-1 fw-semibold text-body">{{ __('app.cfo_running_title') }}</h6>
+                            <p class="mb-0 small text-muted" id="cfo-run-label">{{ $cfoRun['message'] }}</p>
+                            <div class="ai-loader-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+                        </div>
+                    </div>
+                </div>
+                <script>
+                    (function () {
+                        const root = document.getElementById('cfo-run');
+                        const label = document.getElementById('cfo-run-label');
+                        if (!root) return;
+                        const tick = function () {
+                            fetch(root.dataset.statusUrl, { headers: { 'Accept': 'application/json' } })
+                                .then(function (response) { return response.ok ? response.json() : null; })
+                                .then(function (data) {
+                                    if (!data) return;
+                                    if (label && data.message) label.textContent = data.message;
+                                    if (data.state === 'done' || data.state === 'failed') window.location.reload();
+                                });
+                        };
+                        window.setInterval(tick, 3000);
+                    })();
+                </script>
+            @elseif (($cfoRun['state'] ?? '') === 'failed')
+                <div class="alert alert-danger" role="alert">{{ __('app.cfo_phase_failed') }}</div>
+            @endif
             @php
                 $analysis = is_array($cfoAnalysis ?? null) ? $cfoAnalysis : [];
                 $dafo = is_array($analysis['dafo'] ?? null) ? $analysis['dafo'] : [];
@@ -134,11 +192,13 @@
                 <a href="{{ route('weekly-plan.index') }}">{{ __('app.weekly_plan_report') }}</a>
             @elseif (! $hasPerspective && filled($analysis['brief'] ?? null))
                 <div style="white-space: pre-wrap;">{{ $analysis['brief'] }}</div>
-            @elseif (! $hasPerspective)
+            @elseif (! $hasPerspective && ($cfoRun['state'] ?? '') !== 'running')
                 <p class="text-muted mb-0">{{ __('app.cfo_analysis_empty') }}</p>
             @endif
         </div>
     </div>
+
+    @include('strategy.partials.cmo', ['cmoAnalysis' => $cmoAnalysis ?? null])
 
     <div class="card mb-4" id="cfo-projection">
         <div class="card-header">
@@ -190,6 +250,37 @@
         </div>
     </div>
 
+    <script>
+        (function () {
+            const alignAnalysis = function () {
+                const id = (window.location.hash || '').replace('#', '');
+
+                if (id !== 'cfo-analysis' && id !== 'cmo-analysis') {
+                    return;
+                }
+
+                const section = document.getElementById(id);
+
+                if (!section) {
+                    return;
+                }
+
+                const navbar = document.getElementById('layout-navbar');
+                const offset = (navbar ? navbar.offsetHeight : 0) + 16;
+                const top = section.getBoundingClientRect().top + window.scrollY - offset;
+
+                window.scrollTo(0, Math.max(0, top));
+            };
+
+            if ('scrollRestoration' in history) {
+                history.scrollRestoration = 'manual';
+            }
+
+            window.addEventListener('load', function () {
+                window.setTimeout(alignAnalysis, 50);
+            });
+        })();
+    </script>
     @if ($canAskCfo ?? false)
         <script>
             document.getElementById('cfo-refresh-form')?.addEventListener('submit', function (event) {
@@ -225,6 +316,26 @@
                 window.setTimeout(function () {
                     button.disabled = true;
                     button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' + @json(__('Asking the CFO...'));
+                }, 0);
+            });
+
+            document.getElementById('cmo-brief-form')?.addEventListener('submit', function (event) {
+                const button = document.getElementById('cmo-brief-button');
+
+                if (!button) {
+                    return;
+                }
+
+                if (button.dataset.loading === '1') {
+                    event.preventDefault();
+                    return;
+                }
+
+                button.dataset.loading = '1';
+                button.setAttribute('aria-busy', 'true');
+                window.setTimeout(function () {
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' + @json(__('Asking the CMO...'));
                 }, 0);
             });
         </script>

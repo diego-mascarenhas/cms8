@@ -16,5 +16,8 @@ return [
             'director' => 28,
             'assistant' => 12,
         ],
+        'cushion_months' => 6,
+        'share_capital_eur' => 3000,
+        'share_capital_minimum_eur' => 3000,
     ],
 ];

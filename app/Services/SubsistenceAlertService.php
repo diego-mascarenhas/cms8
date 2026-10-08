@@ -3,11 +3,15 @@
 namespace App\Services;
 
 use App\Enums\ContactInteractionType;
+use App\Enums\TransactionType;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\ContactInteraction;
 use App\Models\ExchangeRate;
+use App\Models\Payment;
+use App\Models\PaymentAccount;
 use App\Models\Team;
+use App\Services\Finance\FinanceCfoBriefService;
 use App\Services\Finance\PaymentReportingCurrencyService;
 use App\Support\RevisionAlphaOrganization;
 use Carbon\Carbon;
@@ -45,10 +49,14 @@ class SubsistenceAlertService
         }
 
         $moment = Carbon::parse($now ?? now());
+        $activity = array_merge(
+            $this->activity($team, $moment->copy()->timezone('Europe/Madrid')),
+            $this->reserve($team, $currency),
+        );
 
         return $this->assess(
             RevisionAlphaOrganization::subsistenceCatalog(),
-            $this->activity($team, $moment->copy()->timezone('Europe/Madrid')),
+            $activity,
             $moment,
             $director,
             $assistant,
@@ -63,7 +71,12 @@ class SubsistenceAlertService
      *     open_leads?: int,
      *     leads_entered_7d?: int,
      *     clients_created_30d?: int,
-     *     publications_next_7d?: int
+     *     publications_next_7d?: int,
+     *     cash?: float,
+     *     monthly_operating_expense?: float,
+     *     share_capital?: float,
+     *     share_capital_minimum?: float,
+     *     cushion_months?: int
      * }  $activity
      * @return array{banners: list<array{key: string, level: string, icon: string, title: string, body: string}>}
      */
@@ -280,6 +293,14 @@ class SubsistenceAlertService
             ],
         ];
 
+        $cushionMonths = max(1, (int) ($activity['cushion_months'] ?? config('organization.subsistence.cushion_months', 6)));
+        $operating = max(0.0, (float) ($activity['monthly_operating_expense'] ?? 0));
+        $cash = (float) ($activity['cash'] ?? 0);
+        $shareCapital = (float) ($activity['share_capital'] ?? config('organization.subsistence.share_capital_eur', 3000));
+        $shareMinimum = (float) ($activity['share_capital_minimum'] ?? config('organization.subsistence.share_capital_minimum_eur', 3000));
+        $payrollNow = 0.0;
+        $prepared = [];
+
         foreach ($catalog['people'] ?? [] as $person)
         {
             if (! is_array($person))
@@ -288,8 +309,72 @@ class SubsistenceAlertService
             }
 
             $hourly = ($person['role'] ?? '') === 'director' ? $directorHourly : $assistantHourly;
-            $suggested = round($hourly * (float) ($person['assigned_hours'] ?? 0), 2);
-            $levels = [];
+            $survivalHours = (float) ($person['calls_hours'] ?? 0)
+                + (float) ($person['marketing_hours'] ?? 0)
+                + (float) ($person['conversion_hours'] ?? 0);
+            $full = round($hourly * (float) ($person['assigned_hours'] ?? 0), 2);
+            $restrained = round($hourly * $survivalHours, 2);
+            $payrollNow += $restrained;
+            $prepared[] = [
+                'person' => $person,
+                'hourly' => $hourly,
+                'survival_hours' => $survivalHours,
+                'full' => $full,
+                'restrained' => $restrained,
+            ];
+        }
+
+        $monthlyNeed = round($operating + $payrollNow, 2);
+        $cushionTarget = round($monthlyNeed * $cushionMonths, 2);
+        $monthsCovered = $monthlyNeed > 0 ? max(0.0, $cash) / $monthlyNeed : 0.0;
+
+        if ($monthsCovered >= $cushionMonths)
+        {
+            $cushionLevel = 'success';
+        } elseif ($monthsCovered >= ($cushionMonths / 2))
+        {
+            $cushionLevel = 'warning';
+        } else
+        {
+            $cushionLevel = 'danger';
+        }
+
+        $capitalLevel = $shareCapital > $shareMinimum ? 'success' : 'danger';
+        $money = static fn (float $amount): string => number_format($amount, 2, ',', '.');
+
+        $banners[] = [
+            'key' => 'cushion',
+            'level' => $cushionLevel,
+            'icon' => 'ti-shield',
+            'title' => __('app.subsistence_cushion_title_'.$cushionLevel, ['months' => $cushionMonths]),
+            'body' => __('app.subsistence_cushion_body', [
+                'months' => $cushionMonths,
+                'monthly' => $money($monthlyNeed),
+                'operating' => $money($operating),
+                'payroll' => $money($payrollNow),
+                'target' => $money($cushionTarget),
+                'cash' => $money(max(0.0, $cash)),
+                'covered' => number_format($monthsCovered, 1, ',', '.'),
+                'currency' => $currency,
+            ]),
+        ];
+        $banners[] = [
+            'key' => 'capital',
+            'level' => $capitalLevel,
+            'icon' => 'ti-building-bank',
+            'title' => __('app.subsistence_capital_title_'.$capitalLevel),
+            'body' => __('app.subsistence_capital_body', [
+                'capital' => $money($shareCapital),
+                'minimum' => $money($shareMinimum),
+                'currency' => $currency,
+                'months' => $cushionMonths,
+            ]),
+        ];
+
+        foreach ($prepared as $row)
+        {
+            $person = $row['person'];
+            $levels = [$cushionLevel];
 
             if ((float) ($person['calls_hours'] ?? 0) > 0)
             {
@@ -307,19 +392,11 @@ class SubsistenceAlertService
             }
 
             $level = $this->worstLevel(...$levels) ?? 'success';
-            $amount = number_format($suggested, 2, ',', '.');
-            $rate = number_format($hourly, 2, ',', '.');
-
-            $banners[] = [
-                'key' => 'salary-'.(string) ($person['key'] ?? ''),
-                'level' => $level,
-                'icon' => 'ti-cash',
-                'title' => __('app.subsistence_salary_title', [
-                    'name' => (string) ($person['name'] ?? ''),
-                    'amount' => $amount,
-                    'currency' => $currency,
-                ]),
-                'body' => __('app.subsistence_salary_body', [
+            $suggested = $cushionLevel === 'success' ? $row['full'] : $row['restrained'];
+            $amount = $money($suggested);
+            $rate = $money($row['hourly']);
+            $salaryBody = $cushionLevel === 'success'
+                ? __('app.subsistence_salary_cushion_met', ['months' => $cushionMonths]).' '.__('app.subsistence_salary_body', [
                     'titles' => (string) ($person['titles'] ?? ''),
                     'assigned' => number_format((float) ($person['assigned_hours'] ?? 0), 1, ',', '.'),
                     'capacity' => number_format((float) ($person['capacity_hours'] ?? 0), 1, ',', '.'),
@@ -330,7 +407,33 @@ class SubsistenceAlertService
                     'amount' => $amount,
                     'hourly' => $rate,
                     'currency' => $currency,
+                ])
+                : __('app.subsistence_salary_body_until_cushion', [
+                    'titles' => (string) ($person['titles'] ?? ''),
+                    'assigned' => number_format((float) ($person['assigned_hours'] ?? 0), 1, ',', '.'),
+                    'capacity' => number_format((float) ($person['capacity_hours'] ?? 0), 1, ',', '.'),
+                    'calls' => number_format((float) ($person['calls_hours'] ?? 0), 1, ',', '.'),
+                    'marketing' => number_format((float) ($person['marketing_hours'] ?? 0), 1, ',', '.'),
+                    'conversion' => number_format((float) ($person['conversion_hours'] ?? 0), 1, ',', '.'),
+                    'other' => number_format((float) ($person['other_hours'] ?? 0), 1, ',', '.'),
+                    'survival' => number_format($row['survival_hours'], 1, ',', '.'),
+                    'amount' => $amount,
+                    'full' => $money($row['full']),
+                    'hourly' => $rate,
+                    'currency' => $currency,
+                    'months' => $cushionMonths,
+                ]);
+
+            $banners[] = [
+                'key' => 'salary-'.(string) ($person['key'] ?? ''),
+                'level' => $level,
+                'icon' => 'ti-cash',
+                'title' => __('app.subsistence_salary_title', [
+                    'name' => (string) ($person['name'] ?? ''),
+                    'amount' => $amount,
+                    'currency' => $currency,
                 ]),
+                'body' => $salaryBody,
             ];
         }
 
@@ -397,6 +500,64 @@ class SubsistenceAlertService
         }
 
         return $worst;
+    }
+
+    /**
+     * Cash is the balance of active accounts already denominated in the team currency.
+     * Accounts with no currency, or another currency, stay out: this ledger mixes
+     * amounts that cannot be treated as euros.
+     *
+     * @return array{cash: float, monthly_operating_expense: float, share_capital: float, share_capital_minimum: float, cushion_months: int}
+     */
+    private function reserve(Team $team, string $currency): array
+    {
+        $projection = app(FinanceCfoBriefService::class)->storedProjection($team, (int) now()->year);
+        $incomeType = TransactionType::INCOME->value;
+        $balances = Payment::query()
+            ->withoutGlobalScope('team')
+            ->where('payments.team_id', $team->id)
+            ->whereNotNull('payments.account_id')
+            ->groupBy('payments.account_id')
+            ->selectRaw(
+                'payments.account_id as account_id, COALESCE(SUM(CASE WHEN payments.transaction_type = ? THEN payments.amount ELSE -payments.amount END), 0) as balance',
+                [$incomeType],
+            )
+            ->pluck('balance', 'account_id');
+
+        $cash = 0.0;
+        $accounts = PaymentAccount::withoutGlobalScope('team')
+            ->withoutGlobalScope('activeStatus')
+            ->where('team_id', $team->id)
+            ->where('status', 1)
+            ->with('currency')
+            ->get();
+
+        foreach ($accounts as $account)
+        {
+            $amount = (float) ($balances[$account->id] ?? 0);
+
+            if ($amount == 0.0)
+            {
+                continue;
+            }
+
+            $code = strtoupper(trim((string) ($account->currency->code ?? '')));
+
+            if ($code === '' || $code !== $currency)
+            {
+                continue;
+            }
+
+            $cash += $amount;
+        }
+
+        return [
+            'cash' => round($cash, 2),
+            'monthly_operating_expense' => round((float) ($projection['avg_monthly_expense'] ?? 0), 2),
+            'share_capital' => (float) config('organization.subsistence.share_capital_eur', 3000),
+            'share_capital_minimum' => (float) config('organization.subsistence.share_capital_minimum_eur', 3000),
+            'cushion_months' => (int) config('organization.subsistence.cushion_months', 6),
+        ];
     }
 
     /**

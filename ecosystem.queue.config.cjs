@@ -6,16 +6,16 @@ const whatsappServiceDir =
     path.join(__dirname, '..', 'humano-whatsapp-service');
 
 /**
- * PM2 — local services for Humano (scheduler + queues + WhatsApp).
+ * PM2 — local services for cms8 (scheduler + database queues + WhatsApp).
  *
  * One command (from project root, PM2 installed globally):
- *   pm2 start ecosystem.queue.config.cjs
+ *   pm2 start ecosystem.queue.config.cjs --only cms8-scheduler,cms8-queue-email,cms8-queue-default
  *
  * Processes:
- *   humano-scheduler      — Laravel schedule (campaigns:process-active, campaigns:send-scheduled, …)
- *   humano-queue-email    — mailer, campaign, notifications, task-communications
- *   humano-queue-default  — default queue
- *   whatsapp-service      — ../humano-whatsapp-service (override: HUMANO_WHATSAPP_SERVICE_DIR)
+ *   cms8-scheduler      — Laravel schedule
+ *   cms8-queue-email    — mailer, campaign, notifications, communications, task-communications
+ *   cms8-queue-default  — default queue (database driver, not Redis)
+ *   whatsapp-service    — ../humano-whatsapp-service (override: HUMANO_WHATSAPP_SERVICE_DIR)
  *
  * Stop / restart / remove all apps in this file:
  *   pm2 stop ecosystem.queue.config.cjs
@@ -24,9 +24,9 @@ const whatsappServiceDir =
  *
  * Logs:
  *   pm2 logs
- *   pm2 logs humano-scheduler
- *   pm2 logs humano-queue-email
- *   pm2 logs humano-queue-default
+ *   pm2 logs cms8-scheduler
+ *   pm2 logs cms8-queue-email
+ *   pm2 logs cms8-queue-default
  *   pm2 logs whatsapp-service
  *
  * After Laravel code changes:
@@ -39,7 +39,7 @@ const whatsappServiceDir =
 module.exports = {
     apps: [
         {
-            name: 'humano-scheduler',
+            name: 'cms8-scheduler',
             cwd: __dirname,
             script: 'artisan',
             interpreter: 'php',
@@ -50,7 +50,7 @@ module.exports = {
             min_uptime: '10s',
         },
         {
-            name: 'humano-queue-email',
+            name: 'cms8-queue-email',
             cwd: __dirname,
             script: 'artisan',
             interpreter: 'php',
@@ -62,11 +62,11 @@ module.exports = {
             min_uptime: '10s',
         },
         {
-            name: 'humano-queue-default',
+            name: 'cms8-queue-default',
             cwd: __dirname,
             script: 'artisan',
             interpreter: 'php',
-            args: 'queue:work database --queue=default --sleep=3 --tries=3 --timeout=120',
+            args: 'queue:work database --queue=default --sleep=3 --tries=3 --timeout=360',
             autorestart: true,
             watch: false,
             max_restarts: 20,

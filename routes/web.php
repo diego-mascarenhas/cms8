@@ -1337,6 +1337,10 @@ Route::get('/notification/{notification}/stats', [NotificationTrackingController
 Route::get('/strategy', [StrategyController::class, 'index'])->name('strategy.index')->middleware('auth');
 Route::get('/strategy/analysis', [StrategyController::class, 'analysis'])->name('strategy.analysis')->middleware('auth');
 Route::post('/strategy/analysis/refresh', [StrategyController::class, 'refreshAnalysis'])->name('strategy.analysis.refresh')->middleware('auth');
+Route::post('/strategy/analysis/cfo-brief', [StrategyController::class, 'cfoBrief'])->name('strategy.analysis.cfo-brief')->middleware('auth');
+Route::get('/strategy/analysis/cfo-status', [StrategyController::class, 'cfoStatus'])->name('strategy.analysis.cfo-status')->middleware('auth');
+Route::post('/strategy/analysis/cmo-brief', [StrategyController::class, 'cmoBrief'])->name('strategy.analysis.cmo-brief')->middleware('auth');
+Route::get('/strategy/analysis/cmo-status', [StrategyController::class, 'cmoStatus'])->name('strategy.analysis.cmo-status')->middleware('auth');
 Route::get('/strategy/review', [StrategyController::class, 'review'])->name('strategy.review')->middleware('auth');
 Route::post('/strategy/evaluate', [StrategyController::class, 'evaluate'])->name('strategy.evaluate')->middleware('auth');
 Route::get('/strategy/level/{level?}', [StrategyController::class, 'level'])->whereNumber('level')->name('strategy.level')->middleware('auth');
