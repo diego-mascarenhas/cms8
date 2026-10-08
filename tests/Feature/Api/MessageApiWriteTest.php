@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Enums\EmailPlan;
 use App\Mail\TestMessageMail;
 use App\Models\Category;
 use App\Models\Contact;
@@ -407,6 +408,108 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('pagination.total', 0);
     }
 
+    public function test_delivery_status_filter_finds_failed_rows_outside_the_first_page(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'With a failure',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        $failedContact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'name' => 'Fallido Unico',
+            'email' => 'fallido@example.test',
+        ]);
+
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $failedContact->id,
+            'status_id' => 4,
+            'sent_at' => now()->subHour(),
+        ])->forceFill([
+            'created_at' => now()->subHour(),
+            'updated_at' => now()->subHour(),
+        ])->save();
+
+        $resentContact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'reenviado@example.test',
+        ]);
+
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $resentContact->id,
+            'status_id' => 4,
+            'sent_at' => now()->subHours(2),
+        ])->forceFill([
+            'created_at' => now()->subHours(2),
+            'updated_at' => now()->subHours(2),
+        ])->save();
+
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $resentContact->id,
+            'status_id' => 1,
+            'sent_at' => now(),
+            'delivered_at' => now(),
+        ])->forceFill([
+            'created_at' => now()->subMinutes(30),
+            'updated_at' => now()->subMinutes(30),
+        ])->save();
+
+        foreach (range(1, 11) as $index)
+        {
+            $contact = Contact::factory()->create([
+                'team_id' => $team->id,
+                'creator_id' => $user->id,
+                'responsible_id' => $user->id,
+                'email' => "ok{$index}@example.test",
+            ]);
+
+            MessageDelivery::query()->create([
+                'team_id' => $team->id,
+                'message_id' => $message->id,
+                'contact_id' => $contact->id,
+                'status_id' => 2,
+                'sent_at' => now(),
+                'delivered_at' => now(),
+            ]);
+        }
+
+        $page = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries');
+
+        $page->assertOk()
+            ->assertJsonPath('pagination.total', 14)
+            ->assertJsonPath('pagination.current_page', 1);
+        $this->assertNotContains(
+            'fallido@example.test',
+            collect($page->json('data'))->pluck('contact_email')->all(),
+        );
+
+        $failed = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries?status=failed');
+
+        $failed->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('pagination.last_page', 1)
+            ->assertJsonPath('data.0.contact_email', 'fallido@example.test')
+            ->assertJsonPath('data.0.status_key', 'failed');
+    }
+
     public function test_can_update_target_when_message_has_deliveries(): void
     {
         [$user, $team, $token] = $this->adminWithToken();
@@ -464,6 +567,111 @@ class MessageApiWriteTest extends TestCase
         $this->assertSame('<p>Original</p>', $message->mail_html);
         $this->assertSame($followStatusId, (int) $message->contact_status_id);
         $this->assertEquals([$category->id], $message->contactCategories()->pluck('categories.id')->all());
+    }
+
+    public function test_custom_sender_is_limited_to_foundation_and_scale(): void
+    {
+        [, $team, $token] = $this->adminWithToken(configureSender: true);
+        $team->assignEmailPlan(EmailPlan::BASIC);
+
+        $denied = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message', [
+                'name' => 'Basic Campaign',
+                'text' => 'Newsletter subject line',
+                'from_name' => 'Otra marca',
+                'from_address' => 'otra@example.test',
+            ]);
+
+        $denied->assertStatus(422)
+            ->assertJsonValidationErrors(['from_address']);
+
+        $team->assignEmailPlan(EmailPlan::FOUNDATION);
+
+        $create = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message', [
+                'name' => 'Foundation Campaign',
+                'text' => 'Newsletter subject line',
+                'from_name' => 'Otra marca',
+                'from_address' => 'otra@example.test',
+            ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('data.from_name', 'Otra marca')
+            ->assertJsonPath('data.from_address', 'otra@example.test')
+            ->assertJsonPath('data.custom_sender_allowed', true)
+            ->assertJsonPath('data.sender.from_name', 'Otra marca')
+            ->assertJsonPath('data.sender.from_address', 'otra@example.test');
+
+        $messageId = $create->json('data.id');
+
+        $cleared = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/message/'.$messageId, [
+                'from_name' => '',
+                'from_address' => '',
+            ]);
+
+        $cleared->assertOk()
+            ->assertJsonPath('data.from_name', null)
+            ->assertJsonPath('data.sender.from_name', 'Mailer Team')
+            ->assertJsonPath('data.sender.from_address', 'mailer@example.test');
+
+        $team->assignEmailPlan(EmailPlan::SCALE);
+
+        $scale = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/message/'.$messageId, [
+                'from_name' => 'Scale marca',
+                'from_address' => 'scale@example.test',
+            ]);
+
+        $scale->assertOk()
+            ->assertJsonPath('data.sender.from_address', 'scale@example.test');
+
+        $team->unsetRelation('settings');
+        $team->assignEmailPlan(EmailPlan::BASIC);
+        // The test client can reuse the authenticated user with settings already loaded.
+        $this->app['auth']->forgetGuards();
+
+        $ignored = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$messageId);
+
+        $ignored->assertOk()
+            ->assertJsonPath('data.custom_sender_allowed', false)
+            ->assertJsonPath('data.from_address', 'scale@example.test')
+            ->assertJsonPath('data.sender.from_address', 'mailer@example.test');
+    }
+
+    public function test_whitelisted_team_can_set_a_custom_sender_on_any_plan(): void
+    {
+        [, $team, $token] = $this->adminWithToken(configureSender: true);
+        $team->assignEmailPlan(EmailPlan::FREE);
+
+        $denied = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message', [
+                'name' => 'Free Campaign',
+                'text' => 'Newsletter subject line',
+                'from_name' => 'Otra marca',
+                'from_address' => 'otra@example.test',
+            ]);
+
+        $denied->assertStatus(422)
+            ->assertJsonValidationErrors(['from_address']);
+
+        config(['humano_pricing.plan_access_team_ids' => [(int) $team->id]]);
+
+        $create = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message', [
+                'name' => 'Whitelisted Campaign',
+                'text' => 'Newsletter subject line',
+                'from_name' => 'Otra marca',
+                'from_address' => 'otra@example.test',
+            ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('data.custom_sender_allowed', true)
+            ->assertJsonPath('data.from_name', 'Otra marca')
+            ->assertJsonPath('data.from_address', 'otra@example.test')
+            ->assertJsonPath('data.sender.from_name', 'Otra marca')
+            ->assertJsonPath('data.sender.from_address', 'otra@example.test');
     }
 
     public function test_unauthenticated_cannot_write_messages(): void

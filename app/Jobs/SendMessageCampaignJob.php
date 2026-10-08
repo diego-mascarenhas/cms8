@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -184,13 +185,11 @@ class SendMessageCampaignJob implements ShouldQueue
      */
     private function sendViaMailBabyApi()
     {
-        $this->configureMailForTeam($this->messageDelivery->team, forMailerCampaigns: true);
+        $sender = $this->applyCampaignSender();
 
         $mailBabyService = app(\App\Services\MailBabyService::class);
 
         $htmlContent = $this->messageDelivery->getHtmlForContact();
-
-        $sender = $this->messageDelivery->team->getMailerEmailSender();
         $fromName = $sender['from_name'];
         $fromEmail = $sender['from_address'];
 
@@ -231,7 +230,7 @@ class SendMessageCampaignJob implements ShouldQueue
      */
     private function sendViaSmtp()
     {
-        $this->configureMailForTeam($this->messageDelivery->team, forMailerCampaigns: true);
+        $this->applyCampaignSender();
 
         $mailableClass = config('humano-mailer.mailables.message_delivery_mail', \App\Mail\MessageDeliveryMail::class);
 
@@ -253,6 +252,28 @@ class SendMessageCampaignJob implements ShouldQueue
         ]);
 
         $this->messageDelivery->team->recordSuccessfulMailerSend();
+    }
+
+    /**
+     * @return array{from_name: string, from_address: string}
+     */
+    private function applyCampaignSender(): array
+    {
+        $team = $this->messageDelivery->team;
+        $this->configureMailForTeam($team, forMailerCampaigns: true);
+
+        $sender = $this->messageDelivery->message->resolvedMailerSender($team);
+
+        if ($sender['from_name'] !== '')
+        {
+            Config::set('mail.from.name', $sender['from_name']);
+        }
+        if ($sender['from_address'] !== '')
+        {
+            Config::set('mail.from.address', $sender['from_address']);
+        }
+
+        return $sender;
     }
 
     /**

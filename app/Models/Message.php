@@ -18,7 +18,7 @@ class Message extends Model
 
     protected $table = 'messages';
 
-    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'template_id', 'text', 'mail_html', 'status_id', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at', 'scheduled_send_at'];
+    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'template_id', 'text', 'from_name', 'from_address', 'mail_html', 'status_id', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at', 'scheduled_send_at'];
 
     protected $casts = [
         'status_id' => 'boolean',
@@ -53,6 +53,28 @@ class Message extends Model
     public function team()
     {
         return $this->belongsTo(\App\Models\Team::class);
+    }
+
+    /**
+     * From used when this campaign sends.
+     * Message override when the team may set one, otherwise the mailer default, otherwise the team sender.
+     *
+     * @return array{from_name: string, from_address: string}
+     */
+    public function resolvedMailerSender(Team $team): array
+    {
+        $name = trim((string) $this->from_name);
+        $address = trim((string) $this->from_address);
+
+        if ($name !== '' && $address !== '' && $team->allowsCustomMessageSender())
+        {
+            return [
+                'from_name' => $name,
+                'from_address' => $address,
+            ];
+        }
+
+        return $team->getMailerEmailSender();
     }
 
     public function type()

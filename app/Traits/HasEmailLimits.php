@@ -82,6 +82,7 @@ trait HasEmailLimits
             'amount_due_cents' => MailerPaygPricing::overageDueCents($overage, $this),
             'price_per_email' => MailerPaygPricing::pricePerEmail($this),
             'currency' => MailerPaygPricing::currency(),
+            'custom_sender_allowed' => $this->allowsCustomMessageSender(),
         ];
     }
 
@@ -359,6 +360,33 @@ trait HasEmailLimits
         $planValue = $this->getSetting('email_plan', 'free');
 
         return EmailPlan::from($planValue);
+    }
+
+    /**
+     * Teams on the complimentary list skip checkout and see every plan feature.
+     */
+    public function hasComplimentaryPlanAccess(): bool
+    {
+        $ids = config('humano_pricing.plan_access_team_ids', []);
+        if (! is_array($ids) || $ids === [])
+        {
+            return false;
+        }
+
+        return in_array((int) $this->id, array_map('intval', $ids), true);
+    }
+
+    /**
+     * Per-message From is a Foundation and Scale feature, and is always on for complimentary teams.
+     */
+    public function allowsCustomMessageSender(): bool
+    {
+        if ($this->hasComplimentaryPlanAccess())
+        {
+            return true;
+        }
+
+        return $this->getEmailPlan()->allowsCustomMessageSender();
     }
 
     /**

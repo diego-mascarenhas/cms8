@@ -417,6 +417,7 @@ class MessageController extends Controller
             'search' => 'nullable|string|max:255',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:50',
+            'status' => 'nullable|string|in:sent,delivered,opened,clicked,failed',
         ]);
 
         $paginator = $this->campaignMessages->paginateDeliveries(
@@ -424,6 +425,7 @@ class MessageController extends Controller
             trim((string) ($validated['search'] ?? '')),
             (int) ($validated['page'] ?? 1),
             (int) ($validated['per_page'] ?? 10),
+            isset($validated['status']) ? (string) $validated['status'] : null,
         );
         $paginator->setPath($request->url());
         $paginator->appends($request->query());
@@ -597,6 +599,14 @@ class MessageController extends Controller
                 $payload['scheduled_send_at'] = filled($validated['scheduled_send_at'] ?? null)
                     ? Carbon::parse($validated['scheduled_send_at'], config('app.timezone'))->utc()
                     : null;
+            }
+
+            if (array_key_exists('from_name', $validated) || array_key_exists('from_address', $validated))
+            {
+                $fromName = trim((string) ($validated['from_name'] ?? ''));
+                $fromAddress = trim((string) ($validated['from_address'] ?? ''));
+                $payload['from_name'] = $fromName !== '' && $fromAddress !== '' ? $fromName : null;
+                $payload['from_address'] = $fromName !== '' && $fromAddress !== '' ? $fromAddress : null;
             }
 
             if ($mailHtml !== null && trim($mailHtml) !== '')

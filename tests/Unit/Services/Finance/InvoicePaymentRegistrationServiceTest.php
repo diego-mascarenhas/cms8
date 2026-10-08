@@ -51,7 +51,7 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
 
         $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
 
-        PaymentAccount::withoutGlobalScopes()->create([
+        $bankAccount = PaymentAccount::withoutGlobalScopes()->create([
             'team_id' => $team->id,
             'code' => 'bank-ars',
             'name' => 'Banco ARS',
@@ -101,11 +101,15 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
         $this->assertSame($cashAccount->id, $defaults['account_id']);
         $this->assertSame(1, $defaults['type_id']);
         $this->assertSame('ARS', $defaults['currency_code']);
-        $this->assertCount(1, $defaults['accounts']);
-        $this->assertSame($cashAccount->id, $defaults['accounts'][0]['id']);
+        $this->assertEqualsCanonicalizing(
+            [$cashAccount->id, $bankAccount->id],
+            collect($defaults['accounts'])->pluck('id')->all(),
+        );
+        $bankOption = collect($defaults['accounts'])->firstWhere('id', $bankAccount->id);
+        $this->assertContains(2, $bankOption['payment_type_ids']);
     }
 
-    public function test_form_defaults_exclude_caja_de_ahorro_bank_accounts(): void
+    public function test_form_defaults_include_savings_accounts_that_receive_transfers(): void
     {
         $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
 
@@ -119,7 +123,7 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
             'status_id' => 1,
         ]);
 
-        PaymentAccount::withoutGlobalScopes()->create([
+        $savingsAccount = PaymentAccount::withoutGlobalScopes()->create([
             'team_id' => $team->id,
             'code' => 'savings-ars',
             'name' => 'Caja de Ahorro Francés',
@@ -155,8 +159,13 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
 
         $defaults = $this->service->formDefaults($invoice);
 
-        $this->assertSame([$cashAccount->id], collect($defaults['accounts'])->pluck('id')->all());
+        $this->assertEqualsCanonicalizing(
+            [$cashAccount->id, $savingsAccount->id],
+            collect($defaults['accounts'])->pluck('id')->all(),
+        );
         $this->assertSame($cashAccount->id, $defaults['account_id']);
+        $savingsOption = collect($defaults['accounts'])->firstWhere('id', $savingsAccount->id);
+        $this->assertSame([2], $savingsOption['payment_type_ids']);
     }
 
     public function test_form_defaults_prefer_cash_account_and_type(): void
@@ -320,6 +329,107 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
         $this->assertSame(TransactionType::INCOME, $payment->transaction_type);
         $this->assertSame($invoice->id, $payment->invoice_id);
         $this->assertSame(60.0, (float) $invoice->balance);
+    }
+
+    public function test_register_accepts_a_manual_transfer_on_a_bank_account(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $this->actingAs($user);
+        $team = $user->ownedTeams()->first();
+
+        $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
+
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'bank-ars',
+            'name' => 'Banco ARS',
+            'symbol' => '$',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 32,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-transfer',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 2,
+        ]);
+
+        $payment = $this->service->register($user, $invoice, [
+            'amount' => 100,
+            'date' => now()->toDateString(),
+            'account_id' => $account->id,
+            'type_id' => 2,
+        ]);
+
+        $this->assertSame(2, $payment->type_id);
+        $this->assertSame($account->id, $payment->account_id);
+    }
+
+    public function test_register_rejects_a_card_account(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $this->actingAs($user);
+        $team = $user->ownedTeams()->first();
+
+        $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
+
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'stripe-eur',
+            'name' => 'Stripe',
+            'symbol' => '€',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-card',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 2,
+        ]);
+
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        $this->service->register($user, $invoice, [
+            'amount' => 100,
+            'date' => now()->toDateString(),
+            'account_id' => $account->id,
+            'type_id' => 8,
+        ]);
     }
 
     public function test_team_admin_can_register_payment(): void

@@ -19,7 +19,8 @@ class MessageCampaignActivationService
             $team->unsetRelation('settings');
             $team->load('settings');
 
-            if (! $team->hasOutgoingEmailSenderConfigured())
+            $sender = $message->resolvedMailerSender($team);
+            if ($sender['from_name'] === '' || $sender['from_address'] === '')
             {
                 return [
                     'success' => false,
