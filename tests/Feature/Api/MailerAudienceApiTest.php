@@ -226,6 +226,32 @@ class MailerAudienceApiTest extends TestCase
         $this->assertSame($leadStatusId, (int) $contact->fresh()->status_id);
     }
 
+    public function test_clearing_the_email_removes_the_contact_from_the_audience(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'lucia.garcia@cliente.com')
+            ->firstOrFail();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/mailer/audience/'.$contact->id, [
+                'name' => 'Lucía',
+                'email' => '',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.email', '')
+            ->assertJsonPath('data.can_send', false);
+
+        $this->assertNull($contact->fresh()->email);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience?search='.rawurlencode('lucia.garcia@cliente.com'))
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 0);
+    }
+
     public function test_can_add_category_when_another_contact_shares_the_email(): void
     {
         [$user, $team, $token, $category] = $this->adminWithToken();

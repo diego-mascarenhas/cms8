@@ -3,6 +3,7 @@
 namespace App\Services\Mail;
 
 use App\Models\Category;
+use App\Models\Contact;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryStat;
@@ -124,31 +125,77 @@ class CampaignMessageApiService
             return;
         }
 
+        if ($status === 'unsubscribed')
+        {
+            $query->whereHas('contact', function (Builder $contact): void
+            {
+                $contact->where('status_id', 4);
+            });
+
+            return;
+        }
+
+        if ($status === 'temporary')
+        {
+            $this->whereStillFailed($query);
+            $this->whereTemporaryFailure($query);
+
+            return;
+        }
+
         if ($status === 'failed')
         {
-            $query->where('message_deliveries.status_id', 4)
-                ->whereNotExists(function ($later): void
-                {
-                    $later->selectRaw('1')
-                        ->from('message_deliveries as later_deliveries')
-                        ->whereColumn('later_deliveries.message_id', 'message_deliveries.message_id')
-                        ->whereColumn('later_deliveries.contact_id', 'message_deliveries.contact_id')
-                        ->whereColumn('later_deliveries.id', '!=', 'message_deliveries.id')
-                        ->whereColumn('later_deliveries.created_at', '>', 'message_deliveries.created_at')
-                        ->where(function ($success): void
-                        {
-                            $success->whereNotNull('later_deliveries.delivered_at')
-                                ->orWhere('later_deliveries.status_id', 1);
-                        });
-                });
+            $this->whereStillFailed($query);
+            $this->whereTemporaryFailure($query, false);
         }
+    }
+
+    private function whereStillFailed(Builder $query): void
+    {
+        $query->where('message_deliveries.status_id', 4)
+            ->whereNotExists(function ($later): void
+            {
+                $later->selectRaw('1')
+                    ->from('message_deliveries as later_deliveries')
+                    ->whereColumn('later_deliveries.message_id', 'message_deliveries.message_id')
+                    ->whereColumn('later_deliveries.contact_id', 'message_deliveries.contact_id')
+                    ->whereColumn('later_deliveries.id', '!=', 'message_deliveries.id')
+                    ->whereColumn('later_deliveries.created_at', '>', 'message_deliveries.created_at')
+                    ->where(function ($success): void
+                    {
+                        $success->whereNotNull('later_deliveries.delivered_at')
+                            ->orWhere('later_deliveries.status_id', 1);
+                    });
+            });
+    }
+
+    private function whereTemporaryFailure(Builder $query, bool $include = true): void
+    {
+        $sql = $this->temporaryFailureSql();
+        $query->whereRaw($include ? '('.$sql.')' : 'NOT ('.$sql.')');
+    }
+
+    private function temporaryFailureSql(): string
+    {
+        $likes = [];
+        foreach (MessageDelivery::temporaryFailureNeedles() as $needle)
+        {
+            $safe = str_replace("'", "''", $needle);
+            $likes[] = "LOWER(COALESCE(message_deliveries.error_message, '')) LIKE '%{$safe}%'";
+            $likes[] = "LOWER(COALESCE(message_deliveries.bounce_reason, '')) LIKE '%{$safe}%'";
+        }
+
+        $likeSql = implode(' OR ', $likes);
+
+        return "COALESCE(message_deliveries.bounce_type, '') = 'soft'"
+            ." OR (COALESCE(message_deliveries.bounce_type, '') NOT IN ('hard', 'complaint', 'block') AND ({$likeSql}))";
     }
 
     private function deliveryStatusKey(MessageDelivery $delivery): string
     {
         if ((int) $delivery->status_id === 4)
         {
-            return 'failed';
+            return $delivery->isTemporaryFailure() ? 'temporary' : 'failed';
         }
         if ($delivery->delivered_at)
         {
@@ -174,6 +221,7 @@ class CampaignMessageApiService
     {
         return match ($this->deliveryStatusKey($delivery))
         {
+            'temporary' => 'Error',
             'failed' => 'Fallido',
             'delivered' => 'Entregado',
             'sending' => 'Enviando',
@@ -317,8 +365,7 @@ class CampaignMessageApiService
         $opened = $deliveries->whereNotNull('opened_at')->count();
         $clicks = $deliveries->whereNotNull('clicked_at')->count();
 
-        $failedDeliveries = $deliveries->where('status_id', 4);
-        $failed = $failedDeliveries->filter(function ($failedDelivery) use ($deliveries)
+        $stillFailed = $deliveries->where('status_id', 4)->filter(function ($failedDelivery) use ($deliveries)
         {
             $hasSuccessfulResend = $deliveries->first(function ($delivery) use ($failedDelivery)
             {
@@ -329,12 +376,22 @@ class CampaignMessageApiService
             });
 
             return ! $hasSuccessfulResend;
-        })->count();
+        });
+        $temporary = $stillFailed->filter(fn (MessageDelivery $delivery): bool => $delivery->isTemporaryFailure())->count();
+        $failed = $stillFailed->count() - $temporary;
 
         $pending = $deliveries->filter(function ($delivery)
         {
             return ! $delivery->sent_at || $delivery->sent_at->isFuture();
         })->count();
+
+        $contactIds = $deliveries->pluck('contact_id')->filter()->unique()->values();
+        $unsubscribed = $contactIds->isEmpty()
+            ? 0
+            : Contact::withoutGlobalScopes()
+                ->whereIn('id', $contactIds)
+                ->where('status_id', 4)
+                ->count();
 
         $openRate = $delivered > 0 ? round(($opened / $delivered) * 100, 2) : 0.0;
 
@@ -349,7 +406,7 @@ class CampaignMessageApiService
                 'failed' => $failed,
                 'remaining' => $pending,
                 'rejected' => 0,
-                'unsubscribed' => 0,
+                'unsubscribed' => $unsubscribed,
                 'unique_opens' => $opened,
                 'ratio' => $openRate,
             ],
@@ -362,7 +419,9 @@ class CampaignMessageApiService
             'opened' => $opened,
             'clicks' => $clicks,
             'failed' => $failed,
+            'temporary' => $temporary,
             'remaining' => $pending,
+            'unsubscribed' => $unsubscribed,
             'open_rate' => $openRate,
         ];
     }

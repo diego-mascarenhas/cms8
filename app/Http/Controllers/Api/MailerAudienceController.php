@@ -171,7 +171,7 @@ class MailerAudienceController extends Controller
         $contact->fill([
             'name' => trim((string) $validated['name']),
             'surname' => trim((string) ($validated['surname'] ?? '')) ?: null,
-            'email' => Str::lower(trim((string) $validated['email'])),
+            'email' => filled($validated['email'] ?? null) ? Str::lower(trim((string) $validated['email'])) : null,
         ]);
 
         if (array_key_exists('phone', $validated))

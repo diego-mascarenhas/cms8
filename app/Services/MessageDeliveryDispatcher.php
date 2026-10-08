@@ -20,6 +20,7 @@ class MessageDeliveryDispatcher
         MessageDelivery $delivery,
         MessageDeliverySendProfile $profile = MessageDeliverySendProfile::Auto,
         bool $withEnqueueJitter = false,
+        bool $manualResend = false,
     ): PendingDispatch {
         $resolved = $this->resolvedProfile($delivery, $profile);
         $segment = $resolved === MessageDeliverySendProfile::Campaign ? 'campaign' : 'message';
@@ -30,7 +31,7 @@ class MessageDeliveryDispatcher
             $queue = (string) config('message_delivery_dispatch.fallback_queue', 'mailer');
         }
 
-        $pending = SendMessageCampaignJob::dispatch($delivery)->onQueue($queue);
+        $pending = SendMessageCampaignJob::dispatch($delivery, $manualResend)->onQueue($queue);
 
         $connection = config('message_delivery_dispatch.connection');
         if (is_string($connection) && $connection !== '')

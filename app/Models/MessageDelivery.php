@@ -175,6 +175,16 @@ class MessageDelivery extends Model
         $this->status_id = 4; // 4 = error
         $this->error_type = 'smtp_error'; // SMTP/sending error (not a bounce)
         $this->error_message = $errorMessage;
+        if (is_string($errorMessage) && $errorMessage !== '')
+        {
+            if (self::failureTextIsTemporary($errorMessage))
+            {
+                $this->bounce_type = 'soft';
+            } elseif (Contact::emailFailureIsPermanent($errorMessage))
+            {
+                $this->bounce_type = 'hard';
+            }
+        }
 
         // Store error message in provider_data for debugging
         if ($errorMessage)
@@ -207,6 +217,69 @@ class MessageDelivery extends Model
         {
             $this->message->handleCriticalError($errorMessage, $this->id);
         }
+    }
+
+    /**
+     * A 4xx reply or a full mailbox is still in the relay queue.
+     */
+    public static function failureTextIsTemporary(string $reason): bool
+    {
+        $lower = mb_strtolower($reason);
+        if ($lower === '' || Contact::emailFailureIsPermanent($reason))
+        {
+            return false;
+        }
+
+        foreach (self::temporaryFailureNeedles() as $needle)
+        {
+            if (str_contains($lower, $needle))
+            {
+                return true;
+            }
+        }
+
+        return preg_match('/\b4\d{2}\b/', $lower) === 1
+            && preg_match('/\b5\d{2}\b/', $lower) !== 1;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function temporaryFailureNeedles(): array
+    {
+        return [
+            'mailbox full',
+            'mailbox is full',
+            'quota exceeded',
+            'over quota',
+            'try again',
+            'temporary',
+            '4.2.2',
+            '4.2.1',
+            'greylist',
+            'graylist',
+            'insufficient system storage',
+        ];
+    }
+
+    public function isTemporaryFailure(): bool
+    {
+        if ((int) $this->status_id !== 4)
+        {
+            return false;
+        }
+
+        if ($this->bounce_type === 'soft')
+        {
+            return true;
+        }
+
+        if (in_array($this->bounce_type, ['hard', 'complaint', 'block'], true))
+        {
+            return false;
+        }
+
+        return self::failureTextIsTemporary(trim((string) $this->error_message.' '.(string) $this->bounce_reason));
     }
 
     /**

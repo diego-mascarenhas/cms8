@@ -674,6 +674,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('message/{id}/preview', [MessageController::class, 'preview'])->whereNumber('id');
     Route::get('message/{id}/deliveries', [MessageController::class, 'deliveries'])->whereNumber('id');
     Route::get('message/{id}/deliveries/{delivery}/log', [MessageController::class, 'deliveryLog'])->whereNumber('id')->whereNumber('delivery');
+    Route::post('message/{id}/deliveries/{delivery}/resend', [MessageController::class, 'resendDelivery'])->whereNumber('id')->whereNumber('delivery');
     Route::get('mailer/lookups', [MailerLookupController::class, 'index']);
     Route::get('mailer/usage', [MailerUsageController::class, 'show']);
     Route::get('mailer/audience', [MailerAudienceController::class, 'index']);
