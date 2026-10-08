@@ -49,13 +49,13 @@ trait HasProspectLimits
     }
 
     /**
-     * Decrement prospect credits: use monthly allowance first, then purchased balance.
+     * Record prospect consumption. Included balance is used first; the rest is still logged and billed.
      */
     public function decrementProspectCredits(int $credits): bool
     {
-        if (! $this->canImportProspects($credits))
+        if ($credits < 1)
         {
-            return false;
+            return true;
         }
 
         $this->resetProspectMonthlyLimitsIfNeeded();
@@ -63,11 +63,10 @@ trait HasProspectLimits
         $monthlyLimit = (int) $this->getSetting('prospect_monthly_limit', 0);
         $monthlyUsed = (int) $this->getSetting('prospect_monthly_used', 0);
         $purchased = (int) $this->getSetting('prospect_credits_purchased', 0);
-
         $monthlyRemaining = max(0, $monthlyLimit - $monthlyUsed);
 
         $fromMonthly = min($credits, $monthlyRemaining);
-        $fromPurchased = $credits - $fromMonthly;
+        $fromPurchased = min($credits - $fromMonthly, max(0, $purchased));
 
         if ($fromMonthly > 0)
         {
@@ -76,18 +75,15 @@ trait HasProspectLimits
 
         if ($fromPurchased > 0)
         {
-            $this->setSetting('prospect_credits_purchased', max(0, $purchased - $fromPurchased), ['type' => 'integer', 'group' => 'prospect']);
+            $this->setSetting('prospect_credits_purchased', $purchased - $fromPurchased, ['type' => 'integer', 'group' => 'prospect']);
         }
 
-        if ($credits > 0)
-        {
-            ProspectUsageLog::query()->create([
-                'team_id' => $this->id,
-                'source' => 'import',
-                'count' => $credits,
-                'consumed_at' => now(),
-            ]);
-        }
+        ProspectUsageLog::query()->create([
+            'team_id' => $this->id,
+            'source' => 'import',
+            'count' => $credits,
+            'consumed_at' => now(),
+        ]);
 
         return true;
     }

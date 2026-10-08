@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\MailerAudienceController;
 use App\Http\Controllers\Api\MailerAudienceImportController;
 use App\Http\Controllers\Api\MailerCategoryController;
 use App\Http\Controllers\Api\MailerLookupController;
+use App\Http\Controllers\Api\MailerProspectController;
 use App\Http\Controllers\Api\MailerSenderController;
 use App\Http\Controllers\Api\MailerUsageController;
 use App\Http\Controllers\Api\MailInboxController;
@@ -682,6 +683,9 @@ Route::middleware('auth.api')->group(function ()
     Route::get('mailer/audience/import', [MailerAudienceImportController::class, 'show']);
     Route::post('mailer/audience/import', [MailerAudienceImportController::class, 'store']);
     Route::post('mailer/audience/validate-domains', [MailerAudienceController::class, 'validateDomains']);
+    Route::get('mailer/prospects', [MailerProspectController::class, 'show']);
+    Route::post('mailer/prospects/search', [MailerProspectController::class, 'search']);
+    Route::post('mailer/prospects/import', [MailerProspectController::class, 'import']);
     Route::get('mailer/audience/{id}', [MailerAudienceController::class, 'show'])->whereNumber('id');
     Route::put('mailer/audience/{id}', [MailerAudienceController::class, 'update'])->whereNumber('id');
     Route::get('mailer/list60', [MailerAudienceController::class, 'indexList60']);

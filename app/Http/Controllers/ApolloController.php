@@ -6,6 +6,8 @@ use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Module;
 use App\Services\ApolloService;
+use App\Services\Prospecting\InsufficientProspectCredits;
+use App\Services\Prospecting\ProspectContactImporter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -187,146 +189,43 @@ class ApolloController extends Controller
 
         $team = auth()->user()->currentTeam;
 
-        $apolloData = [
-            'apollo_id' => $validated['apollo_id'],
-            'title' => $validated['title'] ?? null,
-            'organization_name' => $validated['organization_name'] ?? null,
-        ];
+        $person = null;
         if (! empty($validated['person_data']))
         {
             $decoded = json_decode($validated['person_data'], true);
             if (is_array($decoded))
             {
-                $apolloData = $decoded;
+                $person = $decoded;
             }
         }
 
-        $position = $this->normalizeProspectPosition($apolloData);
-        $cost = $this->getProspectCreditsCost($position);
-
-        $team->resetProspectMonthlyLimitsIfNeeded();
-        if (! $team->canImportProspects($cost))
+        try
+        {
+            $contact = app(ProspectContactImporter::class)->import(
+                $team,
+                (int) auth()->id(),
+                $validated['apollo_id'],
+                $validated['first_name'],
+                $validated['last_name'] ?? null,
+                $validated['last_name_obfuscated'] ?? null,
+                $validated['title'] ?? null,
+                $validated['organization_name'] ?? null,
+                $person,
+                isset($validated['category_id']) ? (int) $validated['category_id'] : null,
+            );
+        } catch (InsufficientProspectCredits $exception)
         {
             if ($request->wantsJson())
             {
                 return response()->json([
-                    'message' => __('No tienes suficientes créditos de prospectos. Contrata un plan o compra más créditos en Suscripciones.'),
+                    'message' => $exception->getMessage(),
                 ], 402);
             }
 
             return redirect()
                 ->route('subscription.index')
-                ->with('error', __('No tienes suficientes créditos de prospectos. Contrata un plan o compra más créditos.'));
+                ->with('error', $exception->getMessage());
         }
-
-        if (! $team->decrementProspectCredits($cost))
-        {
-            if ($request->wantsJson())
-            {
-                return response()->json([
-                    'message' => __('No tienes suficientes créditos de prospectos.'),
-                ], 402);
-            }
-
-            return redirect()->route('subscription.index')->with('error', __('No tienes suficientes créditos de prospectos.'));
-        }
-
-        $enriched = null;
-        try
-        {
-            $service = new ApolloService;
-            $personForEnrich = [
-                'id' => $validated['apollo_id'],
-                'first_name' => $validated['first_name'],
-                'organization_name' => $apolloData['organization_name'] ?? null,
-                'organization' => $apolloData['organization'] ?? null,
-            ];
-            $enriched = $service->enrichPerson($personForEnrich);
-        } catch (\Throwable $e)
-        {
-            $enriched = null;
-        }
-
-        if (is_array($enriched) && ! empty($enriched))
-        {
-            $apolloData = array_merge($enriched, ['apollo_id' => $enriched['id'] ?? $validated['apollo_id']]);
-            $name = trim(($enriched['first_name'] ?? '').' '.($enriched['last_name'] ?? ''));
-            if ($name === '')
-            {
-                $name = $enriched['name'] ?? trim($validated['first_name'].' '.($validated['last_name_obfuscated'] ?? '')) ?: 'Contact';
-            }
-        } else
-        {
-            $lastName = $validated['last_name'] ?? $validated['last_name_obfuscated'] ?? '';
-            $name = trim($validated['first_name'].' '.$lastName) ?: 'Contact';
-        }
-
-        $dataJson = ['apollo' => $apolloData];
-        if (is_array($enriched) && ! empty($enriched))
-        {
-            $dataJson['apollo_raw'] = $enriched;
-        } else
-        {
-            $dataJson['apollo_raw'] = $apolloData;
-        }
-
-        $contactData = [
-            'team_id' => $team->id,
-            'creator_id' => auth()->id(),
-            'responsible_id' => auth()->id(),
-            'name' => $name ?: 'Contact',
-            'status_id' => 1,
-            'country' => 724,
-            'language' => 'es',
-            'data' => $dataJson,
-        ];
-        $rawEmail = $apolloData['email'] ?? $apolloData['primary_email'] ?? $apolloData['sanitized_email'] ?? '';
-        if ((string) $rawEmail !== '' && filter_var($rawEmail, FILTER_VALIDATE_EMAIL))
-        {
-            $contactData['email'] = $rawEmail;
-        }
-
-        $phone = $apolloData['phone'] ?? null;
-        $phoneStr = null;
-        if (is_string($phone) && $phone !== '')
-        {
-            $phoneStr = $phone;
-        } elseif (is_array($phone) && isset($phone['number']))
-        {
-            $phoneStr = $phone['number'] ?? null;
-        }
-        if (empty($phoneStr) && ! empty($apolloData['phone_numbers']) && is_array($apolloData['phone_numbers']))
-        {
-            $first = reset($apolloData['phone_numbers']);
-            $phoneStr = is_string($first) ? $first : ($first['number'] ?? null);
-        }
-        // Transform phone only for the integer column; contacts.data (apollo/apollo_raw) is never modified.
-        if (! empty($phoneStr))
-        {
-            $phoneDigits = preg_replace('/\D/', '', $phoneStr);
-            if ($phoneDigits !== '')
-            {
-                $contactData['phone'] = (int) $phoneDigits;
-            }
-        }
-
-        $contact = Contact::create($contactData);
-
-        $categoryIds = [];
-        if (! empty($validated['category_id']))
-        {
-            $contactsModule = Module::where('key', 'contacts')->first();
-            $category = Category::where('id', $validated['category_id'])
-                ->where('status', 1)
-                ->when($contactsModule, fn ($q) => $q->where('module_id', $contactsModule->id))
-                ->where(fn ($q) => $q->whereNull('team_id')->orWhere('team_id', $team->id))
-                ->first();
-            if ($category)
-            {
-                $categoryIds[] = $category->id;
-            }
-        }
-        $contact->categories()->sync($categoryIds);
 
         if ($request->wantsJson())
         {
@@ -340,35 +239,6 @@ class ApolloController extends Controller
         return redirect()
             ->route('contact.show', $contact->id)
             ->with('success', __('Contacto creado desde la búsqueda de prospectos.'));
-    }
-
-    /**
-     * Normalize prospect position (seniority) from API data to a config key.
-     */
-    private function normalizeProspectPosition(array $apolloData): string
-    {
-        $raw = $apolloData['apollo_raw'] ?? $apolloData;
-        $seniority = $raw['seniority'] ?? $raw['person_seniority'] ?? null;
-        if (! is_string($seniority) || $seniority === '')
-        {
-            return 'manager';
-        }
-
-        $key = strtolower(trim(preg_replace('/[^a-z0-9_]/', '_', $seniority)));
-        $key = str_replace('__', '_', $key);
-        $allowed = array_keys(config('prospects.credits_per_position', []));
-
-        return in_array($key, $allowed, true) ? $key : 'manager';
-    }
-
-    /**
-     * Get credit cost for a prospect position.
-     */
-    private function getProspectCreditsCost(string $position): int
-    {
-        $credits = config('prospects.credits_per_position', []);
-
-        return (int) ($credits[$position] ?? config('prospects.default_credits', 1));
     }
 
     private function ensureProspectingModuleEnabled(): void

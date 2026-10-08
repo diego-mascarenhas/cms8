@@ -55,9 +55,6 @@ class ApolloService
             $org = $person['organization'] ?? [];
             $orgName = is_array($org) ? ($org['name'] ?? '') : '';
 
-            $hasDirectPhone = ($person['has_direct_phone'] ?? '') === 'Yes' || ($person['has_direct_phone'] ?? false) === true;
-            $hasPhone = $hasDirectPhone || ($person['has_phone'] ?? false);
-
             return [
                 'id' => $person['id'] ?? '',
                 'first_name' => $person['first_name'] ?? '',
@@ -66,8 +63,8 @@ class ApolloService
                 'title' => $person['title'] ?? null,
                 'organization_name' => $orgName,
                 'organization' => $org,
-                'has_email' => $person['has_email'] ?? false,
-                'has_phone' => $hasPhone,
+                'has_email' => self::personHasEmail($person),
+                'has_phone' => self::personHasPhone($person),
                 'last_refreshed_at' => $person['last_refreshed_at'] ?? null,
                 'apollo_raw' => $person,
             ];
@@ -79,6 +76,93 @@ class ApolloService
             'page' => $page,
             'per_page' => $perPage,
         ];
+    }
+
+    /**
+     * Apollo search hides the address and scatters the phone across flags and nested objects.
+     */
+    public static function personHasEmail(array $person): bool
+    {
+        if (self::flagYes($person['has_email'] ?? null))
+        {
+            return true;
+        }
+
+        foreach (['email', 'primary_email', 'sanitized_email'] as $key)
+        {
+            $value = $person[$key] ?? null;
+            if (is_string($value) && filter_var($value, FILTER_VALIDATE_EMAIL))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static function personHasPhone(array $person): bool
+    {
+        $sources = [$person];
+        foreach (['contact', 'organization'] as $key)
+        {
+            if (is_array($person[$key] ?? null))
+            {
+                $sources[] = $person[$key];
+            }
+        }
+
+        foreach ($sources as $source)
+        {
+            if (self::sourceHasPhone($source))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function sourceHasPhone(array $source): bool
+    {
+        if (self::flagYes($source['has_direct_phone'] ?? null) || self::flagYes($source['has_phone'] ?? null))
+        {
+            return true;
+        }
+
+        foreach (['phone', 'sanitized_phone', 'primary_phone'] as $key)
+        {
+            $phone = $source[$key] ?? null;
+            if (is_string($phone) && trim($phone) !== '')
+            {
+                return true;
+            }
+            if (is_array($phone))
+            {
+                $number = $phone['number'] ?? $phone['sanitized_number'] ?? null;
+                if (is_string($number) && trim($number) !== '')
+                {
+                    return true;
+                }
+            }
+        }
+
+        foreach (['phone_numbers', 'contact_phone_numbers'] as $key)
+        {
+            if (! empty($source[$key]) && is_array($source[$key]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function flagYes(mixed $value): bool
+    {
+        return $value === true
+            || $value === 1
+            || $value === '1'
+            || (is_string($value) && strcasecmp($value, 'Yes') === 0);
     }
 
     /**
