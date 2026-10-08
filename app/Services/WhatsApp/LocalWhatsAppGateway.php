@@ -4,6 +4,7 @@ namespace App\Services\WhatsApp;
 
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\WhatsAppOutboundText;
+use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Team;
 use Illuminate\Support\Facades\Http;
@@ -71,7 +72,10 @@ class LocalWhatsAppGateway implements WhatsAppGateway
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
-            throw new \RuntimeException('Local WhatsApp send failed: '.$response->body());
+            $reason = 'Local WhatsApp send failed: '.$response->body();
+            $this->recordWhatsAppAttempt($cleanTo, $message, $reason, false);
+
+            throw new \RuntimeException($reason);
         }
 
         $data = $response->json() ?? [];
@@ -102,6 +106,8 @@ class LocalWhatsAppGateway implements WhatsAppGateway
             'user_id' => $userId ?? auth()->id(),
             'metadata' => array_merge($metadata ?? [], ['source' => 'local_whatsapp']),
         ]);
+
+        $this->recordWhatsAppAttempt($cleanTo, $message, null, true);
 
         return $data;
     }
@@ -279,5 +285,32 @@ class LocalWhatsAppGateway implements WhatsAppGateway
         $pictures = $response->json('pictures');
 
         return is_array($pictures) ? $pictures : [];
+    }
+
+    private function recordWhatsAppAttempt(string $phone, string $message, ?string $reason, bool $sent): void
+    {
+        if ($this->teamId === null || $phone === '')
+        {
+            return;
+        }
+
+        $permanent = is_string($reason) && Contact::whatsAppFailureIsPermanent($reason);
+        $valid = $sent ? true : ($permanent ? false : null);
+
+        Contact::withoutGlobalScopes()
+            ->where('team_id', $this->teamId)
+            ->where('phone', $phone)
+            ->get()
+            ->each(function (Contact $contact) use ($phone, $message, $reason, $valid, $sent, $permanent): void
+            {
+                $contact->recordOutboundChannel(
+                    'whatsapp',
+                    $phone,
+                    $valid,
+                    $sent ? 'sent' : 'failed',
+                    $sent ? $message : (string) $reason,
+                    $permanent ? $reason : null,
+                );
+            });
     }
 }

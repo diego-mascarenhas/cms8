@@ -78,6 +78,18 @@ class Contact extends Model implements HasMedia
                 });
             }
         });
+
+        static::updating(function (Contact $contact): void
+        {
+            if ($contact->isDirty('email'))
+            {
+                $contact->forgetChannelCheck('email');
+            }
+            if ($contact->isDirty('phone'))
+            {
+                $contact->forgetChannelCheck('whatsapp');
+            }
+        });
     }
 
     /**
@@ -303,6 +315,183 @@ class Contact extends Model implements HasMedia
         }
 
         return [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function dataArray(): array
+    {
+        $decoded = json_decode(json_encode($this->data ?? new \stdClass), true);
+
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    public static function emailFailureIsPermanent(string $reason): bool
+    {
+        $lower = mb_strtolower($reason);
+
+        foreach ([
+            'invalid email',
+            'user unknown',
+            'unknown user',
+            'mailbox not found',
+            'does not exist',
+            'no such user',
+            'recipient address rejected',
+            '5.1.1',
+            'not exist',
+        ] as $needle)
+        {
+            if (str_contains($lower, $needle))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static function whatsAppFailureIsPermanent(string $reason): bool
+    {
+        $lower = mb_strtolower($reason);
+
+        return str_contains($lower, 'cannot resolve whatsapp jid')
+            || str_contains($lower, 'not registered')
+            || str_contains($lower, 'is not on whatsapp');
+    }
+
+    /**
+     * @return array{channel: string, at: string, status: string, summary: string}|null
+     */
+    public function lastOutboundMessage(): ?array
+    {
+        $message = $this->dataArray()['last_message'] ?? null;
+        if (! is_array($message))
+        {
+            return null;
+        }
+
+        $channel = (string) ($message['channel'] ?? '');
+        $at = (string) ($message['at'] ?? '');
+        $status = (string) ($message['status'] ?? '');
+        $summary = (string) ($message['summary'] ?? '');
+        if ($channel === '' || $at === '')
+        {
+            return null;
+        }
+
+        return [
+            'channel' => $channel,
+            'at' => $at,
+            'status' => $status,
+            'summary' => $summary,
+        ];
+    }
+
+    public function storedChannelValid(string $channel): ?bool
+    {
+        $check = $this->dataArray()['channels'][$channel] ?? null;
+        if (! is_array($check) || ! array_key_exists('valid', $check) || $check['valid'] === null)
+        {
+            return null;
+        }
+
+        $address = (string) ($check['address'] ?? '');
+        $current = $channel === 'whatsapp' ? (string) $this->phone : (string) $this->email;
+        if ($address === '' || $address !== $current)
+        {
+            return null;
+        }
+
+        return (bool) $check['valid'];
+    }
+
+    public function storedChannelLastError(string $channel): ?string
+    {
+        $check = $this->dataArray()['channels'][$channel] ?? null;
+        if (! is_array($check))
+        {
+            return null;
+        }
+
+        $address = (string) ($check['address'] ?? '');
+        $current = $channel === 'whatsapp' ? (string) $this->phone : (string) $this->email;
+        if ($address === '' || $address !== $current)
+        {
+            return null;
+        }
+
+        $error = $check['last_error']['message'] ?? null;
+
+        return is_string($error) && $error !== '' ? $error : null;
+    }
+
+    public function recordOutboundChannel(string $channel, string $address, ?bool $valid, string $status, string $summary, ?string $reason = null): void
+    {
+        $data = $this->dataArray();
+        $existing = $data['channels'][$channel] ?? null;
+        $sameAddress = is_array($existing) && (string) ($existing['address'] ?? '') === $address;
+        $nextValid = $valid;
+        if ($nextValid === null && $sameAddress && array_key_exists('valid', $existing))
+        {
+            $nextValid = $existing['valid'];
+        }
+
+        $nextReason = $reason;
+        if ($nextReason === null && $sameAddress)
+        {
+            $nextReason = $existing['reason'] ?? null;
+        }
+
+        $lastError = $sameAddress && is_array($existing['last_error'] ?? null) ? $existing['last_error'] : null;
+        if ($nextValid === true)
+        {
+            $nextReason = null;
+            $lastError = null;
+        } elseif ($status === 'failed')
+        {
+            $text = trim((string) ($reason !== null && $reason !== '' ? $reason : $summary));
+            if ($text !== '')
+            {
+                $lastError = [
+                    'message' => mb_substr(preg_replace('/\s+/', ' ', $text) ?? '', 0, 160),
+                    'at' => now()->toIso8601String(),
+                ];
+            }
+        }
+
+        $data['channels'][$channel] = [
+            'address' => $address,
+            'valid' => $nextValid,
+            'checked_at' => now()->toIso8601String(),
+            'reason' => $nextReason,
+            'last_error' => $lastError,
+        ];
+        $data['last_message'] = [
+            'channel' => $channel,
+            'at' => now()->toIso8601String(),
+            'status' => $status,
+            'summary' => mb_substr(trim(preg_replace('/\s+/', ' ', $summary) ?? ''), 0, 160),
+        ];
+
+        $this->data = $data;
+        if ($this->exists)
+        {
+            $this->save();
+        }
+    }
+
+    public function forgetChannelCheck(string $channel): void
+    {
+        $data = $this->dataArray();
+        if (! isset($data['channels'][$channel]))
+        {
+            return;
+        }
+
+        unset($data['channels'][$channel]);
+        $this->data = $data;
     }
 
     /**

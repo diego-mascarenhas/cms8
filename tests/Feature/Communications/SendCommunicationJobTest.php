@@ -97,7 +97,7 @@ class SendCommunicationJobTest extends TestCase
 
         Mail::fake();
         Http::fake([
-            'https://api.mailbaby.net/mail/send' => Http::response([
+            'https://api.mailbaby.net/mail/advsend' => Http::response([
                 'status' => 'ok',
                 'text' => '1a0b9f105f6000dfc3',
             ], 200),
@@ -107,6 +107,7 @@ class SendCommunicationJobTest extends TestCase
             'services.mailbaby.enabled' => true,
             'services.mailbaby.api_key' => 'test-key',
             'services.mailbaby.api_url' => 'https://api.mailbaby.net',
+            'services.mailbaby.order_id' => 80474,
         ]);
 
         $user = User::factory()->withPersonalTeam()->create();
@@ -124,7 +125,8 @@ class SendCommunicationJobTest extends TestCase
         Mail::assertNothingSent();
         Http::assertSent(function ($request)
         {
-            return $request->url() === 'https://api.mailbaby.net/mail/send'
+            return $request->url() === 'https://api.mailbaby.net/mail/advsend'
+                && (int) $request['id'] === 80474
                 && $request['to'] === 'ada@example.test'
                 && str_contains((string) $request['from'], 'billing@example.test')
                 && str_contains((string) $request['body'], '/communications/track/')

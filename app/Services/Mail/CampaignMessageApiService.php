@@ -81,6 +81,8 @@ class CampaignMessageApiService
             'has_opened' => $delivery->opened_at !== null,
             'has_clicked' => $delivery->clicked_at !== null,
             'in_list60' => $delivery->contact?->list60 !== null,
+            'email_valid' => $delivery->contact?->storedChannelValid('email'),
+            'email_last_error' => $delivery->contact?->storedChannelLastError('email'),
         ];
     }
 

@@ -223,6 +223,7 @@ class SendMessageCampaignJob implements ShouldQueue
         ]);
 
         $this->messageDelivery->team->recordSuccessfulMailerSend();
+        $this->recordEmailAttempt('sent');
     }
 
     /**
@@ -252,6 +253,25 @@ class SendMessageCampaignJob implements ShouldQueue
         ]);
 
         $this->messageDelivery->team->recordSuccessfulMailerSend();
+        $this->recordEmailAttempt('sent');
+    }
+
+    private function recordEmailAttempt(string $status): void
+    {
+        $contact = $this->messageDelivery->contact;
+        $email = is_string($contact?->email) ? $contact->email : '';
+        if (! $contact || $email === '')
+        {
+            return;
+        }
+
+        $contact->recordOutboundChannel(
+            'email',
+            $email,
+            null,
+            $status,
+            (string) ($this->messageDelivery->message?->name ?? ''),
+        );
     }
 
     /**

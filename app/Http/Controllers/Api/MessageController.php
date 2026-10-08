@@ -15,6 +15,7 @@ use App\Services\Mail\CampaignMessageApiService;
 use App\Services\Mail\MailerNewsGenerationService;
 use App\Services\Mail\MessageCampaignActivationService;
 use App\Services\Mail\MessageCampaignTestSendService;
+use App\Services\MailBabyService;
 use App\Support\MessageTemplateMergeFields;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -438,6 +439,76 @@ class MessageController extends Controller
                 'last_page' => $paginator->lastPage(),
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
+            ],
+        ]);
+    }
+
+    public function deliveryLog(Request $request, int $id, int $delivery): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        $message = Message::query()
+            ->where('team_id', $team->id)
+            ->find($id);
+
+        if (! $message)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Message not found'),
+            ], 404);
+        }
+
+        $row = MessageDelivery::query()
+            ->with('contact')
+            ->where('message_id', $message->id)
+            ->find($delivery);
+
+        if (! $row)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Delivery not found'),
+            ], 404);
+        }
+
+        $record = null;
+        if (config('services.mailbaby.api_key'))
+        {
+            $sentAt = $row->sent_at ?? $row->created_at;
+            $record = app(MailBabyService::class)->findDeliveryRecord(
+                $row->provider_message_id,
+                $row->contact?->email,
+                (string) $message->name,
+                $sentAt?->copy()->subDay()->format('Y-m-d'),
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'found' => (bool) ($record['found'] ?? false),
+                'id' => $record['id'] ?? $row->provider_message_id,
+                'delivered' => $record['delivered'] ?? null,
+                'code' => $record['code'] ?? null,
+                'response' => $record['response'] ?? null,
+                'created' => $record['created'] ?? null,
+                'user' => $record['user'] ?? null,
+                'subject' => $record['subject'] ?? null,
+                'from' => $record['from'] ?? null,
+                'to' => $record['to'] ?? $row->contact?->email,
+                'email_provider' => $row->email_provider,
+                'error_message' => $row->error_message,
+                'bounce_reason' => $row->bounce_reason,
             ],
         ]);
     }

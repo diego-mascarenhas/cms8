@@ -66,6 +66,7 @@ return [
         'api_url' => env('MAILBABY_API_URL', 'https://api.mailbaby.net'),
         'webhook_secret' => env('MAILBABY_WEBHOOK_SECRET'),
         'enabled' => env('MAILBABY_ENABLED', false),
+        'order_id' => env('MAILBABY_ORDER_ID'),
     ],
 
     'email' => [

@@ -804,6 +804,11 @@ class MailerAudienceController extends Controller
                 ->all(),
             'can_send' => $this->canSendToEmail($email),
             'photo_url' => $this->photoUrl($contact),
+            'email_valid' => $contact->storedChannelValid('email'),
+            'whatsapp_valid' => $contact->storedChannelValid('whatsapp'),
+            'email_last_error' => $contact->storedChannelLastError('email'),
+            'whatsapp_last_error' => $contact->storedChannelLastError('whatsapp'),
+            'last_message' => $contact->lastOutboundMessage(),
         ];
     }
 
