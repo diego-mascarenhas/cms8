@@ -64,6 +64,22 @@ class MailerSendPaceTest extends TestCase
         );
     }
 
+    public function test_a_whitelisted_team_schedules_at_maximum_speed(): void
+    {
+        $message = $this->messageWithContacts(EmailPlan::FREE, 'listed');
+        config(['humano_pricing.plan_access_team_ids' => [(int) $message->team_id]]);
+
+        Artisan::call('campaigns:process-active', ['--message' => $message->id]);
+
+        $times = $this->scheduledTimes($message->id);
+
+        $this->assertCount(2, $times);
+        $this->assertSame(
+            $times[0]->format('Y-m-d H:i:s'),
+            $times[1]->format('Y-m-d H:i:s'),
+        );
+    }
+
     /**
      * @return \Illuminate\Support\Collection<int, \Illuminate\Support\Carbon>
      */

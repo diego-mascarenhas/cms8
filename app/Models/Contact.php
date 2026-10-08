@@ -326,6 +326,8 @@ class Contact extends Model implements HasMedia
         return is_array($decoded) ? $decoded : [];
     }
 
+    public const EMAIL_DOMAIN_MISSING = 'domain_not_found';
+
     public static function emailFailureIsPermanent(string $reason): bool
     {
         $lower = mb_strtolower($reason);
@@ -386,6 +388,34 @@ class Contact extends Model implements HasMedia
             'status' => $status,
             'summary' => $summary,
         ];
+    }
+
+    public function emailDomainOk(): ?bool
+    {
+        $check = $this->dataArray()['channels']['email'] ?? null;
+        if (! is_array($check))
+        {
+            return null;
+        }
+
+        $address = (string) ($check['address'] ?? '');
+        if ($address === '' || $address !== trim((string) $this->email))
+        {
+            return null;
+        }
+
+        $domain = (string) ($check['domain'] ?? '');
+        if ($domain === 'ok')
+        {
+            return true;
+        }
+
+        if ($domain === 'missing' || (($check['valid'] ?? null) === false && (string) ($check['reason'] ?? '') === self::EMAIL_DOMAIN_MISSING))
+        {
+            return false;
+        }
+
+        return null;
     }
 
     public function storedChannelValid(string $channel): ?bool
@@ -473,6 +503,61 @@ class Contact extends Model implements HasMedia
             'status' => $status,
             'summary' => mb_substr(trim(preg_replace('/\s+/', ' ', $summary) ?? ''), 0, 160),
         ];
+
+        $this->data = $data;
+        if ($this->exists)
+        {
+            $this->save();
+        }
+    }
+
+    /**
+     * A missing domain stays out of later sends. A domain that exists only clears that mark.
+     */
+    public function applyEmailDomainCheck(bool $domainExists): void
+    {
+        $email = trim((string) $this->email);
+        if ($email === '')
+        {
+            return;
+        }
+
+        $data = $this->dataArray();
+        $existing = is_array($data['channels']['email'] ?? null) ? $data['channels']['email'] : [];
+        $reason = (string) ($existing['reason'] ?? '');
+
+        if ($domainExists)
+        {
+            $existing['address'] = $email;
+            $existing['domain'] = 'ok';
+            $existing['checked_at'] = now()->toIso8601String();
+            if ($reason === self::EMAIL_DOMAIN_MISSING)
+            {
+                $existing['valid'] = null;
+                $existing['reason'] = null;
+                $existing['last_error'] = null;
+            }
+            $data['channels']['email'] = $existing;
+        } elseif ($reason !== '' && $reason !== self::EMAIL_DOMAIN_MISSING)
+        {
+            $existing['address'] = $email;
+            $existing['domain'] = 'missing';
+            $existing['checked_at'] = now()->toIso8601String();
+            $data['channels']['email'] = $existing;
+        } else
+        {
+            $data['channels']['email'] = [
+                'address' => $email,
+                'valid' => false,
+                'domain' => 'missing',
+                'checked_at' => now()->toIso8601String(),
+                'reason' => self::EMAIL_DOMAIN_MISSING,
+                'last_error' => [
+                    'message' => 'No tiene registro MX',
+                    'at' => now()->toIso8601String(),
+                ],
+            ];
+        }
 
         $this->data = $data;
         if ($this->exists)

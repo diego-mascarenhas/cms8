@@ -9,6 +9,7 @@ use App\Http\Requests\Api\StoreMailerAudienceContactRequest;
 use App\Http\Requests\Api\StoreMailerAudienceListRequest;
 use App\Http\Requests\Api\UpdateMailerAudienceContactRequest;
 use App\Http\Requests\StoreContactInteractionRequest;
+use App\Jobs\ValidateAudienceEmailDomainsJob;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactInteraction;
@@ -34,6 +35,34 @@ class MailerAudienceController extends Controller
 {
     use ChecksTeamModule;
 
+    public function validateDomains(Request $request): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        $teamId = (int) $team->id;
+        if (! ValidateAudienceEmailDomainsJob::isRunning($teamId))
+        {
+            $token = (string) Str::uuid();
+            ValidateAudienceEmailDomainsJob::markRunning($teamId, $token);
+            ValidateAudienceEmailDomainsJob::dispatch($teamId, $token)->afterResponse();
+        }
+
+        return response()->json([
+            'success' => true,
+            'running' => true,
+            'message' => 'Estamos revisando los dominios. Los que no tengan MX quedan fuera del envío.',
+        ]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $team = $this->teamOrError($request);
@@ -51,6 +80,7 @@ class MailerAudienceController extends Controller
             'search' => 'nullable|string|max:255',
             'category_id' => 'nullable|integer',
             'status_id' => 'nullable|integer',
+            'issue' => 'nullable|string|in:validated,unchecked,error,failed',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:50',
         ]);
@@ -78,6 +108,8 @@ class MailerAudienceController extends Controller
             $query->where('status_id', $statusId);
         }
 
+        $this->applyEmailIssueFilter($query, (string) ($validated['issue'] ?? ''));
+
         $paginator = $query
             ->orderBy('name')
             ->orderBy('surname')
@@ -95,6 +127,9 @@ class MailerAudienceController extends Controller
             'lists' => $this->listsForTeam((int) $team->id),
             'status_stats' => $this->statusStats((int) $team->id),
             'usage' => $team->getMailerUsageSummary(),
+            'domain_check' => [
+                'running' => ValidateAudienceEmailDomainsJob::isRunning((int) $team->id),
+            ],
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
@@ -582,6 +617,76 @@ class MailerAudienceController extends Controller
         return $current."\n".$note;
     }
 
+    private function applyEmailIssueFilter(Builder $query, string $issue): void
+    {
+        if ($issue === 'failed')
+        {
+            $query->where('data->channels->email->valid', false);
+
+            return;
+        }
+
+        if ($issue === 'validated')
+        {
+            $query->where('data->channels->email->domain', 'ok')
+                ->where(function (Builder $channel): void
+                {
+                    $channel->whereNull('data->channels->email->valid')
+                        ->orWhere('data->channels->email->valid', true);
+                });
+
+            return;
+        }
+
+        if ($issue === 'unchecked')
+        {
+            $query->where(function (Builder $channel): void
+            {
+                $channel->whereNull('data->channels->email->domain')
+                    ->orWhere('data->channels->email->domain', '');
+            })->where(function (Builder $channel): void
+            {
+                $channel->whereNull('data->channels->email->valid')
+                    ->orWhere('data->channels->email->valid', true);
+            });
+
+            return;
+        }
+
+        if ($issue !== 'error')
+        {
+            return;
+        }
+
+        $query->where(function (Builder $channel): void
+        {
+            $channel->whereNull('data->channels->email->valid')
+                ->orWhere('data->channels->email->valid', true);
+        });
+
+        $column = $query->getGrammar()->wrap('data');
+        $driver = $query->getConnection()->getDriverName();
+        if ($driver === 'pgsql')
+        {
+            $errorText = "LOWER(COALESCE({$column} #>> '{channels,email,last_error,message}', ''))";
+            $summaryText = "LOWER(COALESCE({$column} #>> '{last_message,summary}', ''))";
+        } else
+        {
+            $errorText = "LOWER(COALESCE(json_extract({$column}, '$.\"channels\".\"email\".\"last_error\".\"message\"'), ''))";
+            $summaryText = "LOWER(COALESCE(json_extract({$column}, '$.\"last_message\".\"summary\"'), ''))";
+        }
+
+        $likes = [];
+        foreach (MessageDelivery::temporaryFailureNeedles() as $needle)
+        {
+            $safe = str_replace("'", "''", mb_strtolower($needle));
+            $likes[] = "{$errorText} LIKE '%{$safe}%'";
+            $likes[] = "{$summaryText} LIKE '%{$safe}%'";
+        }
+
+        $query->whereRaw('('.implode(' OR ', $likes).')');
+    }
+
     private function audienceQuery(int $teamId): Builder
     {
         return Contact::query()
@@ -805,6 +910,7 @@ class MailerAudienceController extends Controller
             'can_send' => $this->canSendToEmail($email),
             'photo_url' => $this->photoUrl($contact),
             'email_valid' => $contact->storedChannelValid('email'),
+            'email_domain_ok' => $contact->emailDomainOk(),
             'whatsapp_valid' => $contact->storedChannelValid('whatsapp'),
             'email_last_error' => $contact->storedChannelLastError('email'),
             'whatsapp_last_error' => $contact->storedChannelLastError('whatsapp'),
