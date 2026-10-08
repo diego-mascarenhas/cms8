@@ -21,6 +21,7 @@ return new class extends Migration
             $table->string('from_address')->nullable();
             $table->longText('mail_html')->nullable();
             $table->boolean('status_id')->default(0);
+            $table->string('pause_reason')->nullable();
             $table->boolean('show_unsubscribe')->default(1);
             $table->boolean('enable_open_tracking')->default(1);
             $table->boolean('enable_click_tracking')->default(1);

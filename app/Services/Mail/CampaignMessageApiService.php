@@ -307,6 +307,8 @@ class CampaignMessageApiService
         $overrideName = trim((string) $message->from_name);
         $overrideAddress = trim((string) $message->from_address);
 
+        $status = $this->listStatus($message);
+
         return [
             'id' => $message->id,
             'name' => $message->name,
@@ -322,7 +324,8 @@ class CampaignMessageApiService
             'send_allowed_weekdays' => $message->send_allowed_weekdays,
             'send_window_start' => $message->send_window_start,
             'send_window_end' => $message->send_window_end,
-            'status' => $this->listStatus($message),
+            'status' => $status,
+            'pause_reason' => $status['key'] === 'paused' ? ($message->pause_reason ?: null) : null,
             'contact_categories' => $this->formatContactCategories($message),
             'contact_categories_label' => $message->contactCategoriesLabel(),
             'contact_status' => $message->contactStatus ? [

@@ -7,6 +7,8 @@ use App\Models\Contact;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\User;
+use App\Services\Mail\CampaignMessageApiService;
+use App\Services\Mail\MessageCampaignActivationService;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
@@ -65,6 +67,7 @@ class CampaignSpamPauseTest extends TestCase
         $delivery->markAsError(self::SPAM_ERROR);
 
         $this->assertFalse((bool) $message->fresh()->status_id);
+        $this->assertSame(Message::PAUSE_REASON_SPAM, $message->fresh()->pause_reason);
         $this->assertSame(1, MessageDelivery::query()->where('message_id', $message->id)->count());
 
         $this->artisan('campaigns:process-active', ['--message' => $message->id])->assertSuccessful();
@@ -98,6 +101,7 @@ class CampaignSpamPauseTest extends TestCase
         $delivery->markAsError('550 5.1.1 The email account that you tried to reach does not exist.');
 
         $this->assertTrue((bool) $message->fresh()->status_id);
+        $this->assertNull($message->fresh()->pause_reason);
     }
 
     public function test_scheduled_sender_skips_a_paused_campaign(): void
