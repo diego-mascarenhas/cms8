@@ -16,7 +16,9 @@ use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Database\Seeders\MessageTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -408,6 +410,111 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('pagination.total', 0);
     }
 
+    public function test_delivery_log_reads_mailbaby_by_id_or_recipient(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+
+        config([
+            'services.mailbaby.api_key' => 'test-key',
+            'services.mailbaby.api_url' => 'https://api.mailbaby.net',
+            'services.mailbaby.order_id' => 80474,
+        ]);
+
+        Http::fake(function ($request)
+        {
+            if (str_contains($request->url(), 'mailid='))
+            {
+                return Http::response([
+                    'total' => 1,
+                    'emails' => [[
+                        'id' => '1a11ae9be07000e6f4',
+                        'delivered' => 0,
+                        'code' => 550,
+                        'response' => '550 5.1.1 User unknown',
+                        'created' => '2026-10-08 05:48:08',
+                        'user' => 'mb80474',
+                        'subject' => 'With a log',
+                        'from' => 'news@idoneo.dev',
+                        'to' => 'logged@example.test',
+                    ]],
+                ]);
+            }
+
+            return Http::response([
+                'total' => 1,
+                'emails' => [[
+                    'id' => '1a11ae9be07000e6f5',
+                    'delivered' => 1,
+                    'code' => 250,
+                    'response' => '250 2.0.0 Ok',
+                    'user' => 'mb80474',
+                    'subject' => 'With a log',
+                    'to' => 'smtp@example.test',
+                ]],
+            ]);
+        });
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'With a log',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        $logged = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'logged@example.test',
+        ]);
+        $byId = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $logged->id,
+            'status_id' => 4,
+            'email_provider' => 'mailbaby',
+            'provider_message_id' => '1a11ae9be07000e6f4',
+            'sent_at' => now(),
+        ]);
+
+        $smtpContact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'smtp@example.test',
+        ]);
+        $byRecipient = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $smtpContact->id,
+            'status_id' => 3,
+            'email_provider' => 'smtp',
+            'sent_at' => now(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries/'.$byId->id.'/log')
+            ->assertOk()
+            ->assertJsonPath('data.found', true)
+            ->assertJsonPath('data.code', 550)
+            ->assertJsonPath('data.user', 'mb80474')
+            ->assertJsonPath('data.email_provider', 'mailbaby');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries/'.$byRecipient->id.'/log')
+            ->assertOk()
+            ->assertJsonPath('data.found', true)
+            ->assertJsonPath('data.code', 250)
+            ->assertJsonPath('data.email_provider', 'smtp');
+
+        Http::assertSent(function ($request): bool
+        {
+            return str_contains($request->url(), 'id=80474');
+        });
+    }
+
     public function test_delivery_status_filter_finds_failed_rows_outside_the_first_page(): void
     {
         [$user, $team, $token] = $this->adminWithToken();
@@ -679,5 +786,68 @@ class MessageApiWriteTest extends TestCase
         $this->postJson('/api/message', [])->assertUnauthorized();
         $this->putJson('/api/message/1', [])->assertUnauthorized();
         $this->deleteJson('/api/message/1')->assertUnauthorized();
+    }
+
+    public function test_permanent_email_failure_is_stored_on_the_contact_and_left_out_of_later_sends(): void
+    {
+        [$user, $team] = $this->adminWithToken();
+
+        $this->assertFalse(Schema::hasColumn('contacts', 'engagment'));
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'roto@example.test',
+            'data' => ['notes' => 'Nota previa'],
+        ]);
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Aviso',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        $delivery = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 2,
+        ]);
+
+        $delivery->markAsError('Mailbox full, try again');
+        $contact->refresh();
+        $this->assertNull($contact->storedChannelValid('email'));
+        $this->assertSame('Nota previa', data_get($contact->data, 'notes'));
+
+        $delivery->markAsError('Invalid email address');
+        $contact->refresh();
+        $this->assertFalse($contact->storedChannelValid('email'));
+        $this->assertSame('Invalid email address', $contact->storedChannelLastError('email'));
+        $this->assertSame('failed', $contact->lastOutboundMessage()['status'] ?? null);
+        $this->assertSame('Invalid email address', $contact->lastOutboundMessage()['summary'] ?? null);
+
+        $contact->recordOutboundChannel('email', 'roto@example.test', null, 'sent', 'Aviso');
+        $contact->refresh();
+        $this->assertFalse($contact->storedChannelValid('email'));
+        $this->assertSame('Invalid email address', $contact->storedChannelLastError('email'));
+        $this->assertFalse(
+            $message->audienceContactsQuery()->whereKey($contact->id)->exists(),
+        );
+
+        $contact->email = 'nuevo@example.test';
+        $contact->save();
+        $contact->refresh();
+        $this->assertNull($contact->storedChannelValid('email'));
+        $this->assertTrue(
+            $message->audienceContactsQuery()->whereKey($contact->id)->exists(),
+        );
+
+        $contact->recordOutboundChannel('whatsapp', (string) $contact->phone, false, 'failed', 'Cannot resolve WhatsApp JID', 'Cannot resolve WhatsApp JID');
+        $contact->refresh();
+        $this->assertFalse($contact->storedChannelValid('whatsapp'));
+        $this->assertSame('whatsapp', $contact->lastOutboundMessage()['channel'] ?? null);
+        $this->assertSame('Nota previa', data_get($contact->data, 'notes'));
     }
 }

@@ -67,7 +67,6 @@ class DemoDigestScenariosSeederTest extends TestCase
             'status_id' => 5,
             'country' => 724,
             'language' => 'es',
-            'engagment' => 'temperate',
             'user_id' => $user->id,
         ]);
 

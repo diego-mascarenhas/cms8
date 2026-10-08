@@ -187,6 +187,21 @@ class MessageDelivery extends Model
 
         $this->save();
 
+        $contact = $this->contact;
+        $email = is_string($contact?->email) ? $contact->email : '';
+        if ($contact && $email !== '')
+        {
+            $permanent = is_string($errorMessage) && Contact::emailFailureIsPermanent($errorMessage);
+            $contact->recordOutboundChannel(
+                'email',
+                $email,
+                $permanent ? false : null,
+                'failed',
+                is_string($errorMessage) && $errorMessage !== '' ? $errorMessage : (string) ($this->message?->name ?? ''),
+                $permanent ? $errorMessage : null,
+            );
+        }
+
         // Check if this is a critical error and handle campaign pausing
         if ($errorMessage && $this->message)
         {

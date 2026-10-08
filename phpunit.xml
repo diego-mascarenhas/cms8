@@ -38,5 +38,8 @@
         <env name="APP_LOGO_BUDGET_PATH" value=""/>
         <env name="BUDGET_PREVIEW_BASE_URL" value=""/>
         <env name="WHATSAPP_ENFORCE_SESSION_WINDOW" value="false"/>
+        <env name="MAILBABY_ENABLED" value="false"/>
+        <env name="MAILBABY_API_KEY" value=""/>
+        <env name="MAILBABY_ORDER_ID" value=""/>
     </php>
 </phpunit>

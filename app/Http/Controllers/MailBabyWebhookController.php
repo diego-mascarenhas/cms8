@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Communication;
+use App\Models\Contact;
 use App\Models\MessageDelivery;
 use App\Services\MailBabyService;
 use Illuminate\Http\Request;
@@ -177,6 +178,18 @@ class MailBabyWebhookController extends Controller
             'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
         ]);
 
+        $email = (string) ($delivery->contact->email ?? '');
+        if ($delivery->contact && $email !== '')
+        {
+            $delivery->contact->recordOutboundChannel(
+                'email',
+                $email,
+                true,
+                'delivered',
+                (string) ($delivery->message?->name ?? 'Email'),
+            );
+        }
+
         Log::info('MailBaby webhook: Email delivered', [
             'delivery_id' => $delivery->id,
             'provider_message_id' => $delivery->provider_message_id,
@@ -203,6 +216,19 @@ class MailBabyWebhookController extends Controller
             'error_message' => $bounceReason,
             'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
         ]);
+
+        $email = (string) ($delivery->contact->email ?? '');
+        if ($delivery->contact && $email !== '')
+        {
+            $delivery->contact->recordOutboundChannel(
+                'email',
+                $email,
+                $bounceType === 'hard' ? false : null,
+                'failed',
+                $bounceReason,
+                $bounceType === 'hard' ? $bounceReason : null,
+            );
+        }
 
         Log::warning('MailBaby webhook: Email bounced', [
             'delivery_id' => $delivery->id,
@@ -307,6 +333,21 @@ class MailBabyWebhookController extends Controller
             'error_message' => $errorReason,
             'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
         ]);
+
+        $email = (string) ($delivery->contact->email ?? '');
+        if ($delivery->contact && $email !== '')
+        {
+            $reason = is_string($errorReason) ? $errorReason : 'Unknown error';
+            $permanent = Contact::emailFailureIsPermanent($reason);
+            $delivery->contact->recordOutboundChannel(
+                'email',
+                $email,
+                $permanent ? false : null,
+                'failed',
+                $reason,
+                $permanent ? $reason : null,
+            );
+        }
 
         Log::error('MailBaby webhook: Email failed', [
             'delivery_id' => $delivery->id,

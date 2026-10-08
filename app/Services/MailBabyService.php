@@ -31,7 +31,12 @@ class MailBabyService
                 'body' => $emailData['body'],
             ];
 
-            // Add optional fields only if they have values
+            $orderId = $this->mailOrderId();
+            if ($orderId !== null)
+            {
+                $payload['id'] = $orderId;
+            }
+
             if (! empty($emailData['reply_to']))
             {
                 $payload['replyto'] = $emailData['reply_to'];
@@ -48,16 +53,14 @@ class MailBabyService
             {
                 $payload['attachments'] = $emailData['attachments'];
             }
-            // Remove the custom ID for now - might not be supported
-            // if (!empty($emailData['message_id'])) {
-            //	 $payload['id'] = $emailData['message_id'];
-            // }
+
+            $endpoint = $this->usesAdvancedSend($payload) ? '/mail/advsend' : '/mail/send';
 
             $response = Http::withHeaders([
                 'X-API-KEY' => $this->apiKey,
                 'Content-Type' => 'application/json',
                 'Accept' => 'application/json',
-            ])->post($this->baseUrl.'/mail/send', $payload);
+            ])->post($this->baseUrl.$endpoint, $payload);
 
             if ($response->successful())
             {
@@ -124,14 +127,64 @@ class MailBabyService
     /**
      * @return array<string, mixed>|null
      */
+    public function findDeliveryRecord(?string $mailId, ?string $recipient, ?string $subject, ?string $startDate): ?array
+    {
+        if (is_string($mailId) && preg_match('/^[a-f0-9]{18,19}$/i', $mailId))
+        {
+            $byId = $this->firstLogEmail($this->getMailLog($mailId, ['limit' => 5]));
+            if (is_array($byId))
+            {
+                return $this->presentLogEntry($byId);
+            }
+        }
+
+        if (! is_string($recipient) || ! str_contains($recipient, '@'))
+        {
+            return null;
+        }
+
+        $log = $this->getMailLog(null, [
+            'to' => $recipient,
+            'startDate' => $startDate,
+            'limit' => 20,
+        ]);
+        $emails = $this->logEmails($log);
+        if ($emails === [])
+        {
+            return null;
+        }
+
+        $match = $emails[0];
+        $needle = is_string($subject) ? mb_strtolower(trim($subject)) : '';
+        if ($needle !== '')
+        {
+            foreach ($emails as $email)
+            {
+                $rowSubject = mb_strtolower(trim((string) ($email['subject'] ?? '')));
+                if ($rowSubject !== '' && (str_contains($rowSubject, $needle) || str_contains($needle, $rowSubject)))
+                {
+                    $match = $email;
+                    break;
+                }
+            }
+        }
+
+        return $this->presentLogEntry($match);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
     public function getMailLog(?string $mailId, array $filters = []): ?array
     {
         try
         {
             $query = array_filter([
+                'id' => $filters['id'] ?? $this->mailOrderId(),
                 'mailid' => $mailId,
                 'to' => $filters['to'] ?? null,
                 'subject' => $filters['subject'] ?? null,
+                'startDate' => $filters['startDate'] ?? null,
                 'limit' => $filters['limit'] ?? 1,
             ], fn ($value) => $value !== null && $value !== '');
 
@@ -255,5 +308,75 @@ class MailBabyService
         $expectedSignature = hash_hmac('sha256', $payload, $secret);
 
         return hash_equals($expectedSignature, $signature);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function usesAdvancedSend(array $payload): bool
+    {
+        if (! empty($payload['replyto']) || ! empty($payload['cc']) || ! empty($payload['bcc']) || ! empty($payload['attachments']))
+        {
+            return true;
+        }
+
+        return is_string($payload['from'] ?? null) && str_contains($payload['from'], '<');
+    }
+
+    private function mailOrderId(): ?int
+    {
+        $id = config('services.mailbaby.order_id');
+        if (! is_numeric($id) || (int) $id <= 0)
+        {
+            return null;
+        }
+
+        return (int) $id;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $log
+     * @return list<array<string, mixed>>
+     */
+    private function logEmails(?array $log): array
+    {
+        $emails = is_array($log) ? ($log['emails'] ?? null) : null;
+        if (! is_array($emails))
+        {
+            return [];
+        }
+
+        return array_values(array_filter($emails, 'is_array'));
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $log
+     * @return array<string, mixed>|null
+     */
+    private function firstLogEmail(?array $log): ?array
+    {
+        $emails = $this->logEmails($log);
+
+        return $emails[0] ?? null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private function presentLogEntry(array $row): array
+    {
+        return [
+            'found' => true,
+            'id' => $row['id'] ?? null,
+            'delivered' => (int) ($row['delivered'] ?? 0) === 1,
+            'code' => $row['code'] ?? null,
+            'response' => $row['response'] ?? null,
+            'created' => $row['created'] ?? null,
+            'user' => $row['user'] ?? null,
+            'subject' => $row['subject'] ?? null,
+            'from' => $row['from'] ?? null,
+            'to' => $row['to'] ?? null,
+        ];
     }
 }

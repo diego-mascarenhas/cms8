@@ -127,7 +127,6 @@ class DemoDigestScenariosSeeder extends Seeder
                     'status_id' => 5,
                     'country' => 724,
                     'language' => 'es',
-                    'engagment' => collect(['cold', 'temperate', 'hot'])->random(),
                     'current_enterprise_id' => $enterprise?->id,
                     'user_id' => $ownerId,
                 ],
@@ -308,7 +307,6 @@ class DemoDigestScenariosSeeder extends Seeder
                 'status_id' => 5,
                 'country' => 724,
                 'language' => 'es',
-                'engagment' => 'temperate',
                 'user_id' => $ownerId,
             ]);
         } else

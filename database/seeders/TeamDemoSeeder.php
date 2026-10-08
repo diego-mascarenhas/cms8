@@ -1103,7 +1103,6 @@ class TeamDemoSeeder extends Seeder
                     'status_id' => 1,
                     'country' => 724,  // Spain
                     'language' => 'es',
-                    'engagment' => 'temperate',
                 ],
             );
 
@@ -1134,7 +1133,6 @@ class TeamDemoSeeder extends Seeder
                     'status_id' => rand(1, 2),  // Active or In Progress
                     'country' => 724,  // Spain
                     'language' => 'es',
-                    'engagment' => collect(['cold', 'temperate', 'hot'])->random(),
                     'current_enterprise_id' => $enterprise?->id,
                 ],
             );

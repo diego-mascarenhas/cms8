@@ -1126,7 +1126,6 @@ class ImportDataCommand extends Command
                 //					 'source_id' => null,
                 //					 'birthday' => null,
                 //					 'profile' => null,
-                //					 'engagment' => 'temperate',
                 //					 'country' => 32,
                 //					 'language' => 'es',
                 //					 'creator_id' => 1,

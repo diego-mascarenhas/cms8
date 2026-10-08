@@ -117,7 +117,6 @@ class DemoDashboardRichDataSeeder extends Seeder
                     'status_id' => ($i % 4 === 0) ? 1 : (($i % 3) + 2),
                     'country' => 724,
                     'language' => 'es',
-                    'engagment' => collect(['cold', 'temperate', 'hot'])->random(),
                     'created_at' => $createdAt,
                     'updated_at' => $createdAt,
                 ],

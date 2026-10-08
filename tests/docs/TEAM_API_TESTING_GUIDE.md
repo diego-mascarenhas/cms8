@@ -85,8 +85,7 @@ curl -X POST "$BASE_URL/team/contacts" \
     "phone": "612345678",
     "language": "es",
     "status_id": 1,
-    "country": 724,
-    "engagment": "temperate"
+    "country": 724
   }'
 ```
 

@@ -235,6 +235,12 @@ class Message extends Model
             $query->where('email', 'not like', '%'.$domain);
         }
 
+        $query->where(function (Builder $channel): void
+        {
+            $channel->whereNull('data->channels->email->valid')
+                ->orWhere('data->channels->email->valid', true);
+        });
+
         return $query;
     }
 

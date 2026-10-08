@@ -250,7 +250,6 @@ class DemoNotificationsSeeder extends Seeder
                 'status_id' => 1,
                 'country' => 724,
                 'language' => 'es',
-                'engagment' => 'temperate',
                 'user_id' => $user->id,
             ]);
         } elseif ((int) $contact->user_id !== (int) $user->id)

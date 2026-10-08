@@ -654,7 +654,6 @@ class UserDailyPerformanceInsightTest extends TestCase
             'status_id' => 1,
             'country' => 724,
             'language' => 'es',
-            'engagment' => 'temperate',
             'user_id' => $user->id,
         ]);
 
@@ -699,7 +698,6 @@ class UserDailyPerformanceInsightTest extends TestCase
                 'status_id' => 1,
                 'country' => 724,
                 'language' => 'es',
-                'engagment' => 'temperate',
                 'user_id' => $user->id,
             ])->id,
             'user_id' => $user->id,
