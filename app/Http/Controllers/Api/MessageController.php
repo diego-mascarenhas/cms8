@@ -599,6 +599,14 @@ class MessageController extends Controller
                     : null;
             }
 
+            if (array_key_exists('from_name', $validated) || array_key_exists('from_address', $validated))
+            {
+                $fromName = trim((string) ($validated['from_name'] ?? ''));
+                $fromAddress = trim((string) ($validated['from_address'] ?? ''));
+                $payload['from_name'] = $fromName !== '' && $fromAddress !== '' ? $fromName : null;
+                $payload['from_address'] = $fromName !== '' && $fromAddress !== '' ? $fromAddress : null;
+            }
+
             if ($mailHtml !== null && trim($mailHtml) !== '')
             {
                 $payload['mail_html'] = $mailHtml;

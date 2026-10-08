@@ -8,6 +8,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Support\MessageTemplateMergeFields;
 use App\Traits\ConfiguresTeamMail;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use stdClass;
@@ -27,6 +28,15 @@ class MessageCampaignTestSendService
         }
 
         $this->configureMailForTeam($team, forMailerCampaigns: true);
+        $sender = $message->resolvedMailerSender($team);
+        if ($sender['from_name'] !== '')
+        {
+            Config::set('mail.from.name', $sender['from_name']);
+        }
+        if ($sender['from_address'] !== '')
+        {
+            Config::set('mail.from.address', $sender['from_address']);
+        }
 
         foreach ($recipientEmails as $recipientEmail)
         {

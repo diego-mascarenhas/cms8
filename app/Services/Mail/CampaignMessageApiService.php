@@ -173,10 +173,12 @@ class CampaignMessageApiService
         }
 
         $stats = $this->computeAndPersistStats($message);
-        $emailConfig = $team->getOutgoingEmailConfig();
-        $fromName = trim((string) ($emailConfig['from_name'] ?? ''));
-        $fromAddress = trim((string) ($emailConfig['from_address'] ?? ''));
-        $senderConfigured = $team->hasOutgoingEmailSenderConfigured();
+        $resolvedSender = $message->resolvedMailerSender($team);
+        $fromName = $resolvedSender['from_name'];
+        $fromAddress = $resolvedSender['from_address'];
+        $senderConfigured = $fromName !== '' && $fromAddress !== '';
+        $overrideName = trim((string) $message->from_name);
+        $overrideAddress = trim((string) $message->from_address);
 
         return [
             'id' => $message->id,
@@ -207,6 +209,9 @@ class CampaignMessageApiService
                 'id' => $message->template->id,
                 'name' => $message->template->name,
             ] : null,
+            'from_name' => $overrideName !== '' ? $overrideName : null,
+            'from_address' => $overrideAddress !== '' ? $overrideAddress : null,
+            'custom_sender_allowed' => $team->allowsCustomMessageSender(),
             'sender' => [
                 'from_name' => $fromName,
                 'from_address' => $fromAddress,

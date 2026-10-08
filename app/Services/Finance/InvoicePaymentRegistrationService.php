@@ -20,6 +20,9 @@ class InvoicePaymentRegistrationService
 
     private const CASH_PAYMENT_TYPE_ID = 1;
 
+    /** @var list<int> */
+    private const TRANSFER_PAYMENT_TYPE_IDS = [2, 3, 9, 11];
+
     public function __construct(
         private readonly InvoiceCurrencyService $invoiceCurrencyService,
         private readonly StripeInvoiceOutOfBandPaymentService $stripeOutOfBandPaymentService,
@@ -57,7 +60,7 @@ class InvoicePaymentRegistrationService
             return false;
         }
 
-        return $this->cashAccountsForInvoiceCurrency($invoice)->isNotEmpty();
+        return $this->manualAccountsForInvoiceCurrency($invoice)->isNotEmpty();
     }
 
     public function isStripeInvoiceCollected(Invoice $invoice): bool
@@ -98,7 +101,7 @@ class InvoicePaymentRegistrationService
      */
     public function formDefaults(Invoice $invoice, bool $includeMercadoPago = false): array
     {
-        $accounts = $this->cashAccountsForInvoiceCurrency($invoice);
+        $accounts = $this->manualAccountsForInvoiceCurrency($invoice);
 
         if ($includeMercadoPago)
         {
@@ -149,9 +152,24 @@ class InvoicePaymentRegistrationService
                 ?? $accounts->first();
         }
 
+        $typeIdsByAccount = [];
+        foreach ($accounts as $account)
+        {
+            $typeIdsByAccount[(int) $account->id] = $this->manualPaymentTypeIds($account);
+        }
+
+        $paymentTypeIds = collect($typeIdsByAccount)
+            ->flatten()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
         $paymentTypes = PaymentType::query()
-            ->whereKey(self::CASH_PAYMENT_TYPE_ID)
+            ->whereIn('id', $paymentTypeIds === [] ? [self::CASH_PAYMENT_TYPE_ID] : $paymentTypeIds)
             ->get(['id', 'name'])
+            ->sortBy('id')
             ->map(fn ($type) => ['id' => $type->id, 'name' => $type->display_name])
             ->values()
             ->all();
@@ -160,17 +178,21 @@ class InvoicePaymentRegistrationService
             ->map(fn (PaymentAccount $account) => [
                 'id' => $account->id,
                 'name' => $account->name,
-                'payment_type_ids' => [self::CASH_PAYMENT_TYPE_ID],
+                'payment_type_ids' => $typeIdsByAccount[(int) $account->id] ?? [],
                 'is_mercadopago' => $this->isMercadoPagoAccount($account),
             ])
             ->values()
             ->all();
 
+        $preferredTypeIds = $preferredAccount
+            ? ($typeIdsByAccount[(int) $preferredAccount->id] ?? [])
+            : [];
+
         return [
             'amount' => round((float) $invoice->balance, 2),
             'date' => now()->toDateString(),
             'account_id' => $preferredAccount?->id,
-            'type_id' => self::CASH_PAYMENT_TYPE_ID,
+            'type_id' => $preferredTypeIds[0] ?? self::CASH_PAYMENT_TYPE_ID,
             'accounts' => $mappedAccounts,
             'payment_types' => $paymentTypes,
             'currency_code' => $invoice->currency_code,
@@ -212,28 +234,82 @@ class InvoicePaymentRegistrationService
     }
 
     /**
-     * Manual invoice payments are cash-only; exclude bank/e-wallet accounts.
+     * Cash drawers and accounts that can receive a transfer.
      *
      * @return Collection<int, PaymentAccount>
      */
-    public function cashAccountsForInvoiceCurrency(Invoice $invoice): Collection
+    public function manualAccountsForInvoiceCurrency(Invoice $invoice): Collection
     {
         return $this->accountsForInvoiceCurrency($invoice)
-            ->filter(fn (PaymentAccount $account): bool => $this->isCashAccountForManualPayment($account))
+            ->filter(fn (PaymentAccount $account): bool => $this->manualPaymentTypeIds($account) !== [])
             ->values();
     }
 
-    public function isCashAccountForManualPayment(PaymentAccount $account): bool
+    /**
+     * @return list<int>
+     */
+    public function manualPaymentTypeIds(PaymentAccount $account): array
+    {
+        $accepted = $this->acceptedTypeIds($account);
+
+        return array_values(array_filter(
+            $accepted,
+            fn (int $id): bool => $id === self::CASH_PAYMENT_TYPE_ID
+                || in_array($id, self::TRANSFER_PAYMENT_TYPE_IDS, true),
+        ));
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function acceptedTypeIds(PaymentAccount $account): array
     {
         $account->loadMissing('paymentTypes');
 
         if ($account->paymentTypes->isNotEmpty())
         {
-            return $account->paymentTypes->contains(
-                fn ($type): bool => (int) $type->id === self::CASH_PAYMENT_TYPE_ID,
-            );
+            return $account->paymentTypes
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all();
         }
 
+        $code = mb_strtoupper(trim((string) $account->code));
+
+        if (isset(PaymentAccountCompatibilityService::DEFAULT_TYPES_BY_ACCOUNT_CODE[$code]))
+        {
+            return PaymentAccountCompatibilityService::DEFAULT_TYPES_BY_ACCOUNT_CODE[$code];
+        }
+
+        foreach (PaymentAccountCompatibilityService::DEFAULT_TYPES_BY_ACCOUNT_CODE as $prefix => $typeIds)
+        {
+            if (str_starts_with($code, $prefix.'_') || str_starts_with($code, $prefix.'-') || $code === $prefix)
+            {
+                return $typeIds;
+            }
+        }
+
+        if ($this->isMercadoPagoAccount($account))
+        {
+            return [2, 12];
+        }
+
+        if ($this->looksLikeCashAccount($account))
+        {
+            return [self::CASH_PAYMENT_TYPE_ID];
+        }
+
+        if ($this->looksLikeTransferAccount($account))
+        {
+            return [2];
+        }
+
+        return [];
+    }
+
+    private function looksLikeCashAccount(PaymentAccount $account): bool
+    {
         $code = mb_strtoupper((string) $account->code);
         $name = mb_strtolower((string) $account->name);
 
@@ -247,8 +323,26 @@ class InvoicePaymentRegistrationService
             return true;
         }
 
-        // "Caja Fuerte" / generic cash drawer, but not "caja de ahorro(s)".
         return str_contains($name, 'caja') && ! str_contains($name, 'ahorro');
+    }
+
+    private function looksLikeTransferAccount(PaymentAccount $account): bool
+    {
+        $code = mb_strtoupper((string) $account->code);
+        $name = mb_strtolower((string) $account->name);
+
+        if (str_contains($code, 'BANK') || str_contains($code, 'TRANSFER') || str_contains($code, 'BIZUM') || str_contains($code, 'WISE'))
+        {
+            return true;
+        }
+
+        return str_contains($name, 'banco')
+            || str_contains($name, 'bank')
+            || str_contains($name, 'transfer')
+            || str_contains($name, 'bizum')
+            || str_contains($name, 'wise')
+            || str_contains($name, 'ahorro')
+            || str_contains($name, 'rural');
     }
 
     /**
@@ -301,14 +395,16 @@ class InvoicePaymentRegistrationService
             ]);
         }
 
-        if (! $this->isCashAccountForManualPayment($account))
+        $manualTypeIds = $this->manualPaymentTypeIds($account);
+
+        if ($manualTypeIds === [])
         {
             throw ValidationException::withMessages([
                 'account_id' => __('invoice_payment.errors.account_invalid'),
             ]);
         }
 
-        if ((int) $data['type_id'] !== self::CASH_PAYMENT_TYPE_ID)
+        if (! in_array((int) $data['type_id'], $manualTypeIds, true))
         {
             throw ValidationException::withMessages([
                 'type_id' => __('invoice_payment.errors.type_not_allowed_for_account'),

@@ -56,6 +56,8 @@ class StoreMessageApiRequest extends FormRequest
                 $this->merge([$flag => $flag === 'status_id' ? false : true]);
             }
         }
+
+        $this->normalizeMessageSender();
     }
 
     /**
@@ -85,6 +87,8 @@ class StoreMessageApiRequest extends FormRequest
             'scheduled_send_at' => ['nullable', 'date', 'after:now', 'required_if:save_intent,save_schedule'],
             'schedule_send_at' => ['nullable', 'date', 'after:now'],
             'save_intent' => ['nullable', 'in:save,save_send,save_schedule'],
+            'from_name' => ['nullable', 'string', 'max:255', 'required_with:from_address'],
+            'from_address' => ['nullable', 'email', 'max:255', 'required_with:from_name'],
         ];
     }
 
@@ -92,6 +96,8 @@ class StoreMessageApiRequest extends FormRequest
     {
         $validator->after(function (Validator $v): void
         {
+            $this->rejectCustomSenderOnLowerPlans($v);
+
             $start = $this->input('send_window_start');
             $end = $this->input('send_window_end');
             if (filled($start) && filled($end))
@@ -108,6 +114,34 @@ class StoreMessageApiRequest extends FormRequest
                 }
             }
         });
+    }
+
+    private function normalizeMessageSender(): void
+    {
+        foreach (['from_name', 'from_address'] as $field)
+        {
+            if ($this->has($field) && trim((string) $this->input($field)) === '')
+            {
+                $this->merge([$field => null]);
+            }
+        }
+    }
+
+    private function rejectCustomSenderOnLowerPlans(Validator $validator): void
+    {
+        if (! $this->filled('from_name') && ! $this->filled('from_address'))
+        {
+            return;
+        }
+
+        $team = $this->user()?->currentTeam;
+        if ($team && ! $team->allowsCustomMessageSender())
+        {
+            $validator->errors()->add(
+                'from_address',
+                'El remitente por mensaje está disponible en los planes Foundation y Scale.',
+            );
+        }
     }
 
     private function minutesFromHi(?string $hi): ?int

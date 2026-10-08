@@ -515,7 +515,7 @@
           <div class="alert alert-danger py-2">{{ $errors->first('payment_sync_id') }}</div>
         @endif
         <form
-          action="{{ $startInMercadoPagoMode ? $electronicPaymentUrl : $manualPaymentUrl }}"
+          action="{{ $manualPaymentUrl }}"
           method="POST"
           class="row g-3"
           id="invoiceManualPaymentForm"
@@ -523,7 +523,7 @@
           data-electronic-action="{{ $electronicPaymentUrl }}"
         >
           @csrf
-          <div class="col-12 js-manual-payment-field" @if ($startInMercadoPagoMode) style="display:none" @endif>
+          <div class="col-12 js-manual-payment-field">
             <label for="amount" class="form-label">{{ __('invoice_payment.amount') }} <span class="text-danger">*</span></label>
             <div class="input-group">
               <input
@@ -535,8 +535,7 @@
                 id="amount"
                 class="form-control @error('amount') is-invalid @enderror"
                 value="{{ old('amount', $paymentFormDefaults['amount']) }}"
-                @unless ($startInMercadoPagoMode) required @endunless
-                @if ($startInMercadoPagoMode) disabled @endif
+                required
               >
               <span class="input-group-text">{{ $paymentFormDefaults['currency_code'] }}</span>
             </div>
@@ -544,7 +543,7 @@
               <div class="invalid-feedback d-block">{{ $message }}</div>
             @enderror
           </div>
-          <div class="col-12 js-manual-payment-field" @if ($startInMercadoPagoMode) style="display:none" @endif>
+          <div class="col-12 js-manual-payment-field">
             <x-input-date
               id="date"
               label="{{ __('invoice_payment.date') }} (*)"
@@ -568,6 +567,7 @@
                   <option
                     value="{{ $accountOption['id'] }}"
                     data-mercadopago="{{ ! empty($accountOption['is_mercadopago']) ? '1' : '0' }}"
+                    data-payment-types="{{ implode(',', $accountOption['payment_type_ids'] ?? []) }}"
                     @selected((string) $selectedAccountId === (string) $accountOption['id'])
                   >{{ $accountOption['name'] }}</option>
                 @endforeach
@@ -577,14 +577,14 @@
               @enderror
             </div>
           </div>
-          <div class="col-12 js-manual-payment-field" id="invoicePaymentTypeField" @if ($startInMercadoPagoMode) style="display:none" @endif>
+          <div class="col-12 js-manual-payment-field" id="invoicePaymentTypeField">
             <x-input-select
               id="type_id"
               label="{{ __('invoice_payment.type') }}"
               :options="$paymentFormDefaults['payment_types']"
               value="{{ old('type_id', $paymentFormDefaults['type_id']) }}"
               placeholder="{{ __('Select') }}"
-              :required="! $startInMercadoPagoMode"
+              :required="true"
             />
           </div>
           @if ($showElectronicFields)
@@ -595,12 +595,12 @@
               :options="$electronicPaymentSyncOptions"
               value="{{ old('payment_sync_id') }}"
               placeholder="{{ __('invoice_payment.electronic_sync_placeholder') }}"
-              :required="$startInMercadoPagoMode"
+              :required="false"
               help-text="{{ __('invoice_payment.electronic_hint') }}"
             />
           </div>
           @endif
-          <div class="col-12 js-manual-payment-field" @if ($startInMercadoPagoMode) style="display:none" @endif>
+          <div class="col-12 js-manual-payment-field">
             <x-input-textarea
               id="remarks"
               label="{{ __('invoice_payment.remarks') }}"
@@ -610,7 +610,7 @@
           <div class="col-12">
             <button type="submit" class="btn btn-primary w-100" id="invoicePaymentSubmitBtn">
               <i class="ti ti-cash me-1" id="invoicePaymentSubmitIcon"></i>
-              <span id="invoicePaymentSubmitLabel">{{ $startInMercadoPagoMode ? __('invoice_payment.electronic_submit') : __('invoice_payment.submit') }}</span>
+              <span id="invoicePaymentSubmitLabel">{{ __('invoice_payment.submit') }}</span>
             </button>
           </div>
         </form>
@@ -768,6 +768,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const electronicAction = form.getAttribute('data-electronic-action');
     const manualSubmitLabel = @json(__('invoice_payment.submit'));
     const electronicSubmitLabel = @json(__('invoice_payment.electronic_submit'));
+    const paymentTypes = @json($paymentFormDefaults['payment_types']);
 
     function setFieldEnabled(el, enabled) {
         if (! el) {
@@ -781,6 +782,33 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function applyTypeOptions(allowedIds) {
+        if (! typeSelect) {
+            return;
+        }
+
+        const allowed = allowedIds.map(String);
+        const current = typeSelect.value;
+        const next = allowed.includes(current) ? current : (allowed[0] || '');
+
+        typeSelect.innerHTML = '';
+        paymentTypes.forEach(function (type) {
+            if (! allowed.includes(String(type.id))) {
+                return;
+            }
+
+            const option = document.createElement('option');
+            option.value = String(type.id);
+            option.textContent = type.name;
+            option.selected = String(type.id) === String(next);
+            typeSelect.appendChild(option);
+        });
+
+        if (window.jQuery && jQuery(typeSelect).hasClass('select2-hidden-accessible')) {
+            jQuery(typeSelect).trigger('change.select2');
+        }
+    }
+
     function togglePaymentMode() {
         if (! accountSelect) {
             return;
@@ -788,38 +816,43 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const selected = accountSelect.options[accountSelect.selectedIndex];
         const isMercadoPago = selected && selected.getAttribute('data-mercadopago') === '1' && !! syncField;
+        const syncChosen = isMercadoPago && syncSelect && syncSelect.value !== '';
+        const allowedTypes = selected
+            ? String(selected.getAttribute('data-payment-types') || '').split(',').filter(Boolean)
+            : [];
 
-        form.action = isMercadoPago ? electronicAction : manualAction;
+        form.action = syncChosen ? electronicAction : manualAction;
 
         manualFields.forEach(function (field) {
-            field.style.display = isMercadoPago ? 'none' : '';
+            field.style.display = '';
         });
 
         if (syncField) {
             syncField.style.display = isMercadoPago ? '' : 'none';
         }
 
-        setFieldEnabled(amountInput, ! isMercadoPago);
-        setFieldEnabled(dateInput, ! isMercadoPago);
-        setFieldEnabled(typeSelect, ! isMercadoPago);
-        setFieldEnabled(remarksInput, ! isMercadoPago);
+        applyTypeOptions(allowedTypes);
+        setFieldEnabled(amountInput, ! syncChosen);
+        setFieldEnabled(dateInput, ! syncChosen);
+        setFieldEnabled(typeSelect, ! syncChosen);
+        setFieldEnabled(remarksInput, ! syncChosen);
         setFieldEnabled(syncSelect, isMercadoPago);
 
         if (amountInput) {
-            amountInput.required = ! isMercadoPago;
+            amountInput.required = ! syncChosen;
         }
         if (typeSelect) {
-            typeSelect.required = ! isMercadoPago;
+            typeSelect.required = ! syncChosen;
         }
         if (syncSelect) {
-            syncSelect.required = isMercadoPago;
+            syncSelect.required = false;
         }
 
         if (submitLabel) {
-            submitLabel.textContent = isMercadoPago ? electronicSubmitLabel : manualSubmitLabel;
+            submitLabel.textContent = syncChosen ? electronicSubmitLabel : manualSubmitLabel;
         }
         if (submitIcon) {
-            submitIcon.className = isMercadoPago ? 'ti ti-link me-1' : 'ti ti-cash me-1';
+            submitIcon.className = syncChosen ? 'ti ti-link me-1' : 'ti ti-cash me-1';
         }
     }
 
@@ -829,8 +862,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (window.jQuery) {
         jQuery(accountSelect).on('change', togglePaymentMode);
+        if (syncSelect) {
+            jQuery(syncSelect).on('change', togglePaymentMode);
+        }
     } else if (accountSelect) {
         accountSelect.addEventListener('change', togglePaymentMode);
+        if (syncSelect) {
+            syncSelect.addEventListener('change', togglePaymentMode);
+        }
     }
 
     togglePaymentMode();

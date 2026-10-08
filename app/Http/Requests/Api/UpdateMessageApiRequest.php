@@ -33,6 +33,14 @@ class UpdateMessageApiRequest extends FormRequest
         {
             $this->merge(['scheduled_send_at' => $this->input('schedule_send_at')]);
         }
+
+        foreach (['from_name', 'from_address'] as $field)
+        {
+            if ($this->has($field) && trim((string) $this->input($field)) === '')
+            {
+                $this->merge([$field => null]);
+            }
+        }
     }
 
     /**
@@ -62,6 +70,8 @@ class UpdateMessageApiRequest extends FormRequest
             'scheduled_send_at' => ['nullable', 'date', 'after:now', 'required_if:save_intent,save_schedule'],
             'schedule_send_at' => ['nullable', 'date', 'after:now'],
             'save_intent' => ['nullable', 'in:save,save_send,save_schedule'],
+            'from_name' => ['nullable', 'string', 'max:255', 'required_with:from_address'],
+            'from_address' => ['nullable', 'email', 'max:255', 'required_with:from_name'],
         ];
     }
 
@@ -69,6 +79,18 @@ class UpdateMessageApiRequest extends FormRequest
     {
         $validator->after(function (Validator $v): void
         {
+            if ($this->filled('from_name') || $this->filled('from_address'))
+            {
+                $team = $this->user()?->currentTeam;
+                if ($team && ! $team->allowsCustomMessageSender())
+                {
+                    $v->errors()->add(
+                        'from_address',
+                        'El remitente por mensaje está disponible en los planes Foundation y Scale.',
+                    );
+                }
+            }
+
             $start = $this->input('send_window_start');
             $end = $this->input('send_window_end');
             if (filled($start) && filled($end))

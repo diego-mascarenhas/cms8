@@ -149,6 +149,14 @@ enum EmailPlan: string
     }
 
     /**
+     * A campaign may override the From address only on Foundation and Scale.
+     */
+    public function allowsCustomMessageSender(): bool
+    {
+        return $this === self::FOUNDATION || $this === self::SCALE;
+    }
+
+    /**
      * Get EmailPlan from Stripe price ID (humano_pricing, then subscription_products).
      */
     public static function fromStripePriceId(?string $priceId): self
