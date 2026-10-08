@@ -478,6 +478,9 @@ class Contact extends Model implements HasMedia
         {
             $nextReason = null;
             $lastError = null;
+        } elseif ($status !== 'failed' && $nextValid !== false)
+        {
+            $lastError = null;
         } elseif ($status === 'failed')
         {
             $text = trim((string) ($reason !== null && $reason !== '' ? $reason : $summary));

@@ -469,6 +469,18 @@ class Message extends Model
     }
 
     /**
+     * MailBaby (and similar relays) rejected this message as spam. One hit is enough to stop the campaign.
+     */
+    public static function isProviderSpamRejection(string $errorMessage): bool
+    {
+        $lower = mb_strtolower($errorMessage);
+
+        return str_contains($lower, 'rspam')
+            || str_contains($lower, 'classified as spam')
+            || str_contains($lower, 'outboundspamprotec');
+    }
+
+    /**
      * Count recent critical errors for this message (last 10 minutes)
      */
     public function getRecentCriticalErrorsCount(): int
@@ -514,6 +526,16 @@ class Message extends Model
      */
     public function handleCriticalError(string $errorMessage, ?int $deliveryId = null): void
     {
+        if (self::isProviderSpamRejection($errorMessage))
+        {
+            if ($this->status_id)
+            {
+                $this->pauseForErrors('Provider classified the message as spam.');
+            }
+
+            return;
+        }
+
         if (! $this->isCriticalError($errorMessage))
         {
             return;

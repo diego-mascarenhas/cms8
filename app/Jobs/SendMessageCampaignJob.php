@@ -81,6 +81,12 @@ class SendMessageCampaignJob implements ShouldQueue
                 return;
             }
 
+            $this->messageDelivery->message?->refresh();
+            if (! $this->manualResend && ! $this->messageDelivery->message?->status_id)
+            {
+                return;
+            }
+
             $this->messageDelivery->update(['status_id' => 2]);
 
             $this->sendEmail();
