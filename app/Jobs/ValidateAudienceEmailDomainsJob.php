@@ -16,20 +16,57 @@ class ValidateAudienceEmailDomainsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public int $teamId, public string $token = '') {}
+    private const RUN_MINUTES = 120;
+
+    public int $timeout = 60;
+
+    public int $tries = 3;
+
+    public function __construct(
+        public int $teamId,
+        public string $token = '',
+        public string $startedAt = '',
+        public int $contactId = 0,
+    ) {}
 
     public static function cacheKey(int $teamId): string
     {
         return 'mailer:audience:domain-check:'.$teamId;
     }
 
-    public static function markRunning(int $teamId, string $token): void
+    public static function countContacts(int $teamId): int
+    {
+        return Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereNotNull('email')
+            ->where('email', '!=', '')
+            ->count();
+    }
+
+    /**
+     * @return array{running: bool, total: int, checked: int}
+     */
+    public static function progress(int $teamId): array
+    {
+        $state = Cache::get(self::cacheKey($teamId));
+        $running = self::isRunning($teamId);
+
+        return [
+            'running' => $running,
+            'total' => $running && is_array($state) ? (int) ($state['total'] ?? 0) : 0,
+            'checked' => $running && is_array($state) ? (int) ($state['checked'] ?? 0) : 0,
+        ];
+    }
+
+    public static function markRunning(int $teamId, string $token, int $total = 0): void
     {
         Cache::put(self::cacheKey($teamId), [
             'status' => 'running',
             'token' => $token,
+            'total' => $total,
+            'checked' => 0,
             'started_at' => now()->toIso8601String(),
-        ], now()->addMinutes(30));
+        ], now()->addMinutes(self::RUN_MINUTES));
     }
 
     public static function isRunning(int $teamId): bool
@@ -46,46 +83,130 @@ class ValidateAudienceEmailDomainsJob implements ShouldQueue
             return false;
         }
 
-        return Carbon::parse($startedAt)->greaterThan(now()->subMinutes(30));
+        return Carbon::parse($startedAt)->greaterThan(now()->subMinutes(self::RUN_MINUTES));
     }
 
     public function handle(EmailDomainDns $dns): void
     {
-        try
+        $contact = $this->contact();
+        if (! $contact instanceof Contact)
         {
-            $known = [];
+            $this->advance(1);
 
-            Contact::withoutGlobalScopes()
-                ->where('team_id', $this->teamId)
-                ->whereNotNull('email')
-                ->where('email', '!=', '')
-                ->orderBy('id')
-                ->chunkById(100, function ($contacts) use ($dns, &$known): void
-                {
-                    foreach ($contacts as $contact)
-                    {
-                        $domain = EmailDomainDns::domain((string) $contact->email) ?? '';
-                        if (! array_key_exists($domain, $known))
-                        {
-                            $known[$domain] = $domain !== '' && $dns->domainAcceptsMail($domain);
-                        }
-
-                        $contact->applyEmailDomainCheck($known[$domain]);
-                    }
-                });
-        } finally
-        {
-            $this->releaseRunningFlag();
+            return;
         }
+
+        if ($this->startedAt !== '' && $this->checkedDuringThisRun($contact))
+        {
+            return;
+        }
+
+        $domain = EmailDomainDns::domain((string) $contact->email) ?? '';
+        $accepts = $domain !== '' && $this->domainAcceptsMail($dns, $domain);
+        $contact->applyEmailDomainCheck($accepts);
+        $this->advance(1);
     }
 
-    private function releaseRunningFlag(): void
+    public function failed(?\Throwable $exception): void
     {
-        $key = self::cacheKey($this->teamId);
-        $state = Cache::get($key);
-        if (is_array($state) && (string) ($state['token'] ?? '') === $this->token)
+        $contact = $this->contact();
+        if ($contact instanceof Contact && $this->startedAt !== '' && $this->checkedDuringThisRun($contact))
         {
-            Cache::forget($key);
+            return;
         }
+
+        $this->advance(1);
+    }
+
+    private function contact(): ?Contact
+    {
+        if ($this->contactId < 1)
+        {
+            return null;
+        }
+
+        return Contact::withoutGlobalScopes()
+            ->where('team_id', $this->teamId)
+            ->whereKey($this->contactId)
+            ->first();
+    }
+
+    private function domainAcceptsMail(EmailDomainDns $dns, string $domain): bool
+    {
+        if ($this->token === '')
+        {
+            return $dns->domainAcceptsMail($domain);
+        }
+
+        $key = self::cacheKey($this->teamId).':mx:'.$this->token.':'.$domain;
+        $cached = Cache::get($key);
+        if (is_bool($cached))
+        {
+            return $cached;
+        }
+
+        $accepts = $dns->domainAcceptsMail($domain);
+        Cache::put($key, $accepts, now()->addMinutes(self::RUN_MINUTES));
+
+        return $accepts;
+    }
+
+    private function advance(int $count): void
+    {
+        if ($count < 1 || $this->token === '')
+        {
+            return;
+        }
+
+        $key = self::cacheKey($this->teamId);
+        Cache::lock($key.':lock', 10)->block(5, function () use ($key, $count): void
+        {
+            $state = Cache::get($key);
+            if (! is_array($state) || (string) ($state['token'] ?? '') !== $this->token)
+            {
+                return;
+            }
+
+            $total = (int) ($state['total'] ?? 0);
+            $state['checked'] = min($total, (int) ($state['checked'] ?? 0) + $count);
+            if ($total > 0 && (int) $state['checked'] >= $total)
+            {
+                Cache::forget($key);
+
+                return;
+            }
+
+            Cache::put($key, $state, now()->addMinutes(self::RUN_MINUTES));
+        });
+    }
+
+    private function checkedDuringThisRun(Contact $contact): bool
+    {
+        $checkedAt = $this->emailCheckedAt($contact);
+        if ($checkedAt === null || $this->startedAt === '')
+        {
+            return false;
+        }
+
+        return Carbon::parse($checkedAt)->greaterThanOrEqualTo(Carbon::parse($this->startedAt));
+    }
+
+    private function emailCheckedAt(Contact $contact): ?string
+    {
+        $data = $contact->data;
+        if (is_object($data))
+        {
+            $encoded = json_encode($data);
+            $data = is_string($encoded) ? json_decode($encoded, true) : null;
+        }
+
+        if (! is_array($data))
+        {
+            return null;
+        }
+
+        $checkedAt = $data['channels']['email']['checked_at'] ?? null;
+
+        return is_string($checkedAt) && $checkedAt !== '' ? $checkedAt : null;
     }
 }
