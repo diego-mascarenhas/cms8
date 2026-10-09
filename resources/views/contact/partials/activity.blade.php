@@ -26,10 +26,15 @@
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="form-label" for="occurred_at">{{ __('Date') }}</label>
-                        <input type="text" name="occurred_at" id="occurred_at" class="form-control @error('occurred_at') is-invalid @enderror"
-                            value="{{ $occurredAtDefault }}" autocomplete="off" required>
+                        <div class="input-group">
+                            <input type="text" name="occurred_at" id="occurred_at" class="form-control @error('occurred_at') is-invalid @enderror"
+                                value="{{ $occurredAtDefault }}" autocomplete="off" required>
+                            <button type="button" class="btn btn-icon btn-label-primary waves-effect" id="occurred-at-calendar" title="{{ __('Date') }}">
+                                <i class="ti ti-calendar"></i>
+                            </button>
+                        </div>
                         @error('occurred_at')
-                            <div class="invalid-feedback">{{ $message }}</div>
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
                     <div class="w-100"></div>
@@ -67,6 +72,17 @@
 @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            if (window.jQuery && jQuery.fn.select2) {
+                var $interactionType = jQuery('#interaction-type');
+                if ($interactionType.length && ! $interactionType.hasClass('select2-hidden-accessible')) {
+                    $interactionType.select2({
+                        width: '100%',
+                        minimumResultsForSearch: Infinity,
+                        dropdownParent: $interactionType.parent()
+                    });
+                }
+            }
+
             var el = document.getElementById('occurred_at');
             if (!el || typeof flatpickr === 'undefined') {
                 return;
@@ -74,8 +90,19 @@
             var locale = @json(\App\Support\ApplicationLocales::javascriptLocale());
             var initialValue = @json($occurredAtDefault);
 
+            function bindCalendarButton(instance) {
+                var button = document.getElementById('occurred-at-calendar');
+                if (!button || !instance || button.dataset.fpBound) {
+                    return;
+                }
+                button.addEventListener('click', function () {
+                    instance.open();
+                });
+                button.dataset.fpBound = '1';
+            }
+
             function initOccurredAtPicker() {
-                flatpickr(el, {
+                var instance = flatpickr(el, {
                     enableTime: true,
                     time_24hr: true,
                     dateFormat: 'Y-m-d H:i',
@@ -85,6 +112,7 @@
                     defaultDate: initialValue,
                     monthSelectorType: 'static'
                 });
+                bindCalendarButton(instance);
             }
 
             if (locale === 'en') {

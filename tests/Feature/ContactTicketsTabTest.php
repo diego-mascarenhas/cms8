@@ -83,4 +83,31 @@ class ContactTicketsTabTest extends TestCase
             ->assertSee('Prueba desde mobile')
             ->assertDontSee('Ticket de otra persona');
     }
+
+    public function test_activity_form_styles_the_type_select_and_shows_a_calendar_button(): void
+    {
+        $admin = User::factory()->withPersonalTeam()->create();
+        $admin->assignRole('admin');
+        $team = $admin->ownedTeams()->first();
+        $team->enableModule('contacts');
+        $admin->forceFill(['current_team_id' => $team->id])->save();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Cliente',
+            'creator_id' => $admin->id,
+            'responsible_id' => $admin->id,
+            'status_id' => 1,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('contact.show', $contact->id))
+            ->assertOk()
+            ->assertSee('id="interaction-type"', false)
+            ->assertSee("jQuery('#interaction-type')", false)
+            ->assertSee('minimumResultsForSearch: Infinity', false)
+            ->assertSee('id="occurred-at-calendar"', false)
+            ->assertSee('ti ti-calendar', false)
+            ->assertSee('instance.open()', false);
+    }
 }
