@@ -829,6 +829,56 @@ class MailerAudienceApiTest extends TestCase
         $this->assertTrue($message->audienceContactsQuery()->pluck('contacts.id')->contains($missing->id));
     }
 
+    public function test_a_dns_failure_does_not_mark_the_address_invalid(): void
+    {
+        [$user, $team] = $this->adminWithToken();
+
+        $this->app->instance(EmailDomainDns::class, new class extends EmailDomainDns
+        {
+            protected function hasRecord(string $domain, string $type): ?bool
+            {
+                return null;
+            }
+        });
+
+        $contact = Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Dns caído',
+            'email' => 'hola@orien.com.ar',
+            'creator_id' => $user->id,
+            'data' => [
+                'channels' => [
+                    'email' => [
+                        'address' => 'hola@orien.com.ar',
+                        'valid' => false,
+                        'domain' => 'missing',
+                        'reason' => Contact::EMAIL_DOMAIN_MISSING,
+                        'last_error' => ['message' => 'No tiene registro MX'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->checkAudienceDomains((int) $team->id);
+        $contact->refresh();
+
+        $this->assertNull($contact->storedChannelValid('email'));
+        $this->assertNull($contact->emailDomainOk());
+        $this->assertNull($contact->storedChannelLastError('email'));
+
+        $this->assertNull(EmailDomainDns::acceptsFromDnsJson(['Status' => 2]));
+        $this->assertFalse(EmailDomainDns::acceptsFromDnsJson(['Status' => 3]));
+        $this->assertFalse(EmailDomainDns::acceptsFromDnsJson(['Status' => 0, 'Answer' => []]));
+        $this->assertFalse(EmailDomainDns::acceptsFromDnsJson([
+            'Status' => 0,
+            'Answer' => [['type' => 15, 'data' => '0 .']],
+        ]));
+        $this->assertTrue(EmailDomainDns::acceptsFromDnsJson([
+            'Status' => 0,
+            'Answer' => [['type' => 15, 'data' => '1 aspmx.l.google.com.']],
+        ]));
+    }
+
     public function test_validate_domains_queues_the_check(): void
     {
         [$user, $team, $token] = $this->adminWithToken();
@@ -1048,7 +1098,9 @@ class MailerAudienceApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.email', '');
 
-        $this->assertNull($contact->fresh()->email);
+        $fresh = $contact->fresh();
+        $this->assertNull($fresh->email);
+        $this->assertSame('roto@example.test', $fresh->data->removed_email);
         $this->assertNull(MessageDelivery::query()->find($pending->id));
         $this->assertNotNull(MessageDelivery::query()->find($sent->id));
     }

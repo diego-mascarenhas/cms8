@@ -158,7 +158,7 @@ class ValidateAudienceEmailDomainsJob implements ShouldQueue
         }
 
         $domain = EmailDomainDns::domain((string) $contact->email) ?? '';
-        $accepts = $domain !== '' && $this->domainAcceptsMail($dns, $domain);
+        $accepts = $domain === '' ? false : $this->domainAcceptsMail($dns, $domain);
         $contact->applyEmailDomainCheck($accepts);
         $this->advance(1);
     }
@@ -181,7 +181,7 @@ class ValidateAudienceEmailDomainsJob implements ShouldQueue
             ->first();
     }
 
-    private function domainAcceptsMail(EmailDomainDns $dns, string $domain): bool
+    private function domainAcceptsMail(EmailDomainDns $dns, string $domain): ?bool
     {
         if ($this->token === '')
         {
@@ -195,8 +195,13 @@ class ValidateAudienceEmailDomainsJob implements ShouldQueue
             return $cached;
         }
 
+        if ($cached === 'unknown')
+        {
+            return null;
+        }
+
         $accepts = $dns->domainAcceptsMail($domain);
-        Cache::put($key, $accepts, now()->addMinutes(self::RUN_MINUTES));
+        Cache::put($key, $accepts === null ? 'unknown' : $accepts, now()->addMinutes(self::RUN_MINUTES));
 
         return $accepts;
     }

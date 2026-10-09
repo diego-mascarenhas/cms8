@@ -517,7 +517,20 @@ class Contact extends Model implements HasMedia
     /**
      * A missing domain stays out of later sends. A domain that exists only clears that mark.
      */
-    public function applyEmailDomainCheck(bool $domainExists): void
+    public function rememberRemovedEmail(): void
+    {
+        $email = trim((string) $this->email);
+        if ($email === '')
+        {
+            return;
+        }
+
+        $data = $this->dataArray();
+        $data['removed_email'] = $email;
+        $this->data = $data;
+    }
+
+    public function applyEmailDomainCheck(?bool $domainExists): void
     {
         $email = trim((string) $this->email);
         if ($email === '')
@@ -528,6 +541,29 @@ class Contact extends Model implements HasMedia
         $data = $this->dataArray();
         $existing = is_array($data['channels']['email'] ?? null) ? $data['channels']['email'] : [];
         $reason = (string) ($existing['reason'] ?? '');
+
+        if ($domainExists === null)
+        {
+            if ($reason !== self::EMAIL_DOMAIN_MISSING)
+            {
+                return;
+            }
+
+            $existing['address'] = $email;
+            $existing['valid'] = null;
+            $existing['domain'] = null;
+            $existing['reason'] = null;
+            $existing['last_error'] = null;
+            $existing['checked_at'] = now()->toIso8601String();
+            $data['channels']['email'] = $existing;
+            $this->data = $data;
+            if ($this->exists)
+            {
+                $this->save();
+            }
+
+            return;
+        }
 
         if ($domainExists)
         {

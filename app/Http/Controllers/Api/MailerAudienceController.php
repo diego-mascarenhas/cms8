@@ -262,6 +262,7 @@ class MailerAudienceController extends Controller
             ], 422);
         }
 
+        $contact->rememberRemovedEmail();
         $contact->email = null;
         $contact->save();
 
