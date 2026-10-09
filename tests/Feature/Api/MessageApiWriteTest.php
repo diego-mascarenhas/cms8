@@ -393,7 +393,7 @@ class MessageApiWriteTest extends TestCase
 
     public function test_can_list_message_deliveries(): void
     {
-        [, $team, $token] = $this->adminWithToken();
+        [$user, $team, $token] = $this->adminWithToken();
 
         $message = Message::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -410,6 +410,27 @@ class MessageApiWriteTest extends TestCase
         $empty->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('pagination.total', 0);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'espera@example.test',
+        ]);
+        $when = now()->addDay()->startOfMinute();
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 1,
+            'scheduled_for' => $when,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries')
+            ->assertOk()
+            ->assertJsonPath('data.0.status_text', 'Pendiente')
+            ->assertJsonPath('data.0.scheduled_for', $when->toIso8601String());
     }
 
     public function test_delivery_log_reads_mailbaby_by_id_or_recipient(): void
