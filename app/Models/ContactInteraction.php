@@ -44,4 +44,44 @@ class ContactInteraction extends Model
     {
         return $this->morphTo();
     }
+
+    /**
+     * WhatsApp-style export lines: [09/10/2026, 13:14:46] Name: message.
+     *
+     * @return list<array{at: string, author: string, text: string}>
+     */
+    public function chatLines(): array
+    {
+        $body = trim((string) $this->body);
+        if ($body === '' || ! preg_match('/\[\d{1,2}\/\d{1,2}\/\d{2,4},/', $body))
+        {
+            return [];
+        }
+
+        preg_match_all(
+            '/\[(\d{1,2}\/\d{1,2}\/\d{2,4},\s*\d{1,2}:\d{2}(?::\d{2})?)\]\s*([^:\r\n]+):\s*(.*?)(?=\s*\[\d{1,2}\/\d{1,2}\/\d{2,4},|\z)/su',
+            $body,
+            $matches,
+            PREG_SET_ORDER,
+        );
+
+        $lines = [];
+        foreach ($matches as $match)
+        {
+            $text = trim($match[3]);
+            $author = trim($match[2]);
+            if ($author === '' && $text === '')
+            {
+                continue;
+            }
+
+            $lines[] = [
+                'at' => $match[1],
+                'author' => $author,
+                'text' => $text,
+            ];
+        }
+
+        return $lines;
+    }
 }

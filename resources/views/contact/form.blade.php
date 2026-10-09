@@ -414,14 +414,64 @@
                             <script>
                                 document.addEventListener('DOMContentLoaded', function () {
                                     var sel = document.getElementById('enterprise_enterprise_id');
+                                    var pane = document.getElementById('account-details-modern');
                                     var helper = sel ? sel.closest('.row.g-3.mb-3')?.querySelector('.text-muted') : null;
-                                    if (!sel || !helper) return;
+                                    var enterpriseSelectsReady = false;
+
                                     function updateHelperText() {
+                                        if (!sel || !helper) {
+                                            return;
+                                        }
                                         helper.textContent = sel.value
                                             ? 'Empresa seleccionada. También podés editar los campos de abajo para actualizar sus datos.'
                                             : 'Si elegís una empresa, al guardar se vincula el contacto a esa empresa y podés actualizar datos desde los campos de abajo.';
                                     }
-                                    sel.addEventListener('change', updateHelperText);
+
+                                    function enterpriseStepIsVisible() {
+                                        return pane && (pane.classList.contains('active') || pane.offsetParent !== null);
+                                    }
+
+                                    function initEnterpriseSelects() {
+                                        if (!window.jQuery || !jQuery.fn.select2 || !enterpriseStepIsVisible()) {
+                                            return;
+                                        }
+                                        [
+                                            { selector: '#enterprise_enterprise_id', minimumResultsForSearch: 0 },
+                                            { selector: '#enterprise_department_id', minimumResultsForSearch: Infinity },
+                                            { selector: '#enterprise_status_id', minimumResultsForSearch: Infinity }
+                                        ].forEach(function (item) {
+                                            var $field = jQuery(item.selector);
+                                            if (!$field.length) {
+                                                return;
+                                            }
+                                            if ($field.hasClass('select2-hidden-accessible')) {
+                                                $field.select2('destroy');
+                                            }
+                                            if (!$field.parent().hasClass('position-relative')) {
+                                                $field.wrap('<div class="position-relative"></div>');
+                                            }
+                                            $field.select2({
+                                                width: '100%',
+                                                dropdownParent: jQuery(document.body),
+                                                minimumResultsForSearch: item.minimumResultsForSearch
+                                            });
+                                        });
+                                        if (sel && !enterpriseSelectsReady) {
+                                            jQuery(sel).on('change', updateHelperText);
+                                            enterpriseSelectsReady = true;
+                                        }
+                                        updateHelperText();
+                                    }
+
+                                    if (sel && !(window.jQuery && jQuery.fn.select2)) {
+                                        sel.addEventListener('change', updateHelperText);
+                                    }
+
+                                    initEnterpriseSelects();
+                                    var stepper = pane ? pane.closest('.bs-stepper') : null;
+                                    if (stepper) {
+                                        stepper.addEventListener('shown.bs-stepper', initEnterpriseSelects);
+                                    }
                                     updateHelperText();
                                 });
                             </script>
