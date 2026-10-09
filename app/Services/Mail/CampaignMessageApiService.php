@@ -259,17 +259,19 @@ class CampaignMessageApiService
     /**
      * @return array<string, mixed>
      */
-    public function formatForList(Message $message): array
+    public function formatForList(Message $message, Team $team): array
     {
         $total = (int) ($message->deliveries_count ?? 0);
         $sent = (int) ($message->sent_count ?? 0);
         $delivered = (int) ($message->delivered_count ?? 0);
         $opened = (int) ($message->opened_count ?? 0);
         $openRate = $delivered > 0 ? round(($opened / $delivered) * 100, 2) : 0.0;
+        $team->loadMissing('settings');
 
         return [
             'id' => $message->id,
             'name' => $message->name,
+            'sender_name' => $message->resolvedMailerSender($team)['from_name'],
             'status' => $this->listStatus($message),
             'contact_categories' => $this->formatContactCategories($message),
             'contact_categories_label' => $message->contactCategoriesLabel(),
