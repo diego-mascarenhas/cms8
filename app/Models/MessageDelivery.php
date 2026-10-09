@@ -326,7 +326,7 @@ class MessageDelivery extends Model
     /**
      * Generate personalized HTML for the contact using the associated message template
      */
-    public function getHtmlForContact()
+    public function getHtmlForContact(bool $includeOpenPixel = true): string
     {
         $templateHtml = '';
         if ($this->message)
@@ -355,8 +355,10 @@ class MessageDelivery extends Model
         // Add unsubscribe link
         $html = \App\Helpers\EmailTrackingHelper::addUnsubscribeLink($html, $this);
 
-        // Add tracking pixel for open tracking
-        $html = \App\Helpers\EmailTrackingHelper::addTrackingPixel($html, $this);
+        if ($includeOpenPixel)
+        {
+            $html = \App\Helpers\EmailTrackingHelper::addTrackingPixel($html, $this);
+        }
 
         // Get team to check if advertising footer should be added
         $team = $this->message && $this->message->team ? $this->message->team : auth()->user()->currentTeam;
