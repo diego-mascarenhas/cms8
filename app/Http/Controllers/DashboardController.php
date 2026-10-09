@@ -298,18 +298,6 @@ class DashboardController extends Controller
             $previousMonthStart,
             $currentMonthStart,
         );
-        $leadsCreatedThisMonthCount = $this->countTeamContactsCreatedBetween(
-            $activeTeam->id,
-            $currentMonthStart,
-            $nextMonthStart,
-            statusId: 1,
-        );
-        $leadsCreatedPreviousMonthCount = $this->countTeamContactsCreatedBetween(
-            $activeTeam->id,
-            $previousMonthStart,
-            $currentMonthStart,
-            statusId: 1,
-        );
 
         $statusIdsForChart = [1, 2, 3, 4, 5];
         $statusCountsById = Contact::query()
@@ -338,7 +326,6 @@ class DashboardController extends Controller
             'sentimentData' => $this->contactDailySentimentService->chartDataForTeam($activeTeam),
             'recentLeadsCount' => Contact::query()
                 ->where('team_id', $activeTeam->id)
-                ->where('status_id', 1)
                 ->where('created_at', '>=', now()->subDays(7))
                 ->count(),
             'totalContactsCount' => Contact::query()
@@ -351,13 +338,12 @@ class DashboardController extends Controller
             'dashboardContactsCreatedTrend' => $this->buildContactsCreatedTrend(
                 $activeTeam->id,
                 30,
-                statusId: 1,
             ),
             'dashboardContactStatusBreakdown' => $dashboardContactStatusBreakdown,
             'dashboardPanelMonthComparisons' => [
                 'contacts-trend' => $this->buildMonthComparison(
-                    $leadsCreatedThisMonthCount,
-                    $leadsCreatedPreviousMonthCount,
+                    $latestContactsThisMonthCount,
+                    $contactsCreatedPreviousMonthCount,
                 ),
                 'status-breakdown' => $this->buildMonthComparison(
                     $latestContactsThisMonthCount,
