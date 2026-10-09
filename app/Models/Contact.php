@@ -517,6 +517,19 @@ class Contact extends Model implements HasMedia
     /**
      * A missing domain stays out of later sends. A domain that exists only clears that mark.
      */
+    public function rememberRemovedEmail(): void
+    {
+        $email = trim((string) $this->email);
+        if ($email === '')
+        {
+            return;
+        }
+
+        $data = $this->dataArray();
+        $data['removed_email'] = $email;
+        $this->data = $data;
+    }
+
     public function applyEmailDomainCheck(?bool $domainExists): void
     {
         $email = trim((string) $this->email);

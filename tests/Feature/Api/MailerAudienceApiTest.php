@@ -1098,7 +1098,9 @@ class MailerAudienceApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.email', '');
 
-        $this->assertNull($contact->fresh()->email);
+        $fresh = $contact->fresh();
+        $this->assertNull($fresh->email);
+        $this->assertSame('roto@example.test', $fresh->data->removed_email);
         $this->assertNull(MessageDelivery::query()->find($pending->id));
         $this->assertNotNull(MessageDelivery::query()->find($sent->id));
     }
