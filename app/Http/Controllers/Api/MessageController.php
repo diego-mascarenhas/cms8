@@ -63,8 +63,9 @@ class MessageController extends Controller
         $paginator->setPath($request->url());
         $paginator->appends($request->query());
 
+        $team->loadMissing('settings');
         $items = $paginator->getCollection()
-            ->map(fn ($message) => $this->campaignMessages->formatForList($message))
+            ->map(fn ($message) => $this->campaignMessages->formatForList($message, $team))
             ->values()
             ->all();
 

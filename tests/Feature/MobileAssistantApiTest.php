@@ -311,6 +311,7 @@ class MobileAssistantApiTest extends TestCase
                 [
                     'id',
                     'name',
+                    'sender_name',
                     'status' => ['key', 'label'],
                     'progress',
                 ],
