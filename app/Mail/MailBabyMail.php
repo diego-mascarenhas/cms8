@@ -40,7 +40,7 @@ class MailBabyMail extends Mailable
         try
         {
             $subject = $this->delivery->getSubjectForContact();
-            $html = $this->delivery->getHtmlForContact();
+            $html = $this->delivery->getHtmlForContact(false);
 
             // Add advertising footer if team is using system SMTP
             $advertisingFooter = config('app.mail_advertising_footer', '');

@@ -201,7 +201,7 @@ class SendMessageCampaignJob implements ShouldQueue
 
         $mailBabyService = app(\App\Services\MailBabyService::class);
 
-        $htmlContent = $this->messageDelivery->getHtmlForContact();
+        $htmlContent = $this->messageDelivery->getHtmlForContact(false);
         $fromName = $sender['from_name'];
         $fromEmail = $sender['from_address'];
 
