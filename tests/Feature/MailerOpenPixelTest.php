@@ -29,7 +29,7 @@ class MailerOpenPixelTest extends TestCase
         ]);
     }
 
-    public function test_smtp_html_includes_the_open_pixel_and_the_api_html_does_not(): void
+    public function test_open_tracking_html_includes_the_pixel(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
