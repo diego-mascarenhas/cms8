@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -89,6 +90,41 @@ class Contact extends Model implements HasMedia
                 $contact->forgetChannelCheck('whatsapp');
             }
         });
+
+        static::saved(function (Contact $contact): void
+        {
+            if ($contact->wasRecentlyCreated || $contact->wasChanged(['status_id', 'team_id']))
+            {
+                $contact->forgetDashboardAggregatesCache();
+            }
+        });
+
+        static::deleted(function (Contact $contact): void
+        {
+            $contact->forgetDashboardAggregatesCache();
+        });
+
+        static::restored(function (Contact $contact): void
+        {
+            $contact->forgetDashboardAggregatesCache();
+        });
+    }
+
+    /**
+     * The leads chart and the month counters share one cache. The latest-contacts
+     * table does not, so a new contact has to drop that cache or the chart stays stale.
+     */
+    private function forgetDashboardAggregatesCache(): void
+    {
+        $teamIds = array_unique(array_filter([
+            (int) $this->team_id,
+            (int) $this->getOriginal('team_id'),
+        ]));
+
+        foreach ($teamIds as $teamId)
+        {
+            Cache::forget('dashboard.aggregates.'.$teamId);
+        }
     }
 
     /**

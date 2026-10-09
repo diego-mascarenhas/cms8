@@ -575,9 +575,17 @@ class ContactController extends Controller
             }
         }
 
+        $list60TeamUsers = collect();
+        if (auth()->user()->currentTeam?->hasModule('list60'))
+        {
+            $list60TeamUsers = \App\Support\AssignableTeamUsers::optionsForTeam(
+                auth()->user()->currentTeam,
+            );
+        }
+
         return view(
             'contact.show',
-            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile', 'contactOpportunities', 'contactTickets', 'mergedInto'),
+            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile', 'contactOpportunities', 'contactTickets', 'mergedInto', 'list60TeamUsers'),
         );
     }
 

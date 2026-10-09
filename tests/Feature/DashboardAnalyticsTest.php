@@ -213,7 +213,7 @@ class DashboardAnalyticsTest extends TestCase
         $this->assertNotEmpty($trendMatch[1] ?? null);
         $trend = json_decode($trendMatch[1], true, 512, JSON_THROW_ON_ERROR);
         $yesterdayIndex = count($trend['values']) - 2;
-        $this->assertSame(2, $trend['values'][$yesterdayIndex]);
+        $this->assertSame(3, $trend['values'][$yesterdayIndex]);
     }
 
     public function test_dashboard_includes_month_comparison_for_contact_panels(): void
@@ -272,6 +272,8 @@ class DashboardAnalyticsTest extends TestCase
         $this->assertNotEmpty($comparisonMatch[1] ?? null);
         $comparisons = json_decode($comparisonMatch[1], true, 512, JSON_THROW_ON_ERROR);
 
+        $this->assertSame(2, $comparisons['contacts-trend']['current']);
+        $this->assertSame(1, $comparisons['contacts-trend']['previous']);
         $this->assertSame(2, $comparisons['status-breakdown']['current']);
         $this->assertSame(1, $comparisons['status-breakdown']['previous']);
         $this->assertSame(1, $comparisons['status-breakdown']['difference']);
@@ -775,6 +777,63 @@ class DashboardAnalyticsTest extends TestCase
 
         $this->assertSame(0, $contactDateGroupQueries);
         $this->assertTrue(\Illuminate\Support\Facades\Cache::has("dashboard.aggregates.{$team->id}"));
+    }
+
+    public function test_creating_a_lead_refreshes_the_cached_contacts_trend(): void
+    {
+        $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
+            ContactStatusSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $this->grantContactDashboardPermissions($user);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'contacts'],
+            [
+                'name' => 'Contacts',
+                'icon' => 'users',
+                'description' => 'CRM contacts',
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('contacts');
+
+        $this->actingAs($user);
+        $this->get(route('dashboard'))->assertOk();
+        $this->assertTrue(\Illuminate\Support\Facades\Cache::has("dashboard.aggregates.{$team->id}"));
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'responsible_id' => $user->id,
+            'creator_id' => $user->id,
+            'status_id' => 1,
+            'created_at' => Carbon::now(),
+        ]);
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'responsible_id' => $user->id,
+            'creator_id' => $user->id,
+            'status_id' => 5,
+            'created_at' => Carbon::now(),
+        ]);
+
+        $this->assertFalse(\Illuminate\Support\Facades\Cache::has("dashboard.aggregates.{$team->id}"));
+
+        $response = $this->get(route('dashboard'));
+        $response->assertOk();
+
+        preg_match('/const trendData = (\{.*?\});/s', $response->getContent(), $trendMatch);
+        $this->assertNotEmpty($trendMatch[1] ?? null);
+        $trend = json_decode($trendMatch[1], true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame(2, $trend['values'][count($trend['values']) - 1]);
     }
 
     public function test_root_dashboard_shows_usage_billing_attentions_for_draft_invoices(): void

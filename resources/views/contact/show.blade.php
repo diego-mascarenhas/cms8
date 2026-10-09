@@ -45,6 +45,8 @@
     <script src="{{ asset('assets/js/app-user-view-account.js') }}"></script>
 @endsection
 
+@include('contact.partials.list60-add')
+
 @section('content')
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
@@ -68,11 +70,19 @@
                 @endcan
             @else
             @can('update', $data)
-            <button type="button" class="btn btn-label-secondary waves-effect" data-bs-toggle="modal" data-bs-target="#modalMergeContact">
-                <i class="ti ti-git-merge me-1"></i>Fusionar
-            </button>
+            @if (auth()->user()->currentTeam?->hasModule('list60'))
+                @if ($data->isInList60())
+                    <span class="btn btn-success waves-effect waves-light disabled">
+                        <i class="ti ti-list-check me-1"></i>{{ __('app.list60') }}
+                    </span>
+                @else
+                    <button type="button" class="btn btn-label-secondary waves-effect" onclick="addToList({{ $data->id }}, this)">
+                        <i class="ti ti-list-check me-1"></i>{{ __('app.list60') }}
+                    </button>
+                @endif
+            @endif
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
-                    class="ti ti-edit me-1"></i>Editar contacto</a>
+                    class="ti ti-edit me-1"></i>Editar</a>
             @endcan
             @endif
             @if ($data->chatIndexUrl() && (auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'collaborator', 'developer', 'technical', 'marketing'])))
@@ -96,39 +106,6 @@
             @endif
         </div>
     @endif
-
-    @can('update', $data)
-        @if (! $data->trashed())
-            <div class="modal fade" id="modalMergeContact" tabindex="-1" aria-labelledby="modalMergeContactLabel" aria-hidden="true"
-                data-candidates-url="{{ route('contact.merge-candidates', $data->id) }}"
-                data-preview-url="{{ route('contact.merge-preview', $data->id) }}"
-                data-merge-url="{{ route('contact.merge', $data->id) }}">
-                <div class="modal-dialog modal-dialog-scrollable">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="modalMergeContactLabel">Fusionar contacto</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
-                        </div>
-                        <div class="modal-body">
-                            <p class="text-muted small">Se conserva este contacto. El otro se archiva. Si está en otras empresas, esos vínculos pasan con el rol de cada una.</p>
-                            <label for="mergeContactSearchInput" class="form-label">Buscar el contacto duplicado</label>
-                            <input type="search" class="form-control" id="mergeContactSearchInput" placeholder="Nombre, email o teléfono…" autocomplete="off">
-                            <div id="mergeContactFeedback" class="alert d-none mt-3 mb-0" role="alert"></div>
-                            <div id="mergeContactList" class="list-group list-group-flush mt-3 border rounded d-none"></div>
-                            <div id="mergeContactPreview" class="d-none mt-3">
-                                <p id="mergeContactPreviewMessage" class="mb-2"></p>
-                                <ul id="mergeContactPreviewLines" class="mb-0"></ul>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-                            <button type="button" class="btn btn-primary" id="mergeContactSubmitBtn" disabled>Fusionar</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        @endif
-    @endcan
 
     <div class="row">
         <!-- User Sidebar -->
@@ -339,6 +316,15 @@
                                         </a>
                                     @endcan
                                 @endif
+                                @can('update', $data)
+                                    @if (! $data->trashed())
+                                        <div class="mt-2">
+                                            <button type="button" class="btn btn-sm btn-label-secondary" data-bs-toggle="modal" data-bs-target="#modalMergeContact">
+                                                <i class="ti ti-git-merge me-1"></i>Fusionar
+                                            </button>
+                                        </div>
+                                    @endif
+                                @endcan
                             </li>
                             @endif
                         </ul>
@@ -516,6 +502,41 @@
 
 
 @endpush
+
+@can('update', $data)
+    @if (! $data->trashed())
+        @push('modals')
+            <div class="modal fade" id="modalMergeContact" tabindex="-1" aria-labelledby="modalMergeContactLabel" aria-hidden="true"
+                data-candidates-url="{{ route('contact.merge-candidates', $data->id) }}"
+                data-preview-url="{{ route('contact.merge-preview', $data->id) }}"
+                data-merge-url="{{ route('contact.merge', $data->id) }}">
+                <div class="modal-dialog modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalMergeContactLabel">Fusionar contacto</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted small">Se conserva este contacto. El otro se archiva. Si está en otras empresas, esos vínculos pasan con el rol de cada una.</p>
+                            <label for="mergeContactSearchInput" class="form-label">Buscar el contacto duplicado</label>
+                            <input type="search" class="form-control" id="mergeContactSearchInput" placeholder="Nombre, email o teléfono…" autocomplete="off">
+                            <div id="mergeContactFeedback" class="alert d-none mt-3 mb-0" role="alert"></div>
+                            <div id="mergeContactList" class="list-group list-group-flush mt-3 border rounded d-none"></div>
+                            <div id="mergeContactPreview" class="d-none mt-3">
+                                <p id="mergeContactPreviewMessage" class="mb-2"></p>
+                                <ul id="mergeContactPreviewLines" class="mb-0"></ul>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                            <button type="button" class="btn btn-primary" id="mergeContactSubmitBtn" disabled>Fusionar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endpush
+    @endif
+@endcan
 
 @push('scripts')
     <script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
