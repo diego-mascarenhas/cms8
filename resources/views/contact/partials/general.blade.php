@@ -7,20 +7,8 @@
 @else
 <div class="row g-4">
     <div class="col-lg-8">
-        <div class="card mb-4">
-            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 py-3">
-                <h5 class="card-title mb-0">
-                    <i class="ti ti-history ti-xs me-1"></i>{{ __('Activity') }}
-                </h5>
-                <button type="button" class="btn btn-sm btn-label-primary"
-                    onclick="(function(){var el=document.getElementById('activity-tab');if(el&&window.bootstrap){bootstrap.Tab.getOrCreateInstance(el).show();}})()">{{ __('Log interaction') }}</button>
-            </div>
-            <div class="card-body">
-                @include('contact.partials.activity-history', ['interactionLimit' => 30, 'summaryOnly' => true])
-            </div>
-        </div>
-        <div class="row g-4">
-            @if (! empty($stripeData['metrics']))
+        @if (! empty($stripeData['metrics']))
+        <div class="row g-4 mb-4">
             <!-- CAC Card -->
             <div class="col-md-6">
                 <div class="card">
@@ -59,7 +47,7 @@
                             </div>
                             <span>LTV</span>
                         </div>
-                        <h6 class="card-title mb-1">Valor del tiempo de vida</h6>
+                        <h6 class="card-title mb-1">Valor de vida</h6>
                         <h4 class="card-title mb-1">{{ $stripeData['metrics']['ltv'] ?? '0.00' }} {{ data_get($stripeData, 'metrics.currency', 'EUR') }}</h4>
                         @if(isset($stripeData['metrics']['ltv_trend']))
                             <small class="{{ $stripeData['metrics']['ltv_trend'] > 0 ? 'text-success' : 'text-danger' }} fw-semibold">
@@ -72,10 +60,25 @@
                     </div>
                 </div>
             </div>
-            @endif
+        </div>
+        @endif
 
-            <!-- Astral Profile -->
-            @if($astralProfile)
+        <div class="card mb-4">
+            <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2 py-3">
+                <h5 class="card-title mb-0">
+                    <i class="ti ti-history ti-xs me-1"></i>{{ __('Activity') }}
+                </h5>
+                <button type="button" class="btn btn-sm btn-label-primary"
+                    onclick="(function(){var el=document.getElementById('activity-tab');if(el&&window.bootstrap){bootstrap.Tab.getOrCreateInstance(el).show();}})()">{{ __('Log interaction') }}</button>
+            </div>
+            <div class="card-body">
+                @include('contact.partials.activity-history', ['interactionLimit' => 30, 'summaryOnly' => true])
+            </div>
+        </div>
+
+        <!-- Astral Profile -->
+        @if($astralProfile)
+        <div class="row g-4">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -160,8 +163,8 @@
                     </div>
                 </div>
             </div>
-            @endif
         </div>
+        @endif
     </div>
 
     <!-- Notes -->

@@ -247,4 +247,40 @@ class List60StoreTest extends TestCase
         $this->assertStringContainsString('Sin contactar', $statusHtml);
         $this->assertStringContainsString('badge', $statusHtml);
     }
+
+    public function test_contact_show_puts_the_list60_modal_beside_a_short_edit_button(): void
+    {
+        $contact = Contact::factory()->create([
+            'team_id' => $this->user->currentTeam->id,
+        ]);
+
+        $this->actingAs($this->user)
+            ->get(route('contact.show', $contact->id))
+            ->assertOk()
+            ->assertSee('>Editar</a>', false)
+            ->assertDontSee('Editar contacto', false)
+            ->assertSee('id="addToList60Modal"', false)
+            ->assertSee('onclick="addToList('.$contact->id.', this)"', false)
+            ->assertSee(__('app.list60'), false);
+
+        $this->actingAs($this->user)
+            ->get(route('contact-list'))
+            ->assertOk()
+            ->assertSee('id="addToList60Modal"', false)
+            ->assertSee('function addToList', false);
+
+        List60::query()->create([
+            'contact_id' => $contact->id,
+            'type_id' => 1,
+            'date_next' => now()->addWeek(),
+            'status_id' => List60Status::query()->where('name', 'Sin contactar')->firstOrFail()->id,
+            'responsible_id' => $this->user->id,
+        ]);
+
+        $this->actingAs($this->user)
+            ->get(route('contact.show', $contact->id))
+            ->assertOk()
+            ->assertDontSee('onclick="addToList('.$contact->id.', this)"', false)
+            ->assertSee('btn btn-success waves-effect waves-light disabled', false);
+    }
 }

@@ -152,9 +152,9 @@ class ContactTicketsTabTest extends TestCase
         $response->assertSee('María Alejandra Arellano', false);
         $activityAt = strpos($html, 'ti-history');
         $this->assertNotFalse($activityAt);
-        $metricsAt = strpos($html, 'class="row g-4"', $activityAt);
-        $this->assertNotFalse($metricsAt);
-        $this->assertLessThan($metricsAt, $activityAt);
+        $this->assertFalse(strpos($html, 'Coste de adquisición', $activityAt));
+        $source = file_get_contents(resource_path('views/contact/partials/general.blade.php'));
+        $this->assertLessThan(strpos($source, 'ti-history'), strpos($source, 'Coste de adquisición'));
     }
 
     public function test_contact_form_styles_the_enterprise_selects(): void
