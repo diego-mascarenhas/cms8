@@ -73,6 +73,7 @@ class CampaignMessageApiService
             'contact_name' => $delivery->contact?->name ?: '—',
             'contact_email' => $delivery->contact?->email ?: '—',
             'contact_photo_url' => $delivery->contact?->storedPhotoUrl(),
+            'scheduled_for' => $delivery->scheduled_for?->toIso8601String(),
             'sent_at' => $delivery->sent_at?->toIso8601String(),
             'delivered_at' => $delivery->delivered_at?->toIso8601String(),
             'opened_at' => $delivery->opened_at?->toIso8601String(),
