@@ -688,6 +688,7 @@ Route::middleware('auth.api')->group(function ()
     Route::post('mailer/prospects/import', [MailerProspectController::class, 'import']);
     Route::get('mailer/audience/{id}', [MailerAudienceController::class, 'show'])->whereNumber('id');
     Route::put('mailer/audience/{id}', [MailerAudienceController::class, 'update'])->whereNumber('id');
+    Route::post('mailer/audience/{id}/clear-email', [MailerAudienceController::class, 'clearEmail'])->whereNumber('id');
     Route::get('mailer/list60', [MailerAudienceController::class, 'indexList60']);
     Route::post('mailer/audience/{id}/list60', [MailerAudienceController::class, 'storeList60'])->whereNumber('id');
     Route::post('mailer/audience/{id}/interactions', [MailerAudienceController::class, 'storeInteraction'])->whereNumber('id');

@@ -235,6 +235,51 @@ class MailerAudienceController extends Controller
         ]);
     }
 
+    public function clearEmail(Request $request, int $id): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        $contact = $this->contactForTeam((int) $team->id, $id);
+        if ($contact instanceof JsonResponse)
+        {
+            return $contact;
+        }
+
+        if ($contact->storedChannelValid('email') !== false)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Solo se puede quitar el email de un contacto fallido.',
+            ], 422);
+        }
+
+        $contact->email = null;
+        $contact->save();
+
+        MessageDelivery::query()
+            ->where('team_id', $team->id)
+            ->where('contact_id', $contact->id)
+            ->where('status_id', 1)
+            ->whereNull('sent_at')
+            ->delete();
+
+        $contact->load(['status', 'categories', 'user']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->formatContact($contact),
+        ]);
+    }
+
     public function show(Request $request, int $id): JsonResponse
     {
         $team = $this->teamOrError($request);

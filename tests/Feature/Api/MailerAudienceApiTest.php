@@ -1000,6 +1000,76 @@ class MailerAudienceApiTest extends TestCase
         $this->assertFalse(ValidateAudienceEmailDomainsJob::isRunning((int) $team->id));
     }
 
+    public function test_clear_email_removes_unsent_deliveries_and_keeps_sent_ones(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'roto@example.test',
+        ]);
+        $contact->recordOutboundChannel('email', 'roto@example.test', false, 'failed', 'User unknown', '550 5.1.1 User unknown');
+
+        $pendingMessage = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Con cola',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        $sentMessage = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Ya salió',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        $pending = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $pendingMessage->id,
+            'contact_id' => $contact->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->addHour(),
+        ]);
+        $sent = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $sentMessage->id,
+            'contact_id' => $contact->id,
+            'status_id' => 2,
+            'sent_at' => now()->subHour(),
+            'scheduled_for' => now()->subHour(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/mailer/audience/'.$contact->id.'/clear-email')
+            ->assertOk()
+            ->assertJsonPath('data.email', '');
+
+        $this->assertNull($contact->fresh()->email);
+        $this->assertNull(MessageDelivery::query()->find($pending->id));
+        $this->assertNotNull(MessageDelivery::query()->find($sent->id));
+    }
+
+    public function test_clear_email_rejects_a_contact_that_is_not_failed(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'bien@example.test',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/mailer/audience/'.$contact->id.'/clear-email')
+            ->assertStatus(422);
+
+        $this->assertSame('bien@example.test', $contact->fresh()->email);
+    }
+
     private function checkAudienceDomains(int $teamId): void
     {
         $dns = app(EmailDomainDns::class);
