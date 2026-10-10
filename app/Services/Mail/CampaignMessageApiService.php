@@ -219,7 +219,7 @@ class CampaignMessageApiService
         {
             return 'delivered';
         }
-        if ((int) $delivery->status_id === 3)
+        if ((int) $delivery->status_id === 3 && $delivery->clicked_at === null && $delivery->sent_at === null)
         {
             return 'sending';
         }
