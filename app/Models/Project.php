@@ -312,6 +312,17 @@ class Project extends Model
         return $this->belongsTo(User::class, 'responsible_id');
     }
 
+    /**
+     * Team members who take part in this project. When the list is not empty,
+     * task filters offer these people instead of the whole team.
+     */
+    public function participants()
+    {
+        return $this->belongsToMany(User::class, 'project_user')
+            ->withPivot('percentage_agreed')
+            ->withTimestamps();
+    }
+
     public function status()
     {
         return $this->belongsTo(ProjectStatus::class);

@@ -17,6 +17,7 @@ use Database\Seeders\LanguageSeeder;
 use Database\Seeders\ProjectStatusSeeder;
 use Database\Seeders\TaskStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -286,6 +287,68 @@ class CollaboratorProjectAccessTest extends TestCase
         $this->assertEquals(2, (float) data_get($project->data, 'suggested_tasks.0.estimated_hours'));
         $this->assertEquals(250, (float) data_get($project->data, 'suggested_tasks.0.unit_price'));
         $this->assertEquals(250, (float) $project->price);
+    }
+
+    public function test_project_participants_limit_who_appears_in_task_filters(): void
+    {
+        [$admin, $team, $client] = $this->adminTeamAndClient();
+        $participant = $this->collaboratorOnTeam($team);
+        $participant->forceFill(['name' => 'Ana Participa'])->save();
+        $outsider = $this->collaboratorOnTeam($team);
+        $outsider->forceFill(['name' => 'Luis Afuera'])->save();
+
+        $project = $this->createProject($team->id, $client->id, $admin->id, 'Con participantes');
+        $project->forceFill(['real_name' => 'Con participantes'])->save();
+
+        $this->actingAs($admin)
+            ->post(route('project.store'), [
+                'id' => $project->id,
+                'name' => 'Con participantes',
+                'real_name' => 'Con participantes',
+                'status_id' => 1,
+                'enterprise_id' => $client->id,
+                'responsible_id' => $admin->id,
+                'sync_participants' => '1',
+                'participant_ids' => [$participant->id],
+            ])
+            ->assertRedirect(route('project.show', $project->id));
+
+        $this->assertEqualsCanonicalizing(
+            [$participant->id],
+            $project->fresh()->participants()->pluck('users.id')->map(fn ($id) => (int) $id)->all(),
+        );
+
+        $this->actingAs($admin)
+            ->get(route('project.edit', $project->id))
+            ->assertOk()
+            ->assertSee('id="participant_ids"', false)
+            ->assertSee('Ana Participa', false);
+
+        $admin->givePermissionTo(Permission::firstOrCreate([
+            'name' => 'task.index',
+            'guard_name' => 'web',
+        ]));
+
+        $this->actingAs($admin)
+            ->get(route('task.index', [
+                'view' => 'kanban',
+                'project_id' => $project->id,
+                'responsible_id' => 'all',
+            ]))
+            ->assertOk()
+            ->assertSee('Ana Participa', false)
+            ->assertDontSee('Luis Afuera', false);
+
+        $token = $admin->createToken('participants')->plainTextToken;
+
+        $users = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/users?assignees=1&project_id='.$project->id);
+
+        $users->assertOk();
+        $ids = collect($users->json('users'))->pluck('id')->map(fn ($id) => (int) $id);
+        $this->assertTrue($ids->contains($participant->id));
+        $this->assertTrue($ids->contains($admin->id));
+        $this->assertFalse($ids->contains($outsider->id));
     }
 
     public function test_unrelated_collaborator_cannot_update_project_price(): void

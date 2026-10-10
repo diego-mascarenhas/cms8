@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreTeamUserRequest;
 use App\Http\Requests\Api\UpdateTeamUserPasswordRequest;
 use App\Http\Requests\Api\UpdateTeamUserRequest;
+use App\Models\Project;
 use App\Models\Team;
 use App\Models\Time;
 use App\Models\User;
@@ -25,6 +26,7 @@ class UserController extends Controller
      * Query params:
      * - assignable=1: only staff via team membership pivot (admin, collaborator, editor, etc.). Excludes clients.
      * - assignees=1: team owner plus members whose team role is admin, collaborator, or employee.
+     * - project_id: when that project has participants, only those people (and the project advisor) are returned.
      * - admins=1: team owner plus members whose team role is admin.
      * - assistant=1 / basic=1: same staff set as assignable (membership pivot, excludes clients).
      */
@@ -37,7 +39,7 @@ class UserController extends Controller
         }
 
         /** @var Collection<int, User> $teamUsers */
-        $teamUsers = $this->teamUsers($team, $request);
+        $teamUsers = $this->limitToProjectParticipants($team, $this->teamUsers($team, $request), $request);
         $workingIds = $request->boolean('assignees')
             ? $this->workingUserIds($team, $teamUsers)
             : [];
@@ -303,6 +305,47 @@ class UserController extends Controller
                 return ($teamUser->membership->role ?? null) === 'admin';
             })
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+    }
+
+    /**
+     * A project with participants limits task filters to those people.
+     * An empty list keeps the team-wide options.
+     *
+     * @param  Collection<int, User>  $teamUsers
+     * @return Collection<int, User>
+     */
+    private function limitToProjectParticipants(Team $team, Collection $teamUsers, Request $request): Collection
+    {
+        if (! $request->filled('project_id'))
+        {
+            return $teamUsers;
+        }
+
+        $project = Project::query()
+            ->where('team_id', $team->id)
+            ->find($request->integer('project_id'));
+
+        if (! $project)
+        {
+            return $teamUsers;
+        }
+
+        $participantIds = $project->participants()->pluck('users.id')->map(fn ($id) => (int) $id);
+        if ($participantIds->isEmpty())
+        {
+            return $teamUsers;
+        }
+
+        if ($project->responsible_id)
+        {
+            $participantIds->push((int) $project->responsible_id);
+        }
+
+        $allowed = $participantIds->unique()->all();
+
+        return AssignableTeamUsers::forTeam($team)
+            ->filter(fn (User $teamUser) => in_array((int) $teamUser->id, $allowed, true))
             ->values();
     }
 

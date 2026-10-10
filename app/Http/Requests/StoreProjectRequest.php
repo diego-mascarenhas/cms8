@@ -30,6 +30,8 @@ class StoreProjectRequest extends FormRequest
             'date_end' => 'nullable|date|after_or_equal:date_start',
             'enterprise_id' => 'required|exists:enterprises,id',
             'responsible_id' => 'required|exists:users,id',
+            'participant_ids' => 'nullable|array',
+            'participant_ids.*' => 'integer|exists:users,id',
             'date_material' => 'nullable|date',
             'description' => 'nullable|string',
             'price' => 'nullable|numeric|min:0',
