@@ -1226,4 +1226,38 @@ class MessageApiWriteTest extends TestCase
         $this->assertTrue($invalid->scheduled_for->isFuture());
         Bus::assertNothingDispatched();
     }
+
+    public function test_a_click_is_not_reported_as_still_sending(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'clicked@example.test',
+        ]);
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Aviso',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 3,
+            'sent_at' => now()->subHour(),
+            'clicked_at' => now(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries')
+            ->assertOk()
+            ->assertJsonPath('data.0.status_key', 'sent')
+            ->assertJsonPath('data.0.has_clicked', true);
+    }
 }
