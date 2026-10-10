@@ -583,6 +583,104 @@ class MessageController extends Controller
         ]);
     }
 
+    public function sendDelivery(Request $request, int $id, int $delivery): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        $message = Message::query()
+            ->where('team_id', $team->id)
+            ->find($id);
+
+        if (! $message)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Message not found'),
+            ], 404);
+        }
+
+        $row = MessageDelivery::query()
+            ->with('contact')
+            ->where('message_id', $message->id)
+            ->find($delivery);
+
+        if (! $row)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Delivery not found'),
+            ], 404);
+        }
+
+        if ($row->sent_at && ! $row->sent_at->isFuture())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ese correo ya se envió.',
+            ], 422);
+        }
+
+        if ((int) $row->status_id === 4)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ese correo ya se intentó.',
+            ], 422);
+        }
+
+        if ((int) $row->status_id === 3)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ese correo ya se está enviando.',
+            ], 422);
+        }
+
+        $email = $row->contact?->email;
+        if (! is_string($email) || trim($email) === '' || $row->contact->storedChannelValid('email') === false)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esa dirección no se puede enviar.',
+            ], 422);
+        }
+
+        if (! $team->canSendEmails(1))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay envíos disponibles.',
+            ], 422);
+        }
+
+        $row->forceFill([
+            'status_id' => 3,
+            'scheduled_for' => now(),
+            'sent_at' => null,
+        ])->save();
+
+        app(MessageDeliveryDispatcher::class)->enqueue(
+            delivery: $row,
+            profile: MessageDeliverySendProfile::Message,
+            withEnqueueJitter: false,
+            manualResend: true,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'El correo se va a enviar.',
+        ]);
+    }
+
     private function respondAfterPersist(
         StoreMessageApiRequest|UpdateMessageApiRequest $request,
         Team $team,
