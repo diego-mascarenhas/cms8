@@ -177,4 +177,39 @@ class MessageAudienceContactsQueryTest extends TestCase
         $this->assertSame(['only-b@company.test', 'shared@company.test'], $emails);
         $this->assertSame(2, $message->audienceContactsQuery()->count());
     }
+
+    #[Test]
+    public function contacts_without_an_email_are_left_out(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $teamId = (int) $user->ownedTeams()->first()->id;
+
+        Contact::factory()->create([
+            'team_id' => $teamId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'kept@company.test',
+        ]);
+        Contact::factory()->create([
+            'team_id' => $teamId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => null,
+        ]);
+        Contact::factory()->create([
+            'team_id' => $teamId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => '   ',
+        ]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Needs an address',
+            'type_id' => 1,
+            'text' => 'Hi',
+            'team_id' => $teamId,
+        ]);
+
+        $this->assertSame(['kept@company.test'], $message->audienceContactsQuery()->pluck('email')->all());
+    }
 }

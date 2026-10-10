@@ -654,6 +654,15 @@ class Contact extends Model implements HasMedia
     }
 
     /**
+     * @param  Builder<Contact>  $query
+     * @return Builder<Contact>
+     */
+    public function scopeWithMailableEmail(Builder $query): Builder
+    {
+        return $query->whereNotNull('email')->whereRaw('TRIM(email) <> ?', ['']);
+    }
+
+    /**
      * Scope to exclude collaborators removed from a specific project
      */
     public function scopeExcludeRemovedFromProject($query, $projectId)

@@ -211,7 +211,7 @@ class Message extends Model
     {
         $query = Contact::query()
             ->where('team_id', $this->team_id)
-            ->whereNotNull('email');
+            ->withMailableEmail();
 
         if ($this->hasContactCategoryFilter())
         {

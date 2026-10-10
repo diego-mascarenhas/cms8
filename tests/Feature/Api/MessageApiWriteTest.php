@@ -1260,4 +1260,41 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('data.0.status_key', 'sent')
             ->assertJsonPath('data.0.has_clicked', true);
     }
+
+    public function test_resend_refuses_a_delivery_whose_contact_has_no_email(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        Bus::fake();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => null,
+        ]);
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Aviso',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        $delivery = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 4,
+            'sent_at' => now()->subHour(),
+            'error_message' => 'No contact or email address available',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message/'.$message->id.'/deliveries/'.$delivery->id.'/resend')
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Esa dirección no se puede enviar.');
+
+        $this->assertNotNull($delivery->fresh()->error_message);
+        Bus::assertNothingDispatched();
+    }
 }

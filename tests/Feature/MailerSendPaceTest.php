@@ -381,6 +381,40 @@ class MailerSendPaceTest extends TestCase
         Bus::assertDispatched(SendMessageCampaignJob::class, 1);
     }
 
+    public function test_the_send_cron_skips_a_delivery_whose_contact_has_no_email(): void
+    {
+        Bus::fake();
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => null,
+        ]);
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'No address',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+            'min_hours_between_emails' => 0,
+            'started_at' => now(),
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->subMinute(),
+        ]);
+
+        Artisan::call('campaigns:send-scheduled');
+
+        Bus::assertNothingDispatched();
+    }
+
     /**
      * @return \Illuminate\Support\Collection<int, \Illuminate\Support\Carbon>
      */
