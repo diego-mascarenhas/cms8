@@ -553,6 +553,16 @@ class MessageController extends Controller
             ], 404);
         }
 
+        $row->loadMissing('contact');
+        $email = $row->contact?->email;
+        if (! is_string($email) || trim($email) === '')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esa dirección no se puede enviar.',
+            ], 422);
+        }
+
         $row->update([
             'status_id' => 1,
             'sent_at' => now(),
