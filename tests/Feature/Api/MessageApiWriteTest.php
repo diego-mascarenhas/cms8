@@ -1076,4 +1076,40 @@ class MessageApiWriteTest extends TestCase
                 && $job->manualResend === true;
         });
     }
+
+    public function test_mailer_preferences_are_saved_and_used_on_a_new_message(): void
+    {
+        [, , $token] = $this->adminWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/mailer/preferences', [
+                'min_hours_between_emails' => 72,
+                'enable_open_tracking' => false,
+                'enable_click_tracking' => true,
+                'show_unsubscribe' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.min_hours_between_emails', 72)
+            ->assertJsonPath('data.enable_open_tracking', false)
+            ->assertJsonPath('data.enable_click_tracking', true)
+            ->assertJsonPath('data.show_unsubscribe', false);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/preferences')
+            ->assertOk()
+            ->assertJsonPath('data.min_hours_between_emails', 72)
+            ->assertJsonPath('data.enable_open_tracking', false);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message', [
+                'name' => 'From settings',
+                'text' => 'Newsletter subject line',
+                'mail_html' => '<p>Hello</p>',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.min_hours_between_emails', 72)
+            ->assertJsonPath('data.enable_open_tracking', false)
+            ->assertJsonPath('data.enable_click_tracking', true)
+            ->assertJsonPath('data.show_unsubscribe', false);
+    }
 }

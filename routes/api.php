@@ -30,6 +30,7 @@ use App\Http\Controllers\Api\MailerAudienceController;
 use App\Http\Controllers\Api\MailerAudienceImportController;
 use App\Http\Controllers\Api\MailerCategoryController;
 use App\Http\Controllers\Api\MailerLookupController;
+use App\Http\Controllers\Api\MailerPreferencesController;
 use App\Http\Controllers\Api\MailerProspectController;
 use App\Http\Controllers\Api\MailerSenderController;
 use App\Http\Controllers\Api\MailerUsageController;
@@ -701,6 +702,8 @@ Route::middleware('auth.api')->group(function ()
     Route::delete('mailer/categories/{category}', [MailerCategoryController::class, 'destroy']);
     Route::get('mailer/sender', [MailerSenderController::class, 'show']);
     Route::put('mailer/sender', [MailerSenderController::class, 'update']);
+    Route::get('mailer/preferences', [MailerPreferencesController::class, 'show']);
+    Route::put('mailer/preferences', [MailerPreferencesController::class, 'update']);
 
     // Communications (idoneo-communications SPA)
     Route::get('communications/stats', [CommunicationController::class, 'stats']);

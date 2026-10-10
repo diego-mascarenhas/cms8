@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\EmailPlan;
+use App\Jobs\SendMessageCampaignJob;
 use App\Models\Contact;
 use App\Models\Message;
 use App\Models\MessageDelivery;
@@ -13,6 +14,7 @@ use Database\Seeders\LanguageSeeder;
 use Database\Seeders\MessageTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Bus;
 use Tests\TestCase;
 
 class MailerSendPaceTest extends TestCase
@@ -248,6 +250,135 @@ class MailerSendPaceTest extends TestCase
             ->where('contact_id', $contacts[1]->id)
             ->first();
         $this->assertTrue($waiting->scheduled_for->greaterThanOrEqualTo($sentAt->copy()->addHours(48)));
+    }
+
+    public function test_a_later_message_chains_after_the_one_already_scheduled(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->assignEmailPlan(EmailPlan::BASIC);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'chain@example.test',
+        ]);
+
+        $sentAt = now()->subHour()->startOfSecond();
+        $prior = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Prior',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $prior->id,
+            'contact_id' => $contact->id,
+            'status_id' => 2,
+            'sent_at' => $sentAt,
+            'scheduled_for' => $sentAt,
+        ]);
+
+        $first = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'First',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+            'min_hours_between_emails' => 48,
+            'started_at' => now(),
+        ]);
+        $second = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Second',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+            'min_hours_between_emails' => 48,
+            'started_at' => now(),
+        ]);
+
+        Artisan::call('campaigns:process-active', ['--message' => $first->id]);
+        Artisan::call('campaigns:process-active', ['--message' => $second->id]);
+
+        $firstTime = MessageDelivery::query()
+            ->where('message_id', $first->id)
+            ->where('contact_id', $contact->id)
+            ->first()
+            ->scheduled_for;
+        $secondTime = MessageDelivery::query()
+            ->where('message_id', $second->id)
+            ->where('contact_id', $contact->id)
+            ->first()
+            ->scheduled_for;
+
+        $this->assertTrue($firstTime->greaterThanOrEqualTo($sentAt->copy()->addHours(48)));
+        $this->assertTrue($secondTime->greaterThanOrEqualTo($firstTime->copy()->addHours(48)));
+    }
+
+    public function test_two_due_deliveries_for_one_contact_do_not_send_together(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->assignEmailPlan(EmailPlan::BASIC);
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'due@example.test',
+        ]);
+
+        $earlierMessage = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Earlier',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+            'min_hours_between_emails' => 48,
+            'started_at' => now(),
+        ]);
+        $laterMessage = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Later',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+            'min_hours_between_emails' => 48,
+            'started_at' => now(),
+        ]);
+
+        $earlierAt = now()->subMinutes(2)->startOfSecond();
+        $laterAt = now()->subMinute()->startOfSecond();
+        $earlier = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $earlierMessage->id,
+            'contact_id' => $contact->id,
+            'status_id' => 1,
+            'scheduled_for' => $earlierAt,
+        ]);
+        $later = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $laterMessage->id,
+            'contact_id' => $contact->id,
+            'status_id' => 1,
+            'scheduled_for' => $laterAt,
+        ]);
+
+        Artisan::call('campaigns:send-scheduled');
+
+        $this->assertSame($earlierAt->format('Y-m-d H:i:s'), $earlier->fresh()->scheduled_for->format('Y-m-d H:i:s'));
+        $this->assertTrue($later->fresh()->scheduled_for->greaterThanOrEqualTo($earlierAt->copy()->addHours(48)));
+        Bus::assertDispatched(SendMessageCampaignJob::class, 1);
     }
 
     /**

@@ -29,9 +29,13 @@ class StoreMessageApiRequest extends FormRequest
             $this->merge(['send_allowed_weekdays' => range(1, 7)]);
         }
 
+        $team = $this->user()?->currentTeam;
+
         if (! $this->filled('min_hours_between_emails'))
         {
-            $this->merge(['min_hours_between_emails' => 48]);
+            $this->merge([
+                'min_hours_between_emails' => $team?->mailerMinHoursBetweenEmails() ?? 48,
+            ]);
         }
 
         if (! $this->has('type_id'))
@@ -49,11 +53,21 @@ class StoreMessageApiRequest extends FormRequest
             $this->merge(['scheduled_send_at' => $this->input('schedule_send_at')]);
         }
 
-        foreach (['show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'status_id'] as $flag)
+        if (! $this->has('status_id'))
+        {
+            $this->merge(['status_id' => false]);
+        }
+
+        $flagDefaults = [
+            'show_unsubscribe' => $team?->mailerShowsUnsubscribe() ?? true,
+            'enable_open_tracking' => $team?->mailerTracksOpens() ?? true,
+            'enable_click_tracking' => $team?->mailerTracksClicks() ?? true,
+        ];
+        foreach ($flagDefaults as $flag => $default)
         {
             if (! $this->has($flag))
             {
-                $this->merge([$flag => $flag === 'status_id' ? false : true]);
+                $this->merge([$flag => $default]);
             }
         }
 

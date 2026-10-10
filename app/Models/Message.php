@@ -316,30 +316,19 @@ class Message extends Model
      */
     public function canSendToContact(\App\Models\Contact $contact): bool
     {
-        // If min_hours_between_emails is 0, always allow sending
-        if ($this->min_hours_between_emails <= 0)
+        $hours = $this->gapHours();
+        if ($hours <= 0)
         {
             return true;
         }
 
-        // Get the last email sent to this contact from any message in the same team
-        $lastDelivery = MessageDelivery::where('contact_id', $contact->id)
-            ->where('team_id', $this->team_id)
-            ->whereNotNull('sent_at')
-            ->orderBy('sent_at', 'desc')
-            ->first();
-
-        // If no previous email was sent, allow sending
-        if (! $lastDelivery)
+        $anchor = $this->latestMailMomentForContact($contact);
+        if (! $anchor)
         {
             return true;
         }
 
-        // Calculate hours since last email
-        $hoursSinceLastEmail = now()->diffInHours($lastDelivery->sent_at);
-
-        // Check if enough time has passed
-        return $hoursSinceLastEmail >= $this->min_hours_between_emails;
+        return now()->greaterThanOrEqualTo($anchor->copy()->addHours($hours));
     }
 
     /**
@@ -347,27 +336,173 @@ class Message extends Model
      */
     public function getNextAvailableTimeForContact(\App\Models\Contact $contact): ?\Carbon\Carbon
     {
-        // If min_hours_between_emails is 0, can send immediately
-        if ($this->min_hours_between_emails <= 0)
+        $hours = $this->gapHours();
+        if ($hours <= 0)
         {
             return now();
         }
 
-        // Get the last email sent to this contact
-        $lastDelivery = MessageDelivery::where('contact_id', $contact->id)
+        $anchor = $this->latestMailMomentForContact($contact);
+        if (! $anchor)
+        {
+            return now();
+        }
+
+        return $anchor->copy()->addHours($hours);
+    }
+
+    /**
+     * Team setting when it was saved, otherwise this message's own hours.
+     */
+    public function gapHours(): int
+    {
+        $override = $this->team?->mailerMinHoursOverride();
+        if ($override !== null)
+        {
+            return $override;
+        }
+
+        return max(0, (int) $this->min_hours_between_emails);
+    }
+
+    public function allowsOpenTracking(): bool
+    {
+        return $this->allowsMailerFlag('mailer_enable_open_tracking', 'enable_open_tracking', true);
+    }
+
+    public function allowsClickTracking(): bool
+    {
+        return $this->allowsMailerFlag('mailer_enable_click_tracking', 'enable_click_tracking', true);
+    }
+
+    public function allowsUnsubscribe(): bool
+    {
+        return $this->allowsMailerFlag('mailer_show_unsubscribe', 'show_unsubscribe', true);
+    }
+
+    /**
+     * Push a due delivery forward when this contact already has a closer email.
+     */
+    public function deferDeliveryOutsideGap(MessageDelivery $delivery): bool
+    {
+        $hours = $this->gapHours();
+        if ($hours <= 0)
+        {
+            return false;
+        }
+
+        $next = null;
+        $lastSent = MessageDelivery::query()
+            ->where('contact_id', $delivery->contact_id)
             ->where('team_id', $this->team_id)
+            ->where('id', '!=', $delivery->id)
             ->whereNotNull('sent_at')
-            ->orderBy('sent_at', 'desc')
+            ->orderByDesc('sent_at')
+            ->value('sent_at');
+
+        if ($lastSent)
+        {
+            $afterSent = Carbon::parse($lastSent)->addHours($hours);
+            if ($afterSent->isFuture())
+            {
+                $next = $afterSent;
+            }
+        }
+
+        $earlier = MessageDelivery::query()
+            ->where('contact_id', $delivery->contact_id)
+            ->where('team_id', $this->team_id)
+            ->where('id', '!=', $delivery->id)
+            ->whereNull('sent_at')
+            ->where('status_id', 1)
+            ->where(function ($query) use ($delivery): void
+            {
+                $query->where('scheduled_for', '<', $delivery->scheduled_for)
+                    ->orWhere(function ($query) use ($delivery): void
+                    {
+                        $query->where('scheduled_for', $delivery->scheduled_for)
+                            ->where('id', '<', $delivery->id);
+                    });
+            })
+            ->orderBy('scheduled_for')
+            ->orderBy('id')
             ->first();
 
-        // If no previous email was sent, can send immediately
-        if (! $lastDelivery)
+        if ($earlier?->scheduled_for)
         {
-            return now();
+            $afterEarlier = $earlier->scheduled_for->copy()->addHours($hours);
+            if ($afterEarlier->lte(now()))
+            {
+                $afterEarlier = now()->addHours($hours);
+            }
+            if ($next === null || $afterEarlier->greaterThan($next))
+            {
+                $next = $afterEarlier;
+            }
         }
 
-        // Calculate next available time
-        return $lastDelivery->sent_at->addHours($this->min_hours_between_emails);
+        if ($next === null || $next->lte(now()))
+        {
+            return false;
+        }
+
+        $delivery->forceFill(['scheduled_for' => $next])->save();
+
+        return true;
+    }
+
+    /**
+     * Last real send, or the latest pending slot on an older message.
+     */
+    public function latestMailMomentForContact(\App\Models\Contact $contact): ?Carbon
+    {
+        $sentAt = MessageDelivery::query()
+            ->where('contact_id', $contact->id)
+            ->where('team_id', $this->team_id)
+            ->whereNotNull('sent_at')
+            ->orderByDesc('sent_at')
+            ->value('sent_at');
+
+        $scheduledFor = MessageDelivery::query()
+            ->where('contact_id', $contact->id)
+            ->where('team_id', $this->team_id)
+            ->where('message_id', '<', $this->id)
+            ->whereNull('sent_at')
+            ->whereNotNull('scheduled_for')
+            ->orderByDesc('scheduled_for')
+            ->value('scheduled_for');
+
+        $moments = [];
+        if ($sentAt)
+        {
+            $moments[] = Carbon::parse($sentAt);
+        }
+        if ($scheduledFor)
+        {
+            $moments[] = Carbon::parse($scheduledFor);
+        }
+        if ($moments === [])
+        {
+            return null;
+        }
+
+        return collect($moments)->sortBy(fn (Carbon $moment): int => $moment->getTimestamp())->last();
+    }
+
+    private function allowsMailerFlag(string $settingKey, string $column, bool $default): bool
+    {
+        $team = $this->team;
+        if ($team && $team->hasMailerPreference($settingKey))
+        {
+            return (bool) $team->getSetting($settingKey);
+        }
+
+        if ($this->{$column} === null)
+        {
+            return $default;
+        }
+
+        return (bool) $this->{$column};
     }
 
     /**

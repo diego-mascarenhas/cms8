@@ -68,7 +68,7 @@ class TestMessageMail extends Mailable
 
         $recipient = is_string($this->testContact->email ?? null) ? $this->testContact->email : null;
 
-        return EmailTrackingHelper::applyListUnsubscribeHeaders($this, $recipient, (bool) $this->message->show_unsubscribe)
+        return EmailTrackingHelper::applyListUnsubscribeHeaders($this, $recipient, $this->message->allowsUnsubscribe())
             ->from($fromAddress, $fromName)
             ->subject('[TEST] '.$subject)
             ->html($inlinedHtml);
