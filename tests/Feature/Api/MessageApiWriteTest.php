@@ -638,6 +638,7 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('pagination.last_page', 1)
             ->assertJsonPath('data.0.contact_email', 'fallido@example.test')
             ->assertJsonPath('data.0.status_key', 'failed');
+        $this->assertNotEmpty($failed->json('data.0.failed_at'));
     }
 
     public function test_temporary_failures_are_counted_apart_from_permanent_ones(): void
@@ -755,6 +756,71 @@ class MessageApiWriteTest extends TestCase
             ->assertOk()
             ->assertJsonPath('pagination.total', 1)
             ->assertJsonPath('data.0.contact_email', 'baja@example.test');
+        $this->assertNotEmpty(
+            $this->withHeader('Authorization', 'Bearer '.$token)
+                ->getJson('/api/message/'.$message->id.'/deliveries?status=unsubscribed')
+                ->json('data.0.unsubscribed_at'),
+        );
+    }
+
+    public function test_activity_dates_keep_the_last_failure_and_the_unsubscribe_moment(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        $lostStatusId = (int) ContactStatus::query()->where('name', 'Perdido')->value('id');
+        $activeStatusId = (int) ContactStatus::query()->where('name', '!=', 'Perdido')->value('id');
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Fechas de actividad',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'actividad@example.test',
+        ]);
+
+        $delivery = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 1,
+            'sent_at' => now()->subDay(),
+        ]);
+        $delivery->markAsError('mailbox full');
+        $bouncedAt = now()->addMinute()->startOfSecond();
+        $delivery->forceFill([
+            'bounced_at' => $bouncedAt,
+            'bounce_type' => 'soft',
+        ])->save();
+
+        $contact->update(['status_id' => $lostStatusId]);
+        $contact->refresh();
+        $unsubscribedAt = $contact->unsubscribedAt()?->toIso8601String();
+        $this->assertNotEmpty($unsubscribedAt);
+
+        $contact->update(['name' => 'Actividad estable']);
+        $contact->refresh();
+        $this->assertSame($unsubscribedAt, $contact->unsubscribedAt()?->toIso8601String());
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries?search=actividad@example.test')
+            ->assertOk()
+            ->assertJsonPath('data.0.failed_at', $bouncedAt->toIso8601String())
+            ->assertJsonPath('data.0.unsubscribed_at', $unsubscribedAt)
+            ->assertJsonPath('data.0.status_key', 'temporary');
+
+        $contact->update(['status_id' => $activeStatusId]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries?search=actividad@example.test')
+            ->assertOk()
+            ->assertJsonPath('data.0.unsubscribed_at', null);
     }
 
     public function test_can_update_target_when_message_has_deliveries(): void

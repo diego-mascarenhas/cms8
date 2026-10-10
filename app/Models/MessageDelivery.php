@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\MessageTemplateMergeFields;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -280,6 +281,61 @@ class MessageDelivery extends Model
         }
 
         return self::failureTextIsTemporary(trim((string) $this->error_message.' '.(string) $this->bounce_reason));
+    }
+
+    public function failureRecordedAt(): ?Carbon
+    {
+        if ((int) $this->status_id !== 4)
+        {
+            return null;
+        }
+
+        $moments = [];
+        if ($this->bounced_at)
+        {
+            $moments[] = $this->bounced_at;
+        }
+
+        $errorTime = $this->providerErrorTime();
+        if ($errorTime)
+        {
+            $moments[] = $errorTime;
+        }
+
+        if ($moments === [])
+        {
+            return $this->updated_at;
+        }
+
+        usort($moments, function (Carbon $left, Carbon $right): int
+        {
+            return $left->getTimestamp() <=> $right->getTimestamp();
+        });
+
+        return $moments[array_key_last($moments)];
+    }
+
+    private function providerErrorTime(): ?Carbon
+    {
+        $data = $this->provider_data;
+        if (! is_array($data))
+        {
+            return null;
+        }
+
+        $stamp = $data['error_time'] ?? null;
+        if (! is_string($stamp) || $stamp === '')
+        {
+            return null;
+        }
+
+        try
+        {
+            return Carbon::parse($stamp);
+        } catch (\Throwable)
+        {
+            return null;
+        }
     }
 
     /**

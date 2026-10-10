@@ -91,6 +91,24 @@ class Contact extends Model implements HasMedia
             }
         });
 
+        static::updating(function (Contact $contact): void
+        {
+            if (! $contact->isDirty('status_id'))
+            {
+                return;
+            }
+
+            $data = $contact->dataArray();
+            if ((int) $contact->status_id === 4)
+            {
+                $data['unsubscribed_at'] = now()->toIso8601String();
+            } else
+            {
+                unset($data['unsubscribed_at']);
+            }
+            $contact->data = $data;
+        });
+
         static::saved(function (Contact $contact): void
         {
             if ($contact->wasRecentlyCreated || $contact->wasChanged(['status_id', 'team_id']))
@@ -470,6 +488,28 @@ class Contact extends Model implements HasMedia
         }
 
         return (bool) $check['valid'];
+    }
+
+    public function unsubscribedAt(): ?\Carbon\Carbon
+    {
+        if ((int) $this->status_id !== 4)
+        {
+            return null;
+        }
+
+        $stamp = $this->dataArray()['unsubscribed_at'] ?? null;
+        if (is_string($stamp) && $stamp !== '')
+        {
+            try
+            {
+                return \Carbon\Carbon::parse($stamp);
+            } catch (\Throwable)
+            {
+                return $this->updated_at;
+            }
+        }
+
+        return $this->updated_at;
     }
 
     public function storedChannelLastError(string $channel): ?string

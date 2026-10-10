@@ -506,6 +506,9 @@
 								<dt class="col-4 text-truncate">{{ __('Responsible') }}:</dt>
 								<dd class="col-8">{{ $project->responsible ? $project->responsible->name : __('Not assigned') }}</dd>
 
+								<dt class="col-4 text-truncate">Participantes:</dt>
+								<dd class="col-8">{{ $project->participants->pluck('name')->filter()->join(', ') ?: __('Not assigned') }}</dd>
+
 								@php
 									$budgetClientResponse = is_array(data_get($project->data, 'budget_client_response'))
 										? data_get($project->data, 'budget_client_response')

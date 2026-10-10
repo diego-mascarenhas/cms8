@@ -82,6 +82,8 @@ class CampaignMessageApiService
             'status_text' => $this->deliveryStatusText($delivery),
             'has_opened' => $delivery->opened_at !== null,
             'has_clicked' => $delivery->clicked_at !== null,
+            'failed_at' => $delivery->failureRecordedAt()?->toIso8601String(),
+            'unsubscribed_at' => $delivery->contact?->unsubscribedAt()?->toIso8601String(),
             'in_list60' => $delivery->contact?->list60 !== null,
             'email_valid' => $delivery->contact?->storedChannelValid('email'),
             'email_last_error' => $this->deliveryFailureText($delivery),

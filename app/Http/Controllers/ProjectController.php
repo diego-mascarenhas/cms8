@@ -150,6 +150,8 @@ class ProjectController extends Controller
             $project = Project::create($attributes);
         }
 
+        $this->syncParticipants($project, $request);
+
         // Auto-create TaskBoard for new projects
         if (! $projectId && ! $project->board_id)
         {
@@ -1292,10 +1294,38 @@ class ProjectController extends Controller
         }
 
         $project->update($validated);
+        $this->syncParticipants($project, $request);
 
         return redirect()
             ->route('project.show', $project->id)
             ->with('success', __('Project updated successfully.'));
+    }
+
+    /**
+     * Save who takes part in the project. Only the project form sends this,
+     * so other saves do not clear the list.
+     */
+    private function syncParticipants(Project $project, Request $request): void
+    {
+        if (! $request->boolean('sync_participants'))
+        {
+            return;
+        }
+
+        $team = auth()->user()->currentTeam;
+        $allowed = \App\Support\AssignableTeamUsers::forTeam($team)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        $ids = collect($request->input('participant_ids', []))
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->intersect($allowed)
+            ->values()
+            ->all();
+
+        $project->participants()->sync($ids);
     }
 
     /**

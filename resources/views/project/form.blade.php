@@ -103,6 +103,11 @@
     $(function() {
         // ClientSelect owns #enterprise_id (contact/responsible templates).
         if ($.fn.select2) {
+            $('#participant_ids').select2({
+                width: '100%',
+                placeholder: 'Elegí quienes participan',
+                closeOnSelect: false,
+            });
             $('#category_id, #status_id, #token_model_select').select2({
                 placeholder: "{{ __('Choose an option') }}",
                 allowClear: true
@@ -1095,6 +1100,24 @@
 				@error('responsible_id')
     <div class="invalid-feedback">{{ $message }}</div>
 @enderror
+			</div>
+
+			<div class="col-12">
+				@php
+					$participantOptions = \App\Support\AssignableTeamUsers::optionsForTeam(
+						($data->team ?? null) ?: auth()->user()->currentTeam
+					);
+					$selectedParticipants = old('participant_ids', isset($data->id) ? $data->participants->pluck('id')->all() : []);
+					$selectedParticipants = array_map('intval', is_array($selectedParticipants) ? $selectedParticipants : []);
+				@endphp
+				<label for="participant_ids" class="form-label">Participantes</label>
+				<input type="hidden" name="sync_participants" value="1">
+				<select id="participant_ids" name="participant_ids[]" class="form-select" multiple data-placeholder="Elegí quienes participan">
+					@foreach($participantOptions as $userId => $userName)
+						<option value="{{ $userId }}" @selected(in_array((int) $userId, $selectedParticipants, true))>{{ $userName }}</option>
+					@endforeach
+				</select>
+				<p class="text-muted small mb-0 mt-1">Quienes participan en este proyecto. El filtro de tareas muestra solo a estas personas.</p>
 			</div>
 
 			<!-- Notas del proyecto -->
