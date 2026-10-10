@@ -26,7 +26,7 @@ class UserController extends Controller
      * Query params:
      * - assignable=1: only staff via team membership pivot (admin, collaborator, editor, etc.). Excludes clients.
      * - assignees=1: team owner plus members whose team role is admin, collaborator, or employee.
-     * - project_id: when that project has participants, only those people (and the project advisor) are returned.
+     * - project_id: only the collaborators saved on that project.
      * - admins=1: team owner plus members whose team role is admin.
      * - assistant=1 / basic=1: same staff set as assignable (membership pivot, excludes clients).
      */
@@ -309,8 +309,7 @@ class UserController extends Controller
     }
 
     /**
-     * A project with participants limits task filters to those people.
-     * An empty list keeps the team-wide options.
+     * A project limits task assignees to the collaborators saved on it.
      *
      * @param  Collection<int, User>  $teamUsers
      * @return Collection<int, User>
@@ -331,18 +330,7 @@ class UserController extends Controller
             return $teamUsers;
         }
 
-        $participantIds = $project->participants()->pluck('users.id')->map(fn ($id) => (int) $id);
-        if ($participantIds->isEmpty())
-        {
-            return $teamUsers;
-        }
-
-        if ($project->responsible_id)
-        {
-            $participantIds->push((int) $project->responsible_id);
-        }
-
-        $allowed = $participantIds->unique()->all();
+        $allowed = $project->participants()->pluck('users.id')->map(fn ($id) => (int) $id)->all();
 
         return AssignableTeamUsers::forTeam($team)
             ->filter(fn (User $teamUser) => in_array((int) $teamUser->id, $allowed, true))

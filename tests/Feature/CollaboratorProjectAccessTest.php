@@ -347,8 +347,56 @@ class CollaboratorProjectAccessTest extends TestCase
         $users->assertOk();
         $ids = collect($users->json('users'))->pluck('id')->map(fn ($id) => (int) $id);
         $this->assertTrue($ids->contains($participant->id));
-        $this->assertTrue($ids->contains($admin->id));
+        $this->assertFalse($ids->contains($admin->id));
         $this->assertFalse($ids->contains($outsider->id));
+    }
+
+    public function test_project_show_saves_participants(): void
+    {
+        [$admin, $team, $client] = $this->adminTeamAndClient();
+        $participant = $this->collaboratorOnTeam($team);
+        $participant->forceFill(['name' => 'Ana Participa'])->save();
+        $outsider = $this->collaboratorOnTeam($team);
+        $project = $this->createProject($team->id, $client->id, $admin->id, 'Desde el detalle');
+
+        $this->actingAs($admin)
+            ->get(route('project.show', $project->id))
+            ->assertOk()
+            ->assertSee('data-bs-target="#projectParticipantsModal"', false)
+            ->assertSee('id="project-participant-ids"', false)
+            ->assertSee('Ana Participa', false);
+
+        $this->actingAs($admin)
+            ->post(route('project.participants.update', $project->id), [
+                'participant_ids' => [$participant->id, $outsider->id + 900000],
+            ])
+            ->assertRedirect(route('project.show', $project->id));
+
+        $this->assertEqualsCanonicalizing(
+            [$participant->id],
+            $project->fresh()->participants()->pluck('users.id')->map(fn ($id) => (int) $id)->all(),
+        );
+
+        $project->forceFill([
+            'data' => [
+                'suggested_tasks' => [[
+                    'title' => 'Armar brochure',
+                    'estimated_hours' => 2,
+                    'included' => true,
+                ]],
+            ],
+        ])->save();
+
+        $html = $this->actingAs($admin)
+            ->get(route('project.show', $project->id))
+            ->assertOk()
+            ->getContent();
+
+        preg_match('/id="suggested_responsible_0".*?<\\/select>/s', $html, $matches);
+        $this->assertNotEmpty($matches);
+        $this->assertStringContainsString('Ana Participa', $matches[0]);
+        $this->assertStringNotContainsString($outsider->name, $matches[0]);
+        $this->assertStringNotContainsString($admin->name, $matches[0]);
     }
 
     public function test_unrelated_collaborator_cannot_update_project_price(): void

@@ -172,18 +172,10 @@ class TaskController extends Controller
 
         if ($project)
         {
-            $participantIds = $project->participants()->pluck('users.id')->map(fn ($id) => (int) $id);
-            if ($participantIds->isNotEmpty())
-            {
-                if ($project->responsible_id)
-                {
-                    $participantIds->push((int) $project->responsible_id);
-                }
-                $allowedIds = $participantIds->unique()->all();
-                $users = $users
-                    ->filter(fn (array $teamUser) => in_array((int) $teamUser['id'], $allowedIds, true))
-                    ->values();
-            }
+            $allowedIds = $project->participants()->pluck('users.id')->map(fn ($id) => (int) $id)->all();
+            $users = $users
+                ->filter(fn (array $teamUser) => in_array((int) $teamUser['id'], $allowedIds, true))
+                ->values();
         }
 
         $categories = class_exists(Category::class)

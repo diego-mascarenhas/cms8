@@ -34,6 +34,7 @@ class TeamUsersSelect extends Component
         bool $showNull = false,
         bool $compact = false,
         bool $disabled = false,
+        $options = null,
     ) {
         $this->selected = $selected;
         $this->label = $label;
@@ -43,7 +44,7 @@ class TeamUsersSelect extends Component
         $this->showNull = $showNull;
         $this->compact = $compact;
         $this->disabled = $disabled;
-        $this->options = $this->getTeamUsers();
+        $this->options = $options === null ? $this->getTeamUsers() : $options;
     }
 
     private function getTeamUsers()

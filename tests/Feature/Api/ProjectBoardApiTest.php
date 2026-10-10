@@ -18,6 +18,7 @@ use Database\Seeders\TaskStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Mail\Transport\ArrayTransport;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Jetstream\Features;
@@ -464,5 +465,47 @@ class ProjectBoardApiTest extends TestCase
         $this->assertSame(0, $stoppedTask['running_timers']);
         $this->assertFalse($stoppedTask['workers'][0]['working']);
         $this->assertSame($user->id, $task->fresh()->responsible_id);
+    }
+
+    public function test_only_the_project_responsible_can_reassign_a_task(): void
+    {
+        [$owner, $ownerToken, $project, $task] = $this->projectWithTask();
+
+        Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+        $collaborator = User::factory()->create();
+        $project->team->users()->attach($collaborator, ['role' => 'collaborator']);
+        $collaborator->forceFill(['current_team_id' => $project->team_id])->save();
+        $collaborator->assignRole('collaborator');
+        $task->update(['responsible_id' => $collaborator->id]);
+
+        $token = $collaborator->createToken('task-assignee')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/tasks/'.$task->id, [
+                'title' => 'Sigue siendo mía',
+                'responsible_id' => $owner->id,
+            ])
+            ->assertForbidden();
+
+        $this->assertSame($collaborator->id, (int) $task->fresh()->responsible_id);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/tasks/'.$task->id, [
+                'title' => 'Sigue siendo mía',
+                'responsible_id' => $collaborator->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Sigue siendo mía')
+            ->assertJsonPath('data.responsible.id', $collaborator->id);
+
+        Auth::forgetGuards();
+        $this->flushHeaders();
+
+        $this->withHeader('Authorization', 'Bearer '.$ownerToken)
+            ->putJson('/api/tasks/'.$task->id, [
+                'responsible_id' => $owner->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.responsible.id', $owner->id);
     }
 }

@@ -58,6 +58,9 @@
 				<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
 					<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
 				</a>
+				<button type="button" class="btn btn-success waves-effect waves-light" data-bs-toggle="modal" data-bs-target="#projectParticipantsModal">
+					<i class="ti ti-users me-1"></i>{{ __('Collaborators') }}
+				</button>
 				@if ($project->isBudgetContentLocked() && (int) $project->status_id !== \App\Models\ProjectStatus::STATUS_INVOICED)
 					<button type="button" class="btn btn-outline-primary waves-effect waves-light" data-bs-toggle="modal" data-bs-target="#projectStatusModal">
 						<i class="ti ti-exchange me-1"></i>{{ __('Change status') }}
@@ -69,13 +72,6 @@
 				<i class="ti ti-building me-1"></i>{{ __('Enterprise') }}
 			</a>
 			@endif
-			{{-- Collaborators temporarily hidden
-			@can('update', $project)
-			<a href="{{ route('project.select-collaborators', $project->id) }}" class="btn btn-success waves-effect waves-light">
-				<i class="ti ti-users me-1"></i>{{ __('Collaborators') }}
-			</a>
-			@endcan
-			--}}
 			<a href="{{ route('task.index', ['view' => 'kanban', 'project_id' => $project->id]) }}" class="btn btn-info waves-effect waves-light">
 				<i class="ti ti-layout-kanban me-1"></i>{{ __('Board') }}
 			</a>
@@ -745,6 +741,10 @@
 									<span class="text-muted">{{ $responsibleName ?? '—' }}</span>
 									<span class="badge bg-label-success ms-1">{{ __('On board') }}</span>
 								@elseif (auth()->user()->can('update', $project))
+								@php
+									$suggestedResponsibleId = $t['responsible_id'] ?? null;
+									$suggestedResponsibleSelected = isset($participantUsers[$suggestedResponsibleId]) ? $suggestedResponsibleId : '';
+								@endphp
 								<form action="{{ route('project.add-suggested-task', $project->id) }}" method="POST" class="d-flex align-items-center gap-2">
 									@csrf
 									<input type="hidden" name="title" value="{{ $t['title'] ?? '' }}">
@@ -755,10 +755,11 @@
 											:id="'suggested_responsible_'.$idx"
 											name="responsible_id"
 											:label="__('Responsible')"
-											:selected="$t['responsible_id'] ?? auth()->id()"
+											:options="$participantUsers"
+											:selected="$suggestedResponsibleSelected"
 											:compact="true"
 											:showNull="true"
-											:disabled="! $suggestedIncluded"
+											:disabled="! $suggestedIncluded || $participantUsers->isEmpty()"
 										/>
 									</div>
 									<button type="submit" class="btn btn-sm btn-primary" {{ $suggestedIncluded ? '' : 'disabled' }}>
@@ -880,7 +881,7 @@
 					<div class="mb-3">
 						<label for="project-time-user-id" class="form-label">{{ __('Collaborator') }}</label>
 						<select id="project-time-user-id" name="user_id" class="select2 form-select" data-placeholder="{{ __('Choose an option') }}">
-							@foreach(($teamUsers ?? collect()) as $teamUserId => $teamUserName)
+							@foreach(($participantUsers ?? collect()) as $teamUserId => $teamUserName)
 								<option value="{{ $teamUserId }}" @selected((int) old('user_id', auth()->id()) === (int) $teamUserId)>
 									{{ $teamUserName }}
 								</option>
@@ -1041,6 +1042,48 @@
 </div>
 @endif
 
+@can('update', $project)
+@php
+	$participantOptions = \App\Support\AssignableTeamUsers::optionsForTeam(
+		$project->team ?: auth()->user()->currentTeam
+	);
+	$selectedParticipants = old('participant_ids', $project->participants->pluck('id')->all());
+	$selectedParticipants = array_map('intval', is_array($selectedParticipants) ? $selectedParticipants : []);
+@endphp
+<div class="modal fade" id="projectParticipantsModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">{{ __('Collaborators') }}</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form method="POST" action="{{ route('project.participants.update', $project->id) }}">
+				@csrf
+				<div class="modal-body">
+					<label for="project-participant-ids" class="form-label">Participantes</label>
+					<select id="project-participant-ids" name="participant_ids[]" class="form-select" multiple data-placeholder="Elegí quienes participan">
+						@foreach ($participantOptions as $userId => $userName)
+							<option value="{{ $userId }}" @selected(in_array((int) $userId, $selectedParticipants, true))>{{ $userName }}</option>
+						@endforeach
+					</select>
+					@error('participant_ids')
+						<div class="invalid-feedback d-block">{{ $message }}</div>
+					@enderror
+					@error('participant_ids.*')
+						<div class="invalid-feedback d-block">{{ $message }}</div>
+					@enderror
+					<p class="text-muted small mb-0 mt-2">Quienes participan en este proyecto. El filtro de tareas muestra solo a estas personas.</p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+					<button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+@endcan
+
 @if ($project->isBudgetContentLocked() && (int) $project->status_id !== \App\Models\ProjectStatus::STATUS_INVOICED)
 @php
 	$lockedStatusOptions = \App\Models\ProjectStatus::query()
@@ -1110,6 +1153,20 @@
 					});
 				}
 			});
+		}
+
+		var $participantsModal = $('#projectParticipantsModal');
+		var $participants = $('#project-participant-ids');
+		if ($participantsModal.length && $participants.length && $.fn.select2) {
+			$participants.select2({
+				dropdownParent: $participantsModal,
+				width: '100%',
+				placeholder: $participants.data('placeholder') || '',
+				closeOnSelect: false
+			});
+			@if ($errors->has('participant_ids') || $errors->has('participant_ids.*'))
+			$participantsModal.modal('show');
+			@endif
 		}
 
 		var $statusModal = $('#projectStatusModal');

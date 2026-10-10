@@ -1114,7 +1114,8 @@ class TaskController extends Controller
     {
         $task = Task::findOrFail($id);
 
-        if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole('admin'))
+        $isAssignee = (int) $task->responsible_id === (int) $request->user()->id;
+        if (! $isAssignee && ! $request->user()->hasRole('admin'))
         {
             return response()->json([
                 'success' => false,
@@ -1133,6 +1134,14 @@ class TaskController extends Controller
             'due_date' => 'sometimes|nullable|date|after_or_equal:start_date',
             'order' => 'sometimes|nullable|integer|min:0',
         ]);
+
+        if (array_key_exists('responsible_id', $validated) && ! $this->userMayReassignTask($request->user(), $task, $validated['responsible_id']))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Solo el responsable del proyecto puede cambiar el responsable de la tarea.'),
+            ], 403);
+        }
 
         $task->update($validated);
         $task->load(['status', 'category', 'project', 'responsible']);
@@ -1230,6 +1239,24 @@ class TaskController extends Controller
                 'attachment' => null,
             ],
         ]);
+    }
+
+    /**
+     * Keeping the same assignee is allowed. A different person requires the project responsible.
+     */
+    private function userMayReassignTask(User $user, Task $task, mixed $responsibleId): bool
+    {
+        $next = $responsibleId !== null && $responsibleId !== '' ? (int) $responsibleId : null;
+        $current = $task->responsible_id !== null ? (int) $task->responsible_id : null;
+
+        if ($next === $current)
+        {
+            return true;
+        }
+
+        $projectResponsibleId = $task->project()->value('responsible_id');
+
+        return $projectResponsibleId !== null && (int) $projectResponsibleId === (int) $user->id;
     }
 
     /**
