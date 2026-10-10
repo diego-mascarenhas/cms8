@@ -527,6 +527,44 @@ class MailerAudienceController extends Controller
         ], 201);
     }
 
+    public function destroyList60(Request $request, int $id): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        if (! $team->hasModule('list60'))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este equipo no tiene la Lista 60.',
+            ], 403);
+        }
+
+        $contact = $this->contactForTeam((int) $team->id, $id);
+        if ($contact instanceof JsonResponse)
+        {
+            return $contact;
+        }
+
+        List60::query()->where('contact_id', $contact->id)->delete();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'contact_id' => (int) $contact->id,
+                'in_list60' => false,
+            ],
+        ]);
+    }
+
     public function storeList(StoreMailerAudienceListRequest $request): JsonResponse
     {
         $team = $this->teamOrError($request);

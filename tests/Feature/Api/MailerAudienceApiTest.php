@@ -428,6 +428,13 @@ class MailerAudienceApiTest extends TestCase
             ->assertJsonPath('data.already', true);
 
         $this->assertSame(1, List60::query()->where('contact_id', $contact->id)->count());
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/mailer/audience/'.$contact->id.'/list60')
+            ->assertOk()
+            ->assertJsonPath('data.in_list60', false);
+
+        $this->assertSame(0, List60::query()->where('contact_id', $contact->id)->count());
     }
 
     public function test_list60_note_describes_the_news_open_and_click(): void
