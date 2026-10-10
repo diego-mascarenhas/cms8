@@ -153,7 +153,18 @@ class ProcessActiveCampaigns extends Command
                 ->where('contact_id', $contact->id)
                 ->first();
 
-            if (! $existingDelivery)
+            if ($existingDelivery)
+            {
+                if ($existingDelivery->sent_at === null && (int) $existingDelivery->status_id === 1)
+                {
+                    $nextAvailableTime = $message->getNextAvailableTimeForContact($contact);
+                    if ($existingDelivery->scheduled_for && $existingDelivery->scheduled_for->lt($nextAvailableTime))
+                    {
+                        $existingDelivery->scheduled_for = $nextAvailableTime;
+                        $existingDelivery->save();
+                    }
+                }
+            } else
             {
                 $previouslyReached = isset($reached[$contact->id]);
                 if ($fast && $previouslyReached)

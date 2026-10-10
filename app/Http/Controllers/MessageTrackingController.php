@@ -105,7 +105,7 @@ class MessageTrackingController extends Controller
 
             // If this is the first interaction and open tracking is enabled,
             // also register an open event (user must have opened the email to click)
-            if (! $delivery->opened_at && $delivery->message && $delivery->message->enable_open_tracking)
+            if (! $delivery->opened_at && $delivery->message && $delivery->message->allowsOpenTracking())
             {
                 \App\Models\MessageDeliveryTracking::createEvent(
                     $delivery->id,

@@ -448,6 +448,55 @@ trait HasEmailLimits
         return 0;
     }
 
+    public function mailerMinHoursOverride(): ?int
+    {
+        $value = $this->getSetting('mailer_min_hours_between_emails');
+        if ($value === null || $value === '')
+        {
+            return null;
+        }
+
+        return max(0, (int) $value);
+    }
+
+    public function mailerMinHoursBetweenEmails(): int
+    {
+        return $this->mailerMinHoursOverride()
+            ?? (int) config('mailer.campaigns.default_min_hours_between_emails', 48);
+    }
+
+    public function mailerTracksOpens(): bool
+    {
+        return $this->mailerPreference('mailer_enable_open_tracking', true);
+    }
+
+    public function mailerTracksClicks(): bool
+    {
+        return $this->mailerPreference('mailer_enable_click_tracking', true);
+    }
+
+    public function mailerShowsUnsubscribe(): bool
+    {
+        return $this->mailerPreference('mailer_show_unsubscribe', true);
+    }
+
+    public function hasMailerPreference(string $key): bool
+    {
+        $value = $this->getSetting($key);
+
+        return $value !== null && $value !== '';
+    }
+
+    private function mailerPreference(string $key, bool $default): bool
+    {
+        if (! $this->hasMailerPreference($key))
+        {
+            return $default;
+        }
+
+        return (bool) $this->getSetting($key);
+    }
+
     public function mailerCreateBatch(): int
     {
         if ($this->sendsMailerWithoutSpacing())

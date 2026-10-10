@@ -73,6 +73,13 @@ class SendScheduledDeliveries extends Command
                 continue;
             }
 
+            if ($delivery->message?->deferDeliveryOutsideGap($delivery))
+            {
+                $this->comment("   ⏳ Delivery {$delivery->id} waits until {$delivery->scheduled_for}");
+
+                continue;
+            }
+
             try
             {
                 $dispatcher->enqueue(delivery: $delivery, withEnqueueJitter: false);

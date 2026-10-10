@@ -36,7 +36,7 @@ class MessageDeliveryMail extends Mailable
 
         $this->delivery->loadMissing(['contact', 'message']);
         $recipient = $this->delivery->contact->email ?? null;
-        $unsubscribeEnabled = (bool) ($this->delivery->message->show_unsubscribe ?? false);
+        $unsubscribeEnabled = $this->delivery->message->allowsUnsubscribe();
 
         // Use config() which will be set by ConfiguresTeamMail trait before sending
         // Do NOT explicitly set ->from() here, let Laravel use the config('mail.from')
