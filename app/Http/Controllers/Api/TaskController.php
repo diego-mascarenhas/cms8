@@ -648,14 +648,33 @@ class TaskController extends Controller
 
         $user = $request->user();
 
+        $project = null;
         $boardId = $validated['board_id'] ?? null;
-        if (! $boardId && ! empty($validated['project_id']))
+        if (! empty($validated['project_id']))
         {
             $project = Project::find($validated['project_id']);
-            if ($project && $user->can('view', $project))
+            if ($project && $user->can('view', $project) && ! $boardId)
             {
                 $boardId = $project->board_id;
             }
+        } elseif ($boardId)
+        {
+            $project = Project::where('board_id', $boardId)->first();
+        }
+
+        $dueDate = $validated['due_date'] ?? now()->addDays(7)->toDateString();
+        $projectEnd = $project?->date_end?->format('Y-m-d');
+        if ($this->dueDateIsAfterProjectEnd($dueDate, $projectEnd))
+        {
+            if (array_key_exists('due_date', $validated) && $validated['due_date'])
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('La fecha de entrega no puede ser posterior a la del proyecto.'),
+                ], 422);
+            }
+
+            $dueDate = $projectEnd;
         }
 
         // Obtener el estado inicial (TO_DO por defecto, o IN_PROGRESS si se inicia el timer)
@@ -677,7 +696,7 @@ class TaskController extends Controller
             'estimated_hours' => $validated['estimated_hours'] ?? 1,
             'order' => $nextOrder,
             'start_date' => $validated['start_date'] ?? now()->toDateString(),
-            'due_date' => $validated['due_date'] ?? now()->addDays(7)->toDateString(),
+            'due_date' => $dueDate,
         ]);
 
         // Si se solicita, iniciar el timer automáticamente
@@ -1143,6 +1162,22 @@ class TaskController extends Controller
             ], 403);
         }
 
+        if (array_key_exists('estimated_hours', $validated) && ! $this->userMayChangeEstimate($request->user(), $task, $validated['estimated_hours']))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Solo el responsable del proyecto puede cambiar el tiempo estimado.'),
+            ], 403);
+        }
+
+        if (array_key_exists('due_date', $validated) && $this->dueDateIsAfterProjectEnd($validated['due_date'], $task->project()->value('date_end')))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('La fecha de entrega no puede ser posterior a la del proyecto.'),
+            ], 422);
+        }
+
         $task->update($validated);
         $task->load(['status', 'category', 'project', 'responsible']);
 
@@ -1254,9 +1289,40 @@ class TaskController extends Controller
             return true;
         }
 
+        return $this->userIsProjectResponsible($user, $task);
+    }
+
+    /**
+     * Keeping the same estimate is allowed. A different value requires the project responsible.
+     */
+    private function userMayChangeEstimate(User $user, Task $task, mixed $hours): bool
+    {
+        $next = $hours === null || $hours === '' ? null : round((float) $hours, 2);
+        $current = $task->estimated_hours === null ? null : round((float) $task->estimated_hours, 2);
+
+        if ($next === $current)
+        {
+            return true;
+        }
+
+        return $this->userIsProjectResponsible($user, $task);
+    }
+
+    private function userIsProjectResponsible(User $user, Task $task): bool
+    {
         $projectResponsibleId = $task->project()->value('responsible_id');
 
         return $projectResponsibleId !== null && (int) $projectResponsibleId === (int) $user->id;
+    }
+
+    private function dueDateIsAfterProjectEnd(mixed $dueDate, mixed $projectEnd): bool
+    {
+        if ($dueDate === null || $dueDate === '' || $projectEnd === null || $projectEnd === '')
+        {
+            return false;
+        }
+
+        return substr((string) $dueDate, 0, 10) > substr((string) $projectEnd, 0, 10);
     }
 
     /**
