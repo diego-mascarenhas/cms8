@@ -1112,4 +1112,118 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('data.enable_click_tracking', true)
             ->assertJsonPath('data.show_unsubscribe', false);
     }
+
+    public function test_send_queues_a_pending_delivery_now(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        Bus::fake();
+        $team->assignEmailPlan(EmailPlan::BASIC);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'pending@example.test',
+        ]);
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Aviso',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        $delivery = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->addDays(2),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message/'.$message->id.'/deliveries/'.$delivery->id.'/send')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $delivery->refresh();
+        $this->assertNull($delivery->sent_at);
+        $this->assertSame(3, (int) $delivery->status_id);
+        $this->assertTrue($delivery->scheduled_for->lessThanOrEqualTo(now()));
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message/'.$message->id.'/deliveries/'.$delivery->id.'/send')
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Ese correo ya se está enviando.');
+
+        Bus::assertDispatched(SendMessageCampaignJob::class, function (SendMessageCampaignJob $job) use ($delivery): bool
+        {
+            return (int) $job->messageDelivery->id === (int) $delivery->id
+                && $job->manualResend === true;
+        });
+    }
+
+    public function test_send_refuses_a_delivery_that_already_went_out_or_has_a_bad_address(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        Bus::fake();
+        $team->assignEmailPlan(EmailPlan::BASIC);
+
+        $sentContact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'sent@example.test',
+        ]);
+        $invalidContact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'bad@example.test',
+            'data' => [
+                'channels' => [
+                    'email' => [
+                        'valid' => false,
+                        'address' => 'bad@example.test',
+                    ],
+                ],
+            ],
+        ]);
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Aviso',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        $sent = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $sentContact->id,
+            'status_id' => 1,
+            'sent_at' => now()->subHour(),
+        ]);
+        $invalid = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $invalidContact->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->addDay(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message/'.$message->id.'/deliveries/'.$sent->id.'/send')
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Ese correo ya se envió.');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message/'.$message->id.'/deliveries/'.$invalid->id.'/send')
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Esa dirección no se puede enviar.');
+
+        $invalid->refresh();
+        $this->assertTrue($invalid->scheduled_for->isFuture());
+        Bus::assertNothingDispatched();
+    }
 }
