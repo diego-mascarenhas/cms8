@@ -57,7 +57,7 @@ $configData = Helper::appClasses();
             </div>
             <div class="col-md-6">
               <label for="person_locations" class="form-label">{{ __('Ubicación de la persona') }}</label>
-              <input type="text" class="form-control" id="person_locations" name="person_locations" placeholder="España, Madrid">
+              <input type="text" class="form-control" id="person_locations" name="person_locations" placeholder="Buenos Aires, Argentina">
               <div class="form-text">{{ __('País o ciudad donde reside la persona.') }}</div>
             </div>
             <div class="col-md-6">

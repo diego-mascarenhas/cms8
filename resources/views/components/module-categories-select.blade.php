@@ -1,4 +1,4 @@
-@props(['id', 'name' => null, 'errorKey' => null, 'label', 'selected' => null, 'showNull' => true, 'moduleKey' => null, 'disabled' => false, 'allowEmpty' => false, 'multiple' => false, 'emptyText' => 'Seleccione una categoría', 'allowQuickCreate' => true, 'allowManageModal' => true, 'listingFilter' => false])
+@props(['id', 'name' => null, 'errorKey' => null, 'label', 'selected' => null, 'showNull' => true, 'moduleKey' => null, 'disabled' => false, 'allowEmpty' => false, 'multiple' => false, 'emptyText' => 'Seleccione una categoría', 'allowQuickCreate' => true, 'allowManageModal' => true, 'listingFilter' => false, 'dropdownParent' => null])
 
 @php
     if ($listingFilter)
@@ -43,6 +43,7 @@
         data-placeholder="{{ $emptyText }}"
         data-allow-clear="{{ $enableAllowClear ? 'true' : 'false' }}"
         @if($moduleKey) data-module-key="{{ $moduleKey }}" data-empty-text="{{ $emptyText }}" data-show-empty-option="{{ $showEmptyOption ? '1' : '0' }}" data-allow-empty-select="{{ $allowEmpty ? '1' : '0' }}" @endif
+        @if($dropdownParent) data-dropdown-parent="{{ $dropdownParent }}" @endif
         {{ $allowEmpty ? '' : 'required' }}
         @if($multiple) multiple @endif
         @if($disabled) disabled @endif
@@ -219,7 +220,13 @@
                 placeholder: @json($emptyText),
                 allowClear: {{ $enableAllowClear ? 'true' : 'false' }},
                 closeOnSelect: {{ $multiple ? 'false' : 'true' }},
-                dropdownParent: $(document.body),
+                dropdownParent: (function ($select) {
+                    var selector = $select.attr('data-dropdown-parent');
+                    if (selector && $(selector).length) {
+                        return $(selector);
+                    }
+                    return $(document.body);
+                })($moduleCategorySelect),
                 language: {
                     noResults: function () {
                         return '';
@@ -283,6 +290,15 @@
 @once
 @push('scripts')
 <script>
+    function moduleCategoryDropdownParent($select) {
+        var selector = $select.attr('data-dropdown-parent');
+        if (selector && jQuery(selector).length) {
+            return jQuery(selector);
+        }
+
+        return jQuery(document.body);
+    }
+
     (function () {
         var moduleOptionsUrl = @json(route('categories.module-options'));
 
@@ -327,7 +343,7 @@
                         placeholder: emptyText,
                         allowClear: allowClear,
                         closeOnSelect: !isMultiple,
-                        dropdownParent: jQuery(document.body),
+                        dropdownParent: moduleCategoryDropdownParent($s),
                         language: {
                             noResults: function () {
                                 return '';

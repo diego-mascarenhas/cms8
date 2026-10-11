@@ -116,6 +116,13 @@ class ApolloIntegrationTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Encuentra contactos', false);
+        $response->assertSee('placeholder="Buenos Aires, Argentina"', false);
+        $response->assertSee('id="organization_locations_people" name="organization_locations_people" placeholder="California"', false);
+        $response->assertSee('id="apollo_import_category_modal_id"', false);
+        $response->assertSee('data-module-key="contacts"', false);
+        $response->assertSee('data-dropdown-parent="#apolloImportCategoryModal"', false);
+        $response->assertSee('quick-add-module-cat-', false);
+        $response->assertDontSee('createTag', false);
     }
 
     public function test_add_person_as_contact_creates_contact_with_team_and_apollo_data(): void

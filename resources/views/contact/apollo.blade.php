@@ -43,7 +43,7 @@
             </div>
             <div class="col-md-6">
                 <label for="person_locations" class="form-label">Ubicación de la persona</label>
-                <input type="text" class="form-control" id="person_locations" name="person_locations" placeholder="España, Madrid">
+                <input type="text" class="form-control" id="person_locations" name="person_locations" placeholder="Buenos Aires, Argentina">
                 <div class="form-text">País o ciudad donde reside la persona.</div>
             </div>
             <div class="col-md-6">
@@ -144,13 +144,16 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <label for="apollo_import_category_modal_id" class="form-label">{{ __('Seleccionar o crear categoría') }}</label>
-                <select id="apollo_import_category_modal_id" name="apollo_import_category_modal_id" class="form-select" data-placeholder="{{ __('Seleccionar o crear categoría') }}">
-                    <option value="">{{ __('Seleccionar o crear categoría') }}</option>
-                    @foreach($contactCategories ?? [] as $cat)
-                        <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                    @endforeach
-                </select>
+                <x-module-categories-select
+                    id="apollo_import_category_modal_id"
+                    name="apollo_import_category_modal_id"
+                    label="Categoría"
+                    moduleKey="contacts"
+                    :selected="''"
+                    :allowEmpty="true"
+                    emptyText="Seleccione una categoría"
+                    dropdownParent="#apolloImportCategoryModal"
+                />
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancelar') }}</button>
@@ -189,47 +192,10 @@ $(function() {
     var csrf = '{{ csrf_token() }}';
     var urlPeople = '{{ route("contact.apollo.people") }}';
     var urlAddPerson = '{{ route("contact.apollo.add-person") }}';
-    var urlCategoryQuickStore = '{{ route("categories.quick-store") }}';
     var canImportProspects = {{ ($canImportProspects ?? true) ? 'true' : 'false' }};
     var apolloTable = null;
 
     var pendingImportAction = null;
-
-    if ($.fn.select2) {
-        $('#apollo_import_category_modal_id').select2({
-            dropdownParent: $('#apolloImportCategoryModal'),
-            placeholder: '{{ __("Seleccionar o crear categoría") }}',
-            allowClear: true,
-            tags: true,
-            createTag: function(params) {
-                var term = $.trim(params.term);
-                if (term === '') return null;
-                return { id: 'new__' + term, text: term };
-            },
-            width: '100%'
-        }).on('select2:select', function(e) {
-            var data = e.params.data;
-            if (data.id && String(data.id).indexOf('new__') === 0) {
-                var name = data.text;
-                var $sel = $(this);
-                $.ajax({
-                    url: urlCategoryQuickStore,
-                    method: 'POST',
-                    data: { _token: csrf, name: name, module_key: 'contacts' },
-                    dataType: 'json'
-                }).done(function(res) {
-                    if (res.success && res.category) {
-                        $sel.find('option').filter(function() { return String(this.value).indexOf('new__') === 0; }).remove();
-                        var opt = new Option(res.category.name, res.category.id, true, true);
-                        $sel.append(opt).val(res.category.id).trigger('change');
-                    }
-                }).fail(function() {
-                    toastr.error('{{ __("Error al crear la categoría.") }}');
-                    $sel.val(null).trigger('change');
-                });
-            }
-        });
-    }
 
     $('#apolloImportCategoryModal').on('show.bs.modal', function() {
         $('#apollo_import_category_modal_id').val(null).trigger('change');
@@ -456,23 +422,7 @@ $(function() {
 
     function getCategoryIdFromModal(callback) {
         var catVal = $('#apollo_import_category_modal_id').val();
-        if (!catVal || String(catVal).indexOf('new__') !== 0) {
-            callback(catVal || null);
-            return;
-        }
-        var data = $('#apollo_import_category_modal_id').select2('data');
-        var name = (data && data[0]) ? data[0].text : String(catVal).replace(/^new__/, '');
-        $.ajax({
-            url: urlCategoryQuickStore,
-            method: 'POST',
-            data: { _token: csrf, name: name, module_key: 'contacts' },
-            dataType: 'json'
-        }).done(function(res) {
-            if (res.success && res.category) callback(res.category.id); else callback(null);
-        }).fail(function() {
-            toastr.error('{{ __("Error al crear la categoría.") }}');
-            callback(null);
-        });
+        callback(catVal || null);
     }
 
     $(document).on('click', '#apollo-import-modal-confirm', function() {
