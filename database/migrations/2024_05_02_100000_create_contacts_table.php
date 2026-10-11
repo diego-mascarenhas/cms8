@@ -24,7 +24,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('source_id')->nullable();
             $table->date('birthday')->nullable();
             $table->text('profile')->nullable();
-            $table->unsignedSmallInteger('country')->default(724);
+            $table->unsignedSmallInteger('country')->nullable();
             $table->string('language', 2)->default('es');
             $table->foreignId('creator_id')->constrained('users');
             $table->foreignId('responsible_id')->nullable()->constrained('users');

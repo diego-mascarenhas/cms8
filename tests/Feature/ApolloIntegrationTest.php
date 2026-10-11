@@ -6,6 +6,7 @@ use App\Models\Contact;
 use App\Models\Module;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\ApolloService;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -176,5 +177,140 @@ class ApolloIntegrationTest extends TestCase
         $contact = Contact::withoutGlobalScopes()->where('team_id', $user->currentTeam->id)->latest('id')->first();
         $this->assertNotNull($contact);
         $this->assertEquals('John', $contact->name);
+    }
+
+    public function test_add_person_as_contact_stores_the_person_country_from_apollo(): void
+    {
+        $user = $this->createUserWithRole('admin');
+        $this->enableProspectingModule($user->currentTeam);
+        $user->currentTeam->addProspectCreditsFromPurchase(10);
+        $this->actingAs($user);
+        $this->app->instance(ApolloService::class, new class extends ApolloService
+        {
+            public function __construct()
+            {
+                parent::__construct('test-key');
+            }
+
+            public function enrichPerson(array $person): ?array
+            {
+                return [
+                    'id' => $person['id'] ?? '',
+                    'first_name' => 'Jane',
+                    'last_name' => 'Doe',
+                    'country' => 'United States',
+                    'organization' => [
+                        'name' => 'Acme Inc',
+                        'country' => 'Spain',
+                    ],
+                ];
+            }
+        });
+
+        $response = $this->post(route('contact.apollo.add-person'), [
+            '_token' => csrf_token(),
+            'apollo_id' => 'apollo-country-us',
+            'first_name' => 'Jane',
+            'last_name_obfuscated' => 'Do***e',
+            'title' => 'VP Sales',
+            'organization_name' => 'Acme Inc',
+        ], [
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(201);
+
+        $contact = Contact::withoutGlobalScopes()->where('team_id', $user->currentTeam->id)->latest('id')->first();
+        $this->assertNotNull($contact);
+        $this->assertSame(840, (int) $contact->country);
+    }
+
+    public function test_add_person_as_contact_uses_the_organization_country_when_the_person_has_none(): void
+    {
+        $user = $this->createUserWithRole('admin');
+        $this->enableProspectingModule($user->currentTeam);
+        $user->currentTeam->addProspectCreditsFromPurchase(10);
+        $this->actingAs($user);
+        $this->app->instance(ApolloService::class, new class extends ApolloService
+        {
+            public function __construct()
+            {
+                parent::__construct('test-key');
+            }
+
+            public function enrichPerson(array $person): ?array
+            {
+                return [
+                    'id' => $person['id'] ?? '',
+                    'first_name' => 'Ana',
+                    'last_name' => 'Simeone',
+                    'organization' => [
+                        'name' => 'Acme',
+                        'country' => 'Argentina',
+                    ],
+                ];
+            }
+        });
+
+        $response = $this->post(route('contact.apollo.add-person'), [
+            '_token' => csrf_token(),
+            'apollo_id' => 'apollo-country-ar',
+            'first_name' => 'Ana',
+            'last_name_obfuscated' => 'Si***e',
+            'organization_name' => 'Acme',
+        ], [
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(201);
+
+        $contact = Contact::withoutGlobalScopes()->where('team_id', $user->currentTeam->id)->latest('id')->first();
+        $this->assertNotNull($contact);
+        $this->assertSame(32, (int) $contact->country);
+    }
+
+    public function test_add_person_as_contact_leaves_country_empty_when_apollo_country_is_unknown(): void
+    {
+        $user = $this->createUserWithRole('admin');
+        $this->enableProspectingModule($user->currentTeam);
+        $user->currentTeam->addProspectCreditsFromPurchase(10);
+        $this->actingAs($user);
+        $this->app->instance(ApolloService::class, new class extends ApolloService
+        {
+            public function __construct()
+            {
+                parent::__construct('test-key');
+            }
+
+            public function enrichPerson(array $person): ?array
+            {
+                return [
+                    'id' => $person['id'] ?? '',
+                    'first_name' => 'Ana',
+                    'last_name' => 'Simeone',
+                    'country' => 'Narnia',
+                    'organization' => [
+                        'name' => 'Acme',
+                        'country' => 'Nowhere',
+                    ],
+                ];
+            }
+        });
+
+        $response = $this->post(route('contact.apollo.add-person'), [
+            '_token' => csrf_token(),
+            'apollo_id' => 'apollo-country-unknown',
+            'first_name' => 'Ana',
+            'last_name_obfuscated' => 'Si***e',
+            'organization_name' => 'Acme',
+        ], [
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(201);
+
+        $contact = Contact::withoutGlobalScopes()->where('team_id', $user->currentTeam->id)->latest('id')->first();
+        $this->assertNotNull($contact);
+        $this->assertNull($contact->country);
     }
 }

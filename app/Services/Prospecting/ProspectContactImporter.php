@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\DB;
 
 class ProspectContactImporter
 {
+    /**
+     * @var array<string, int>|null
+     */
+    private ?array $countryIdsByLabel = null;
+
     public function __construct(private ApolloService $apollo) {}
 
     /**
@@ -90,7 +95,7 @@ class ProspectContactImporter
             'responsible_id' => $userId,
             'name' => $name ?: 'Contact',
             'status_id' => (int) (ContactStatus::query()->where('name', 'Lead')->value('id') ?? 1),
-            'country' => $this->defaultCountryId(),
+            'country' => $this->countryIdFromApollo($apolloData),
             'language' => $this->defaultLanguageCode(),
             'data' => $dataJson,
         ];
@@ -192,11 +197,139 @@ class ProspectContactImporter
         return $category ? [$category->id] : [];
     }
 
-    private function defaultCountryId(): int
+    /**
+     * @param  array<string, mixed>  $apolloData
+     */
+    private function countryIdFromApollo(array $apolloData): ?int
     {
-        return (int) (DB::table('countries')->where('id', 724)->value('id')
-            ?? DB::table('countries')->value('id')
-            ?? 724);
+        foreach ($this->countryCandidates($apolloData) as $candidate)
+        {
+            $id = $this->countryIdForLabel($candidate);
+            if ($id !== null)
+            {
+                return $id;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Person country first, then the current employer's headquarters.
+     *
+     * @param  array<string, mixed>  $apolloData
+     * @return list<string>
+     */
+    private function countryCandidates(array $apolloData): array
+    {
+        $candidates = [];
+        foreach (['country', 'country_code'] as $key)
+        {
+            $value = $apolloData[$key] ?? null;
+            if (is_string($value) && trim($value) !== '')
+            {
+                $candidates[] = trim($value);
+            }
+        }
+
+        $organization = $apolloData['organization'] ?? null;
+        if (is_array($organization))
+        {
+            foreach (['country', 'country_code'] as $key)
+            {
+                $value = $organization[$key] ?? null;
+                if (is_string($value) && trim($value) !== '')
+                {
+                    $candidates[] = trim($value);
+                }
+            }
+        }
+
+        return $candidates;
+    }
+
+    private function countryIdForLabel(string $label): ?int
+    {
+        $normalized = mb_strtolower(trim($label));
+        if ($normalized === '')
+        {
+            return null;
+        }
+
+        $index = $this->countryIdsByLabel();
+        if (isset($index[$normalized]))
+        {
+            return $index[$normalized];
+        }
+
+        $alias = $this->countryAliases()[$normalized] ?? null;
+        if ($alias !== null && isset($index[$alias]))
+        {
+            return $index[$alias];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function countryIdsByLabel(): array
+    {
+        if ($this->countryIdsByLabel !== null)
+        {
+            return $this->countryIdsByLabel;
+        }
+
+        $index = [];
+        $countries = DB::table('countries')->get(['id', 'name', 'code']);
+        foreach ($countries as $country)
+        {
+            $id = (int) $country->id;
+            $code = strtolower((string) $country->code);
+            $index[$code] = $id;
+            $index[(string) $id] = $id;
+            $name = mb_strtolower(trim((string) $country->name));
+            if ($name !== '')
+            {
+                $index[$name] = $id;
+            }
+
+            if ($code !== '' && class_exists(\Locale::class))
+            {
+                $english = \Locale::getDisplayRegion('und_'.strtoupper($code), 'en');
+                if (is_string($english) && $english !== '')
+                {
+                    $index[mb_strtolower($english)] = $id;
+                }
+            }
+        }
+
+        $this->countryIdsByLabel = $index;
+
+        return $index;
+    }
+
+    /**
+     * Apollo names that ICU does not emit for the stored ISO code.
+     *
+     * @return array<string, string>
+     */
+    private function countryAliases(): array
+    {
+        return [
+            'usa' => 'us',
+            'u.s.' => 'us',
+            'u.s.a.' => 'us',
+            'united states of america' => 'us',
+            'uk' => 'gb',
+            'great britain' => 'gb',
+            'england' => 'gb',
+            'czech republic' => 'cz',
+            'turkey' => 'tr',
+            'holland' => 'nl',
+            'the netherlands' => 'nl',
+        ];
     }
 
     private function defaultLanguageCode(): string

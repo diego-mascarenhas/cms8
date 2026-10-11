@@ -23,9 +23,12 @@ class ContactListToolbarFilterTest extends TestCase
         $response->assertSee('id="EmotionalState"', false);
         $response->assertSee('id="IntentFilter"', false);
         $response->assertSee('id="CategoryFilter"', false);
+        $response->assertSee('id="CountryFilter"', false);
+        $response->assertSee('contact-list-toolbar__row', false);
         $response->assertSee('contact_list_emotional_state', false);
         $response->assertSee('contact_list_intent', false);
         $response->assertSee('contact_list_category', false);
+        $response->assertSee('contact_list_country', false);
         $response->assertSee('change.select2', false);
         $response->assertSee('change.contactFilter', false);
     }

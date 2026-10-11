@@ -31,7 +31,15 @@
 
     .contact-list-toolbar {
         display: flex;
-        flex-flow: row nowrap;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+        width: 100%;
+    }
+
+    .contact-list-toolbar__row {
+        display: flex;
+        flex-flow: row wrap;
         align-items: center;
         gap: 0.5rem;
         width: 100%;
@@ -42,8 +50,8 @@
     }
 
     .contact-list-toolbar__filter {
-        flex: 1 1 0;
-        min-width: 9rem;
+        flex: 1 1 12rem;
+        min-width: 10rem;
     }
 
     .contact-list-toolbar .form-group {
@@ -186,6 +194,7 @@
     <div class="card">
         <div class="card-header border-bottom">
             <div class="contact-list-toolbar">
+                <div class="contact-list-toolbar__row">
                 <a href="{{ route('contact.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
                     <i class="ti ti-plus me-sm-1"></i>
                     <span class="d-none d-sm-inline-block">{{ __('app.contact_add') }}</span>
@@ -202,6 +211,8 @@
                         </a>
                     @endif
                 @endcan
+                </div>
+                <div class="contact-list-toolbar__row">
                 <div class="contact-list-toolbar__filter">
                     <x-input-select id="EmotionalState" :options="$emotionalStates" :value="''"
                         placeholder="Selector de estado emocional" />
@@ -219,9 +230,14 @@
                         :listingFilter="true"
                     />
                 </div>
+                <div class="contact-list-toolbar__filter">
+                    <x-input-select id="CountryFilter" :options="$countries" :value="''"
+                        placeholder="País" />
+                </div>
                 <div class="d-none">
                     <x-input-select id="EnterpriseState" :options="$enterpriseStatuses" :value="''"
                         placeholder="Selector de tipo de contacto" />
+                </div>
                 </div>
             </div>
         </div>
