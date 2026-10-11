@@ -43,4 +43,18 @@ return [
         // Optional override for budget/quote logos. Empty = use path_light via Helpers::logoAsset('light').
         'budget_path' => env('APP_LOGO_BUDGET_PATH', ''),
     ],
+    // Hosts that show the Humano mark. Every other host keeps the Idoneo logo above.
+    'logo_humano_hosts' => [
+        'mi.humano.app',
+    ],
+    'logo_humano' => [
+        'path' => 'assets/logo.png',
+        'path_dark' => 'assets/logo.png',
+        'path_light' => 'assets/logo.png',
+        'path_iso' => 'assets/logo.png',
+        'path_iso_dark' => 'assets/logo.png',
+        'path_iso_light' => 'assets/logo.png',
+        'fallback' => 'assets/logo.png',
+        'iso_fallback' => 'assets/logo.png',
+    ],
 ];

@@ -1,2 +1,7 @@
-<link rel="icon" href="{{ Helper::logoAsset('iso') }}" type="image/svg+xml">
-<link rel="apple-touch-icon" href="{{ Helper::logoAsset('iso') }}">
+@php
+    $favicon = Helper::logoAsset('iso');
+    $faviconPath = parse_url($favicon, PHP_URL_PATH) ?: $favicon;
+    $faviconType = str_ends_with($faviconPath, '.svg') ? 'image/svg+xml' : 'image/png';
+@endphp
+<link rel="icon" href="{{ $favicon }}" type="{{ $faviconType }}">
+<link rel="apple-touch-icon" href="{{ $favicon }}">

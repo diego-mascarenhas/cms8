@@ -353,7 +353,7 @@ class Helpers
      */
     public static function logoAsset(string $variant): string
     {
-        $logo = config('variables.logo');
+        $logo = self::activeLogoConfig();
         $variantToPath = [
             'dark' => $logo['path_dark'] ?? 'assets/logo-dark.svg',
             'light' => $logo['path_light'] ?? 'assets/logo-light.svg',
@@ -420,7 +420,7 @@ class Helpers
      */
     public static function logoThemeDataImg(string $variant): string
     {
-        $logo = config('variables.logo');
+        $logo = self::activeLogoConfig();
         $path = $variant === 'dark'
             ? ($logo['path_dark'] ?? 'assets/logo-dark.svg')
             : ($logo['path_light'] ?? 'assets/logo-light.svg');
@@ -432,6 +432,53 @@ class Helpers
         }
 
         return '../'.$path;
+    }
+
+    /**
+     * Idoneo is the default mark. mi.humano.app uses the Humano hand.
+     *
+     * @return array<string, mixed>
+     */
+    private static function activeLogoConfig(): array
+    {
+        $logo = config('variables.logo');
+
+        if (! is_array($logo))
+        {
+            $logo = [];
+        }
+
+        if (! self::requestUsesHumanoLogo())
+        {
+            return $logo;
+        }
+
+        $humano = config('variables.logo_humano');
+
+        if (! is_array($humano))
+        {
+            return $logo;
+        }
+
+        return array_merge($logo, $humano);
+    }
+
+    private static function requestUsesHumanoLogo(): bool
+    {
+        if (! app()->bound('request'))
+        {
+            return false;
+        }
+
+        $host = strtolower(request()->getHost());
+        $hosts = config('variables.logo_humano_hosts', []);
+
+        if (! is_array($hosts))
+        {
+            return false;
+        }
+
+        return in_array($host, $hosts, true);
     }
 
     /**
