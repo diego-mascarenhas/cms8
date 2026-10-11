@@ -30,8 +30,9 @@
                     {{ $option['label'] }}
                 </option>
             @elseif(is_array($option) && isset($option['id'], $option['name']))
-                {{-- Format: [['id' => 1, 'name' => 'Lead']] --}}
+                {{-- Format: [['id' => 1, 'name' => 'Lead', 'flag' => 'ar']] --}}
                 <option value="{{ $option['id'] }}"
+                    @if(! empty($option['flag'])) data-flag="{{ strtolower((string) $option['flag']) }}" @endif
                     {{ old($id, $value) == $option['id'] ? 'selected' : '' }}>
                     {{ $option['name'] }}
                 </option>
@@ -66,12 +67,27 @@
         }
         var $parent = $el.parent();
         var dropdownParent = $parent.hasClass('position-relative') ? $parent : $(document.body);
-        $el.select2({
+        var select2Options = {
             placeholder: @json($placeholder ?? 'Seleccionar'),
             allowClear: {{ $allowClearResolved ? 'true' : 'false' }},
             width: '100%',
             dropdownParent: dropdownParent,
-        });
+        };
+        if ($el.find('option[data-flag]').length) {
+            var formatFlagOption = function (data) {
+                if (!data.id || !data.element) {
+                    return data.text;
+                }
+                var flag = $(data.element).attr('data-flag');
+                if (!flag) {
+                    return data.text;
+                }
+                return $('<span><span class="fi fi-' + flag + ' me-2"></span>' + data.text + '</span>');
+            };
+            select2Options.templateResult = formatFlagOption;
+            select2Options.templateSelection = formatFlagOption;
+        }
+        $el.select2(select2Options);
         $el.on('select2:opening', function (e)
         {
             if ($el.prop('disabled'))

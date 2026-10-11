@@ -479,8 +479,8 @@
                                 <select id="sentiment_id" name="sentiment_id" class="form-select" required>
                                     <option value="" selected disabled>Selecciona un estado emocional</option>
                                     @foreach ($sentiments as $sentiment)
-                                        <option value="{{ $sentiment->id }}">{{ $sentiment->name }}
-                                            {!! $sentiment->emoji !!}</option>
+                                        <option value="{{ $sentiment->id }}">{{ $sentiment->emoji }}
+                                            {{ $sentiment->name }}</option>
                                     @endforeach
                                 </select>
                                 <div class="invalid-feedback" id="sentiment_id_error"></div>

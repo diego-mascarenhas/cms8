@@ -42,7 +42,7 @@ class ContactIntent extends Model
         {
             return [
                 'id' => $intent->id,
-                'name' => $intent->displayName().' '.$intent->emoji,
+                'name' => $intent->emoji.' '.$intent->displayName(),
             ];
         })->values()->all();
     }
