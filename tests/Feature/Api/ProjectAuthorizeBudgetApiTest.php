@@ -146,6 +146,7 @@ class ProjectAuthorizeBudgetApiTest extends TestCase
         $collaborator->forceFill(['current_team_id' => $team->id])->save();
         $collaborator->assignRole('collaborator');
         $project->forceFill(['responsible_id' => $collaborator->id])->save();
+        $project->participants()->attach($collaborator->id);
 
         $token = $collaborator->createToken('idoneo-projects-test')->plainTextToken;
 

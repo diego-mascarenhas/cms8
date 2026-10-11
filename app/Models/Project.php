@@ -77,22 +77,13 @@ class Project extends Model
     }
 
     /**
-     * Collaborators may see a project when they are the advisor (responsible_id),
-     * assigned on the project, or responsible for a board task.
+     * Collaborators only see projects they were added to as participants.
      */
     public static function constrainCollaboratorVisibility(Builder $builder, User $user): Builder
     {
-        return $builder->where(function (Builder $query) use ($user)
+        return $builder->whereHas('participants', function (Builder $participants) use ($user)
         {
-            $query->where('responsible_id', $user->id)
-                ->orWhereHas('collaborators', function ($collaboratorQuery) use ($user)
-                {
-                    $collaboratorQuery->where('user_id', $user->id);
-                })
-                ->orWhereHas('board.tasks', function ($taskQuery) use ($user)
-                {
-                    $taskQuery->where('responsible_id', $user->id);
-                });
+            $participants->where('users.id', $user->id);
         });
     }
 
@@ -103,25 +94,7 @@ class Project extends Model
             return false;
         }
 
-        if ((int) $this->responsible_id === (int) $user->id)
-        {
-            return true;
-        }
-
-        if ($this->collaborators()->where('user_id', $user->id)->exists())
-        {
-            return true;
-        }
-
-        if (! $this->board_id)
-        {
-            return false;
-        }
-
-        return Task::query()
-            ->where('board_id', $this->board_id)
-            ->where('responsible_id', $user->id)
-            ->exists();
+        return $this->participants()->where('users.id', $user->id)->exists();
     }
 
     /**

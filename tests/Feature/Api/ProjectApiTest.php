@@ -265,6 +265,8 @@ class ProjectApiTest extends TestCase
             'status_id' => 1,
         ]);
 
+        $project->participants()->attach($collaborator->id);
+
         $token = $collaborator->createToken('collab-test')->plainTextToken;
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
@@ -290,6 +292,8 @@ class ProjectApiTest extends TestCase
             'responsible_id' => $collaborator->id,
             'status_id' => 1,
         ]);
+
+        $project->participants()->attach($collaborator->id);
 
         $token = $collaborator->createToken('collab-status-test')->plainTextToken;
 
