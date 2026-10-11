@@ -125,6 +125,16 @@ class ContactDataTable extends DataTable
                     $query->whereRaw('0 = 1');
                 }
             })
+            ->filterColumn('country', function ($query, $keyword)
+            {
+                if ($keyword !== '' && is_numeric($keyword))
+                {
+                    $query->where($query->getModel()->getTable().'.country', (int) $keyword);
+                } elseif ($keyword !== '')
+                {
+                    $query->whereRaw('0 = 1');
+                }
+            })
             ->editColumn('status_id', function ($row)
             {
                 return $row->status_label;
@@ -190,6 +200,10 @@ class ContactDataTable extends DataTable
 						if (categoryVal) {
 							$('#CategoryFilter').val(categoryVal).trigger('change.select2');
 						}
+						var countryVal = $('#CountryFilter').val();
+						if (countryVal) {
+							$('#CountryFilter').val(countryVal).trigger('change.select2');
+						}
 					}
 
 					api.columns('.select-filter').every(function() {
@@ -210,6 +224,11 @@ class ContactDataTable extends DataTable
 						api.column('.category-filter').search(val ? val : '', true, false).draw();
 					});
 
+					$('#CountryFilter').off('change.contactFilter').on('change.contactFilter', function() {
+						var val = $(this).val();
+						api.column('.country-filter').search(val ? val : '', true, false).draw();
+					});
+
 					$('.filter-status').off('click.contactFilter').on('click.contactFilter', function(e) {
 						e.preventDefault();
 						api.column('status_id:name').search($(this).data('status')).draw();
@@ -218,6 +237,7 @@ class ContactDataTable extends DataTable
 					var savedEmotional = sessionStorage.getItem('contact_list_emotional_state');
 					var savedIntent = sessionStorage.getItem('contact_list_intent');
 					var savedCategory = sessionStorage.getItem('contact_list_category');
+					var savedCountry = sessionStorage.getItem('contact_list_country');
 					if (savedEmotional) {
 						$('#EmotionalState').val(savedEmotional).trigger('change.select2');
 						api.columns('.select-filter').search(savedEmotional, true, false);
@@ -230,7 +250,11 @@ class ContactDataTable extends DataTable
 						$('#CategoryFilter').val(savedCategory).trigger('change.select2');
 						api.column('.category-filter').search(savedCategory, true, false);
 					}
-					if (savedEmotional || savedIntent || savedCategory) {
+					if (savedCountry) {
+						$('#CountryFilter').val(savedCountry).trigger('change.select2');
+						api.column('.country-filter').search(savedCountry, true, false);
+					}
+					if (savedEmotional || savedIntent || savedCategory || savedCountry) {
 						api.draw();
 					}
 
@@ -261,6 +285,15 @@ class ContactDataTable extends DataTable
 						}
 					});
 
+					$('#CountryFilter').off('change.contactFilterPersist').on('change.contactFilterPersist', function() {
+						var val = $(this).val();
+						if (val) {
+							sessionStorage.setItem('contact_list_country', val);
+						} else {
+							sessionStorage.removeItem('contact_list_country');
+						}
+					});
+
 					syncContactListToolbarSelect2();
 				}",
                 'drawCallback' => "function() {
@@ -275,6 +308,10 @@ class ContactDataTable extends DataTable
 					var categoryVal = $('#CategoryFilter').val();
 					if (categoryVal) {
 						$('#CategoryFilter').val(categoryVal).trigger('change.select2');
+					}
+					var countryVal = $('#CountryFilter').val();
+					if (countryVal) {
+						$('#CountryFilter').val(countryVal).trigger('change.select2');
 					}
 				}",
             ]);
@@ -312,6 +349,12 @@ class ContactDataTable extends DataTable
                 ->addClass('category-filter min-desktop')
                 ->searchable(true)
                 ->orderable(false),
+            Column::make('country')
+                ->title('País')
+                ->className('country-filter')
+                ->searchable(true)
+                ->orderable(false)
+                ->hidden(),
             Column::make('status_id')
                 ->title(__('Status'))
                 ->className('text-center')

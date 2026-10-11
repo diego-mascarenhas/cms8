@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Contact;
 use App\Models\Enterprise;
 use App\Models\Project;
 use App\Models\Task;
@@ -17,6 +16,7 @@ use Database\Seeders\LanguageSeeder;
 use Database\Seeders\ProjectStatusSeeder;
 use Database\Seeders\TaskStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -43,7 +43,7 @@ class CollaboratorProjectAccessTest extends TestCase
         Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
     }
 
-    public function test_advisor_collaborator_can_open_project_in_backend(): void
+    public function test_collaborator_who_is_only_the_advisor_cannot_open_the_project(): void
     {
         [$admin, $team, $client] = $this->adminTeamAndClient();
         $advisor = $this->collaboratorOnTeam($team);
@@ -52,12 +52,9 @@ class CollaboratorProjectAccessTest extends TestCase
 
         $this->actingAs($advisor)
             ->get(route('project.show', $project->id))
-            ->assertOk()
-            ->assertSee('Advisor Project', false);
+            ->assertNotFound();
 
-        $this->actingAs($advisor)
-            ->get(route('project-list'))
-            ->assertOk();
+        $this->assertFalse(Project::query()->whereKey($project->id)->exists());
     }
 
     public function test_assigned_collaborator_can_open_project_in_backend(): void
@@ -66,7 +63,7 @@ class CollaboratorProjectAccessTest extends TestCase
         $assignee = $this->collaboratorOnTeam($team);
 
         $project = $this->createProject($team->id, $client->id, $admin->id, 'Assigned Project');
-        $this->assignCollaboratorToProject($assignee, $project, $team->id, $admin->id);
+        $this->addParticipant($assignee, $project);
 
         $this->actingAs($assignee)
             ->get(route('project.show', $project->id))
@@ -74,7 +71,7 @@ class CollaboratorProjectAccessTest extends TestCase
             ->assertSee('Assigned Project', false);
     }
 
-    public function test_task_responsible_collaborator_can_open_project_in_backend(): void
+    public function test_collaborator_who_only_owns_a_task_cannot_open_the_project(): void
     {
         [$admin, $team, $client] = $this->adminTeamAndClient();
         $taskOwner = $this->collaboratorOnTeam($team);
@@ -102,8 +99,40 @@ class CollaboratorProjectAccessTest extends TestCase
 
         $this->actingAs($taskOwner)
             ->get(route('project.show', $project->id))
-            ->assertOk()
-            ->assertSee('Task Owner Project', false);
+            ->assertNotFound();
+
+        $this->assertFalse(Project::query()->whereKey($project->id)->exists());
+    }
+
+    public function test_admin_lists_every_project_and_collaborator_lists_only_participating_ones(): void
+    {
+        [$admin, $team, $client] = $this->adminTeamAndClient();
+        $collaborator = $this->collaboratorOnTeam($team);
+
+        $mine = $this->createProject($team->id, $client->id, $admin->id, 'Proyecto del colaborador');
+        $this->addParticipant($collaborator, $mine);
+        $others = $this->createProject($team->id, $client->id, $admin->id, 'Proyecto ajeno');
+
+        $adminToken = $admin->createToken('admin-projects')->plainTextToken;
+        $collaboratorToken = $collaborator->createToken('collab-projects')->plainTextToken;
+
+        $asAdmin = $this->withHeader('Authorization', 'Bearer '.$adminToken)
+            ->getJson('/api/projects');
+
+        $asAdmin->assertOk();
+        $adminIds = collect($asAdmin->json('data.data'))->pluck('id')->all();
+        $this->assertContains($mine->id, $adminIds);
+        $this->assertContains($others->id, $adminIds);
+
+        Auth::forgetGuards();
+        $this->flushHeaders();
+
+        $asCollaborator = $this->withHeader('Authorization', 'Bearer '.$collaboratorToken)
+            ->getJson('/api/projects');
+
+        $asCollaborator->assertOk();
+        $collaboratorIds = collect($asCollaborator->json('data.data'))->pluck('id')->all();
+        $this->assertSame([$mine->id], $collaboratorIds);
     }
 
     public function test_unrelated_collaborator_cannot_open_or_list_other_project(): void
@@ -129,7 +158,7 @@ class CollaboratorProjectAccessTest extends TestCase
         $token = $assignee->createToken('collab-project-access')->plainTextToken;
 
         $project = $this->createProject($team->id, $client->id, $admin->id, 'API Assigned');
-        $this->assignCollaboratorToProject($assignee, $project, $team->id, $admin->id);
+        $this->addParticipant($assignee, $project);
         $hidden = $this->createProject($team->id, $client->id, $admin->id, 'API Hidden');
 
         $list = $this->withHeader('Authorization', 'Bearer '.$token)
@@ -152,7 +181,7 @@ class CollaboratorProjectAccessTest extends TestCase
         $assignee = $this->collaboratorOnTeam($team);
 
         $visible = $this->createProject($team->id, $client->id, $admin->id, 'Visible Assigned');
-        $this->assignCollaboratorToProject($assignee, $visible, $team->id, $admin->id);
+        $this->addParticipant($assignee, $visible);
         $this->createProject($team->id, $client->id, $admin->id, 'Hidden Other');
 
         $response = $this->actingAs($assignee)->withHeaders([
@@ -171,6 +200,7 @@ class CollaboratorProjectAccessTest extends TestCase
         [$admin, $team, $client] = $this->adminTeamAndClient();
         $advisor = $this->collaboratorOnTeam($team);
         $project = $this->createProject($team->id, $client->id, $advisor->id, 'Budget Form');
+        $this->addParticipant($advisor, $project);
 
         $this->actingAs($advisor)
             ->get(route('project.create'))
@@ -196,7 +226,7 @@ class CollaboratorProjectAccessTest extends TestCase
         [$admin, $team, $client] = $this->adminTeamAndClient();
         $assignee = $this->collaboratorOnTeam($team);
         $project = $this->createProject($team->id, $client->id, $admin->id, 'Priced Project');
-        $this->assignCollaboratorToProject($assignee, $project, $team->id, $admin->id);
+        $this->addParticipant($assignee, $project);
 
         $token = $assignee->createToken('collab-budget')->plainTextToken;
 
@@ -347,8 +377,56 @@ class CollaboratorProjectAccessTest extends TestCase
         $users->assertOk();
         $ids = collect($users->json('users'))->pluck('id')->map(fn ($id) => (int) $id);
         $this->assertTrue($ids->contains($participant->id));
-        $this->assertTrue($ids->contains($admin->id));
+        $this->assertFalse($ids->contains($admin->id));
         $this->assertFalse($ids->contains($outsider->id));
+    }
+
+    public function test_project_show_saves_participants(): void
+    {
+        [$admin, $team, $client] = $this->adminTeamAndClient();
+        $participant = $this->collaboratorOnTeam($team);
+        $participant->forceFill(['name' => 'Ana Participa'])->save();
+        $outsider = $this->collaboratorOnTeam($team);
+        $project = $this->createProject($team->id, $client->id, $admin->id, 'Desde el detalle');
+
+        $this->actingAs($admin)
+            ->get(route('project.show', $project->id))
+            ->assertOk()
+            ->assertSee('data-bs-target="#projectParticipantsModal"', false)
+            ->assertSee('id="project-participant-ids"', false)
+            ->assertSee('Ana Participa', false);
+
+        $this->actingAs($admin)
+            ->post(route('project.participants.update', $project->id), [
+                'participant_ids' => [$participant->id, $outsider->id + 900000],
+            ])
+            ->assertRedirect(route('project.show', $project->id));
+
+        $this->assertEqualsCanonicalizing(
+            [$participant->id],
+            $project->fresh()->participants()->pluck('users.id')->map(fn ($id) => (int) $id)->all(),
+        );
+
+        $project->forceFill([
+            'data' => [
+                'suggested_tasks' => [[
+                    'title' => 'Armar brochure',
+                    'estimated_hours' => 2,
+                    'included' => true,
+                ]],
+            ],
+        ])->save();
+
+        $html = $this->actingAs($admin)
+            ->get(route('project.show', $project->id))
+            ->assertOk()
+            ->getContent();
+
+        preg_match('/id="suggested_responsible_0".*?<\\/select>/s', $html, $matches);
+        $this->assertNotEmpty($matches);
+        $this->assertStringContainsString('Ana Participa', $matches[0]);
+        $this->assertStringNotContainsString($outsider->name, $matches[0]);
+        $this->assertStringNotContainsString($admin->name, $matches[0]);
     }
 
     public function test_unrelated_collaborator_cannot_update_project_price(): void
@@ -409,20 +487,8 @@ class CollaboratorProjectAccessTest extends TestCase
         ]);
     }
 
-    private function assignCollaboratorToProject(User $collaborator, Project $project, int $teamId, int $creatorId): void
+    private function addParticipant(User $collaborator, Project $project): void
     {
-        $contact = Contact::withoutGlobalScopes()->create([
-            'team_id' => $teamId,
-            'user_id' => $collaborator->id,
-            'name' => $collaborator->name,
-            'email' => $collaborator->email,
-            'responsible_id' => $creatorId,
-            'creator_id' => $creatorId,
-            'status_id' => 1,
-            'country' => 724,
-            'language' => 'es',
-        ]);
-
-        $project->collaborators()->attach($contact->id);
+        $project->participants()->syncWithoutDetaching([$collaborator->id]);
     }
 }

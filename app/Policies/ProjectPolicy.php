@@ -87,7 +87,7 @@ class ProjectPolicy
             return $project->team_id === $user->currentTeam->id;
         }
 
-        // Collaborators can see projects they advise, are assigned to, or own a task on
+        // Collaborators only see projects they were added to as participants
         if ($user->hasRole('collaborator'))
         {
             return $project->isVisibleToCollaborator($user);
@@ -126,7 +126,7 @@ class ProjectPolicy
             return $project->team_id === $user->currentTeam->id;
         }
 
-        // Collaborators can update projects they are authorized to see (advisor, assigned, or task owner)
+        // Collaborators can update projects they were added to as participants
         if ($user->hasRole('collaborator'))
         {
             return $project->isVisibleToCollaborator($user);
@@ -179,7 +179,7 @@ class ProjectPolicy
                 return $query->where('team_id', $user->currentTeam->id);
             }
 
-            // Collaborators can only see projects where they are involved
+            // Collaborators only see projects they were added to as participants
             if ($user->hasRole('collaborator'))
             {
                 return Project::constrainCollaboratorVisibility(

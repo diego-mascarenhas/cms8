@@ -66,6 +66,7 @@ class ContactController extends Controller
         $data['emotionalStates'] = ContactSentiment::getOptions();
         $data['intentStates'] = ContactIntent::getOptions();
         $data['enterpriseStatuses'] = ContactStatus::getOptions();
+        $data['countries'] = Country::query()->orderBy('name')->pluck('name', 'id');
 
         if (auth()->user()->currentTeam?->hasModule('list60'))
         {

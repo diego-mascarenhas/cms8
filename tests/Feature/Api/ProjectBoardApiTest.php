@@ -18,6 +18,7 @@ use Database\Seeders\TaskStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Mail\Transport\ArrayTransport;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Jetstream\Features;
@@ -464,5 +465,125 @@ class ProjectBoardApiTest extends TestCase
         $this->assertSame(0, $stoppedTask['running_timers']);
         $this->assertFalse($stoppedTask['workers'][0]['working']);
         $this->assertSame($user->id, $task->fresh()->responsible_id);
+    }
+
+    public function test_only_the_project_responsible_can_reassign_a_task(): void
+    {
+        [$owner, $ownerToken, $project, $task] = $this->projectWithTask();
+
+        Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+        $collaborator = User::factory()->create();
+        $project->team->users()->attach($collaborator, ['role' => 'collaborator']);
+        $collaborator->forceFill(['current_team_id' => $project->team_id])->save();
+        $collaborator->assignRole('collaborator');
+        $task->update(['responsible_id' => $collaborator->id]);
+
+        $token = $collaborator->createToken('task-assignee')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/tasks/'.$task->id, [
+                'title' => 'Sigue siendo mía',
+                'responsible_id' => $owner->id,
+            ])
+            ->assertForbidden();
+
+        $this->assertSame($collaborator->id, (int) $task->fresh()->responsible_id);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/tasks/'.$task->id, [
+                'title' => 'Sigue siendo mía',
+                'responsible_id' => $collaborator->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Sigue siendo mía')
+            ->assertJsonPath('data.responsible.id', $collaborator->id);
+
+        Auth::forgetGuards();
+        $this->flushHeaders();
+
+        $this->withHeader('Authorization', 'Bearer '.$ownerToken)
+            ->putJson('/api/tasks/'.$task->id, [
+                'responsible_id' => $owner->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.responsible.id', $owner->id);
+    }
+
+    public function test_only_the_project_responsible_can_change_the_estimate_and_due_date_stays_within_the_project(): void
+    {
+        [$owner, $ownerToken, $project, $task] = $this->projectWithTask();
+
+        Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+        $collaborator = User::factory()->create();
+        $project->team->users()->attach($collaborator, ['role' => 'collaborator']);
+        $collaborator->forceFill(['current_team_id' => $project->team_id])->save();
+        $collaborator->assignRole('collaborator');
+        $project->update(['date_end' => '2026-10-10']);
+        $task->update([
+            'responsible_id' => $collaborator->id,
+            'estimated_hours' => 2,
+            'due_date' => '2026-10-08',
+        ]);
+
+        $token = $collaborator->createToken('task-assignee')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/tasks/'.$task->id, [
+                'estimated_hours' => 5,
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('message', 'Solo el responsable del proyecto puede cambiar el tiempo estimado.');
+
+        $this->assertEquals(2.0, (float) $task->fresh()->estimated_hours);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/tasks/'.$task->id, [
+                'title' => 'Misma estimación',
+                'estimated_hours' => 2,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Misma estimación');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/tasks/'.$task->id, [
+                'due_date' => '2026-10-11',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'La fecha de entrega no puede ser posterior a la del proyecto.');
+
+        $this->assertSame('2026-10-08', $task->fresh()->due_date->format('Y-m-d'));
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/tasks/'.$task->id, [
+                'due_date' => '2026-10-10',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.due_date', '2026-10-10');
+
+        Auth::forgetGuards();
+        $this->flushHeaders();
+
+        $estimate = $this->withHeader('Authorization', 'Bearer '.$ownerToken)
+            ->putJson('/api/tasks/'.$task->id, [
+                'estimated_hours' => 3,
+            ]);
+
+        $estimate->assertOk();
+        $this->assertEquals(3.0, (float) $estimate->json('data.estimated_hours'));
+
+        $this->withHeader('Authorization', 'Bearer '.$ownerToken)
+            ->putJson('/api/tasks/'.$task->id, [
+                'due_date' => '2026-10-12',
+            ])
+            ->assertStatus(422);
+
+        $project->update(['date_end' => null]);
+
+        $this->withHeader('Authorization', 'Bearer '.$ownerToken)
+            ->putJson('/api/tasks/'.$task->id, [
+                'due_date' => '2026-12-01',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.due_date', '2026-12-01');
     }
 }

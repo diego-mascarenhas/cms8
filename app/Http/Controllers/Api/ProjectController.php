@@ -898,6 +898,8 @@ class ProjectController extends Controller
                     'id' => $project->id,
                     'name' => $project->name,
                     'board_id' => $project->board_id,
+                    'responsible_id' => $project->responsible_id,
+                    'date_end' => $project->date_end?->format('Y-m-d'),
                     'client' => $project->enterprise ? [
                         'id' => $project->enterprise->id,
                         'name' => $project->enterprise->name,

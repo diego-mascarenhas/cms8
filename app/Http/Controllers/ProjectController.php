@@ -28,6 +28,7 @@ use App\Services\ProjectBudgetSpecService;
 use App\Support\AssignableTeamUsers;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use RuntimeException;
 
 class ProjectController extends Controller
@@ -877,6 +878,8 @@ class ProjectController extends Controller
             'allCollaborators.languageVariants.sourceLanguage',
             'allCollaborators.languageVariants.targetLanguage',
             'allCollaborators.fares.type',
+            'participants',
+            'team',
         ])->findOrFail($id);
 
         $this->syncProjectStatusFromBudgetResponse($project);
@@ -953,6 +956,9 @@ class ProjectController extends Controller
         $teamUsers = $team
             ? AssignableTeamUsers::optionsForTeam($team)
             : collect();
+        $participantUsers = $project->participants
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->pluck('name', 'id');
 
         $depositInvoicePreview = null;
         $balanceInvoicePreview = null;
@@ -976,6 +982,7 @@ class ProjectController extends Controller
             'actualHoursByTaskId',
             'suggestedTasks',
             'teamUsers',
+            'participantUsers',
             'runningTimer',
             'depositInvoicePreview',
             'balanceInvoicePreview',
@@ -990,11 +997,15 @@ class ProjectController extends Controller
         $project = Project::findOrFail($id);
         $this->authorize('update', $project);
 
+        $participantIds = $project->participants()->pluck('users.id')->map(fn ($userId) => (int) $userId);
+
         $request->validate([
             'title' => 'required|string|max:500',
             'category_name' => 'nullable|string|max:255',
             'estimated_hours' => 'nullable|numeric|min:0',
-            'responsible_id' => 'required|exists:users,id',
+            'responsible_id' => ['required', 'integer', Rule::in($participantIds->all())],
+        ], [
+            'responsible_id.in' => __('Elegí un colaborador del proyecto.'),
         ]);
 
         if (! $project->board_id)
@@ -1086,14 +1097,12 @@ class ProjectController extends Controller
         if (auth()->user()->hasRole('admin') && ! empty($validated['user_id']))
         {
             $candidateId = (int) $validated['user_id'];
-            $teamUserIds = \App\Support\AssignableTeamUsers::forTeam(auth()->user()->currentTeam)
-                ->pluck('id')
-                ->map(fn ($id) => (int) $id);
-            if (! $teamUserIds->contains($candidateId))
+            $participantIds = $project->participants()->pluck('users.id')->map(fn ($userId) => (int) $userId);
+            if (! $participantIds->contains($candidateId))
             {
                 return redirect()
                     ->route('project.show', $project->id)
-                    ->with('error', __('The selected collaborator does not belong to this team.'));
+                    ->with('error', __('Elegí un colaborador del proyecto.'));
             }
             $userId = $candidateId;
         }
@@ -1263,6 +1272,31 @@ class ProjectController extends Controller
         return redirect()
             ->route('project.show', $project->id)
             ->with('success', __('Project status updated.'));
+    }
+
+    /**
+     * Save who takes part in the project from the project page.
+     */
+    public function updateParticipants(Request $request, string $id)
+    {
+        $project = Project::findOrFail($id);
+        $this->authorize('update', $project);
+
+        $validated = $request->validate([
+            'participant_ids' => ['nullable', 'array'],
+            'participant_ids.*' => ['integer'],
+        ]);
+
+        $request->merge([
+            'sync_participants' => true,
+            'participant_ids' => $validated['participant_ids'] ?? [],
+        ]);
+
+        $this->syncParticipants($project, $request);
+
+        return redirect()
+            ->route('project.show', $project->id)
+            ->with('success', __('Project updated successfully.'));
     }
 
     /**

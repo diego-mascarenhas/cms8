@@ -713,6 +713,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
     Route::patch('/project/{id}/status', [ProjectController::class, 'updateStatus'])->name('project.update-status');
+    Route::post('/project/{id}/participants', [ProjectController::class, 'updateParticipants'])->name('project.participants.update');
     Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
     Route::get('/opportunity/list', [OpportunityController::class, 'index'])->name('opportunity.index');
     Route::get('/opportunity/create', [OpportunityController::class, 'create'])->name('opportunity.create');

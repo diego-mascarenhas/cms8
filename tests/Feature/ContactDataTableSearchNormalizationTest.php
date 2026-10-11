@@ -213,6 +213,53 @@ class ContactDataTableSearchNormalizationTest extends TestCase
         $this->assertSame((string) $matching->id, (string) $response->json('data.0.DT_RowId'));
     }
 
+    public function test_contact_datatable_filters_by_country(): void
+    {
+        $team = $this->user->currentTeam;
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'En',
+            'surname' => 'España',
+            'email' => 'en.espana@example.test',
+            'profile' => '',
+            'country' => 724,
+            'responsible_id' => $this->user->id,
+            'creator_id' => $this->user->id,
+        ]);
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'En',
+            'surname' => 'Argentina',
+            'email' => 'en.argentina@example.test',
+            'profile' => '',
+            'country' => 32,
+            'responsible_id' => $this->user->id,
+            'creator_id' => $this->user->id,
+        ]);
+
+        $query = $this->contactDataTableBaseQuery();
+        foreach ($query['columns'] as $index => $column)
+        {
+            if ($column['name'] === 'country')
+            {
+                $query['columns'][$index]['search'] = ['value' => '32', 'regex' => 'false'];
+            }
+        }
+
+        $response = $this->actingAs($this->user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('contact-list').'?'.http_build_query($query));
+
+        $response->assertOk();
+        $this->assertSame(1, (int) $response->json('recordsFiltered'));
+        $names = collect($response->json('data'))->pluck('name')->implode(' ');
+        $this->assertStringContainsString('En Argentina', $names);
+        $this->assertStringNotContainsString('En España', $names);
+    }
+
     public function test_contact_list_can_filter_archived_contacts(): void
     {
         $team = $this->user->currentTeam;
@@ -327,6 +374,7 @@ class ContactDataTableSearchNormalizationTest extends TestCase
             ['data' => 'current_intent', 'name' => 'current_intent', 'searchable' => 'true', 'orderable' => 'false'],
             ['data' => 'responsible_name', 'name' => 'responsible_name', 'searchable' => 'false', 'orderable' => 'false'],
             ['data' => 'categories', 'name' => 'categories', 'searchable' => 'true', 'orderable' => 'false'],
+            ['data' => 'country', 'name' => 'country', 'searchable' => 'true', 'orderable' => 'false'],
             ['data' => 'status_id', 'name' => 'status_id', 'searchable' => 'true', 'orderable' => 'true'],
             ['data' => 'action', 'name' => 'action', 'searchable' => 'false', 'orderable' => 'false'],
         ];
