@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
 use App\Models\Contact;
-use App\Models\Module;
 use App\Services\ApolloService;
 use App\Services\Prospecting\InsufficientProspectCredits;
 use App\Services\Prospecting\ProspectContactImporter;
@@ -33,26 +31,9 @@ class ApolloController extends Controller
         $remainingProspectCredits = $team->getRemainingProspectCredits();
         $canImportProspects = $team->canImportProspects(1);
 
-        $contactsModule = Module::where('key', 'contacts')->first();
-        $contactCategories = collect();
-        if ($contactsModule)
-        {
-            $contactCategories = Category::where('module_id', $contactsModule->id)
-                ->where('status', 1)
-                ->where(function ($q) use ($team)
-                {
-                    $q->whereNull('team_id')->orWhere('team_id', $team->id);
-                })
-                ->whereNull('parent_id')
-                ->orderBy('order')
-                ->orderBy('name')
-                ->get(['id', 'name']);
-        }
-
         return view('contact.apollo', [
             'remainingProspectCredits' => $remainingProspectCredits,
             'canImportProspects' => $canImportProspects,
-            'contactCategories' => $contactCategories,
         ]);
     }
 
