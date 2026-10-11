@@ -8,6 +8,7 @@ use App\Models\ContactStatus;
 use App\Models\Module;
 use App\Models\Team;
 use App\Services\ApolloService;
+use App\Services\Contacts\TeamContactMatcher;
 use Illuminate\Support\Facades\DB;
 
 class ProspectContactImporter
@@ -72,19 +73,17 @@ class ProspectContactImporter
             $enriched = null;
         }
 
+        $nameSource = [];
         if (is_array($enriched) && $enriched !== [])
         {
             $apolloData = array_merge($enriched, ['apollo_id' => $enriched['id'] ?? $apolloId]);
-            $name = trim(($enriched['first_name'] ?? '').' '.($enriched['last_name'] ?? ''));
-            if ($name === '')
-            {
-                $name = $enriched['name'] ?? trim($firstName.' '.($lastNameObfuscated ?? '')) ?: 'Contact';
-            }
-        } else
+            $nameSource = $enriched;
+        } elseif (is_array($person))
         {
-            $fallbackLast = $lastName ?? $lastNameObfuscated ?? '';
-            $name = trim($firstName.' '.$fallbackLast) ?: 'Contact';
+            $nameSource = $person;
         }
+
+        [$name, $surname] = $this->contactNameParts($nameSource, $firstName, $lastName, $lastNameObfuscated);
 
         $dataJson = ['apollo' => $apolloData];
         $dataJson['apollo_raw'] = (is_array($enriched) && $enriched !== []) ? $enriched : $apolloData;
@@ -93,7 +92,8 @@ class ProspectContactImporter
             'team_id' => $team->id,
             'creator_id' => $userId,
             'responsible_id' => $userId,
-            'name' => $name ?: 'Contact',
+            'name' => $name,
+            'surname' => $surname,
             'status_id' => (int) (ContactStatus::query()->where('name', 'Lead')->value('id') ?? 1),
             'country' => $this->countryIdFromApollo($apolloData),
             'language' => $this->defaultLanguageCode(),
@@ -120,6 +120,71 @@ class ProspectContactImporter
         $contact->categories()->sync($this->categoryIds($team, $categoryId));
 
         return $contact;
+    }
+
+    /**
+     * Apollo sends first_name and last_name separately. A masked last name stays out of surname.
+     *
+     * @param  array<string, mixed>  $source
+     * @return array{0: string, 1: ?string}
+     */
+    private function contactNameParts(array $source, string $firstName, ?string $lastName, ?string $lastNameObfuscated): array
+    {
+        $first = $this->cleanNamePart($source['first_name'] ?? null);
+        if ($first === '')
+        {
+            $first = $this->cleanNamePart($firstName);
+        }
+
+        $surname = $this->realLastName($source['last_name'] ?? null)
+            ?? $this->realLastName($lastName)
+            ?? $this->realLastName($source['last_name_obfuscated'] ?? null)
+            ?? $this->realLastName($lastNameObfuscated);
+
+        if ($first === '' || $surname === null)
+        {
+            $full = $this->cleanNamePart($source['name'] ?? null);
+            if ($full !== '' && ! str_contains($full, '*'))
+            {
+                [$splitFirst, $splitLast] = app(TeamContactMatcher::class)->splitFullName($full);
+                if ($first === '')
+                {
+                    $first = $splitFirst;
+                }
+                if ($surname === null)
+                {
+                    $surname = $splitLast;
+                }
+            }
+        }
+
+        if ($first === '')
+        {
+            $first = 'Contact';
+        }
+
+        return [$first, $surname];
+    }
+
+    private function cleanNamePart(mixed $value): string
+    {
+        if (! is_string($value))
+        {
+            return '';
+        }
+
+        return trim(preg_replace('/\s+/u', ' ', $value) ?? '');
+    }
+
+    private function realLastName(mixed $value): ?string
+    {
+        $clean = $this->cleanNamePart($value);
+        if ($clean === '' || str_contains($clean, '*'))
+        {
+            return null;
+        }
+
+        return $clean;
     }
 
     /**

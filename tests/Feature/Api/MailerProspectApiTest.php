@@ -108,7 +108,8 @@ class MailerProspectApiTest extends TestCase
 
         $contact = Contact::withoutGlobalScopes()->where('team_id', $team->id)->where('email', 'ana@acme.test')->first();
         $this->assertNotNull($contact);
-        $this->assertSame('Ana Simeone', $contact->name);
+        $this->assertSame('Ana', $contact->name);
+        $this->assertSame('Simeone', $contact->surname);
         $this->assertNotNull(Contact::withoutGlobalScopes()->where('team_id', $team->id)->where('email', 'luis@acme.test')->first());
         $this->assertSame(6, (int) ProspectUsageLog::query()->where('team_id', $team->id)->sum('count'));
         $this->assertSame(0, $team->fresh()->getRemainingProspectCredits());

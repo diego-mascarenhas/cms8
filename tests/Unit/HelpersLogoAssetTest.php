@@ -52,4 +52,24 @@ class HelpersLogoAssetTest extends TestCase
 
         $this->assertSame(Helpers::logoAsset('light'), Helpers::budgetLogoAsset());
     }
+
+    public function test_idoneo_host_uses_the_idoneo_logo(): void
+    {
+        $this->app['request']->headers->set('HOST', 'admin.idoneo.dev');
+
+        $this->assertStringContainsString('logo-light.svg', Helpers::logoAsset('light'));
+        $this->assertStringContainsString('logo-dark.svg', Helpers::logoAsset('dark'));
+        $this->assertStringContainsString('logo-iso.svg', Helpers::logoAsset('iso'));
+    }
+
+    public function test_humano_host_uses_the_hand_logo(): void
+    {
+        $this->app['request']->headers->set('HOST', 'mi.humano.app');
+
+        $this->assertStringContainsString('logo.png', Helpers::logoAsset('light'));
+        $this->assertStringContainsString('logo.png', Helpers::logoAsset('dark'));
+        $this->assertStringContainsString('logo.png', Helpers::logoAsset('iso'));
+        $this->assertSame('../logo.png', Helpers::logoThemeDataImg('light'));
+        $this->assertSame('../logo.png', Helpers::logoThemeDataImg('dark'));
+    }
 }

@@ -34,7 +34,7 @@ class ContactSentiment extends Model
         {
             return [
                 'id' => $sentiment->id,
-                'name' => $sentiment->name.' '.$sentiment->emoji,
+                'name' => $sentiment->emoji.' '.$sentiment->name,
             ];
         });
     }

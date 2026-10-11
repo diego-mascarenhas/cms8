@@ -150,7 +150,8 @@ class ApolloIntegrationTest extends TestCase
             'team_id' => $user->currentTeam->id,
             'creator_id' => $user->id,
             'responsible_id' => $user->id,
-            'name' => 'Jane Do***e',
+            'name' => 'Jane',
+            'surname' => null,
             'status_id' => 1,
         ]);
 
@@ -229,6 +230,8 @@ class ApolloIntegrationTest extends TestCase
 
         $contact = Contact::withoutGlobalScopes()->where('team_id', $user->currentTeam->id)->latest('id')->first();
         $this->assertNotNull($contact);
+        $this->assertSame('Jane', $contact->name);
+        $this->assertSame('Doe', $contact->surname);
         $this->assertSame(840, (int) $contact->country);
     }
 

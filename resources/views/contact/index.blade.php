@@ -444,7 +444,7 @@
                             <select class="form-select" id="sentiment_id" name="sentiment_id" required>
                                 <option value="" selected disabled>Selecciona un estado emocional</option>
                                 @foreach (App\Models\ContactSentiment::all() as $sentiment)
-                                    <option value="{{ $sentiment->id }}">{{ $sentiment->name }} {{ $sentiment->emoji }}
+                                    <option value="{{ $sentiment->id }}">{{ $sentiment->emoji }} {{ $sentiment->name }}
                                     </option>
                                 @endforeach
                             </select>

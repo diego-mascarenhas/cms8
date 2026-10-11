@@ -66,7 +66,15 @@ class ContactController extends Controller
         $data['emotionalStates'] = ContactSentiment::getOptions();
         $data['intentStates'] = ContactIntent::getOptions();
         $data['enterpriseStatuses'] = ContactStatus::getOptions();
-        $data['countries'] = Country::query()->orderBy('name')->pluck('name', 'id');
+        $data['countries'] = Country::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'code'])
+            ->map(fn (Country $country): array => [
+                'id' => $country->id,
+                'name' => $country->name,
+                'flag' => strtolower((string) $country->code),
+            ])
+            ->all();
 
         if (auth()->user()->currentTeam?->hasModule('list60'))
         {

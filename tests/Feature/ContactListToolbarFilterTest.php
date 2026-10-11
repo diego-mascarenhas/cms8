@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Country;
 use App\Models\Team;
 use App\Models\User;
+use Database\Seeders\ContactSentimentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -16,6 +18,11 @@ class ContactListToolbarFilterTest extends TestCase
     public function test_contact_list_includes_filter_persistence_and_select2_sync(): void
     {
         $user = $this->createAdminWithContactListPermission();
+        $this->seed(ContactSentimentSeeder::class);
+        Country::query()->updateOrCreate(
+            ['id' => 32],
+            ['name' => 'Argentina', 'code' => 'AR'],
+        );
 
         $response = $this->actingAs($user)->get(route('contact-list'));
 
@@ -31,6 +38,12 @@ class ContactListToolbarFilterTest extends TestCase
         $response->assertSee('contact_list_country', false);
         $response->assertSee('change.select2', false);
         $response->assertSee('change.contactFilter', false);
+        $response->assertSee('😡 Muy Negativo', false);
+        $response->assertSee('🛒 Comprar', false);
+        $response->assertDontSee('Muy Negativo 😡', false);
+        $response->assertDontSee('Comprar 🛒', false);
+        $response->assertSee('data-flag="ar"', false);
+        $response->assertSee('fi fi-', false);
     }
 
     private function createAdminWithContactListPermission(): User
