@@ -522,6 +522,8 @@ Route::group(['prefix' => 'auth'], function ()
     {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('user', [AuthController::class, 'user']);
+        Route::get('teams', [AuthController::class, 'teams'])->name('api.auth.teams');
+        Route::put('current-team', [AuthController::class, 'switchCurrentTeam'])->name('api.auth.current-team.update');
         Route::put('profile', [AuthController::class, 'updateProfile'])->name('api.auth.profile.update');
         Route::get('profile-photo', [AuthController::class, 'showProfilePhoto'])->name('api.auth.profile-photo.show');
         Route::post('profile-photo', [AuthController::class, 'updateProfilePhoto'])->name('api.auth.profile-photo.update');

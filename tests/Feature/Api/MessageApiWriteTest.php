@@ -1466,6 +1466,24 @@ class MessageApiWriteTest extends TestCase
             'scheduled_send_at' => now()->addDay(),
             'mail_html' => '<p>Hi</p>',
         ]);
+        Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Aviso de stock',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'pause_reason' => Message::PAUSE_REASON_ERRORS,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Borrador manual',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'pause_reason' => Message::PAUSE_REASON_MANUAL,
+            'mail_html' => '<p>Hi</p>',
+        ]);
 
         $week = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/message/dashboard?period=7')
@@ -1478,12 +1496,16 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('data.totals.unsubscribed', 1)
             ->assertJsonPath('data.totals.campaigns', 1)
             ->assertJsonPath('data.totals.sending', 1)
-            ->assertJsonPath('data.totals.paused', 1)
+            ->assertJsonPath('data.totals.paused', 3)
             ->assertJsonPath('data.totals.scheduled', 1)
             ->assertJsonPath('data.live.0.name', 'Menú de octubre')
             ->assertJsonPath('data.attention.0.kind', 'spam')
-            ->assertJsonPath('data.attention.1.kind', 'failed')
-            ->assertJsonPath('data.attention.2.kind', 'scheduled');
+            ->assertJsonPath('data.attention.0.title', 'Pausada por spam')
+            ->assertJsonPath('data.attention.0.detail', 'Promo fin de semana')
+            ->assertJsonPath('data.attention.1.kind', 'errors')
+            ->assertJsonPath('data.attention.1.title', 'Pausada por errores')
+            ->assertJsonPath('data.attention.1.detail', 'Aviso de stock')
+            ->assertJsonCount(2, 'data.attention');
 
         $today = now()->toDateString();
         $todayRow = collect($week->json('data.activity'))->firstWhere('date', $today);

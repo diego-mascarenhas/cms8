@@ -835,85 +835,27 @@ class CampaignMessageApiService
      */
     private function dashboardAttention(Team $team): array
     {
-        $items = [];
-
-        $spam = Message::query()
+        return Message::query()
             ->where('team_id', $team->id)
-            ->where('pause_reason', Message::PAUSE_REASON_SPAM)
             ->where('status_id', 0)
+            ->whereIn('pause_reason', [Message::PAUSE_REASON_SPAM, Message::PAUSE_REASON_ERRORS])
+            ->orderByRaw('case when pause_reason = ? then 0 else 1 end', [Message::PAUSE_REASON_SPAM])
             ->orderByDesc('updated_at')
-            ->first();
-
-        if ($spam)
-        {
-            $items[] = [
-                'kind' => 'spam',
-                'message_id' => $spam->id,
-                'title' => 'Pausada por spam',
-                'detail' => $spam->name,
-                'at' => $spam->updated_at?->toIso8601String(),
-            ];
-        }
-
-        $failed = Message::query()
-            ->where('team_id', $team->id)
-            ->withCount([
-                'deliveries as failed_count' => function ($query): void
-                {
-                    $query->where('message_deliveries.status_id', 4)
-                        ->whereRaw('NOT ('.$this->temporaryFailureSql().')');
-                },
-                'deliveries as temporary_count' => function ($query): void
-                {
-                    $query->where('message_deliveries.status_id', 4)
-                        ->whereRaw('('.$this->temporaryFailureSql().')');
-                },
-            ])
-            ->orderByDesc('failed_count')
-            ->orderByDesc('temporary_count')
-            ->first();
-
-        $failedCount = (int) ($failed->failed_count ?? 0);
-        $temporaryCount = (int) ($failed->temporary_count ?? 0);
-        if ($failed && ($failedCount > 0 || $temporaryCount > 0))
-        {
-            $parts = [];
-            if ($temporaryCount > 0)
+            ->limit(5)
+            ->get()
+            ->map(function (Message $message): array
             {
-                $parts[] = $temporaryCount.' de error';
-            }
-            if ($failedCount > 0)
-            {
-                $parts[] = $failedCount.' fallidos';
-            }
+                $spam = $message->pause_reason === Message::PAUSE_REASON_SPAM;
 
-            $items[] = [
-                'kind' => 'failed',
-                'message_id' => $failed->id,
-                'title' => ($failedCount + $temporaryCount).' sin reenviar',
-                'detail' => $failed->name.'. '.implode(' y ', $parts).'.',
-                'at' => $failed->updated_at?->toIso8601String(),
-            ];
-        }
-
-        $scheduled = Message::query()
-            ->where('team_id', $team->id)
-            ->where('scheduled_send_at', '>', now())
-            ->orderBy('scheduled_send_at')
-            ->first();
-
-        if ($scheduled)
-        {
-            $items[] = [
-                'kind' => 'scheduled',
-                'message_id' => $scheduled->id,
-                'title' => 'Programada',
-                'detail' => $scheduled->name,
-                'at' => $scheduled->scheduled_send_at?->toIso8601String(),
-            ];
-        }
-
-        return $items;
+                return [
+                    'kind' => $spam ? 'spam' : 'errors',
+                    'message_id' => $message->id,
+                    'title' => $spam ? 'Pausada por spam' : 'Pausada por errores',
+                    'detail' => $message->name,
+                    'at' => $message->updated_at?->toIso8601String(),
+                ];
+            })
+            ->all();
     }
 
     /**

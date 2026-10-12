@@ -230,6 +230,55 @@ class AuthController extends Controller
         return response()->json($this->profilePayload($request->user()));
     }
 
+    public function teams(Request $request)
+    {
+        $user = $request->user();
+        $user->load(['ownedTeams', 'teams']);
+        $currentId = (int) $user->current_team_id;
+
+        $teams = $user->allTeams()
+            ->unique('id')
+            ->values()
+            ->map(function (Team $team) use ($user, $currentId)
+            {
+                $pivotRole = $team->pivot?->role ?? null;
+
+                return [
+                    'id' => (int) $team->id,
+                    'name' => (string) $team->name,
+                    'is_owner' => $user->ownsTeam($team),
+                    'is_current' => (int) $team->id === $currentId,
+                    'role' => $user->ownsTeam($team) ? 'owner' : (is_string($pivotRole) ? $pivotRole : null),
+                ];
+            });
+
+        return response()->json([
+            'teams' => $teams,
+        ]);
+    }
+
+    public function switchCurrentTeam(Request $request)
+    {
+        $validated = $request->validate([
+            'team_id' => ['required', 'integer'],
+        ]);
+
+        $user = $request->user();
+        $team = Team::query()->withoutGlobalScopes()->find($validated['team_id']);
+
+        if (! $team || ! $user->switchTeam($team))
+        {
+            return response()->json([
+                'message' => 'No pertenecés a ese equipo.',
+            ], 403);
+        }
+
+        $user->unsetRelation('currentTeam');
+        $user->unsetRelation('roles');
+
+        return response()->json($this->profilePayload($user->fresh()));
+    }
+
     public function updateProfile(Request $request)
     {
         $user = $request->user();

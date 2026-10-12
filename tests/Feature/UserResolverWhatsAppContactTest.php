@@ -210,6 +210,41 @@ class UserResolverWhatsAppContactTest extends TestCase
         $this->assertSame('admin', $role);
     }
 
+    public function test_link_phone_keeps_a_client_of_another_company_as_client(): void
+    {
+        $client = User::factory()->create([
+            'email' => 'cabreraituzaingo@hotmail.com',
+            'phone' => 5491111223344,
+        ]);
+        $client->assignRole('admin');
+        $ownTeam = Team::factory()->create([
+            'user_id' => $client->id,
+            'name' => 'Cecubico S.A.',
+        ]);
+        $client->teams()->attach($ownTeam->id, ['role' => 'admin']);
+
+        $hostOwner = User::factory()->create();
+        $hostTeam = Team::factory()->create([
+            'user_id' => $hostOwner->id,
+            'name' => 'REVISION ALPHA S.L.',
+        ]);
+        $client->teams()->attach($hostTeam->id, ['role' => 'client']);
+
+        $service = app(UserResolverService::class);
+        $service->linkPhoneToContactInTeam((int) $hostTeam->id, '5491111223344', 'Cecubico');
+
+        $role = $client->fresh()->teams()->where('team_id', $hostTeam->id)->value('team_user.role');
+        $this->assertSame('client', $role);
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $hostTeam->id)
+            ->where('phone', 5491111223344)
+            ->first();
+
+        $this->assertNotNull($contact);
+        $this->assertNull($contact->user_id);
+    }
+
     public function test_link_phone_does_not_add_foreign_team_admin_as_member(): void
     {
         $foreignAdmin = User::factory()->create([
