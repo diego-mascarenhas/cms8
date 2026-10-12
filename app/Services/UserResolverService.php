@@ -629,7 +629,7 @@ class UserResolverService
             return $existingRole;
         }
 
-        if ($user->hasRole('admin') && $existingRole === 'client')
+        if ($existingRole === 'client' && $this->userOwnsTeam($user, $teamId))
         {
             return 'admin';
         }
@@ -656,6 +656,11 @@ class UserResolverService
             return true;
         }
 
-        return $user->hasRole('admin') && $user->teams()->where('team_id', $teamId)->exists();
+        return $this->userOwnsTeam($user, $teamId);
+    }
+
+    private function userOwnsTeam(User $user, int $teamId): bool
+    {
+        return (int) Team::query()->whereKey($teamId)->value('user_id') === (int) $user->id;
     }
 }
