@@ -15,6 +15,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('type_id');
             $table->unsignedBigInteger('category_id')->nullable();
             $table->unsignedBigInteger('contact_status_id')->nullable();
+            $table->unsignedSmallInteger('contact_country_id')->nullable();
             $table->unsignedBigInteger('template_id')->nullable();
             $table->text('text');
             $table->string('from_name')->nullable();

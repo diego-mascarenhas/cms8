@@ -277,6 +277,7 @@ class MessageApiWriteTest extends TestCase
                 'data' => [
                     'categories',
                     'contact_statuses',
+                    'countries',
                     'templates',
                     'merge_fields',
                     'merge_sample',

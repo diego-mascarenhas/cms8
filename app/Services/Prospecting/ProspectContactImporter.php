@@ -2,6 +2,7 @@
 
 namespace App\Services\Prospecting;
 
+use App\Jobs\ApplyApolloPhoneRevealJob;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactStatus;
@@ -59,15 +60,21 @@ class ProspectContactImporter
 
         $team->decrementProspectCredits($this->creditsCost($apolloData));
 
+        $revealPhone = is_array($person) && ApolloService::personNeedsPhoneReveal($person);
         $enriched = null;
         try
         {
-            $enriched = $this->apollo->enrichPerson([
+            $enrichQuery = [
                 'id' => $apolloId,
                 'first_name' => $firstName,
                 'organization_name' => $apolloData['organization_name'] ?? $organizationName,
                 'organization' => $apolloData['organization'] ?? null,
-            ]);
+            ];
+            if ($revealPhone)
+            {
+                $enrichQuery['reveal_phone'] = true;
+            }
+            $enriched = $this->apollo->enrichPerson($enrichQuery);
         } catch (\Throwable)
         {
             $enriched = null;
@@ -100,13 +107,23 @@ class ProspectContactImporter
             'data' => $dataJson,
         ];
 
-        $rawEmail = $apolloData['email'] ?? $apolloData['primary_email'] ?? $apolloData['sanitized_email'] ?? '';
-        if ((string) $rawEmail !== '' && filter_var($rawEmail, FILTER_VALIDATE_EMAIL))
+        $email = $this->emailFromApollo($apolloData);
+        if ($email !== null)
         {
-            $contactData['email'] = strtolower(trim((string) $rawEmail));
+            $contactData['email'] = $email;
         }
 
-        $phoneStr = $this->phoneString($apolloData);
+        $phoneStr = ApolloService::phoneNumberFromPerson($apolloData);
+        $phoneRevealRequestId = $this->apollo->lastPhoneRevealRequestId;
+        if ($phoneStr === null && ($phoneRevealRequestId === null || $phoneRevealRequestId === ''))
+        {
+            $phoneStr = ApolloService::phoneNumberFromOrganization($apolloData);
+            if ($phoneStr === null && is_array($person))
+            {
+                $phoneStr = ApolloService::phoneNumberFromPerson($person)
+                    ?? ApolloService::phoneNumberFromOrganization($person);
+            }
+        }
         if ($phoneStr !== null)
         {
             $phoneDigits = preg_replace('/\D/', '', $phoneStr);
@@ -118,6 +135,14 @@ class ProspectContactImporter
 
         $contact = Contact::withoutGlobalScopes()->create($contactData);
         $contact->categories()->sync($this->categoryIds($team, $categoryId));
+
+        if (
+            ($phoneRevealRequestId !== null && $phoneRevealRequestId !== '')
+            && empty($contactData['phone'])
+        ) {
+            ApplyApolloPhoneRevealJob::dispatch($contact->id, $phoneRevealRequestId)
+                ->delay(now()->addSeconds(15));
+        }
 
         return $contact;
     }
@@ -212,36 +237,6 @@ class ProspectContactImporter
     }
 
     /**
-     * @param  array<string, mixed>  $apolloData
-     */
-    private function phoneString(array $apolloData): ?string
-    {
-        $phone = $apolloData['phone'] ?? null;
-        if (is_string($phone) && $phone !== '')
-        {
-            return $phone;
-        }
-        if (is_array($phone) && isset($phone['number']) && is_string($phone['number']))
-        {
-            return $phone['number'];
-        }
-        if (! empty($apolloData['phone_numbers']) && is_array($apolloData['phone_numbers']))
-        {
-            $first = reset($apolloData['phone_numbers']);
-            if (is_string($first))
-            {
-                return $first;
-            }
-            if (is_array($first) && isset($first['number']) && is_string($first['number']))
-            {
-                return $first['number'];
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * @return array<int, int>
      */
     private function categoryIds(Team $team, ?int $categoryId): array
@@ -265,6 +260,59 @@ class ProspectContactImporter
     /**
      * @param  array<string, mixed>  $apolloData
      */
+    /**
+     * Work email first. A personal address is used only when Apollo did not return a usable primary email.
+     *
+     * @param  array<string, mixed>  $apolloData
+     */
+    private function emailFromApollo(array $apolloData): ?string
+    {
+        foreach (['email', 'primary_email', 'sanitized_email'] as $key)
+        {
+            $email = $this->usableEmail($apolloData[$key] ?? null);
+            if ($email !== null)
+            {
+                return $email;
+            }
+        }
+
+        $personal = $apolloData['personal_emails'] ?? [];
+        if (! is_array($personal))
+        {
+            return null;
+        }
+
+        foreach ($personal as $entry)
+        {
+            $candidate = is_array($entry)
+                ? ($entry['email'] ?? $entry['sanitized_email'] ?? null)
+                : $entry;
+            $email = $this->usableEmail($candidate);
+            if ($email !== null)
+            {
+                return $email;
+            }
+        }
+
+        return null;
+    }
+
+    private function usableEmail(mixed $value): ?string
+    {
+        if (! is_string($value))
+        {
+            return null;
+        }
+
+        $email = strtolower(trim($value));
+        if ($email === '' || str_contains($email, '*') || filter_var($email, FILTER_VALIDATE_EMAIL) === false)
+        {
+            return null;
+        }
+
+        return $email;
+    }
+
     private function countryIdFromApollo(array $apolloData): ?int
     {
         foreach ($this->countryCandidates($apolloData) as $candidate)

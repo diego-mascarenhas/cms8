@@ -31,4 +31,28 @@ class ApolloPersonChannelsTest extends TestCase
             'organization' => ['name' => 'Acme'],
         ]));
     }
+
+    public function test_a_direct_phone_flag_without_a_number_asks_for_a_reveal(): void
+    {
+        $this->assertTrue(ApolloService::personNeedsPhoneReveal([
+            'has_direct_phone' => 'Yes',
+            'organization' => ['phone' => null],
+        ]));
+        $this->assertFalse(ApolloService::personNeedsPhoneReveal([
+            'has_direct_phone' => 'Yes',
+            'phone_numbers' => [['sanitized_number' => '+59899111222', 'status_cd' => 'valid_number', 'type_cd' => 'mobile']],
+        ]));
+        $this->assertSame('+59899111222', ApolloService::phoneNumberFromRevealPayload([
+            'webhook_result' => [
+                'people' => [[
+                    'phone_numbers' => [[
+                        'raw_number' => '+598 99 111 222',
+                        'sanitized_number' => '+59899111222',
+                        'status_cd' => 'valid_number',
+                        'type_cd' => 'mobile',
+                    ]],
+                ]],
+            ],
+        ]));
+    }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Concerns\ChecksTeamModule;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\ContactStatus;
+use App\Models\Country;
 use App\Models\Module;
 use App\Models\Template;
 use App\Support\MessageTemplateMergeFields;
@@ -45,6 +46,17 @@ class MailerLookupController extends Controller
             ->values()
             ->all();
 
+        $countries = Country::query()
+            ->orderBy('name')
+            ->get(['id', 'name', 'code'])
+            ->map(fn (Country $country): array => [
+                'id' => $country->id,
+                'name' => $country->name,
+                'code' => strtolower((string) $country->code),
+            ])
+            ->values()
+            ->all();
+
         $templates = Template::query()
             ->where('team_id', $team->id)
             ->orderBy('name')
@@ -68,6 +80,7 @@ class MailerLookupController extends Controller
             'data' => [
                 'categories' => $categories,
                 'contact_statuses' => $contactStatuses,
+                'countries' => $countries,
                 'templates' => $templates,
                 'merge_fields' => MessageTemplateMergeFields::forUi(),
                 'merge_sample' => MessageTemplateMergeFields::sampleValues(),

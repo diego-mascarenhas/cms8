@@ -19,6 +19,11 @@ class StoreMessageApiRequest extends FormRequest
             $this->merge(['contact_status_id' => null]);
         }
 
+        if ($this->input('contact_country_id') === '' || $this->input('contact_country_id') === null)
+        {
+            $this->merge(['contact_country_id' => null]);
+        }
+
         if ($this->input('template_id') === '' || $this->input('template_id') === null)
         {
             $this->merge(['template_id' => null]);
@@ -84,6 +89,7 @@ class StoreMessageApiRequest extends FormRequest
             'text' => ['required', 'string', 'min:3', 'max:255'],
             'type_id' => ['nullable', 'integer', 'exists:message_type,id'],
             'contact_status_id' => ['nullable', 'integer', 'exists:contact_statuses,id'],
+            'contact_country_id' => ['nullable', 'integer', 'exists:countries,id'],
             'message_category_ids' => ['nullable', 'array'],
             'message_category_ids.*' => ['integer', 'exists:categories,id'],
             'template_id' => ['nullable', 'integer', 'exists:templates,id'],

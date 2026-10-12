@@ -254,7 +254,7 @@ class CampaignMessageApiService
     public function findForTeam(Team $team, int $id): ?Message
     {
         return $this->baseQuery($team)
-            ->with(['category', 'contactStatus', 'template', 'deliveries'])
+            ->with(['category', 'contactStatus', 'contactCountry', 'template', 'deliveries'])
             ->find($id);
     }
 
@@ -281,6 +281,7 @@ class CampaignMessageApiService
                 'id' => $message->contactStatus->id,
                 'name' => $message->contactStatus->name,
             ] : null,
+            'contact_country' => $this->formatContactCountry($message),
             'progress' => [
                 'total' => $total,
                 'sent' => $sent,
@@ -340,6 +341,7 @@ class CampaignMessageApiService
             'contact_status_label' => $message->contactStatus
                 ? $message->contactStatus->name
                 : (string) __('app.message_form_contact_status_all'),
+            'contact_country' => $this->formatContactCountry($message),
             'template' => $message->template ? [
                 'id' => $message->template->id,
                 'name' => $message->template->name,
@@ -516,6 +518,25 @@ class CampaignMessageApiService
     }
 
     /**
+     * @return array{id: int, name: string, code: string}|null
+     */
+    private function formatContactCountry(Message $message): ?array
+    {
+        $message->loadMissing('contactCountry');
+        $country = $message->contactCountry;
+        if ($country === null)
+        {
+            return null;
+        }
+
+        return [
+            'id' => (int) $country->id,
+            'name' => (string) $country->name,
+            'code' => strtolower((string) $country->code),
+        ];
+    }
+
+    /**
      * @return array{key: string, label: string}
      */
     public function listStatus(Message $message): array
@@ -549,7 +570,7 @@ class CampaignMessageApiService
     {
         return Message::query()
             ->where('team_id', $team->id)
-            ->with(['category', 'contactStatus'])
+            ->with(['category', 'contactStatus', 'contactCountry'])
             ->withCount([
                 'deliveries',
                 'deliveries as sent_count' => function ($query)

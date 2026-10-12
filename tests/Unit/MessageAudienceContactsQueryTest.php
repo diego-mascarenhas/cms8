@@ -139,6 +139,41 @@ class MessageAudienceContactsQueryTest extends TestCase
     }
 
     #[Test]
+    public function specific_contact_country_filters_audience(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $teamId = (int) $user->ownedTeams()->first()->id;
+
+        Contact::factory()->create([
+            'team_id' => $teamId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'country' => 32,
+            'email' => 'argentina@company.test',
+        ]);
+
+        Contact::factory()->create([
+            'team_id' => $teamId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'country' => 858,
+            'email' => 'uruguay@company.test',
+        ]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Argentina only',
+            'type_id' => 1,
+            'text' => 'Hi',
+            'team_id' => $teamId,
+            'contact_country_id' => 32,
+        ]);
+
+        $emails = $message->audienceContactsQuery()->pluck('email')->all();
+
+        $this->assertSame(['argentina@company.test'], $emails);
+    }
+
+    #[Test]
     public function multiple_categories_union_deduplicates_contacts(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
