@@ -8,8 +8,10 @@ use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryStat;
 use App\Models\Team;
+use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class CampaignMessageApiService
 {
@@ -586,5 +588,411 @@ class CampaignMessageApiService
                     $query->whereNotNull('opened_at');
                 },
             ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function dashboard(Team $team, int $days): array
+    {
+        $days = in_array($days, [7, 30, 90], true) ? $days : 30;
+        $until = now();
+        $since = $until->copy()->subDays($days - 1)->startOfDay();
+
+        return [
+            'period_days' => $days,
+            'totals' => $this->dashboardTotals($team, $since, $until),
+            'activity' => $this->dashboardActivity($team->id, $since, $until, $days > 31),
+            'live' => $this->dashboardLive($team),
+            'attention' => $this->dashboardAttention($team),
+            'campaigns' => $this->dashboardCampaigns($team),
+        ];
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function dashboardTotals(Team $team, Carbon $since, Carbon $until): array
+    {
+        $row = MessageDelivery::query()
+            ->where('team_id', $team->id)
+            ->selectRaw(
+                'COUNT(DISTINCT CASE WHEN sent_at >= ? AND sent_at <= ? THEN contact_id END) as subscribers,
+                 SUM(CASE WHEN sent_at >= ? AND sent_at <= ? THEN 1 ELSE 0 END) as sent,
+                 SUM(CASE WHEN delivered_at >= ? AND delivered_at <= ? THEN 1 ELSE 0 END) as delivered,
+                 SUM(CASE WHEN opened_at >= ? AND opened_at <= ? THEN 1 ELSE 0 END) as opened,
+                 SUM(CASE WHEN clicked_at >= ? AND clicked_at <= ? THEN 1 ELSE 0 END) as clicks,
+                 COUNT(DISTINCT CASE WHEN sent_at >= ? AND sent_at <= ? THEN message_id END) as campaigns',
+                [$since, $until, $since, $until, $since, $until, $since, $until, $since, $until, $since, $until],
+            )
+            ->first();
+
+        $failedBase = MessageDelivery::query()
+            ->where('team_id', $team->id)
+            ->where('status_id', 4)
+            ->where(function ($query) use ($since, $until): void
+            {
+                $query->whereBetween('bounced_at', [$since, $until])
+                    ->orWhere(function ($inner) use ($since, $until): void
+                    {
+                        $inner->whereNull('bounced_at')->whereBetween('updated_at', [$since, $until]);
+                    });
+            });
+
+        $temporary = (clone $failedBase)->whereRaw('('.$this->temporaryFailureSql().')')->count();
+        $failed = (clone $failedBase)->whereRaw('NOT ('.$this->temporaryFailureSql().')')->count();
+
+        $unsubscribed = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('status_id', 4)
+            ->whereExists(function ($query) use ($team, $since, $until): void
+            {
+                $query->selectRaw('1')
+                    ->from('message_deliveries')
+                    ->whereColumn('message_deliveries.contact_id', 'contacts.id')
+                    ->where('message_deliveries.team_id', $team->id)
+                    ->whereBetween('message_deliveries.sent_at', [$since, $until]);
+            })
+            ->count();
+
+        $sending = 0;
+        $paused = 0;
+        $scheduled = 0;
+        $messages = Message::query()
+            ->where('team_id', $team->id)
+            ->where(function ($query): void
+            {
+                $query->where('status_id', 1)
+                    ->orWhereNotNull('scheduled_send_at')
+                    ->orWhereNotNull('pause_reason');
+            })
+            ->get(['id', 'status_id', 'scheduled_send_at', 'pause_reason']);
+
+        foreach ($messages as $message)
+        {
+            $key = $this->listStatus($message)['key'];
+            if ($key === 'sending')
+            {
+                $sending++;
+            } elseif ($key === 'scheduled')
+            {
+                $scheduled++;
+            } elseif ($key === 'paused' && filled($message->pause_reason))
+            {
+                $paused++;
+            }
+        }
+
+        return [
+            'subscribers' => (int) ($row->subscribers ?? 0),
+            'sent' => (int) ($row->sent ?? 0),
+            'delivered' => (int) ($row->delivered ?? 0),
+            'opened' => (int) ($row->opened ?? 0),
+            'clicks' => (int) ($row->clicks ?? 0),
+            'temporary' => $temporary,
+            'failed' => $failed,
+            'unsubscribed' => $unsubscribed,
+            'campaigns' => (int) ($row->campaigns ?? 0),
+            'sending' => $sending,
+            'paused' => $paused,
+            'scheduled' => $scheduled,
+        ];
+    }
+
+    /**
+     * @return list<array{date: string, sent: int, opened: int, clicks: int}>
+     */
+    private function dashboardActivity(int $teamId, Carbon $since, Carbon $until, bool $weekly): array
+    {
+        $sent = $this->countsByDay($teamId, 'sent_at', $since, $until);
+        $opened = $this->countsByDay($teamId, 'opened_at', $since, $until);
+        $clicks = $this->countsByDay($teamId, 'clicked_at', $since, $until);
+        $days = [];
+        $cursor = $since->copy()->startOfDay();
+        $end = $until->copy()->startOfDay();
+
+        while ($cursor->lte($end))
+        {
+            $key = $cursor->toDateString();
+            $days[] = [
+                'date' => $key,
+                'sent' => (int) ($sent[$key] ?? 0),
+                'opened' => (int) ($opened[$key] ?? 0),
+                'clicks' => (int) ($clicks[$key] ?? 0),
+            ];
+            $cursor->addDay();
+        }
+
+        if (! $weekly)
+        {
+            return $days;
+        }
+
+        $weeks = [];
+        foreach ($days as $day)
+        {
+            $week = Carbon::parse($day['date'])->startOfWeek()->toDateString();
+            if (! isset($weeks[$week]))
+            {
+                $weeks[$week] = ['date' => $week, 'sent' => 0, 'opened' => 0, 'clicks' => 0];
+            }
+            $weeks[$week]['sent'] += $day['sent'];
+            $weeks[$week]['opened'] += $day['opened'];
+            $weeks[$week]['clicks'] += $day['clicks'];
+        }
+
+        return array_values($weeks);
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function countsByDay(int $teamId, string $column, Carbon $since, Carbon $until): array
+    {
+        $expression = $this->sqlDay($column);
+        $rows = MessageDelivery::query()
+            ->where('team_id', $teamId)
+            ->whereNotNull($column)
+            ->whereBetween($column, [$since, $until])
+            ->selectRaw($expression.' as day, COUNT(*) as total')
+            ->groupByRaw($expression)
+            ->get();
+
+        $counts = [];
+        foreach ($rows as $row)
+        {
+            $counts[substr((string) $row->day, 0, 10)] = (int) $row->total;
+        }
+
+        return $counts;
+    }
+
+    private function sqlDay(string $column): string
+    {
+        if (! in_array($column, ['sent_at', 'opened_at', 'clicked_at'], true))
+        {
+            throw new \InvalidArgumentException('Unsupported day column.');
+        }
+
+        if (DB::connection()->getDriverName() === 'pgsql')
+        {
+            return "to_char({$column}, 'YYYY-MM-DD')";
+        }
+
+        return "strftime('%Y-%m-%d', {$column})";
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function dashboardLive(Team $team): array
+    {
+        return Message::query()
+            ->where('team_id', $team->id)
+            ->where('status_id', 1)
+            ->where(function ($query): void
+            {
+                $query->whereNull('scheduled_send_at')->orWhere('scheduled_send_at', '<=', now());
+            })
+            ->with('contactCategories')
+            ->withCount($this->dashboardDeliveryCounts())
+            ->orderByDesc('updated_at')
+            ->limit(4)
+            ->get()
+            ->map(function (Message $message): array
+            {
+                $subscribers = (int) $message->deliveries_count;
+                $delivered = (int) $message->delivered_count;
+                $opened = (int) $message->opened_count;
+                $clicks = (int) $message->clicks_count;
+                $stats = [
+                    'subscribers' => $subscribers,
+                    'sent' => (int) $message->sent_count,
+                    'delivered' => $delivered,
+                    'opened' => $opened,
+                    'failed' => (int) $message->failed_count,
+                    'open_rate' => $delivered > 0 ? round(($opened / $delivered) * 100, 2) : 0.0,
+                ];
+                $progress = $this->campaignProgress($stats);
+                if ($progress !== null && $subscribers > 0)
+                {
+                    $progress['clicks_percent'] = min(100, round(($clicks / $subscribers) * 100, 1));
+                }
+
+                return [
+                    'id' => $message->id,
+                    'name' => $message->name,
+                    'audience' => $message->hasContactCategoryFilter() ? $message->contactCategoriesLabel() : null,
+                    'subscribers' => $subscribers,
+                    'progress' => $progress,
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function dashboardAttention(Team $team): array
+    {
+        $items = [];
+
+        $spam = Message::query()
+            ->where('team_id', $team->id)
+            ->where('pause_reason', Message::PAUSE_REASON_SPAM)
+            ->where('status_id', 0)
+            ->orderByDesc('updated_at')
+            ->first();
+
+        if ($spam)
+        {
+            $items[] = [
+                'kind' => 'spam',
+                'message_id' => $spam->id,
+                'title' => 'Pausada por spam',
+                'detail' => $spam->name,
+                'at' => $spam->updated_at?->toIso8601String(),
+            ];
+        }
+
+        $failed = Message::query()
+            ->where('team_id', $team->id)
+            ->withCount([
+                'deliveries as failed_count' => function ($query): void
+                {
+                    $query->where('message_deliveries.status_id', 4)
+                        ->whereRaw('NOT ('.$this->temporaryFailureSql().')');
+                },
+                'deliveries as temporary_count' => function ($query): void
+                {
+                    $query->where('message_deliveries.status_id', 4)
+                        ->whereRaw('('.$this->temporaryFailureSql().')');
+                },
+            ])
+            ->orderByDesc('failed_count')
+            ->orderByDesc('temporary_count')
+            ->first();
+
+        $failedCount = (int) ($failed->failed_count ?? 0);
+        $temporaryCount = (int) ($failed->temporary_count ?? 0);
+        if ($failed && ($failedCount > 0 || $temporaryCount > 0))
+        {
+            $parts = [];
+            if ($temporaryCount > 0)
+            {
+                $parts[] = $temporaryCount.' de error';
+            }
+            if ($failedCount > 0)
+            {
+                $parts[] = $failedCount.' fallidos';
+            }
+
+            $items[] = [
+                'kind' => 'failed',
+                'message_id' => $failed->id,
+                'title' => ($failedCount + $temporaryCount).' sin reenviar',
+                'detail' => $failed->name.'. '.implode(' y ', $parts).'.',
+                'at' => $failed->updated_at?->toIso8601String(),
+            ];
+        }
+
+        $scheduled = Message::query()
+            ->where('team_id', $team->id)
+            ->where('scheduled_send_at', '>', now())
+            ->orderBy('scheduled_send_at')
+            ->first();
+
+        if ($scheduled)
+        {
+            $items[] = [
+                'kind' => 'scheduled',
+                'message_id' => $scheduled->id,
+                'title' => 'Programada',
+                'detail' => $scheduled->name,
+                'at' => $scheduled->scheduled_send_at?->toIso8601String(),
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function dashboardCampaigns(Team $team): array
+    {
+        return Message::query()
+            ->where('team_id', $team->id)
+            ->withMax('deliveries', 'sent_at')
+            ->withCount($this->dashboardDeliveryCounts())
+            ->orderByDesc('updated_at')
+            ->limit(8)
+            ->get()
+            ->map(function (Message $message): array
+            {
+                $scheduled = $message->scheduled_send_at?->isFuture() === true;
+                $lastSent = $message->getAttribute('deliveries_max_sent_at');
+
+                return [
+                    'id' => $message->id,
+                    'name' => $message->name,
+                    'status' => $this->listStatus($message),
+                    'subscribers' => (int) $message->deliveries_count,
+                    'sent' => (int) $message->sent_count,
+                    'delivered' => (int) $message->delivered_count,
+                    'opened' => (int) $message->opened_count,
+                    'clicks' => (int) $message->clicks_count,
+                    'temporary' => (int) $message->temporary_count,
+                    'failed' => (int) $message->failed_count,
+                    'unsubscribed' => (int) $message->unsubscribed_count,
+                    'activity_at' => $scheduled
+                        ? $message->scheduled_send_at?->toIso8601String()
+                        : ($lastSent ? Carbon::parse($lastSent)->toIso8601String() : $message->updated_at?->toIso8601String()),
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function dashboardDeliveryCounts(): array
+    {
+        return [
+            'deliveries',
+            'deliveries as sent_count' => function ($query): void
+            {
+                $query->whereNotNull('sent_at')->where('sent_at', '<=', now());
+            },
+            'deliveries as delivered_count' => function ($query): void
+            {
+                $query->whereNotNull('delivered_at');
+            },
+            'deliveries as opened_count' => function ($query): void
+            {
+                $query->whereNotNull('opened_at');
+            },
+            'deliveries as clicks_count' => function ($query): void
+            {
+                $query->whereNotNull('clicked_at');
+            },
+            'deliveries as temporary_count' => function ($query): void
+            {
+                $query->where('message_deliveries.status_id', 4)
+                    ->whereRaw('('.$this->temporaryFailureSql().')');
+            },
+            'deliveries as failed_count' => function ($query): void
+            {
+                $query->where('message_deliveries.status_id', 4)
+                    ->whereRaw('NOT ('.$this->temporaryFailureSql().')');
+            },
+            'deliveries as unsubscribed_count' => function ($query): void
+            {
+                $query->whereHas('contact', function ($contact): void
+                {
+                    $contact->withoutGlobalScopes()->where('contacts.status_id', 4);
+                });
+            },
+        ];
     }
 }
