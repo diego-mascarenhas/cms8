@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\ApplyApolloPhoneRevealJob;
 use App\Models\Contact;
 use App\Models\Module;
 use App\Models\Team;
@@ -10,7 +11,9 @@ use App\Services\ApolloService;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -322,5 +325,184 @@ class ApolloIntegrationTest extends TestCase
         $contact = Contact::withoutGlobalScopes()->where('team_id', $user->currentTeam->id)->latest('id')->first();
         $this->assertNotNull($contact);
         $this->assertNull($contact->country);
+    }
+
+    public function test_add_person_uses_a_personal_email_when_apollo_has_no_work_email(): void
+    {
+        $user = $this->createUserWithRole('admin');
+        $this->enableProspectingModule($user->currentTeam);
+        $user->currentTeam->addProspectCreditsFromPurchase(10);
+        $this->actingAs($user);
+        $this->app->instance(ApolloService::class, new class extends ApolloService
+        {
+            public function __construct()
+            {
+                parent::__construct('test-key');
+            }
+
+            public function enrichPerson(array $person): ?array
+            {
+                return [
+                    'id' => $person['id'] ?? '',
+                    'first_name' => 'Carla',
+                    'last_name' => 'Martinovic',
+                    'email' => null,
+                    'personal_emails' => ['carla.martinovic@gmail.com'],
+                ];
+            }
+        });
+
+        $response = $this->post(route('contact.apollo.add-person'), [
+            '_token' => csrf_token(),
+            'apollo_id' => 'apollo-personal-email',
+            'first_name' => 'Carla',
+            'last_name_obfuscated' => 'Ma***c',
+        ], [
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(201);
+
+        $contact = Contact::withoutGlobalScopes()->where('team_id', $user->currentTeam->id)->latest('id')->first();
+        $this->assertNotNull($contact);
+        $this->assertSame('carla.martinovic@gmail.com', $contact->email);
+    }
+
+    public function test_add_person_requests_a_phone_reveal_when_apollo_only_flags_a_direct_number(): void
+    {
+        Bus::fake();
+        $user = $this->createUserWithRole('admin');
+        $this->enableProspectingModule($user->currentTeam);
+        $user->currentTeam->addProspectCreditsFromPurchase(10);
+        $this->actingAs($user);
+
+        $apollo = new class extends ApolloService
+        {
+            /** @var array<string, mixed> */
+            public array $seen = [];
+
+            public function __construct()
+            {
+                parent::__construct('test-key');
+            }
+
+            public function enrichPerson(array $person): ?array
+            {
+                $this->seen = $person;
+                $this->lastPhoneRevealRequestId = ! empty($person['reveal_phone']) ? '1039995589705121900' : null;
+
+                return [
+                    'id' => $person['id'] ?? '',
+                    'first_name' => 'Ruben',
+                    'last_name' => 'Rodriguez',
+                    'email' => 'rurodriguez@farmashop.com.uy',
+                    'organization' => ['name' => 'Farmashop', 'phone' => null],
+                ];
+            }
+        };
+        $this->app->instance(ApolloService::class, $apollo);
+
+        $response = $this->post(route('contact.apollo.add-person'), [
+            '_token' => csrf_token(),
+            'apollo_id' => '61507be15d7a3800016a9d1d',
+            'first_name' => 'Ruben',
+            'last_name_obfuscated' => 'Ro***z',
+            'organization_name' => 'Farmashop',
+            'person_data' => json_encode([
+                'id' => '61507be15d7a3800016a9d1d',
+                'first_name' => 'Ruben',
+                'has_direct_phone' => 'Yes',
+                'organization' => ['name' => 'Farmashop', 'phone' => null],
+            ]),
+        ], [
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertTrue($apollo->seen['reveal_phone'] ?? false);
+
+        $contact = Contact::withoutGlobalScopes()->where('team_id', $user->currentTeam->id)->latest('id')->first();
+        $this->assertNotNull($contact);
+        $this->assertSame('Ruben', $contact->name);
+        $this->assertSame('Rodriguez', $contact->surname);
+        $this->assertNull($contact->phone);
+
+        Bus::assertDispatched(ApplyApolloPhoneRevealJob::class, function (ApplyApolloPhoneRevealJob $job) use ($contact): bool
+        {
+            return $job->contactId === $contact->id && $job->requestId === '1039995589705121900';
+        });
+    }
+
+    public function test_phone_reveal_job_saves_the_number_apollo_sends_later(): void
+    {
+        $user = $this->createUserWithRole('admin');
+        $contact = Contact::withoutGlobalScopes()->create([
+            'team_id' => $user->currentTeam->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'name' => 'Ruben',
+            'surname' => 'Rodriguez',
+            'status_id' => 1,
+        ]);
+
+        $this->app->instance(ApolloService::class, new class extends ApolloService
+        {
+            public function __construct()
+            {
+                parent::__construct('test-key');
+            }
+
+            public function pollPhoneReveal(string $requestId): array
+            {
+                return [
+                    'status' => 'ready',
+                    'phone' => '+598 99 111 222',
+                    'retry_after' => 0,
+                ];
+            }
+        });
+
+        (new ApplyApolloPhoneRevealJob($contact->id, '1039995589705121900'))->handle(app(ApolloService::class));
+
+        $this->assertSame(59899111222, (int) $contact->fresh()->phone);
+    }
+
+    public function test_enrich_person_asks_apollo_to_reveal_the_phone_for_a_later_poll(): void
+    {
+        Http::fake([
+            'https://api.apollo.io/api/v1/people/match*' => Http::response([
+                'request_id' => 1039995589705121900,
+                'person' => ['id' => 'abc', 'first_name' => 'Ruben'],
+            ]),
+            'https://api.apollo.io/api/v1/webhook_result/*' => Http::response([
+                'webhook_result' => [
+                    'people' => [[
+                        'phone_numbers' => [[
+                            'sanitized_number' => '+59899111222',
+                            'status_cd' => 'valid_number',
+                            'type_cd' => 'mobile',
+                        ]],
+                    ]],
+                ],
+            ]),
+        ]);
+
+        $service = new ApolloService('test-key');
+        $person = $service->enrichPerson([
+            'id' => 'abc',
+            'reveal_phone' => true,
+        ]);
+
+        $this->assertSame('Ruben', $person['first_name'] ?? null);
+        $this->assertSame('1039995589705121900', $service->lastPhoneRevealRequestId);
+        Http::assertSent(function ($request): bool
+        {
+            return str_contains($request->url(), 'reveal_phone_number=true')
+                && str_contains($request->url(), 'poll_only=true');
+        });
+
+        $polled = $service->pollPhoneReveal('1039995589705121900');
+        $this->assertSame('ready', $polled['status']);
+        $this->assertSame('+59899111222', $polled['phone']);
     }
 }

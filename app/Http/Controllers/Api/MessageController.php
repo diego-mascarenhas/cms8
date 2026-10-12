@@ -81,6 +81,29 @@ class MessageController extends Controller
         ]);
     }
 
+    public function dashboard(Request $request): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        $validated = $request->validate([
+            'period' => 'nullable|integer|in:7,30,90',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->campaignMessages->dashboard($team, (int) ($validated['period'] ?? 30)),
+        ]);
+    }
+
     public function show(Request $request, int $id): JsonResponse
     {
         $team = $this->teamOrError($request);
@@ -798,7 +821,7 @@ class MessageController extends Controller
                 'type_id' => $typeId,
             ];
 
-            foreach (['name', 'text', 'contact_status_id', 'send_window_start', 'send_window_end'] as $field)
+            foreach (['name', 'text', 'contact_status_id', 'contact_country_id', 'send_window_start', 'send_window_end'] as $field)
             {
                 if (array_key_exists($field, $validated))
                 {

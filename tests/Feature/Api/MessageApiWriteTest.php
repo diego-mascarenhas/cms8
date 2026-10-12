@@ -277,6 +277,7 @@ class MessageApiWriteTest extends TestCase
                 'data' => [
                     'categories',
                     'contact_statuses',
+                    'countries',
                     'templates',
                     'merge_fields',
                     'merge_sample',
@@ -1362,5 +1363,137 @@ class MessageApiWriteTest extends TestCase
 
         $this->assertNotNull($delivery->fresh()->error_message);
         Bus::assertNothingDispatched();
+    }
+
+    public function test_dashboard_counts_recent_activity_and_current_campaigns(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        $lostStatusId = (int) ContactStatus::query()->where('name', 'Perdido')->value('id');
+
+        $active = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Menú de octubre',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        $opened = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'abrio@example.test',
+        ]);
+        $bounced = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'reboto@example.test',
+        ]);
+        $lost = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'baja-panel@example.test',
+            'status_id' => $lostStatusId,
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $active->id,
+            'contact_id' => $opened->id,
+            'status_id' => 2,
+            'sent_at' => now(),
+            'delivered_at' => now(),
+            'opened_at' => now(),
+            'clicked_at' => now(),
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $active->id,
+            'contact_id' => $bounced->id,
+            'status_id' => 4,
+            'sent_at' => now(),
+            'error_message' => '550 user unknown',
+            'bounce_type' => 'hard',
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $active->id,
+            'contact_id' => $lost->id,
+            'status_id' => 2,
+            'sent_at' => now(),
+            'delivered_at' => now(),
+        ]);
+
+        $older = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Archivo',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        $oldContact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'viejo@example.test',
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $older->id,
+            'contact_id' => $oldContact->id,
+            'status_id' => 2,
+            'sent_at' => now()->subDays(40),
+            'delivered_at' => now()->subDays(40),
+        ]);
+
+        Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Promo fin de semana',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'pause_reason' => Message::PAUSE_REASON_SPAM,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Newsletter de noviembre',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'scheduled_send_at' => now()->addDay(),
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        $week = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/dashboard?period=7')
+            ->assertOk()
+            ->assertJsonPath('data.totals.sent', 3)
+            ->assertJsonPath('data.totals.delivered', 2)
+            ->assertJsonPath('data.totals.opened', 1)
+            ->assertJsonPath('data.totals.clicks', 1)
+            ->assertJsonPath('data.totals.failed', 1)
+            ->assertJsonPath('data.totals.unsubscribed', 1)
+            ->assertJsonPath('data.totals.campaigns', 1)
+            ->assertJsonPath('data.totals.sending', 1)
+            ->assertJsonPath('data.totals.paused', 1)
+            ->assertJsonPath('data.totals.scheduled', 1)
+            ->assertJsonPath('data.live.0.name', 'Menú de octubre')
+            ->assertJsonPath('data.attention.0.kind', 'spam')
+            ->assertJsonPath('data.attention.1.kind', 'failed')
+            ->assertJsonPath('data.attention.2.kind', 'scheduled');
+
+        $today = now()->toDateString();
+        $todayRow = collect($week->json('data.activity'))->firstWhere('date', $today);
+        $this->assertNotNull($todayRow);
+        $this->assertSame(3, (int) $todayRow['sent']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/dashboard?period=90')
+            ->assertOk()
+            ->assertJsonPath('data.totals.sent', 4)
+            ->assertJsonPath('data.totals.campaigns', 2);
     }
 }

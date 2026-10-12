@@ -10,6 +10,8 @@ class ApolloService
 
     protected string $apiKey;
 
+    public ?string $lastPhoneRevealRequestId = null;
+
     public function __construct(?string $apiKey = null)
     {
         $this->apiKey = $apiKey ?? config('services.apollo.api_key', '');
@@ -157,12 +159,171 @@ class ApolloService
         return false;
     }
 
+    /**
+     * Search can flag a direct number without returning it. That number arrives from a later reveal.
+     */
+    public static function personNeedsPhoneReveal(array $person): bool
+    {
+        if (self::phoneNumberFromPerson($person) !== null)
+        {
+            return false;
+        }
+
+        if (self::flagYes($person['has_direct_phone'] ?? null) || self::flagYes($person['has_phone'] ?? null))
+        {
+            return true;
+        }
+
+        foreach (['phone_numbers', 'contact_phone_numbers'] as $key)
+        {
+            if (! empty($person[$key]) && is_array($person[$key]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $person
+     */
+    public static function phoneNumberFromPerson(array $person): ?string
+    {
+        foreach (['sanitized_phone', 'phone'] as $key)
+        {
+            $value = self::phoneText($person[$key] ?? null);
+            if ($value !== null)
+            {
+                return $value;
+            }
+        }
+
+        $primary = $person['primary_phone'] ?? null;
+        if (is_array($primary))
+        {
+            $value = self::phoneText($primary['sanitized_number'] ?? $primary['number'] ?? null);
+            if ($value !== null)
+            {
+                return $value;
+            }
+        }
+
+        foreach (['phone_numbers', 'contact_phone_numbers'] as $key)
+        {
+            if (! is_array($person[$key] ?? null))
+            {
+                continue;
+            }
+
+            $best = self::bestPhoneNumber($person[$key]);
+            if ($best !== null)
+            {
+                return $best;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $person
+     */
+    public static function phoneNumberFromOrganization(array $person): ?string
+    {
+        $organization = $person['organization'] ?? null;
+
+        return is_array($organization) ? self::phoneNumberFromPerson($organization) : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public static function phoneNumberFromRevealPayload(array $payload): ?string
+    {
+        $people = $payload['webhook_result']['people'] ?? $payload['people'] ?? null;
+        if (! is_array($people))
+        {
+            return null;
+        }
+
+        foreach ($people as $person)
+        {
+            if (! is_array($person))
+            {
+                continue;
+            }
+
+            $phone = self::phoneNumberFromPerson($person);
+            if ($phone !== null)
+            {
+                return $phone;
+            }
+        }
+
+        return null;
+    }
+
     private static function flagYes(mixed $value): bool
     {
         return $value === true
             || $value === 1
             || $value === '1'
             || (is_string($value) && strcasecmp($value, 'Yes') === 0);
+    }
+
+    private static function phoneText(mixed $value): ?string
+    {
+        if (is_array($value))
+        {
+            $value = $value['sanitized_number'] ?? $value['raw_number'] ?? $value['number'] ?? null;
+        }
+
+        if (! is_string($value))
+        {
+            return null;
+        }
+
+        $value = trim($value);
+
+        return $value === '' ? null : $value;
+    }
+
+    /**
+     * @param  array<int, mixed>  $numbers
+     */
+    private static function bestPhoneNumber(array $numbers): ?string
+    {
+        $fallback = null;
+        foreach ($numbers as $number)
+        {
+            if (is_string($number))
+            {
+                $text = self::phoneText($number);
+            } elseif (is_array($number))
+            {
+                $text = self::phoneText($number['sanitized_number'] ?? $number['raw_number'] ?? $number['number'] ?? null);
+            } else
+            {
+                $text = null;
+            }
+
+            if ($text === null)
+            {
+                continue;
+            }
+
+            $status = is_array($number) ? strtolower((string) ($number['status_cd'] ?? '')) : '';
+            $type = is_array($number) ? strtolower((string) ($number['type_cd'] ?? '')) : '';
+            if ($status === 'valid_number' && $type === 'mobile')
+            {
+                return $text;
+            }
+
+            $fallback ??= $text;
+        }
+
+        return $fallback;
     }
 
     /**
@@ -179,12 +340,15 @@ class ApolloService
             throw new \RuntimeException('Apollo API key is not configured.');
         }
 
+        $this->lastPhoneRevealRequestId = null;
+
         $id = $person['id'] ?? '';
         if ($id === '')
         {
             return null;
         }
 
+        $revealPhone = ! empty($person['reveal_phone']);
         $params = [
             'id' => $id,
             'reveal_personal_emails' => 'true',
@@ -199,18 +363,23 @@ class ApolloService
         {
             $params['organization_name'] = $orgName;
         }
+        if ($revealPhone)
+        {
+            $params['reveal_phone_number'] = 'true';
+            $params['poll_only'] = 'true';
+        }
 
-        $url = $this->baseUrl.'/people/match?'.http_build_query($params);
-        $response = Http::withHeaders([
-            'x-api-key' => $this->apiKey,
-            'Content-Type' => 'application/json',
-        ])->post($url, []);
+        $response = $this->postPeopleMatch($params);
+        if ($revealPhone && ! $response->successful())
+        {
+            unset($params['reveal_phone_number'], $params['poll_only']);
+            $response = $this->postPeopleMatch($params);
+        }
 
         if (! $response->successful())
         {
             \Log::debug('Apollo enrich failed', [
                 'status' => $response->status(),
-                'body' => $response->body(),
                 'person_id' => $id,
             ]);
 
@@ -218,9 +387,76 @@ class ApolloService
         }
 
         $data = $response->json();
+        if (! is_array($data))
+        {
+            return null;
+        }
+
+        if ($revealPhone && isset($data['request_id']) && (is_scalar($data['request_id'])))
+        {
+            $this->lastPhoneRevealRequestId = (string) $data['request_id'];
+        }
+
         $enriched = $data['person'] ?? null;
 
         return is_array($enriched) ? $enriched : null;
+    }
+
+    /**
+     * @param  array<string, string>  $params
+     */
+    private function postPeopleMatch(array $params): \Illuminate\Http\Client\Response
+    {
+        $url = $this->baseUrl.'/people/match?'.http_build_query($params);
+
+        return Http::withHeaders([
+            'x-api-key' => $this->apiKey,
+            'Content-Type' => 'application/json',
+        ])->post($url, []);
+    }
+
+    /**
+     * Phone reveal is asynchronous. Apollo returns the number on a later poll.
+     *
+     * @return array{status: string, phone: ?string, retry_after: int}
+     */
+    public function pollPhoneReveal(string $requestId): array
+    {
+        if (empty($this->apiKey))
+        {
+            throw new \RuntimeException('Apollo API key is not configured.');
+        }
+
+        $url = $this->baseUrl.'/webhook_result/'.rawurlencode($requestId);
+        $response = Http::withHeaders([
+            'x-api-key' => $this->apiKey,
+        ])->get($url);
+
+        if ($response->status() === 404 && $response->json('error_code') === 'result_pending')
+        {
+            return [
+                'status' => 'pending',
+                'phone' => null,
+                'retry_after' => max(5, (int) $response->json('retry_after_seconds', 20)),
+            ];
+        }
+
+        if (! $response->successful())
+        {
+            return [
+                'status' => 'failed',
+                'phone' => null,
+                'retry_after' => 0,
+            ];
+        }
+
+        $payload = $response->json();
+
+        return [
+            'status' => 'ready',
+            'phone' => is_array($payload) ? self::phoneNumberFromRevealPayload($payload) : null,
+            'retry_after' => 0,
+        ];
     }
 
     /**

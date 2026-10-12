@@ -665,6 +665,7 @@ Route::middleware('auth.api')->group(function ()
 
     // Message / Mailer (idoneo-mailer SPA)
     Route::get('message', [MessageController::class, 'index']);
+    Route::get('message/dashboard', [MessageController::class, 'dashboard']);
     Route::post('message', [MessageController::class, 'store']);
     Route::post('message/generate', [MessageController::class, 'generate']);
     Route::get('message/{id}', [MessageController::class, 'show'])->whereNumber('id');

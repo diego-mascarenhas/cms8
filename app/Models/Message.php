@@ -24,7 +24,7 @@ class Message extends Model
 
     public const PAUSE_REASON_MANUAL = 'La pausaste manualmente.';
 
-    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'template_id', 'text', 'from_name', 'from_address', 'mail_html', 'status_id', 'pause_reason', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at', 'scheduled_send_at'];
+    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'contact_country_id', 'template_id', 'text', 'from_name', 'from_address', 'mail_html', 'status_id', 'pause_reason', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at', 'scheduled_send_at'];
 
     protected $casts = [
         'status_id' => 'boolean',
@@ -152,6 +152,11 @@ class Message extends Model
         return $this->belongsTo(\App\Models\ContactStatus::class);
     }
 
+    public function contactCountry(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Country::class, 'contact_country_id');
+    }
+
     public function resolveMailHtml(): string
     {
         if (is_string($this->mail_html) && trim($this->mail_html) !== '')
@@ -201,9 +206,10 @@ class Message extends Model
     }
 
     /**
-     * Contacts eligible for deliveries: optional contact categories (pivot), optional contact status, valid email, no demo domains.
+     * Contacts eligible for deliveries: optional contact categories (pivot), optional contact status, optional contact country, valid email, no demo domains.
      * When no categories are linked, all team contacts with email are included.
      * When contact_status_id is null, all statuses in the audience are included.
+     * When contact_country_id is null, all countries in the audience are included.
      *
      * @return Builder<\App\Models\Contact>
      */
@@ -234,6 +240,11 @@ class Message extends Model
         if ($this->contact_status_id)
         {
             $query->where('status_id', $this->contact_status_id);
+        }
+
+        if ($this->contact_country_id)
+        {
+            $query->where('country', $this->contact_country_id);
         }
 
         foreach (self::demoEmailDomainsExcludedFromAudience() as $domain)
