@@ -706,6 +706,7 @@ Route::middleware('auth.api')->group(function ()
     Route::patch('mailer/categories/{category}', [MailerCategoryController::class, 'update']);
     Route::delete('mailer/categories/{category}', [MailerCategoryController::class, 'destroy']);
     Route::get('mailer/sender', [MailerSenderController::class, 'show']);
+    Route::get('mailer/sender/dns', [MailerSenderController::class, 'dns']);
     Route::put('mailer/sender', [MailerSenderController::class, 'update']);
     Route::get('mailer/preferences', [MailerPreferencesController::class, 'show']);
     Route::put('mailer/preferences', [MailerPreferencesController::class, 'update']);

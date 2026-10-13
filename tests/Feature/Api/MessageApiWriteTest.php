@@ -325,6 +325,20 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('data.spf.domain', 'example.test');
     }
 
+    public function test_sender_dns_check_reports_the_domain_before_saving(): void
+    {
+        [, , $token] = $this->adminWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/sender/dns?email=hola@example.test')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.domain', 'example.test')
+            ->assertJsonPath('data.mb.host', '_mb.example.test')
+            ->assertJsonPath('data.mb.ok', false)
+            ->assertJsonPath('data.required_include', 'include:spf.revisionalpha.com');
+    }
+
     public function test_save_send_fails_without_sender_and_succeeds_when_configured(): void
     {
         [, , $token] = $this->adminWithToken();

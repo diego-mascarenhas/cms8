@@ -28,4 +28,13 @@ class DnsHelperRevisionAlphaSpfTest extends TestCase
     {
         $this->assertFalse(DnsHelper::spfIncludesRevisionAlpha('v=spf1 include:mail.baby -all'));
     }
+
+    public function test_mailbaby_user_record_accepts_one_or_more_usernames(): void
+    {
+        $this->assertTrue(DnsHelper::mailbabyUserRecordMatches('mb80474'));
+        $this->assertTrue(DnsHelper::mailbabyUserRecordMatches('mb80147 mb80474'));
+        $this->assertTrue(DnsHelper::mailbabyUserRecordMatches('v=1 user=mb80474'));
+        $this->assertFalse(DnsHelper::mailbabyUserRecordMatches('80474'));
+        $this->assertFalse(DnsHelper::mailbabyUserRecordMatches(''));
+    }
 }

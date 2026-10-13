@@ -15,6 +15,30 @@ class DnsHelper
     public const REQUIRED_REVISION_ALPHA_SPF_TXT = 'v=spf1 include:spf.revisionalpha.com -all';
 
     /**
+     * Whether a _mb TXT authorizes a MailBaby account (mb12345, or several separated by spaces).
+     */
+    public static function mailbabyUserRecordMatches(string $txt): bool
+    {
+        if (preg_match('/(?:^|\s)mb\d+(?:$|\s)/i', $txt) === 1)
+        {
+            return true;
+        }
+
+        return preg_match('/user=mb\d+/i', $txt) === 1;
+    }
+
+    public static function mailbabyUserExample(): string
+    {
+        $id = config('services.mailbaby.order_id');
+        if (is_numeric($id) && (int) $id > 0)
+        {
+            return 'mb'.(int) $id;
+        }
+
+        return 'mb80474';
+    }
+
+    /**
      * Whether this SPF string contains the Revision Alpha include (case-insensitive).
      */
     public static function spfIncludesRevisionAlpha(string $spfRecord): bool
@@ -214,7 +238,84 @@ class DnsHelper
         return [
             'domain' => $domain,
             'spf' => self::checkSpfRecord($domain),
+            'mb' => self::checkMailbabyUserRecord($domain),
         ];
+    }
+
+    /**
+     * TXT at _mb.{domain} must contain the MailBaby username.
+     *
+     * @return array{
+     *     host: string,
+     *     example: string,
+     *     exists: bool,
+     *     ok: bool,
+     *     record: string|null,
+     *     error: string|null
+     * }
+     */
+    public static function checkMailbabyUserRecord(string $domain): array
+    {
+        $host = '_mb.'.$domain;
+        $example = self::mailbabyUserExample();
+
+        try
+        {
+            $txtRecords = dns_get_record($host, DNS_TXT);
+            if (! $txtRecords)
+            {
+                return [
+                    'host' => $host,
+                    'example' => $example,
+                    'exists' => false,
+                    'ok' => false,
+                    'record' => null,
+                    'error' => 'No TXT records found',
+                ];
+            }
+
+            $first = null;
+            foreach ($txtRecords as $record)
+            {
+                $txt = trim($record['txt'] ?? '');
+                if ($txt === '')
+                {
+                    continue;
+                }
+
+                $first ??= $txt;
+                if (self::mailbabyUserRecordMatches($txt))
+                {
+                    return [
+                        'host' => $host,
+                        'example' => $example,
+                        'exists' => true,
+                        'ok' => true,
+                        'record' => $txt,
+                        'error' => null,
+                    ];
+                }
+            }
+
+            return [
+                'host' => $host,
+                'example' => $example,
+                'exists' => $first !== null,
+                'ok' => false,
+                'record' => $first,
+                'error' => 'El TXT _mb tiene que ser el usuario de envío, por ejemplo '.$example.'.',
+            ];
+        } catch (\Exception $e)
+        {
+            return [
+                'host' => $host,
+                'example' => $example,
+                'exists' => false,
+                'ok' => false,
+                'record' => null,
+                'error' => $e->getMessage(),
+            ];
+        }
     }
 
     /**
