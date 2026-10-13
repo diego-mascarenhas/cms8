@@ -605,6 +605,7 @@ class CampaignMessageApiService
             'activity' => $this->dashboardActivity($team->id, $since, $until, $days > 31),
             'live' => $this->dashboardLive($team),
             'attention' => $this->dashboardAttention($team),
+            'opens_by_country' => $this->dashboardOpensByCountry($team->id, $since, $until),
             'campaigns' => $this->dashboardCampaigns($team),
         ];
     }
@@ -853,6 +854,38 @@ class CampaignMessageApiService
                     'title' => $spam ? 'Pausada por spam' : 'Pausada por errores',
                     'detail' => $message->name,
                     'at' => $message->updated_at?->toIso8601String(),
+                ];
+            })
+            ->all();
+    }
+
+    /**
+     * @return list<array{country_id: int|null, name: string, code: string|null, opened: int}>
+     */
+    private function dashboardOpensByCountry(int $teamId, Carbon $since, Carbon $until): array
+    {
+        return MessageDelivery::query()
+            ->where('message_deliveries.team_id', $teamId)
+            ->whereNotNull('message_deliveries.opened_at')
+            ->whereBetween('message_deliveries.opened_at', [$since, $until])
+            ->join('contacts', 'contacts.id', '=', 'message_deliveries.contact_id')
+            ->whereNull('contacts.deleted_at')
+            ->leftJoin('countries', 'countries.id', '=', 'contacts.country')
+            ->groupBy('countries.id', 'countries.name', 'countries.code')
+            ->orderByRaw('COUNT(*) DESC')
+            ->orderBy('countries.name')
+            ->selectRaw('countries.id as country_id, countries.name as country_name, countries.code as country_code, COUNT(*) as opened')
+            ->limit(8)
+            ->get()
+            ->map(function ($row): array
+            {
+                $name = trim((string) ($row->country_name ?? ''));
+
+                return [
+                    'country_id' => $row->country_id !== null ? (int) $row->country_id : null,
+                    'name' => $name !== '' ? $name : 'Sin país',
+                    'code' => $row->country_code !== null ? strtolower((string) $row->country_code) : null,
+                    'opened' => (int) $row->opened,
                 ];
             })
             ->all();
