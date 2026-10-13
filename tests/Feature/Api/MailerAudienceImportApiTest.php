@@ -97,7 +97,7 @@ class MailerAudienceImportApiTest extends TestCase
             ->getJson('/api/mailer/audience/import')
             ->json('data.sample_csv');
 
-        $this->assertStringContainsString('email,name,surname,phone,categories', $sample);
+        $this->assertStringContainsString('email,name,surname,phone,categories,title', $sample);
         $this->assertStringContainsString('lucia.garcia@cliente.com', $sample);
     }
 
@@ -118,9 +118,9 @@ class MailerAudienceImportApiTest extends TestCase
         ]);
 
         $csv = <<<'CSV'
-email,name,surname,phone,categories
-lucia.garcia@cliente.com,Lucía,García,+34600111222,Newsletter
-martin.perez@cliente.com,Martín,Pérez,+34600999888,Newsletter|VIP
+email,name,surname,phone,categories,title
+lucia.garcia@cliente.com,Lucía,García,+34600111222,Newsletter,
+martin.perez@cliente.com,Martín,Pérez,+34600999888,Newsletter|VIP,Director
 CSV;
 
         $this->withHeader('Authorization', 'Bearer '.$token)
@@ -142,6 +142,8 @@ CSV;
             'team_id' => $team->id,
             'email' => 'martin.perez@cliente.com',
             'name' => 'Martín',
+            'title' => 'Director',
+            'role' => 'Director',
         ]);
         $this->assertDatabaseHas('categories', [
             'team_id' => $team->id,

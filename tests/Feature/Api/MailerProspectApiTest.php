@@ -90,6 +90,7 @@ class MailerProspectApiTest extends TestCase
                     [
                         'id' => 'p1',
                         'first_name' => 'Ana',
+                        'title' => 'Owner',
                         'organization_name' => 'Acme',
                         'apollo_raw' => ['id' => 'p1', 'seniority' => 'owner', 'organization' => ['name' => 'Acme']],
                     ],
@@ -110,6 +111,8 @@ class MailerProspectApiTest extends TestCase
         $this->assertNotNull($contact);
         $this->assertSame('Ana', $contact->name);
         $this->assertSame('Simeone', $contact->surname);
+        $this->assertSame('Owner', $contact->title);
+        $this->assertSame('CEO', $contact->role);
         $this->assertNotNull(Contact::withoutGlobalScopes()->where('team_id', $team->id)->where('email', 'luis@acme.test')->first());
         $this->assertSame(6, (int) ProspectUsageLog::query()->where('team_id', $team->id)->sum('count'));
         $this->assertSame(0, $team->fresh()->getRemainingProspectCredits());

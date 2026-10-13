@@ -95,12 +95,15 @@ class ProspectContactImporter
         $dataJson = ['apollo' => $apolloData];
         $dataJson['apollo_raw'] = (is_array($enriched) && $enriched !== []) ? $enriched : $apolloData;
 
+        $storedTitle = trim((string) ($apolloData['title'] ?? $title ?? ''));
+
         $contactData = [
             'team_id' => $team->id,
             'creator_id' => $userId,
             'responsible_id' => $userId,
             'name' => $name,
             'surname' => $surname,
+            'title' => $storedTitle !== '' ? mb_substr($storedTitle, 0, 255) : null,
             'status_id' => (int) (ContactStatus::query()->where('name', 'Lead')->value('id') ?? 1),
             'country' => $this->countryIdFromApollo($apolloData),
             'language' => $this->defaultLanguageCode(),

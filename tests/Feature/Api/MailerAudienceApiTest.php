@@ -157,6 +157,62 @@ class MailerAudienceApiTest extends TestCase
             ->assertJsonPath('data.0.email', 'lucia.garcia@cliente.com');
     }
 
+    public function test_filters_audience_by_title_and_country(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        $leadStatusId = (int) ContactStatus::query()->where('name', 'Lead')->value('id');
+        $lucia = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'lucia.garcia@cliente.com')
+            ->firstOrFail();
+        $lucia->title = 'Chief Executive Officer at Acme';
+        $lucia->save();
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Bruno',
+            'surname' => 'Sosa',
+            'email' => 'bruno.sosa@cliente.com',
+            'title' => 'Presidente de Valori Marketing',
+            'language' => 'es',
+            'country' => 724,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => $leadStatusId,
+        ]);
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Ana',
+            'surname' => 'Ruiz',
+            'email' => 'ana.ruiz@cliente.com',
+            'title' => 'Director comercial',
+            'language' => 'es',
+            'country' => 32,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => $leadStatusId,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience?title='.rawurlencode('CEO'))
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 2)
+            ->assertJsonPath('data.0.email', 'bruno.sosa@cliente.com')
+            ->assertJsonPath('data.0.role', 'CEO')
+            ->assertJsonPath('data.0.title', 'Presidente de Valori Marketing')
+            ->assertJsonPath('data.1.email', 'lucia.garcia@cliente.com')
+            ->assertJsonPath('data.1.role', 'CEO')
+            ->assertJsonPath('data.1.country.name', 'España');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience?country_id=32')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.email', 'ana.ruiz@cliente.com')
+            ->assertJsonPath('data.0.country.name', 'Argentina')
+            ->assertJsonPath('filters.titles.0', 'CEO')
+            ->assertJsonPath('filters.titles.1', 'Director Comercial');
+    }
+
     public function test_creates_audience_contact(): void
     {
         [, $team, $token, $category] = $this->adminWithToken();
