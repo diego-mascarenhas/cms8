@@ -36,6 +36,46 @@ class ContactTitleClassifier
             'owner',
             'ceo',
         ],
+        'CTO' => [
+            'chief technology officer',
+            'chief technical officer',
+            'cto',
+        ],
+        'CFO' => [
+            'chief financial officer',
+            'cfo',
+        ],
+        'COO' => [
+            'chief operating officer',
+            'chief operations officer',
+            'coo',
+        ],
+        'CMO' => [
+            'chief marketing officer',
+            'cmo',
+        ],
+        'CCO' => [
+            'chief commercial officer',
+            'chief customer officer',
+            'cco',
+        ],
+        'CIO' => [
+            'chief information officer',
+            'cio',
+        ],
+        'CPO' => [
+            'chief product officer',
+            'cpo',
+        ],
+        'CRO' => [
+            'chief revenue officer',
+            'cro',
+        ],
+        'CAO' => [
+            'chief accounting officer',
+            'chief administrative officer',
+            'cao',
+        ],
     ];
 
     /**
@@ -46,17 +86,12 @@ class ContactTitleClassifier
     /**
      * @var list<string>
      */
-    private const COMPANY_GLUE = ['of', 'de', 'del', 'en', 'at'];
-
-    /**
-     * @var list<string>
-     */
     private const SMALL_WORDS = ['de', 'del', 'y', 'e', 'of', 'and', 'the', 'en', 'a'];
 
     /**
      * @var list<string>
      */
-    private const ACRONYMS = ['ceo', 'cto', 'cfo', 'coo', 'cmo', 'vp', 'svp', 'evp'];
+    private const ACRONYMS = ['ceo', 'cto', 'cfo', 'coo', 'cmo', 'cco', 'cio', 'cpo', 'cro', 'cao', 'vp', 'svp', 'evp'];
 
     public static function classify(?string $title, ?string $organization = null): ?string
     {
@@ -154,7 +189,10 @@ class ContactTitleClassifier
 
     private static function fold(string $value): string
     {
-        $value = preg_replace('/\bc\.e\.o\.?\b/iu', 'ceo', $value) ?? $value;
+        $value = preg_replace_callback('/\bc\.([a-z])\.o\.?\b/iu', function (array $matches): string
+        {
+            return 'c'.mb_strtolower($matches[1]).'o';
+        }, $value) ?? $value;
         $ascii = Str::ascii($value);
         $ascii = mb_strtolower($ascii);
         $ascii = preg_replace('/[^a-z0-9]+/', ' ', $ascii) ?? '';
@@ -172,7 +210,6 @@ class ContactTitleClassifier
 
         $synonyms = self::synonyms();
         $label = null;
-        $sawCompanyGlue = false;
         $count = count($words);
         $index = 0;
 
@@ -180,10 +217,6 @@ class ContactTitleClassifier
         {
             if (in_array($words[$index], self::GLUE, true))
             {
-                if (in_array($words[$index], self::COMPANY_GLUE, true))
-                {
-                    $sawCompanyGlue = true;
-                }
                 $index++;
 
                 continue;
@@ -206,17 +239,12 @@ class ContactTitleClassifier
 
             if ($hit === null)
             {
-                if ($label !== null && $sawCompanyGlue)
-                {
-                    return $label;
-                }
-
-                return null;
+                return $label;
             }
 
             if ($label !== null && $hit['label'] !== $label)
             {
-                return null;
+                return $label;
             }
 
             $label = $hit['label'];
