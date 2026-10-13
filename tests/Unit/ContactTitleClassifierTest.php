@@ -21,6 +21,13 @@ class ContactTitleClassifierTest extends TestCase
         $this->assertSame('CEO', ContactTitleClassifier::classify('Owner at Acme', 'Acme'));
         $this->assertSame('CEO', ContactTitleClassifier::classify('Director general'));
         $this->assertSame('CEO', ContactTitleClassifier::classify('Gerente general de Humano Labs', 'Humano Labs'));
+        $this->assertSame('CEO', ContactTitleClassifier::classify('CEO Bia Latam'));
+        $this->assertSame('CEO', ContactTitleClassifier::classify('CEO and Latam Director'));
+        $this->assertSame('CCO', ContactTitleClassifier::classify('CCO IGS Latam'));
+        $this->assertSame('CCO', ContactTitleClassifier::classify('CCO Latam'));
+        $this->assertSame('CAO', ContactTitleClassifier::classify('CAO & Latam Accounting'));
+        $this->assertSame('CTO', ContactTitleClassifier::classify('Chief Technology Officer Latam'));
+        $this->assertSame('CFO', ContactTitleClassifier::classify('C.F.O.'));
     }
 
     public function test_keeps_functional_titles_without_the_company(): void
