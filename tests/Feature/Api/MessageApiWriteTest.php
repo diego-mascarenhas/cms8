@@ -1439,6 +1439,7 @@ class MessageApiWriteTest extends TestCase
             'responsible_id' => $user->id,
             'email' => 'viejo@example.test',
         ]);
+        $oldContact->forceFill(['country' => 32])->save();
         MessageDelivery::query()->create([
             'team_id' => $team->id,
             'message_id' => $older->id,
@@ -1446,6 +1447,7 @@ class MessageApiWriteTest extends TestCase
             'status_id' => 2,
             'sent_at' => now()->subDays(40),
             'delivered_at' => now()->subDays(40),
+            'opened_at' => now()->subDays(40),
         ]);
 
         Message::withoutGlobalScopes()->create([
@@ -1505,7 +1507,11 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('data.attention.1.kind', 'errors')
             ->assertJsonPath('data.attention.1.title', 'Pausada por errores')
             ->assertJsonPath('data.attention.1.detail', 'Aviso de stock')
-            ->assertJsonCount(2, 'data.attention');
+            ->assertJsonCount(2, 'data.attention')
+            ->assertJsonCount(1, 'data.opens_by_country')
+            ->assertJsonPath('data.opens_by_country.0.name', 'España')
+            ->assertJsonPath('data.opens_by_country.0.code', 'es')
+            ->assertJsonPath('data.opens_by_country.0.opened', 1);
 
         $today = now()->toDateString();
         $todayRow = collect($week->json('data.activity'))->firstWhere('date', $today);
@@ -1516,6 +1522,9 @@ class MessageApiWriteTest extends TestCase
             ->getJson('/api/message/dashboard?period=90')
             ->assertOk()
             ->assertJsonPath('data.totals.sent', 4)
-            ->assertJsonPath('data.totals.campaigns', 2);
+            ->assertJsonPath('data.totals.campaigns', 2)
+            ->assertJsonPath('data.opens_by_country.0.name', 'Argentina')
+            ->assertJsonPath('data.opens_by_country.1.name', 'España')
+            ->assertJsonCount(2, 'data.opens_by_country');
     }
 }
