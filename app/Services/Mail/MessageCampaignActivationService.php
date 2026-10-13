@@ -61,6 +61,8 @@ class MessageCampaignActivationService
                 '--message' => $message->id,
             ]);
 
+            $message->reschedulePendingDeliveries();
+
             $message->load('campaigns');
             foreach ($message->campaigns as $campaign)
             {

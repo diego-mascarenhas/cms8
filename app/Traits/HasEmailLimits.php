@@ -413,34 +413,39 @@ trait HasEmailLimits
     }
 
     /**
-     * Scale sends known recipients immediately. Addresses with no prior delivery use the Foundation gap.
+     * Known recipients go out immediately. Addresses with no prior send wait out the cold gap.
      */
     public function mailerSpacingSecondsForContact(bool $previouslyReached): float
     {
         if ($this->sendsMailerWithoutSpacing() && ! $previouslyReached)
         {
-            return EmailPlan::FOUNDATION->sendSpacingSeconds();
+            return max(1, (float) config('services.email.delay.cold_spacing_seconds', 30));
         }
 
         return $this->mailerSendSpacingSeconds();
+    }
+
+    public function mailerPaceTextForSpacing(float $spacingSeconds): string
+    {
+        $seconds = (int) round($spacingSeconds);
+        if ($seconds < 1)
+        {
+            return 'Inmediata';
+        }
+
+        $perHour = (int) max(1, round(3600 / $seconds));
+
+        return $perHour.' envíos por hora';
     }
 
     public function mailerSendPaceText(): string
     {
         if ($this->sendsMailerWithoutSpacing())
         {
-            $seconds = (int) round(EmailPlan::FOUNDATION->sendSpacingSeconds());
-
-            return 'Inmediata para quienes ya recibieron o abrieron un correo. Cada '.$seconds.' segundos para el resto.';
+            return $this->mailerPaceTextForSpacing($this->mailerSpacingSecondsForContact(false));
         }
 
-        $seconds = (int) round($this->mailerSendSpacingSeconds());
-        if ($seconds < 1)
-        {
-            return 'Inmediata';
-        }
-
-        return 'Cada '.$seconds.' segundos';
+        return $this->mailerPaceTextForSpacing($this->mailerSendSpacingSeconds());
     }
 
     public function mailerSendJitterSeconds(): int

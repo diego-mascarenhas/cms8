@@ -60,18 +60,18 @@ class MailerSendPaceTest extends TestCase
         $this->assertSame(2, (int) $foundationTimes[0]->diffInSeconds($foundationTimes[1]));
 
         $this->assertCount(2, $scaleTimes);
-        $this->assertSame(2, (int) $scaleTimes[0]->diffInSeconds($scaleTimes[1]));
+        $this->assertSame(30, (int) $scaleTimes[0]->diffInSeconds($scaleTimes[1]));
 
         $this->assertSame(
-            'Cada 29 segundos',
+            '124 envíos por hora',
             $basic->team->mailerSendPaceText(),
         );
         $this->assertSame(
-            'Cada 2 segundos',
+            '1800 envíos por hora',
             $foundation->team->mailerSendPaceText(),
         );
         $this->assertSame(
-            'Inmediata para quienes ya recibieron o abrieron un correo. Cada 2 segundos para el resto.',
+            '120 envíos por hora',
             $scale->team->mailerSendPaceText(),
         );
     }
@@ -95,7 +95,7 @@ class MailerSendPaceTest extends TestCase
             ]);
         }
 
-        $this->assertSame('Cada 2 segundos', $message->currentSendPaceText());
+        $this->assertSame('1800 envíos por hora', $message->currentSendPaceText());
 
         MessageDelivery::query()->where('message_id', $message->id)->update([
             'sent_at' => now()->subSeconds(20),
@@ -147,7 +147,7 @@ class MailerSendPaceTest extends TestCase
 
         $this->assertSame($message->started_at->format('Y-m-d H:i:s'), $knownTime->format('Y-m-d H:i:s'));
         $this->assertTrue($coldTime->greaterThan($knownTime));
-        $this->assertSame(2, (int) $knownTime->diffInSeconds($coldTime));
+        $this->assertSame(30, (int) $knownTime->diffInSeconds($coldTime));
     }
 
     public function test_a_whitelisted_team_paces_new_addresses_and_sends_known_ones_immediately(): void
@@ -177,11 +177,39 @@ class MailerSendPaceTest extends TestCase
         $times = $this->scheduledTimes($message->id);
 
         $this->assertCount(2, $times);
-        $this->assertSame(2, (int) $times[0]->diffInSeconds($times[1]));
+        $this->assertSame(30, (int) $times[0]->diffInSeconds($times[1]));
         $this->assertSame(
             $message->started_at->format('Y-m-d H:i:s'),
             $times[0]->format('Y-m-d H:i:s'),
         );
+    }
+
+    public function test_resume_recalculates_pending_sends_for_new_addresses(): void
+    {
+        $message = $this->messageWithContacts(EmailPlan::SCALE, 'resume');
+        $contacts = Contact::query()->where('team_id', $message->team_id)->orderBy('id')->get();
+        $bunch = now()->startOfSecond();
+
+        foreach ($contacts as $index => $contact)
+        {
+            MessageDelivery::query()->create([
+                'team_id' => $message->team_id,
+                'message_id' => $message->id,
+                'contact_id' => $contact->id,
+                'status_id' => 1,
+                'scheduled_for' => $bunch->copy()->addSeconds($index * 2),
+            ]);
+        }
+
+        $message->pauseWithReason(Message::PAUSE_REASON_MANUAL);
+        $message->update(['status_id' => 1, 'pause_reason' => null]);
+        $message->reschedulePendingDeliveries();
+
+        $times = $this->scheduledTimes($message->id);
+
+        $this->assertCount(2, $times);
+        $this->assertSame(30, (int) $times[0]->diffInSeconds($times[1]));
+        $this->assertTrue($times[0]->greaterThan($bunch));
     }
 
     public function test_process_active_queues_every_contact_and_waits_out_the_gap(): void
