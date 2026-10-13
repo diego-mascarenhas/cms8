@@ -18,6 +18,7 @@ class StartCommand extends Command
                             {--google-sync : Queue Google contacts + calendar sync for all Google accounts (or --account_id)}
                             {--google-inspect : Inspect Google sync status (all teams or --team_id)}
                             {--exchange-rates-backfill : Backfill monthly exchange rates (BCRA USD/ARS + Frankfurter USD/EUR)}
+                            {--reclassify-roles : Reclassify stored contact and person roles from their titles}
                             {--exchange-rates-from=2000-01 : Start month (YYYY-MM) for --exchange-rates-backfill}
                             {--exchange-rates-to= : End month (YYYY-MM) for --exchange-rates-backfill; default current month}
                             {--account_id= : Account ID for --google-sync}
@@ -44,6 +45,8 @@ class StartCommand extends Command
 
     private const OPT_EXCHANGE_RATES_BACKFILL = 'Exchange rates: backfill monthly (BCRA USD/ARS + Frankfurter USD/EUR)';
 
+    private const OPT_RECLASSIFY_ROLES = 'Contacts: reclassify stored roles (CEO, CFO, …)';
+
     private const OPT_EXIT = 'Exit';
 
     public function handle(): int
@@ -55,6 +58,7 @@ class StartCommand extends Command
         $googleSync = $this->option('google-sync');
         $googleInspect = $this->option('google-inspect');
         $exchangeRatesBackfill = $this->option('exchange-rates-backfill');
+        $reclassifyRoles = $this->option('reclassify-roles');
 
         if ($fresh)
         {
@@ -116,6 +120,14 @@ class StartCommand extends Command
             return self::SUCCESS;
         }
 
+        if ($reclassifyRoles)
+        {
+            $this->runReclassifyRoles(prompt: false);
+            $this->info('Done.');
+
+            return self::SUCCESS;
+        }
+
         $this->info('Humano — Setup');
         $this->newLine();
 
@@ -132,6 +144,7 @@ class StartCommand extends Command
                     self::OPT_GOOGLE_SYNC,
                     self::OPT_GOOGLE_INSPECT,
                     self::OPT_EXCHANGE_RATES_BACKFILL,
+                    self::OPT_RECLASSIFY_ROLES,
                     self::OPT_EXIT,
                 ],
                 self::OPT_EXIT,
@@ -171,6 +184,9 @@ class StartCommand extends Command
             } elseif ($choice === self::OPT_EXCHANGE_RATES_BACKFILL)
             {
                 $this->runExchangeRatesBackfill(prompt: true);
+            } elseif ($choice === self::OPT_RECLASSIFY_ROLES)
+            {
+                $this->runReclassifyRoles(prompt: true);
             }
 
             $this->newLine();
@@ -375,5 +391,21 @@ class StartCommand extends Command
 
         $this->info('Backfilling USD/EUR from Frankfurter...');
         $this->call('exchange-rates:backfill-frankfurter', $args);
+    }
+
+    private function runReclassifyRoles(bool $prompt = false): void
+    {
+        $this->info('Reclassifying stored contact and person roles...');
+
+        if ($prompt && $this->confirm('Dry run first (count only, no database writes)?', true))
+        {
+            $this->call('contacts:reclassify-roles', ['--dry-run' => true]);
+            if (! $this->confirm('Proceed with the reclassify?', true))
+            {
+                return;
+            }
+        }
+
+        $this->call('contacts:reclassify-roles');
     }
 }

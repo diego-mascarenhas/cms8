@@ -28,6 +28,9 @@ class ContactTitleClassifierTest extends TestCase
         $this->assertSame('CAO', ContactTitleClassifier::classify('CAO & Latam Accounting'));
         $this->assertSame('CTO', ContactTitleClassifier::classify('Chief Technology Officer Latam'));
         $this->assertSame('CFO', ContactTitleClassifier::classify('C.F.O.'));
+        $this->assertSame('CFO', ContactTitleClassifier::classify('CFO For Hbt Latam'));
+        $this->assertSame('CFO', ContactTitleClassifier::classify('CFO Latam Hub'));
+        $this->assertSame('CFO', ContactTitleClassifier::classify('CFO Mexico & Latam'));
     }
 
     public function test_keeps_functional_titles_without_the_company(): void
