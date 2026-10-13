@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Helpers\AvatarHelper;
+use App\Services\Contacts\ContactTitleClassifier;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppProfilePhotoStore;
 use App\Traits\HasSourceIcons;
@@ -31,6 +32,10 @@ class Contact extends Model implements HasMedia
         'current_enterprise_id',
         'name',
         'surname',
+        'title',
+        'role',
+        'person_id',
+        'person_search_id',
         'email',
         'phone',
         'source_id',
@@ -77,6 +82,19 @@ class Contact extends Model implements HasMedia
                         ->orWhere('user_id', $user->id);
                 });
             }
+        });
+
+        static::saving(function (Contact $contact): void
+        {
+            if ($contact->exists && ! $contact->isDirty('title'))
+            {
+                return;
+            }
+
+            $contact->role = ContactTitleClassifier::classify(
+                $contact->title,
+                ContactTitleClassifier::organizationFromData($contact->data),
+            );
         });
 
         static::updating(function (Contact $contact): void
@@ -740,6 +758,16 @@ class Contact extends Model implements HasMedia
     public function country()
     {
         return $this->belongsTo(Country::class, 'country', 'id');
+    }
+
+    public function person(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Person::class);
+    }
+
+    public function prospectSearch(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(ProspectSearch::class, 'person_search_id');
     }
 
     public function language()

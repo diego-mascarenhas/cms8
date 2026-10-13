@@ -19,6 +19,8 @@ return new class extends Migration
             $table->foreignId('current_enterprise_id')->nullable()->constrained('enterprises')->onDelete('set null');
             $table->string('name');
             $table->string('surname')->nullable();
+            $table->string('title')->nullable();
+            $table->string('role')->nullable();
             $table->string('email')->nullable();
             $table->bigInteger('phone')->nullable();
             $table->unsignedTinyInteger('source_id')->nullable();

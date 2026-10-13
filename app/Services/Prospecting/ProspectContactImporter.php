@@ -19,7 +19,10 @@ class ProspectContactImporter
      */
     private ?array $countryIdsByLabel = null;
 
-    public function __construct(private ApolloService $apollo) {}
+    public function __construct(
+        private ApolloService $apollo,
+        private ProspectDirectory $directory,
+    ) {}
 
     /**
      * @param  array<string, mixed>  $apolloData
@@ -47,6 +50,7 @@ class ProspectContactImporter
         ?string $organizationName,
         ?array $person,
         ?int $categoryId,
+        ?int $prospectSearchId = null,
     ): Contact {
         $apolloData = [
             'apollo_id' => $apolloId,
@@ -61,23 +65,30 @@ class ProspectContactImporter
         $team->decrementProspectCredits($this->creditsCost($apolloData));
 
         $revealPhone = is_array($person) && ApolloService::personNeedsPhoneReveal($person);
+        $cached = $this->directory->cachedPayload(ProspectDirectory::SOURCE_APOLLO, $apolloId);
         $enriched = null;
-        try
+        if (is_array($cached))
         {
-            $enrichQuery = [
-                'id' => $apolloId,
-                'first_name' => $firstName,
-                'organization_name' => $apolloData['organization_name'] ?? $organizationName,
-                'organization' => $apolloData['organization'] ?? null,
-            ];
-            if ($revealPhone)
+            $enriched = $cached;
+        } else
+        {
+            try
             {
-                $enrichQuery['reveal_phone'] = true;
+                $enrichQuery = [
+                    'id' => $apolloId,
+                    'first_name' => $firstName,
+                    'organization_name' => $apolloData['organization_name'] ?? $organizationName,
+                    'organization' => $apolloData['organization'] ?? null,
+                ];
+                if ($revealPhone)
+                {
+                    $enrichQuery['reveal_phone'] = true;
+                }
+                $enriched = $this->apollo->enrichPerson($enrichQuery);
+            } catch (\Throwable)
+            {
+                $enriched = null;
             }
-            $enriched = $this->apollo->enrichPerson($enrichQuery);
-        } catch (\Throwable)
-        {
-            $enriched = null;
         }
 
         $nameSource = [];
@@ -92,8 +103,7 @@ class ProspectContactImporter
 
         [$name, $surname] = $this->contactNameParts($nameSource, $firstName, $lastName, $lastNameObfuscated);
 
-        $dataJson = ['apollo' => $apolloData];
-        $dataJson['apollo_raw'] = (is_array($enriched) && $enriched !== []) ? $enriched : $apolloData;
+        $storedTitle = trim((string) ($apolloData['title'] ?? $title ?? ''));
 
         $contactData = [
             'team_id' => $team->id,
@@ -101,10 +111,10 @@ class ProspectContactImporter
             'responsible_id' => $userId,
             'name' => $name,
             'surname' => $surname,
+            'title' => $storedTitle !== '' ? mb_substr($storedTitle, 0, 255) : null,
             'status_id' => (int) (ContactStatus::query()->where('name', 'Lead')->value('id') ?? 1),
             'country' => $this->countryIdFromApollo($apolloData),
             'language' => $this->defaultLanguageCode(),
-            'data' => $dataJson,
         ];
 
         $email = $this->emailFromApollo($apolloData);
@@ -135,6 +145,22 @@ class ProspectContactImporter
 
         $contact = Contact::withoutGlobalScopes()->create($contactData);
         $contact->categories()->sync($this->categoryIds($team, $categoryId));
+
+        $storedOrganization = trim((string) ($organizationName ?? ($apolloData['organization_name'] ?? '')));
+        if ($storedOrganization === '' && is_array($apolloData['organization'] ?? null))
+        {
+            $storedOrganization = trim((string) ($apolloData['organization']['name'] ?? ''));
+        }
+
+        $this->directory->storeImportedContact(
+            $contact,
+            (int) $team->id,
+            ProspectDirectory::SOURCE_APOLLO,
+            $apolloId,
+            $apolloData,
+            $storedOrganization !== '' ? $storedOrganization : null,
+            $prospectSearchId,
+        );
 
         if (
             ($phoneRevealRequestId !== null && $phoneRevealRequestId !== '')

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\ApplyApolloPhoneRevealJob;
 use App\Models\Contact;
 use App\Models\Module;
+use App\Models\PersonEnrichment;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\ApolloService;
@@ -160,10 +161,12 @@ class ApolloIntegrationTest extends TestCase
 
         $contact = Contact::withoutGlobalScopes()->where('team_id', $user->currentTeam->id)->latest('id')->first();
         $this->assertNotNull($contact);
-        $this->assertIsObject($contact->data);
-        $this->assertEquals('apollo-person-123', $contact->data->apollo->apollo_id ?? null);
-        $this->assertEquals('VP Sales', $contact->data->apollo->title ?? null);
-        $this->assertEquals('Acme Inc', $contact->data->apollo->organization_name ?? null);
+        $this->assertSame('VP Sales', $contact->title);
+        $this->assertNull($contact->person_id);
+        $enrichment = PersonEnrichment::query()->where('external_id', 'apollo-person-123')->first();
+        $this->assertNotNull($enrichment);
+        $this->assertSame('apollo', $enrichment->source);
+        $this->assertSame('Acme Inc', $enrichment->payload['organization_name'] ?? null);
     }
 
     public function test_add_person_as_contact_redirects_when_not_ajax(): void

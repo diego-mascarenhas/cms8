@@ -15,6 +15,7 @@ use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactInteraction;
 use App\Models\ContactStatus;
+use App\Models\Country;
 use App\Models\List60;
 use App\Models\Message;
 use App\Models\MessageDelivery;
@@ -89,6 +90,8 @@ class MailerAudienceController extends Controller
             'category_id' => 'nullable|integer',
             'status_id' => 'nullable|integer',
             'issue' => 'nullable|string|in:validated,unchecked,error,failed',
+            'title' => 'nullable|string|max:255',
+            'country_id' => 'nullable|integer',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:50',
         ]);
@@ -118,6 +121,18 @@ class MailerAudienceController extends Controller
 
         $this->applyEmailIssueFilter($query, (string) ($validated['issue'] ?? ''));
 
+        $title = trim((string) ($validated['title'] ?? ''));
+        if ($title !== '')
+        {
+            $query->where('role', $title);
+        }
+
+        $countryId = (int) ($validated['country_id'] ?? 0);
+        if ($countryId > 0)
+        {
+            $query->where('country', $countryId);
+        }
+
         $paginator = $query
             ->orderBy('name')
             ->orderBy('surname')
@@ -136,6 +151,7 @@ class MailerAudienceController extends Controller
             'status_stats' => $this->statusStats((int) $team->id),
             'usage' => $team->getMailerUsageSummary(),
             'domain_check' => ValidateAudienceEmailDomainsJob::progress((int) $team->id),
+            'filters' => $this->audienceFilterOptions((int) $team->id),
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
@@ -166,6 +182,7 @@ class MailerAudienceController extends Controller
             'team_id' => $team->id,
             'name' => trim((string) $validated['name']),
             'surname' => trim((string) ($validated['surname'] ?? '')) ?: null,
+            'title' => trim((string) ($validated['title'] ?? '')) ?: null,
             'email' => Str::lower(trim((string) $validated['email'])),
             'phone' => $this->nullablePhone($validated['phone'] ?? null),
             'language' => $this->defaultLanguageCode(),
@@ -214,6 +231,11 @@ class MailerAudienceController extends Controller
             'surname' => trim((string) ($validated['surname'] ?? '')) ?: null,
             'email' => filled($validated['email'] ?? null) ? Str::lower(trim((string) $validated['email'])) : null,
         ]);
+
+        if (array_key_exists('title', $validated))
+        {
+            $contact->title = trim((string) ($validated['title'] ?? '')) ?: null;
+        }
 
         if (array_key_exists('phone', $validated))
         {
@@ -777,10 +799,73 @@ class MailerAudienceController extends Controller
         $query->whereRaw('('.implode(' OR ', $likes).')');
     }
 
+    /**
+     * @return array{titles: list<string>, countries: list<array{id: int, name: string, code: string}>}
+     */
+    private function audienceFilterOptions(int $teamId): array
+    {
+        $base = Contact::query()
+            ->where('team_id', $teamId)
+            ->whereNotNull('email')
+            ->where('email', '!=', '');
+
+        $titles = (clone $base)
+            ->whereNotNull('role')
+            ->where('role', '!=', '')
+            ->distinct()
+            ->orderBy('role')
+            ->pluck('role')
+            ->map(fn ($role): string => (string) $role)
+            ->values()
+            ->all();
+
+        $countryIds = (clone $base)
+            ->whereNotNull('country')
+            ->distinct()
+            ->pluck('country');
+
+        $countries = $countryIds->isEmpty()
+            ? []
+            : Country::query()
+                ->whereIn('id', $countryIds)
+                ->orderBy('name')
+                ->get(['id', 'name', 'code'])
+                ->map(fn (Country $country): array => [
+                    'id' => (int) $country->id,
+                    'name' => (string) $country->name,
+                    'code' => strtolower((string) $country->code),
+                ])
+                ->values()
+                ->all();
+
+        return [
+            'titles' => $titles,
+            'countries' => $countries,
+        ];
+    }
+
+    /**
+     * @return array{id: int, name: string, code: string}|null
+     */
+    private function formatAudienceCountry(Contact $contact): ?array
+    {
+        $country = $contact->relationLoaded('country') ? $contact->getRelation('country') : null;
+        if (! $country instanceof Country)
+        {
+            return null;
+        }
+
+        return [
+            'id' => (int) $country->id,
+            'name' => (string) $country->name,
+            'code' => strtolower((string) $country->code),
+        ];
+    }
+
     private function audienceQuery(int $teamId): Builder
     {
         return Contact::query()
-            ->with(['status', 'categories', 'user'])
+            ->with(['status', 'categories', 'user', 'country'])
             ->where('team_id', $teamId)
             ->whereNotNull('email')
             ->where('email', '!=', '');
@@ -982,6 +1067,9 @@ class MailerAudienceController extends Controller
             'display_name' => $display !== '' ? $display : $email,
             'email' => $email,
             'phone' => $contact->phone ? (string) $contact->phone : null,
+            'title' => filled($contact->title) ? (string) $contact->title : null,
+            'role' => filled($contact->role) ? (string) $contact->role : null,
+            'country' => $this->formatAudienceCountry($contact),
             'status' => $contact->status
                 ? [
                     'id' => (int) $contact->status->id,

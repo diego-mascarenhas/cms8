@@ -14,7 +14,7 @@ class MailerAudienceCsvImportService
 {
     public const REQUIRED_COLUMNS = ['email'];
 
-    public const OPTIONAL_COLUMNS = ['name', 'surname', 'phone', 'categories'];
+    public const OPTIONAL_COLUMNS = ['name', 'surname', 'phone', 'categories', 'title'];
 
     public const DEFAULT_COUNTRY_ID = 32;
 
@@ -63,14 +63,16 @@ class MailerAudienceCsvImportService
         'categorias' => 'categories',
         'lista' => 'categories',
         'listas' => 'categories',
+        'titulo' => 'title',
+        'cargo' => 'title',
     ];
 
     public function templateContents(): string
     {
         $handle = fopen('php://temp', 'r+');
         fputcsv($handle, array_merge(self::REQUIRED_COLUMNS, self::OPTIONAL_COLUMNS));
-        fputcsv($handle, ['lucia.garcia@cliente.com', 'Lucía', 'García', '+34600111222', 'Newsletter']);
-        fputcsv($handle, ['martin.perez@cliente.com', 'Martín', 'Pérez', '+34600999888', 'Newsletter|VIP']);
+        fputcsv($handle, ['lucia.garcia@cliente.com', 'Lucía', 'García', '+34600111222', 'Newsletter', 'CEO']);
+        fputcsv($handle, ['martin.perez@cliente.com', 'Martín', 'Pérez', '+34600999888', 'Newsletter|VIP', '']);
         rewind($handle);
         $csv = stream_get_contents($handle) ?: '';
         fclose($handle);
@@ -394,6 +396,7 @@ class MailerAudienceCsvImportService
                     'surname' => $group['surname'],
                     'email' => $group['email'],
                     'phone' => $group['phone'],
+                    'title' => $group['title'],
                     'language' => $language,
                     'country' => $country,
                     'creator_id' => $ownerId,
@@ -416,6 +419,10 @@ class MailerAudienceCsvImportService
                 if ($group['phone'] !== null)
                 {
                     $payload['phone'] = $group['phone'];
+                }
+                if ($group['title'] !== null)
+                {
+                    $payload['title'] = $group['title'];
                 }
                 $contact->fill($payload)->save();
                 $updated++;
@@ -516,6 +523,7 @@ class MailerAudienceCsvImportService
                     'line' => $line,
                     'provided_name' => $providedName,
                     'surname' => trim((string) ($row['values']['surname'] ?? '')) ?: null,
+                    'title' => trim((string) ($row['values']['title'] ?? '')) ?: null,
                     'categories' => [],
                     'phones' => [],
                 ];
@@ -535,6 +543,14 @@ class MailerAudienceCsvImportService
                 if ($surname !== null)
                 {
                     $grouped[$email]['surname'] = $surname;
+                }
+            }
+            if ($grouped[$email]['title'] === null)
+            {
+                $rowTitle = trim((string) ($row['values']['title'] ?? '')) ?: null;
+                if ($rowTitle !== null)
+                {
+                    $grouped[$email]['title'] = mb_substr($rowTitle, 0, 255);
                 }
             }
 
@@ -659,6 +675,7 @@ class MailerAudienceCsvImportService
                     : Str::of(Str::before($email, '@'))->replace(['.', '_', '-'], ' ')->title()->toString(),
                 'provided_name' => $providedName,
                 'surname' => $group['surname'],
+                'title' => $group['title'],
                 'phone' => $phone,
                 'categories' => implode('|', $group['categories']),
                 'contact' => $contact,

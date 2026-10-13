@@ -9,6 +9,7 @@ use App\Services\ApolloService;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\Prospecting\InsufficientProspectCredits;
 use App\Services\Prospecting\ProspectContactImporter;
+use App\Services\Prospecting\ProspectDirectory;
 use App\Support\HumanoPricingCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class MailerProspectController extends Controller
         return response()->json($this->accessPayload($team));
     }
 
-    public function search(Request $request, ApolloService $apollo, ProspectContactImporter $importer): JsonResponse
+    public function search(Request $request, ApolloService $apollo, ProspectContactImporter $importer, ProspectDirectory $directory): JsonResponse
     {
         $team = $this->teamOrError($request);
         if ($team instanceof JsonResponse)
@@ -105,7 +106,17 @@ class MailerProspectController extends Controller
             return $person;
         }, $result['people'] ?? []);
 
+        $search = $directory->recordSearch(
+            $team,
+            (int) $request->user()->id,
+            $filters,
+            (int) ($result['page'] ?? $validated['page'] ?? 1),
+            (int) ($result['per_page'] ?? $validated['per_page'] ?? 25),
+            $people,
+        );
+
         return response()->json([
+            'search_id' => $search->id,
             'people' => $people,
             'total_entries' => (int) ($result['total_entries'] ?? 0),
             'page' => (int) ($result['page'] ?? 1),
@@ -141,7 +152,9 @@ class MailerProspectController extends Controller
             'people.*.title' => 'nullable|string|max:500',
             'people.*.organization_name' => 'nullable|string|max:500',
             'people.*.apollo_raw' => 'nullable|array',
+            'people.*.search_id' => 'nullable|integer',
             'category_id' => 'nullable|integer',
+            'search_id' => 'nullable|integer',
         ]);
 
         $imported = [];
@@ -167,6 +180,7 @@ class MailerProspectController extends Controller
                     $person['organization_name'] ?? null,
                     $raw,
                     $categoryId,
+                    isset($person['search_id']) ? (int) $person['search_id'] : (isset($validated['search_id']) ? (int) $validated['search_id'] : null),
                 );
             } catch (InsufficientProspectCredits $exception)
             {
