@@ -279,7 +279,8 @@ class Message extends Model
             ->whereIn('contact_id', $contactIds)
             ->where(function (Builder $query): void
             {
-                $query->whereNotNull('delivered_at')
+                $query->whereNotNull('sent_at')
+                    ->orWhereNotNull('delivered_at')
                     ->orWhereNotNull('opened_at')
                     ->orWhereNotNull('clicked_at');
             })
@@ -299,6 +300,24 @@ class Message extends Model
             return null;
         }
 
+        $pendingAt = MessageDelivery::query()
+            ->where('message_id', $this->id)
+            ->whereNull('sent_at')
+            ->where('status_id', 1)
+            ->whereNotNull('scheduled_for')
+            ->orderBy('scheduled_for')
+            ->limit(50)
+            ->get(['scheduled_for'])
+            ->pluck('scheduled_for');
+
+        if ($pendingAt->count() >= 2)
+        {
+            $span = abs($pendingAt->first()->diffInSeconds($pendingAt->last()));
+            $this->loadMissing('team');
+
+            return $this->team?->mailerPaceTextForSpacing($span / ($pendingAt->count() - 1)) ?? 'Inmediata';
+        }
+
         $sentAt = MessageDelivery::query()
             ->where('message_id', $this->id)
             ->whereNotNull('sent_at')
@@ -314,12 +333,83 @@ class Message extends Model
         }
 
         $seconds = (int) round(abs($sentAt[0]->diffInSeconds($sentAt[1])));
-        if ($seconds < 1)
+        $this->loadMissing('team');
+
+        return $this->team?->mailerPaceTextForSpacing($seconds) ?? 'Inmediata';
+    }
+
+    /**
+     * Rebuild pending send times from now, using the current pace.
+     */
+    public function reschedulePendingDeliveries(): void
+    {
+        $this->loadMissing('team');
+        $pending = MessageDelivery::query()
+            ->where('message_id', $this->id)
+            ->whereNull('campaign_id')
+            ->whereNull('sent_at')
+            ->where('status_id', 1)
+            ->with('contact')
+            ->orderBy('id')
+            ->get();
+
+        if ($pending->isEmpty())
         {
-            return 'Inmediata';
+            return;
         }
 
-        return 'Cada '.$seconds.' segundos';
+        $team = $this->team;
+        $fast = (bool) $team?->sendsMailerWithoutSpacing();
+        $spacingSeconds = $team?->mailerSendSpacingSeconds() ?? (86400 / 3000);
+        $coldSpacing = $team?->mailerSpacingSecondsForContact(false) ?? $spacingSeconds;
+        $reached = $fast
+            ? $this->previouslyReachedContactIds($pending->pluck('contact_id')->map(fn ($id): int => (int) $id)->all())
+            : [];
+
+        if ($fast)
+        {
+            $pending = $pending
+                ->sortBy(fn (MessageDelivery $delivery): string => sprintf(
+                    '%d-%08d',
+                    isset($reached[$delivery->contact_id]) ? 0 : 1,
+                    $delivery->id,
+                ))
+                ->values();
+        }
+
+        $baseTime = now();
+        $deliveryIndex = 0;
+        $coldIndex = 0;
+
+        foreach ($pending as $delivery)
+        {
+            $previouslyReached = isset($reached[$delivery->contact_id]);
+            if ($fast && $previouslyReached)
+            {
+                $extraSeconds = 0;
+            } elseif ($fast)
+            {
+                $extraSeconds = (int) round(($coldIndex + 1) * $coldSpacing);
+                $coldIndex++;
+            } else
+            {
+                $extraSeconds = (int) round($deliveryIndex * $spacingSeconds);
+            }
+
+            $scheduledTime = $baseTime->copy()->addSeconds($extraSeconds);
+            if ($delivery->contact)
+            {
+                $nextAvailableTime = $this->getNextAvailableTimeForContact($delivery->contact);
+                if ($scheduledTime->lt($nextAvailableTime))
+                {
+                    $scheduledTime = $nextAvailableTime->copy()->addSeconds($extraSeconds);
+                }
+            }
+
+            $delivery->scheduled_for = $this->alignScheduledTimeWithSendingSchedule($scheduledTime);
+            $delivery->save();
+            $deliveryIndex++;
+        }
     }
 
     /**
