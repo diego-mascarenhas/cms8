@@ -34,6 +34,8 @@ class Contact extends Model implements HasMedia
         'surname',
         'title',
         'role',
+        'person_id',
+        'person_search_id',
         'email',
         'phone',
         'source_id',
@@ -756,6 +758,16 @@ class Contact extends Model implements HasMedia
     public function country()
     {
         return $this->belongsTo(Country::class, 'country', 'id');
+    }
+
+    public function person(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(Person::class);
+    }
+
+    public function prospectSearch(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(ProspectSearch::class, 'person_search_id');
     }
 
     public function language()

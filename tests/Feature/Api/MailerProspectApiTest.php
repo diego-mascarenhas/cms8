@@ -4,6 +4,8 @@ namespace Tests\Feature\Api;
 
 use App\Models\Contact;
 use App\Models\Module;
+use App\Models\Person;
+use App\Models\ProspectSearch;
 use App\Models\ProspectUsageLog;
 use App\Models\User;
 use App\Services\ApolloService;
@@ -118,6 +120,92 @@ class MailerProspectApiTest extends TestCase
         $this->assertSame(0, $team->fresh()->getRemainingProspectCredits());
     }
 
+    public function test_search_filters_are_stored_and_another_team_reuses_the_person(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+        [, $otherTeam, $otherToken] = $this->adminWithToken();
+        config(['humano_pricing.plan_access_team_ids' => [$team->id, $otherTeam->id]]);
+        $team->addProspectCreditsFromPurchase(5);
+        $otherTeam->addProspectCreditsFromPurchase(5);
+        $fake = $this->bindApollo();
+
+        $searchId = $this->withToken($token)
+            ->postJson('/api/mailer/prospects/search', [
+                'person_titles' => ['owner'],
+                'person_locations' => ['Uruguay'],
+            ])
+            ->assertOk()
+            ->json('search_id');
+
+        $search = ProspectSearch::query()->find($searchId);
+        $this->assertNotNull($search);
+        $this->assertSame($team->id, $search->team_id);
+        $this->assertSame(['owner'], $search->filters['person_titles']);
+        $this->assertSame(['Uruguay'], $search->filters['person_locations']);
+        $this->assertDatabaseHas('person_search_results', [
+            'person_search_id' => $searchId,
+            'source' => 'apollo',
+            'external_id' => 'p1',
+        ]);
+
+        $this->withToken($token)
+            ->postJson('/api/mailer/prospects/import', [
+                'search_id' => $searchId,
+                'people' => [[
+                    'id' => 'p1',
+                    'first_name' => 'Ana',
+                    'title' => 'Owner',
+                    'organization_name' => 'Acme',
+                    'search_id' => $searchId,
+                    'apollo_raw' => ['id' => 'p1', 'seniority' => 'owner', 'organization' => ['name' => 'Acme']],
+                ]],
+            ])
+            ->assertCreated();
+
+        $contact = Contact::withoutGlobalScopes()->where('team_id', $team->id)->where('email', 'ana@acme.test')->first();
+        $this->assertNotNull($contact);
+        $this->assertNull($contact->data);
+        $this->assertSame('CEO', $contact->role);
+        $this->assertSame($searchId, $contact->person_search_id);
+        $this->assertSame('Acme', $contact->person?->organization_name);
+        $this->assertDatabaseHas('person_emails', [
+            'person_id' => $contact->person_id,
+            'email' => 'ana@acme.test',
+        ]);
+        $this->assertSame(1, $fake->enrichments);
+
+        $this->app['auth']->forgetGuards();
+
+        $otherSearchId = $this->withToken($otherToken)
+            ->postJson('/api/mailer/prospects/search', [
+                'q_keywords' => 'software',
+            ])
+            ->assertOk()
+            ->json('search_id');
+
+        $this->withToken($otherToken)
+            ->postJson('/api/mailer/prospects/import', [
+                'search_id' => $otherSearchId,
+                'people' => [[
+                    'id' => 'p1',
+                    'first_name' => 'Ana',
+                    'title' => 'Owner',
+                    'search_id' => $otherSearchId,
+                    'apollo_raw' => ['id' => 'p1', 'seniority' => 'owner'],
+                ]],
+            ])
+            ->assertCreated();
+
+        $other = Contact::withoutGlobalScopes()->where('team_id', $otherTeam->id)->where('email', 'ana@acme.test')->first();
+        $this->assertNotNull($other);
+        $this->assertSame($contact->person_id, $other->person_id);
+        $this->assertSame($otherSearchId, $other->person_search_id);
+        $this->assertSame('CEO', $other->role);
+        $this->assertSame(1, Person::query()->count());
+        $this->assertSame(1, $fake->enrichments);
+        $this->assertNotSame($search->filters, ProspectSearch::query()->find($otherSearchId)?->filters);
+    }
+
     public function test_a_paid_mailer_team_can_search_without_the_whitelist(): void
     {
         [, $team, $token] = $this->adminWithToken();
@@ -167,6 +255,8 @@ class MailerProspectApiTest extends TestCase
         {
             public int $searches = 0;
 
+            public int $enrichments = 0;
+
             public function __construct()
             {
                 parent::__construct('test-key');
@@ -199,6 +289,7 @@ class MailerProspectApiTest extends TestCase
 
             public function enrichPerson(array $person): ?array
             {
+                $this->enrichments++;
                 $id = (string) ($person['id'] ?? '');
 
                 return [
