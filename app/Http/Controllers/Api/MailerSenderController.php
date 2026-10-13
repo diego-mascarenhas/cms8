@@ -33,6 +33,29 @@ class MailerSenderController extends Controller
         ]);
     }
 
+    public function dns(Request $request): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        $validated = $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->dnsPayload((string) $validated['email']),
+        ]);
+    }
+
     public function update(UpdateMailerSenderApiRequest $request): JsonResponse
     {
         $team = $this->teamOrError($request);
@@ -111,6 +134,23 @@ class MailerSenderController extends Controller
             'required_include' => DnsHelper::REVISION_ALPHA_SPF_INCLUDE,
             'example_txt' => DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT,
             'spf' => $spf,
+            'mb' => is_array($spf) ? ($spf['mb'] ?? null) : null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function dnsPayload(string $email): array
+    {
+        $status = DnsHelper::checkEmailDomainConfiguration($email);
+
+        return [
+            'domain' => $status['domain'],
+            'required_include' => DnsHelper::REVISION_ALPHA_SPF_INCLUDE,
+            'example_txt' => DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT,
+            'spf' => $status['spf'] ?? null,
+            'mb' => $status['mb'] ?? null,
         ];
     }
 }

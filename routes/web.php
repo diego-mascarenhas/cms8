@@ -3,6 +3,8 @@
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdPlatformConnectionController;
 use App\Http\Controllers\AffiliateDirectoryController;
+use App\Http\Controllers\AffiliateInvitationTrackingController;
+use App\Http\Controllers\AffiliateReferralCaptureController;
 use App\Http\Controllers\ApolloController;
 use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
@@ -304,6 +306,12 @@ Route::get('misc-comingsoon', function ()
 
 // Public template view (no auth) – for sharing view links from assistant/WhatsApp
 Route::get('/template/public/{hashedId}', [TemplateController::class, 'showPublic'])->name('template.show-public');
+
+// Affiliate invitation tracking (no auth required)
+Route::get('/affiliate-invite/track/{token}/open', [AffiliateInvitationTrackingController::class, 'trackOpen'])->name('affiliate-invite.track.open');
+Route::get('/affiliate-invite/track/{token}/click', [AffiliateInvitationTrackingController::class, 'trackClick'])->name('affiliate-invite.track.click');
+Route::get('/affiliate/capture', [AffiliateReferralCaptureController::class, 'capture'])->name('affiliate.referral.capture');
+Route::get('/notification/{notification}/stats', [NotificationTrackingController::class, 'getStats'])->name('notification.stats')->middleware('auth');
 
 // Authenticated routes
 Route::middleware(['auth'])->group(function ()
@@ -1328,12 +1336,6 @@ Route::get('/track/{token}/click', [NotificationTrackingController::class, 'trac
 Route::get('/q/{code}', [App\Http\Controllers\GoRedirectController::class, 'show'])
     ->where('code', '[A-Za-z0-9]+')
     ->name('go.redirect');
-
-// Affiliate invitation tracking (no auth required)
-Route::get('/affiliate-invite/track/{token}/open', [App\Http\Controllers\AffiliateInvitationTrackingController::class, 'trackOpen'])->name('affiliate-invite.track.open');
-Route::get('/affiliate-invite/track/{token}/click', [App\Http\Controllers\AffiliateInvitationTrackingController::class, 'trackClick'])->name('affiliate-invite.track.click');
-Route::get('/affiliate/capture', [App\Http\Controllers\AffiliateReferralCaptureController::class, 'capture'])->name('affiliate.referral.capture');
-Route::get('/notification/{notification}/stats', [NotificationTrackingController::class, 'getStats'])->name('notification.stats')->middleware('auth');
 
 Route::get('/strategy', [StrategyController::class, 'index'])->name('strategy.index')->middleware('auth');
 Route::get('/strategy/analysis', [StrategyController::class, 'analysis'])->name('strategy.analysis')->middleware('auth');
