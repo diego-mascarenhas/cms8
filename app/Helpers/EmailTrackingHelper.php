@@ -142,6 +142,55 @@ class EmailTrackingHelper
     }
 
     /**
+     * Public address a landing page posts to after the form or section is completed.
+     */
+    public static function conversionEndpoint(): string
+    {
+        return self::trackingBaseUrl().'/message/track/conversion';
+    }
+
+    /**
+     * URL a landing page calls, with the news variable, after the form or section is completed.
+     */
+    public static function conversionTrackingUrl(string $token): string
+    {
+        return self::conversionEndpoint().'?news='.urlencode($token);
+    }
+
+    /**
+     * Carry the delivery token onto the destination so a form or section can report the conversion.
+     */
+    public static function appendNewsRef(string $url, string $token): string
+    {
+        $parts = parse_url($url);
+        if (! is_array($parts) || ! isset($parts['scheme']) || ! in_array(strtolower((string) $parts['scheme']), ['http', 'https'], true) || ! isset($parts['host']))
+        {
+            return $url;
+        }
+
+        $query = [];
+        if (isset($parts['query']))
+        {
+            parse_str($parts['query'], $query);
+        }
+        $query['news'] = $token;
+
+        $rebuilt = $parts['scheme'].'://'.$parts['host'];
+        if (isset($parts['port']))
+        {
+            $rebuilt .= ':'.$parts['port'];
+        }
+        $rebuilt .= $parts['path'] ?? '';
+        $rebuilt .= '?'.http_build_query($query);
+        if (isset($parts['fragment']) && $parts['fragment'] !== '')
+        {
+            $rebuilt .= '#'.$parts['fragment'];
+        }
+
+        return $rebuilt;
+    }
+
+    /**
      * Add tracking pixel to HTML content
      */
     public static function addTrackingPixel(string $html, MessageDelivery $delivery): string

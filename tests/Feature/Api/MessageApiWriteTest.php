@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Enums\EmailPlan;
+use App\Helpers\EmailTrackingHelper;
 use App\Jobs\SendMessageCampaignJob;
 use App\Mail\TestMessageMail;
 use App\Models\Category;
@@ -705,7 +706,8 @@ class MessageApiWriteTest extends TestCase
             ->getJson('/api/message/'.$message->id)
             ->assertOk()
             ->assertJsonPath('data.stats.temporary', 1)
-            ->assertJsonPath('data.stats.failed', 1);
+            ->assertJsonPath('data.stats.failed', 1)
+            ->assertJsonPath('data.conversion_endpoint', EmailTrackingHelper::conversionEndpoint());
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/message/'.$message->id.'/deliveries?status=temporary')

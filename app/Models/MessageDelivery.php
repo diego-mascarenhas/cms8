@@ -90,6 +90,19 @@ class MessageDelivery extends Model
         return hash('sha256', config('app.key').$this->id);
     }
 
+    public static function findByTrackingToken(string $token): ?self
+    {
+        if ($token === '')
+        {
+            return null;
+        }
+
+        return static::query()->get()->first(function (self $delivery) use ($token): bool
+        {
+            return hash_equals($delivery->getTrackingToken(), $token);
+        });
+    }
+
     /**
      * Get the tracking URL for open events
      */

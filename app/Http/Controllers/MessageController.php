@@ -745,25 +745,10 @@ class MessageController extends Controller
 
         if ($contact)
         {
-            if ($contact->status_id != 5)
-            {
-                $contact->update(['status_id' => 4]);
-
-                Log::info('Contact unsubscribed - status updated to Perdido', [
-                    'contact_id' => $contact->id,
-                    'contact_email' => $contact->email,
-                    'previous_status' => $contact->getOriginal('status_id'),
-                    'new_status' => 4,
-                ]);
-            } else
-            {
-                Log::info('Contact is a client - unsubscribed but status not changed', [
-                    'contact_id' => $contact->id,
-                    'contact_email' => $contact->email,
-                    'current_status' => 5,
-                    'action' => 'unsubscribe_attempt',
-                ]);
-            }
+            app(\App\Services\Mail\NewsContactStatus::class)->apply(
+                $contact,
+                \App\Services\Mail\NewsContactStatus::UNSUBSCRIBE,
+            );
         }
 
         if ($request->isMethod('post'))
