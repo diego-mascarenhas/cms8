@@ -352,6 +352,7 @@ class CampaignMessageApiService
             'from_address' => $overrideAddress !== '' ? $overrideAddress : null,
             'custom_sender_allowed' => $team->allowsCustomMessageSender(),
             'send_pace' => $message->currentSendPaceText() ?? $team->mailerSendPaceText(),
+            'conversion_endpoint' => \App\Helpers\EmailTrackingHelper::conversionEndpoint(),
             'sender' => [
                 'from_name' => $fromName,
                 'from_address' => $fromAddress,

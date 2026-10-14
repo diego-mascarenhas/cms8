@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\EmailTrackingHelper;
 use App\Models\MessageDelivery;
+use App\Services\Mail\NewsContactStatus;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class MessageTrackingController extends Controller
 {
@@ -94,10 +97,7 @@ class MessageTrackingController extends Controller
     // Tracking de click
     public function trackClick(Request $request, $token)
     {
-        $delivery = MessageDelivery::all()->first(function ($d) use ($token)
-        {
-            return hash_equals($d->getTrackingToken(), $token);
-        });
+        $delivery = MessageDelivery::findByTrackingToken((string) $token);
 
         if ($delivery)
         {
@@ -137,27 +137,9 @@ class MessageTrackingController extends Controller
             // Update or create the link tracking record
             $this->updateLinkClickCount($delivery, $originalUrl);
 
-            // Update contact status to "Conversión" (ID 3) when they click any link
-            // But don't change status if they are already a client (status_id 5)
-            if ($delivery->contact && $delivery->contact->status_id != 3 && $delivery->contact->status_id != 5)
+            if ($delivery->contact && ! str_contains((string) $originalUrl, '/unsubscribe/'))
             {
-                $delivery->contact->update(['status_id' => 3]);
-                \Log::info('Contact status updated to Conversión', [
-                    'contact_id' => $delivery->contact->id,
-                    'contact_email' => $delivery->contact->email,
-                    'delivery_id' => $delivery->id,
-                    'clicked_url' => $originalUrl,
-                    'previous_status' => $delivery->contact->getOriginal('status_id'),
-                ]);
-            } elseif ($delivery->contact && $delivery->contact->status_id == 5)
-            {
-                \Log::info('Contact is already a client - status not changed', [
-                    'contact_id' => $delivery->contact->id,
-                    'contact_email' => $delivery->contact->email,
-                    'delivery_id' => $delivery->id,
-                    'clicked_url' => $originalUrl,
-                    'current_status' => 5,
-                ]);
+                app(NewsContactStatus::class)->apply($delivery->contact, NewsContactStatus::CLICK);
             }
 
             $delivery->markAsClicked();
@@ -165,8 +147,40 @@ class MessageTrackingController extends Controller
         }
 
         $url = $request->query('url', '/');
+        if ($delivery)
+        {
+            $url = EmailTrackingHelper::appendNewsRef((string) $url, $delivery->getTrackingToken());
+        }
 
         return redirect($url);
+    }
+
+    /**
+     * The landing page calls this after the form is completed or the section is reached.
+     * Pass the news variable from the destination URL.
+     */
+    public function trackConversion(Request $request, ?string $token = null): Response
+    {
+        $token = $token ?: (string) $request->input('news', '');
+        $delivery = MessageDelivery::findByTrackingToken($token);
+
+        if ($delivery?->contact)
+        {
+            app(NewsContactStatus::class)->apply($delivery->contact, NewsContactStatus::CONVERSION);
+        }
+
+        if ($request->isMethod('post'))
+        {
+            return response('', 204);
+        }
+
+        $img = base64_decode('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==');
+
+        return response($img)
+            ->header('Content-Type', 'image/gif')
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     /**

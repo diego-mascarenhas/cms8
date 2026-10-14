@@ -91,6 +91,7 @@ use App\Http\Controllers\ProspectSearchController;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
 use App\Models\MessageDeliveryStat;
+use App\Services\Mail\NewsContactStatus;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -336,6 +337,11 @@ Route::post('/mailgun/webhook', function (Request $request)
                 {
                     Log::warning('🔗 No URL provided for click event', ['delivery_id' => $delivery->id]);
                 }
+
+                if ($delivery->contact && ! str_contains((string) $clickedUrl, '/unsubscribe/'))
+                {
+                    app(NewsContactStatus::class)->apply($delivery->contact, NewsContactStatus::CLICK);
+                }
             }
             break;
 
@@ -343,7 +349,10 @@ Route::post('/mailgun/webhook', function (Request $request)
             Log::info("🚫 UNSUBSCRIBED: {$recipient}", [
                 'mailing_list' => $request->input('mailing-list'),
             ]);
-            // Could update contact to unsubscribed status if needed
+            if ($delivery?->contact)
+            {
+                app(NewsContactStatus::class)->apply($delivery->contact, NewsContactStatus::UNSUBSCRIBE);
+            }
             break;
 
         case 'complained':

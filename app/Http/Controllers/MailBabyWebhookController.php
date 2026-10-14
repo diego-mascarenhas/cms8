@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Communication;
 use App\Models\Contact;
 use App\Models\MessageDelivery;
+use App\Services\Mail\NewsContactStatus;
 use App\Services\MailBabyService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -310,6 +311,11 @@ class MailBabyWebhookController extends Controller
             'clicked_at' => now(),
             'provider_data' => array_merge($delivery->provider_data ?? [], [$data]),
         ]);
+
+        if ($delivery->contact && ! str_contains((string) ($data['url'] ?? ''), '/unsubscribe/'))
+        {
+            app(NewsContactStatus::class)->apply($delivery->contact, NewsContactStatus::CLICK);
+        }
 
         Log::info('MailBaby webhook: Email clicked', [
             'delivery_id' => $delivery->id,

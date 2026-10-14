@@ -1504,6 +1504,7 @@ Route::prefix('profile-update')->name('profile-update.')->middleware(['auth', 'v
     Route::post('/get-rates', [App\Http\Controllers\Frontend\ProfileUpdateController::class, 'getRatesForLanguagePair'])->name('get-rates');
 });
 
+Route::match(['get', 'post'], 'message/track/conversion/{token?}', [MessageTrackingController::class, 'trackConversion'])->name('message.track.conversion');
 Route::get('message/track/{token}', [MessageTrackingController::class, 'track'])->name('message.track');
 Route::get('message/track/click/{token}', [MessageTrackingController::class, 'trackClick'])->name('message.track.click');
 Route::get('communications/track/{token}', [App\Http\Controllers\CommunicationTrackingController::class, 'open'])
