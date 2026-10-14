@@ -1246,6 +1246,22 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Sender used by transactional communications. Team sender wins; Mailer sender is the fallback.
+     *
+     * @return array{from_name: string, from_address: string}
+     */
+    public function getCommunicationEmailSender(): array
+    {
+        $sender = $this->getTeamEmailSender();
+        if ($sender['from_address'] === '')
+        {
+            return $this->getMailerEmailSender();
+        }
+
+        return $sender;
+    }
+
+    /**
      * Mailer campaign sender. Uses mailer override when complete, otherwise team sender.
      *
      * @return array{from_name: string, from_address: string}

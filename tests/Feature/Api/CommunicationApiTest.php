@@ -417,6 +417,67 @@ class CommunicationApiTest extends TestCase
             ->assertJsonPath('data.api_token', null);
     }
 
+    public function test_can_read_and_update_communication_sender(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/communications/sender')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.configured', false)
+            ->assertJsonPath('data.can_update', true)
+            ->assertJsonPath('data.required_include', 'include:spf.revisionalpha.com')
+            ->assertJsonPath('data.example_txt', 'v=spf1 include:spf.revisionalpha.com -all')
+            ->assertJsonPath('data.spf', null);
+
+        $team->setSetting('mailer_from_name', 'Campañas');
+        $team->setSetting('mailer_from_address', 'news@example.test');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/communications/sender')
+            ->assertOk()
+            ->assertJsonPath('data.configured', true)
+            ->assertJsonPath('data.from_name', 'Campañas')
+            ->assertJsonPath('data.from_address', 'news@example.test')
+            ->assertJsonPath('data.spf.domain', 'example.test');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/communications/sender', [
+                'mail_from_name' => 'Avisos Idoneo',
+                'mail_from_address' => 'avisos@example.test',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.configured', true)
+            ->assertJsonPath('data.from_name', 'Avisos Idoneo')
+            ->assertJsonPath('data.from_address', 'avisos@example.test')
+            ->assertJsonPath('data.spf.domain', 'example.test');
+
+        $fresh = $team->fresh();
+        $this->assertSame('Avisos Idoneo', $fresh->getSetting('mail_from_name'));
+        $this->assertSame('avisos@example.test', $fresh->getSetting('mail_from_address'));
+        $this->assertSame('Avisos Idoneo', $fresh->getCommunicationEmailSender()['from_name']);
+        $this->assertSame('avisos@example.test', $fresh->getCommunicationEmailSender()['from_address']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/communications/sender', [
+                'mail_from_name' => '',
+                'mail_from_address' => 'no-es-un-email',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['mail_from_name', 'mail_from_address']);
+    }
+
+    public function test_communication_sender_requires_authentication(): void
+    {
+        $this->getJson('/api/communications/sender')->assertUnauthorized();
+        $this->putJson('/api/communications/sender', [
+            'mail_from_name' => 'Avisos',
+            'mail_from_address' => 'avisos@example.test',
+        ])->assertUnauthorized();
+    }
+
     public function test_channels_endpoint_returns_configuration_flags(): void
     {
         [, , $token] = $this->adminWithToken();

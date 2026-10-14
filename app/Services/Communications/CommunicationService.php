@@ -167,11 +167,7 @@ class CommunicationService
      */
     public function channelStatus(Team $team): array
     {
-        $emailSender = $team->getTeamEmailSender();
-        if ($emailSender['from_address'] === '')
-        {
-            $emailSender = $team->getMailerEmailSender();
-        }
+        $emailSender = $team->getCommunicationEmailSender();
 
         return [
             'email' => [

@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\CertificationController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ClientPortalController;
 use App\Http\Controllers\Api\CommunicationController;
+use App\Http\Controllers\Api\CommunicationSenderController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\FareController;
@@ -723,6 +724,8 @@ Route::middleware('auth.api')->group(function ()
     // Communications (idoneo-communications SPA)
     Route::get('communications/stats', [CommunicationController::class, 'stats']);
     Route::get('communications/channels', [CommunicationController::class, 'channels']);
+    Route::get('communications/sender', [CommunicationSenderController::class, 'show']);
+    Route::put('communications/sender', [CommunicationSenderController::class, 'update']);
     Route::get('communications/docs-token', [CommunicationController::class, 'docsToken']);
     Route::get('communications', [CommunicationController::class, 'index']);
     Route::post('communications', [CommunicationController::class, 'store']);
