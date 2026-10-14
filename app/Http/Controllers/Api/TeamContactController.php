@@ -75,7 +75,8 @@ class TeamContactController extends Controller
             'email' => $validated['email'] ?? null,
             'phone' => $phone,
             'status_id' => 1,
-            'creator_id' => $team->user_id,  // Owner of the team
+            'creator_id' => $team->user_id,
+            'responsible_id' => $team->user_id,
         ]);
 
         // Attach categories: from request + default if configured (same as landing/lead)
@@ -95,8 +96,7 @@ class TeamContactController extends Controller
             if (Category::where('id', $defaultCategoryId)->where('team_id', $team->id)->exists())
             {
                 $categoryIds[] = $defaultCategoryId;
-            }
-            else
+            } else
             {
                 Log::warning('TeamContactController: default category '.$defaultCategoryId.' does not exist for team_id '.$team->id.'; skipping.');
             }
@@ -115,8 +115,7 @@ class TeamContactController extends Controller
             {
                 $this->linkEnterprise($contact, $team, $enterpriseName);
                 $enterpriseLinked = true;
-            }
-            catch (\Throwable $e)
+            } catch (\Throwable $e)
             {
                 Log::error('TeamContactController: could not link enterprise', [
                     'contact_id' => $contact->id,

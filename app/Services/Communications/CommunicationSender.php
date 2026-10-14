@@ -77,11 +77,7 @@ class CommunicationSender
      */
     private function resolveEmailSender(Team $team): array
     {
-        $sender = $team->getTeamEmailSender();
-        if ($sender['from_address'] === '')
-        {
-            $sender = $team->getMailerEmailSender();
-        }
+        $sender = $team->getCommunicationEmailSender();
 
         if ($sender['from_address'] === '')
         {
