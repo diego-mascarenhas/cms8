@@ -731,6 +731,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('communications', [CommunicationController::class, 'index']);
     Route::post('communications', [CommunicationController::class, 'store']);
     Route::get('communications/{id}', [CommunicationController::class, 'show'])->whereNumber('id');
+    Route::get('communications/{id}/log', [CommunicationController::class, 'log'])->whereNumber('id');
     Route::post('communications/{id}/retry', [CommunicationController::class, 'retry'])->whereNumber('id');
 
     // Tickets (idoneo-tickets SPA)

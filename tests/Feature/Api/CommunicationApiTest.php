@@ -9,6 +9,7 @@ use App\Models\Communication;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\User;
+use App\Services\MailBabyService;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
@@ -484,8 +485,52 @@ class CommunicationApiTest extends TestCase
             ->assertJsonPath('data.example_txt', 'v=spf1 include:spf.revisionalpha.com -all');
     }
 
+    public function test_email_log_returns_the_provider_delivery_record(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+        config(['services.mailbaby.api_key' => 'test-key']);
+        $communication = Communication::factory()->forTeamAndUser($team)->email()->create([
+            'recipient_email' => 'ada@example.test',
+            'subject' => 'Invoice',
+            'status' => CommunicationStatus::Sent,
+            'sent_at' => now(),
+            'metadata' => [
+                'email_provider' => 'mailbaby',
+                'provider_message_id' => '1a0b9f105f6000dfc3',
+            ],
+        ]);
+
+        $this->mock(MailBabyService::class, function ($mock): void
+        {
+            $mock->shouldReceive('findDeliveryRecord')
+                ->once()
+                ->andReturn([
+                    'found' => true,
+                    'id' => '1a0b9f105f6000dfc3',
+                    'delivered' => true,
+                    'code' => 250,
+                    'response' => '250 OK',
+                    'created' => '2026-10-15 08:28:00',
+                    'from' => 'Avisos <avisos@example.test>',
+                    'to' => 'ada@example.test',
+                ]);
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/communications/'.$communication->id.'/log')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.found', true)
+            ->assertJsonPath('data.delivered', true)
+            ->assertJsonPath('data.code', 250)
+            ->assertJsonPath('data.response', '250 OK')
+            ->assertJsonPath('data.email_provider', 'mailbaby')
+            ->assertJsonPath('data.to', 'ada@example.test');
+    }
+
     public function test_communication_sender_requires_authentication(): void
     {
+        $this->getJson('/api/communications/1/log')->assertUnauthorized();
         $this->getJson('/api/communications/sender')->assertUnauthorized();
         $this->getJson('/api/communications/sender/dns?email=hola@example.test')->assertUnauthorized();
         $this->putJson('/api/communications/sender', [

@@ -10,6 +10,7 @@ use App\Http\Requests\Api\StoreCommunicationRequest;
 use App\Models\Communication;
 use App\Models\Team;
 use App\Services\Communications\CommunicationService;
+use App\Services\MailBabyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -176,6 +177,29 @@ class CommunicationController extends Controller
         ]);
     }
 
+    public function log(Request $request, int $id): JsonResponse
+    {
+        $team = $this->resolveTeam($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $communication = $this->findForTeam($team, $id);
+        if (! $communication)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Communication not found'),
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->deliveryLogPayload($communication),
+        ]);
+    }
+
     public function retry(Request $request, int $id): JsonResponse
     {
         $team = $this->resolveTeam($request);
@@ -224,6 +248,43 @@ class CommunicationController extends Controller
                 'api_token' => $this->plainTeamApiToken($team),
             ],
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function deliveryLogPayload(Communication $communication): array
+    {
+        $metadata = is_array($communication->metadata) ? $communication->metadata : [];
+        $mailId = is_string($metadata['provider_message_id'] ?? null) ? $metadata['provider_message_id'] : null;
+        $provider = is_string($metadata['email_provider'] ?? null) ? $metadata['email_provider'] : null;
+        $record = null;
+
+        if ($communication->channel === CommunicationChannel::Email && config('services.mailbaby.api_key'))
+        {
+            $sentAt = $communication->sent_at ?? $communication->created_at;
+            $record = app(MailBabyService::class)->findDeliveryRecord(
+                $mailId,
+                $communication->recipient_email,
+                $communication->subject,
+                $sentAt?->copy()->subDay()->format('Y-m-d'),
+            );
+        }
+
+        return [
+            'found' => (bool) ($record['found'] ?? false),
+            'id' => $record['id'] ?? $mailId,
+            'delivered' => $record['delivered'] ?? null,
+            'code' => $record['code'] ?? null,
+            'response' => $record['response'] ?? null,
+            'created' => $record['created'] ?? null,
+            'user' => $record['user'] ?? null,
+            'subject' => $record['subject'] ?? null,
+            'from' => $record['from'] ?? null,
+            'to' => $record['to'] ?? $communication->recipient_email,
+            'email_provider' => $provider,
+            'error_message' => $communication->error_message,
+        ];
     }
 
     private function findForTeam(Team $team, int $id): ?Communication

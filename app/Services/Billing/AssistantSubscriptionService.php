@@ -718,7 +718,7 @@ class AssistantSubscriptionService
 
         if ($subscribed !== null && $frequency === TeamBillingFrequency::Monthly)
         {
-            return $subscribed;
+            return self::openMonthlyPeriod($subscribed[0], $subscribed[1], now());
         }
 
         if ($subscribed !== null)
@@ -1426,17 +1426,58 @@ class AssistantSubscriptionService
             return [null, null];
         }
 
-        $item = Arr::get($payload, 'items.data.0', []);
-        $start = Arr::get($payload, 'current_period_start')
-            ?? Arr::get($item, 'current_period_start')
-            ?? Arr::get($payload, 'billing_cycle_anchor');
-        $end = Arr::get($payload, 'current_period_end')
-            ?? Arr::get($item, 'current_period_end');
+        $start = self::timestampOrNull(Arr::get($payload, 'current_period_start'));
+        $end = self::timestampOrNull(Arr::get($payload, 'current_period_end'));
 
-        return [
-            $start !== null && $start !== '' ? (int) $start : null,
-            $end !== null && $end !== '' ? (int) $end : null,
-        ];
+        foreach (Arr::get($payload, 'items.data', []) as $item)
+        {
+            if (! is_array($item))
+            {
+                continue;
+            }
+
+            $itemEnd = self::timestampOrNull(Arr::get($item, 'current_period_end'));
+            if ($itemEnd === null || ($end !== null && $itemEnd <= $end))
+            {
+                continue;
+            }
+
+            $start = self::timestampOrNull(Arr::get($item, 'current_period_start')) ?? $start;
+            $end = $itemEnd;
+        }
+
+        if ($start === null)
+        {
+            $start = self::timestampOrNull(Arr::get($payload, 'billing_cycle_anchor'));
+        }
+
+        return [$start, $end];
+    }
+
+    /**
+     * The open monthly cycle. A Stripe period that already closed keeps its
+     * anniversary day and moves forward until it contains $now.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public static function openMonthlyPeriod(Carbon $from, Carbon $to, Carbon $now): array
+    {
+        if ($to->gt($now))
+        {
+            return [$from->copy(), $to->copy()];
+        }
+
+        return TeamUsageInvoiceFrequency::monthlyWindow($from, $from->day, $now);
+    }
+
+    private static function timestampOrNull(mixed $value): ?int
+    {
+        if ($value === null || $value === '')
+        {
+            return null;
+        }
+
+        return (int) $value;
     }
 
     /**

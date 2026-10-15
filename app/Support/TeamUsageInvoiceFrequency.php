@@ -87,7 +87,7 @@ class TeamUsageInvoiceFrequency
         $subscription = self::subscriptionPeriod($team);
         if ($subscription !== null)
         {
-            return $subscription;
+            return AssistantSubscriptionService::openMonthlyPeriod($subscription[0], $subscription[1], $now);
         }
 
         $cycleStart = self::periodStartsAt($team);
