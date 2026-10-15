@@ -64,7 +64,7 @@ MAIL_FROM_NAME="Humano"
 php artisan queue:work redis --queue=communications --sleep=3 --tries=3 --timeout=120
 
 # Email / campaigns
-php artisan queue:work redis --queue=task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120
+php artisan queue:work redis --queue=track,task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120
 
 # Everything else
 php artisan queue:work redis --queue=default,domain-info,domain-updates,domain-version,whm-sync,whm-tests,ovh-sync --sleep=3 --tries=3 --timeout=120
@@ -90,7 +90,7 @@ numprocs=2
 **Daemon 2 — email** (existing mailer/campaign worker):
 
 ```ini
-command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
+command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=track,task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
 directory=/home/forge/staging.humano.app
 numprocs=1
 ```

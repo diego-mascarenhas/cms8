@@ -203,6 +203,8 @@ return [
 
     'go' => [
         'url' => env('GO_APP_URL', 'https://go.idoneo.dev'),
+        'track_connection' => env('TRACK_QUEUE_CONNECTION', 'redis'),
+        'track_queue' => env('TRACK_QUEUE', 'track'),
     ],
 
     'revisionalpha' => [

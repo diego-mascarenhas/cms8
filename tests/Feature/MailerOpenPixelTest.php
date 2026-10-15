@@ -54,8 +54,11 @@ class MailerOpenPixelTest extends TestCase
             'status_id' => 1,
         ]);
 
+        config(['services.go.url' => 'https://go.idoneo.dev']);
+
         $pixel = $delivery->getTrackingUrl();
 
+        $this->assertStringStartsWith('https://go.idoneo.dev/message/track/', $pixel);
         $this->assertStringContainsString($pixel, $delivery->getHtmlForContact());
         $this->assertStringNotContainsString($pixel, $delivery->getHtmlForContact(false));
     }

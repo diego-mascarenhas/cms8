@@ -9,6 +9,8 @@ class EmailTrackingHelperListUnsubscribeTest extends TestCase
 {
     public function test_list_unsubscribe_headers_include_one_click_url(): void
     {
+        config(['services.go.url' => 'https://go.idoneo.dev']);
+
         $headers = EmailTrackingHelper::listUnsubscribeHeaders('qa@example.test', true);
 
         $this->assertSame(
@@ -17,18 +19,32 @@ class EmailTrackingHelperListUnsubscribeTest extends TestCase
         );
         $this->assertSame('List-Unsubscribe=One-Click', $headers['List-Unsubscribe-Post']);
         $this->assertStringContainsString('mailer.', $headers['List-Id']);
-        $this->assertStringContainsString(rawurlencode('qa@example.test'), $headers['List-Unsubscribe']);
+        $this->assertStringContainsString(
+            'https://go.idoneo.dev/unsubscribe/'.rawurlencode('qa@example.test'),
+            $headers['List-Unsubscribe'],
+        );
     }
 
-    public function test_click_tracking_url_uses_the_public_admin_host(): void
+    public function test_open_and_click_tracking_urls_use_the_go_host(): void
     {
-        config(['mailer.tracking.base_url' => 'https://admin.idoneo.dev']);
-
-        $url = EmailTrackingHelper::clickTrackingUrl('abc123', 'https://www.pedimosfacil.com');
+        config(['services.go.url' => 'https://go.idoneo.dev']);
 
         $this->assertSame(
-            'https://admin.idoneo.dev/message/track/click/abc123?url='.urlencode('https://www.pedimosfacil.com'),
-            $url,
+            'https://go.idoneo.dev/unsubscribe/'.rawurlencode('qa@example.test'),
+            EmailTrackingHelper::unsubscribeUrl('qa@example.test'),
+        );
+
+        $this->assertSame(
+            'https://go.idoneo.dev/message/track/abc123',
+            EmailTrackingHelper::openTrackingUrl('abc123'),
+        );
+        $this->assertSame(
+            'https://go.idoneo.dev/message/track/click/abc123?url='.urlencode('https://www.pedimosfacil.com'),
+            EmailTrackingHelper::clickTrackingUrl('abc123', 'https://www.pedimosfacil.com'),
+        );
+        $this->assertSame(
+            'https://go.idoneo.dev/message/track/conversion',
+            EmailTrackingHelper::conversionEndpoint(),
         );
     }
 

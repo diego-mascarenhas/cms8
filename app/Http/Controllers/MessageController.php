@@ -740,16 +740,9 @@ class MessageController extends Controller
     {
         // Update contact status to "Perdido" (ID 4) when they unsubscribe
         // But don't change status if they are already a client (status_id 5)
-        $contact = \App\Models\Contact::with(['user.roles', 'user.teams', 'user.currentTeam.settings'])
-            ->where('email', $email)->first();
-
-        if ($contact)
-        {
-            app(\App\Services\Mail\NewsContactStatus::class)->apply(
-                $contact,
-                \App\Services\Mail\NewsContactStatus::UNSUBSCRIBE,
-            );
-        }
+        \App\Jobs\RecordTrackEventJob::dispatch('unsubscribe', [
+            'email' => (string) $email,
+        ]);
 
         if ($request->isMethod('post'))
         {

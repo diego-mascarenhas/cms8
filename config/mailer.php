@@ -95,8 +95,7 @@ return [
         'open_tracking' => true,
         'click_tracking' => true,
         'unsubscribe_tracking' => true,
-        // Public host that receives click redirects. APP_URL stays the local app.
-        'base_url' => env('MAIL_TRACKING_URL', 'https://admin.idoneo.dev'),
+        // Open, click and conversion URLs use GO_APP_URL (services.go.url).
     ],
 
     /*

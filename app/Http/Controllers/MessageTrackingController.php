@@ -3,88 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\EmailTrackingHelper;
-use App\Models\MessageDelivery;
-use App\Services\Mail\NewsContactStatus;
+use App\Jobs\RecordTrackEventJob;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class MessageTrackingController extends Controller
 {
     // Tracking de apertura
-    public function track($token)
+    public function track(Request $request, $token)
     {
-        \Log::info('Tracking: token recibido', ['token' => $token]);
-        $delivery = \App\Models\MessageDelivery::all()->first(function ($d) use ($token)
-        {
-            return hash_equals($d->getTrackingToken(), $token);
-        });
-        if ($delivery)
-        {
-            \Log::info('Tracking: delivery encontrado', ['id' => $delivery->id]);
-            \Log::info('TEST: About to enter try block');
+        RecordTrackEventJob::dispatch('mailer.open', $this->trackPayload($request, [
+            'token' => (string) $token,
+        ]));
 
-            try
-            {
-                \Log::info('TEST: Inside try block - step 1');
-                \Log::info('TEST: Delivery ID is: '.$delivery->id);
-                \Log::info('TEST: About to call DB insert');
-
-                $inserted = \App\Models\MessageDeliveryTracking::query()->create([
-                    'message_delivery_id' => $delivery->id,
-                    'event' => 'opened',
-                    'tracked_at' => now(),
-                    'ip_address' => request()->ip(),
-                    'user_agent' => request()->userAgent(),
-                    'metadata' => [
-                        'source' => 'email_tracking_pixel_direct',
-                        'timestamp' => now(),
-                    ],
-                ]);
-
-                \Log::info('TEST: DB insert result', ['inserted' => $inserted]);
-
-                // Also update the opened_at column in message_deliveries for statistics
-                if (! $delivery->opened_at)
-                {
-                    $delivery->forceFill(['opened_at' => now()])->save();
-
-                    \Log::info('TEST: Updated opened_at in message_deliveries', ['delivery_id' => $delivery->id]);
-                }
-
-                \Log::info('TEST: Success - tracking pixel registered');
-            } catch (\Exception $e)
-            {
-                \Log::error('ERROR in tracking pixel logic', [
-                    'delivery_id' => $delivery->id,
-                    'error_message' => $e->getMessage(),
-                    'error_file' => $e->getFile(),
-                    'error_line' => $e->getLine(),
-                ]);
-            } catch (\Error $e)
-            {
-                \Log::error('FATAL ERROR in tracking pixel logic', [
-                    'delivery_id' => $delivery->id,
-                    'error_message' => $e->getMessage(),
-                    'error_file' => $e->getFile(),
-                    'error_line' => $e->getLine(),
-                ]);
-            } catch (\Throwable $e)
-            {
-                \Log::error('THROWABLE ERROR in tracking pixel logic', [
-                    'delivery_id' => $delivery->id,
-                    'error_message' => $e->getMessage(),
-                    'error_file' => $e->getFile(),
-                    'error_line' => $e->getLine(),
-                ]);
-            }
-
-            \Log::info('TEST: End of delivery block');
-        } else
-        {
-            \Log::info('Tracking: delivery NO encontrado para token', ['token' => $token]);
-        }
-
-        // Devolver imagen transparente con headers optimizados para evitar cache
         $img = base64_decode('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==');
 
         return response($img)
@@ -97,59 +28,17 @@ class MessageTrackingController extends Controller
     // Tracking de click
     public function trackClick(Request $request, $token)
     {
-        $delivery = MessageDelivery::findByTrackingToken((string) $token);
+        $token = (string) $token;
+        $url = (string) $request->query('url', '/');
 
-        if ($delivery)
+        RecordTrackEventJob::dispatch('mailer.click', $this->trackPayload($request, [
+            'token' => $token,
+            'url' => $url,
+        ]));
+
+        if (preg_match('/^[a-f0-9]{64}$/', $token) === 1)
         {
-            $originalUrl = $request->query('url', '/');
-
-            // If this is the first interaction and open tracking is enabled,
-            // also register an open event (user must have opened the email to click)
-            if (! $delivery->opened_at && $delivery->message && $delivery->message->allowsOpenTracking())
-            {
-                \App\Models\MessageDeliveryTracking::createEvent(
-                    $delivery->id,
-                    'opened',
-                    [
-                        'source' => 'inferred_from_click',
-                        'timestamp' => now(),
-                    ],
-                );
-                $delivery->markAsOpened();
-                \Log::info('Open event inferred from click', [
-                    'delivery_id' => $delivery->id,
-                    'contact_email' => $delivery->contact ? $delivery->contact->email : 'unknown',
-                    'clicked_url' => $originalUrl,
-                ]);
-            }
-
-            // Create tracking event using the new method
-            \App\Models\MessageDeliveryTracking::createEvent(
-                $delivery->id,
-                'clicked',
-                [
-                    'source' => 'email_link_click',
-                    'original_url' => $originalUrl,
-                    'timestamp' => now(),
-                ],
-            );
-
-            // Update or create the link tracking record
-            $this->updateLinkClickCount($delivery, $originalUrl);
-
-            if ($delivery->contact && ! str_contains((string) $originalUrl, '/unsubscribe/'))
-            {
-                app(NewsContactStatus::class)->apply($delivery->contact, NewsContactStatus::CLICK);
-            }
-
-            $delivery->markAsClicked();
-            $delivery->refresh();
-        }
-
-        $url = $request->query('url', '/');
-        if ($delivery)
-        {
-            $url = EmailTrackingHelper::appendNewsRef((string) $url, $delivery->getTrackingToken());
+            $url = EmailTrackingHelper::appendNewsRef($url, $token);
         }
 
         return redirect($url);
@@ -162,12 +51,9 @@ class MessageTrackingController extends Controller
     public function trackConversion(Request $request, ?string $token = null): Response
     {
         $token = $token ?: (string) $request->input('news', '');
-        $delivery = MessageDelivery::findByTrackingToken($token);
-
-        if ($delivery?->contact)
-        {
-            app(NewsContactStatus::class)->apply($delivery->contact, NewsContactStatus::CONVERSION);
-        }
+        RecordTrackEventJob::dispatch('mailer.conversion', [
+            'token' => $token,
+        ]);
 
         if ($request->isMethod('post'))
         {
@@ -184,43 +70,14 @@ class MessageTrackingController extends Controller
     }
 
     /**
-     * Update click count for a specific link
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
      */
-    private function updateLinkClickCount(MessageDelivery $delivery, string $url)
+    private function trackPayload(Request $request, array $payload): array
     {
-        $link = \App\Models\MessageDeliveryLink::where('message_delivery_id', $delivery->id)
-            ->where('link', $url)
-            ->first();
-
-        if ($link)
-        {
-            // Increment click count and update timestamp
-            $link->increment('click_count');
-            $link->touch(); // Updates updated_at timestamp
-
-            \Log::info('Link click count updated', [
-                'delivery_id' => $delivery->id,
-                'url' => $url,
-                'click_count' => $link->click_count,
-                'first_click' => $link->created_at,
-                'last_click' => $link->updated_at,
-            ]);
-        } else
-        {
-            // This shouldn't happen if EmailTrackingHelper is working correctly,
-            // but let's handle it just in case
-            \App\Models\MessageDeliveryLink::create([
-                'message_delivery_id' => $delivery->id,
-                'link' => $url,
-                'click_count' => 1,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            \Log::info('Link tracking record created on click', [
-                'delivery_id' => $delivery->id,
-                'url' => $url,
-            ]);
-        }
+        return $payload + [
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ];
     }
 }
