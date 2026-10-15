@@ -1052,9 +1052,13 @@ class ProjectController extends Controller
                 'id' => $task->responsible->id,
                 'name' => $task->responsible->name,
                 'email' => $task->responsible->email,
+                'profile_photo_url' => $task->responsible->profile_photo_url,
             ] : null,
             'attachment' => $task->attachmentUrl(),
             'active_time' => $this->activeTimePayload($task),
+            'time_seconds' => $task->relationLoaded('times')
+                ? $this->loggedTaskSeconds($task->times)
+                : 0,
             'workers' => $task->relationLoaded('times')
                 ? \App\Support\TaskTimeBudget::workers($task->times)
                 : [],

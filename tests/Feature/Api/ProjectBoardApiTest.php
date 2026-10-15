@@ -448,6 +448,8 @@ class ProjectBoardApiTest extends TestCase
         $this->assertSame(1, $boardTask['running_timers']);
         $this->assertTrue($boardTask['workers'][0]['working']);
         $this->assertSame($user->name, $boardTask['workers'][0]['name']);
+        $this->assertArrayHasKey('profile_photo_url', $boardTask['workers'][0]);
+        $this->assertGreaterThanOrEqual(0, $boardTask['time_seconds']);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/tasks/'.$task->id.'/stop')
@@ -465,6 +467,38 @@ class ProjectBoardApiTest extends TestCase
         $this->assertSame(0, $stoppedTask['running_timers']);
         $this->assertFalse($stoppedTask['workers'][0]['working']);
         $this->assertSame($user->id, $task->fresh()->responsible_id);
+    }
+
+    public function test_board_reports_logged_seconds_once_the_estimate_is_spent(): void
+    {
+        [$user, $token, $project, $task] = $this->projectWithTask();
+        $task->update(['estimated_hours' => 1]);
+
+        Time::query()->create([
+            'team_id' => $user->currentTeam->id,
+            'task_id' => $task->id,
+            'user_id' => $user->id,
+            'description' => 'Estimado usado',
+            'start_time' => now()->subHour(),
+            'end_time' => now(),
+            'duration_seconds' => 3600,
+            'is_billable' => true,
+        ]);
+
+        $board = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id.'/board');
+
+        $boardTask = collect($board->json('data.columns'))
+            ->flatMap(fn ($column) => $column['tasks'])
+            ->firstWhere('id', $task->id);
+
+        $this->assertGreaterThanOrEqual(3600, $boardTask['time_seconds']);
+        $this->assertSame($user->name, $boardTask['workers'][0]['name']);
+        $this->assertArrayHasKey('profile_photo_url', $boardTask['workers'][0]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/tasks/'.$task->id.'/start')
+            ->assertStatus(422);
     }
 
     public function test_only_the_project_responsible_can_reassign_a_task(): void
