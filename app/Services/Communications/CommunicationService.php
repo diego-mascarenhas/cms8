@@ -231,12 +231,12 @@ class CommunicationService
                     ? ($communication->metadata['provider_message_id'] ?? null)
                     : null,
             ],
+            'events' => $this->events($communication),
         ];
 
         if ($includeMessage)
         {
             $payload['message'] = $communication->message;
-            $payload['events'] = $this->events($communication);
         }
 
         return $payload;

@@ -175,7 +175,9 @@ class CommunicationApiTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/communications')
             ->assertOk()
-            ->assertJsonPath('data.0.tracking.opened', true);
+            ->assertJsonPath('data.0.tracking.opened', true)
+            ->assertJsonPath('data.0.events.0.type', 'queued')
+            ->assertJsonPath('data.0.events.1.type', 'opened');
     }
 
     public function test_stats_and_retry(): void
