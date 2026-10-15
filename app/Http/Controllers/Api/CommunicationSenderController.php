@@ -28,6 +28,24 @@ class CommunicationSenderController extends Controller
         ]);
     }
 
+    public function dns(Request $request): JsonResponse
+    {
+        $team = $this->resolveTeam($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $validated = $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => DnsHelper::senderDnsPayload((string) $validated['email']),
+        ]);
+    }
+
     public function update(UpdateMailerSenderApiRequest $request): JsonResponse
     {
         $team = $this->resolveTeam($request);

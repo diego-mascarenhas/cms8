@@ -469,9 +469,25 @@ class CommunicationApiTest extends TestCase
             ->assertJsonValidationErrors(['mail_from_name', 'mail_from_address']);
     }
 
+    public function test_sender_dns_check_reports_spf_and_mailbaby_record(): void
+    {
+        [, , $token] = $this->adminWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/communications/sender/dns?email=hola@example.test')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.domain', 'example.test')
+            ->assertJsonPath('data.mb.host', '_mb.example.test')
+            ->assertJsonPath('data.mb.ok', false)
+            ->assertJsonPath('data.required_include', 'include:spf.revisionalpha.com')
+            ->assertJsonPath('data.example_txt', 'v=spf1 include:spf.revisionalpha.com -all');
+    }
+
     public function test_communication_sender_requires_authentication(): void
     {
         $this->getJson('/api/communications/sender')->assertUnauthorized();
+        $this->getJson('/api/communications/sender/dns?email=hola@example.test')->assertUnauthorized();
         $this->putJson('/api/communications/sender', [
             'mail_from_name' => 'Avisos',
             'mail_from_address' => 'avisos@example.test',

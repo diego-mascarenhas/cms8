@@ -725,6 +725,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('communications/stats', [CommunicationController::class, 'stats']);
     Route::get('communications/channels', [CommunicationController::class, 'channels']);
     Route::get('communications/sender', [CommunicationSenderController::class, 'show']);
+    Route::get('communications/sender/dns', [CommunicationSenderController::class, 'dns']);
     Route::put('communications/sender', [CommunicationSenderController::class, 'update']);
     Route::get('communications/docs-token', [CommunicationController::class, 'docsToken']);
     Route::get('communications', [CommunicationController::class, 'index']);

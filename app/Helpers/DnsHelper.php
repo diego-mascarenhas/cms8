@@ -243,6 +243,30 @@ class DnsHelper
     }
 
     /**
+     * Live SPF and _mb check for a From address, shared by Mailer and Communications.
+     *
+     * @return array{
+     *     domain: string|null,
+     *     required_include: string,
+     *     example_txt: string,
+     *     spf: array<string, mixed>|null,
+     *     mb: array<string, mixed>|null
+     * }
+     */
+    public static function senderDnsPayload(string $email): array
+    {
+        $status = self::checkEmailDomainConfiguration($email);
+
+        return [
+            'domain' => $status['domain'],
+            'required_include' => self::REVISION_ALPHA_SPF_INCLUDE,
+            'example_txt' => self::REQUIRED_REVISION_ALPHA_SPF_TXT,
+            'spf' => $status['spf'] ?? null,
+            'mb' => $status['mb'] ?? null,
+        ];
+    }
+
+    /**
      * TXT at _mb.{domain} must contain the MailBaby username.
      *
      * @return array{
