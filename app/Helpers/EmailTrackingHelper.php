@@ -120,17 +120,17 @@ class EmailTrackingHelper
     }
 
     /**
-     * Public host that records campaign clicks. Defaults to admin.idoneo.dev.
+     * Public host that records opens, clicks and conversions.
+     * go.idoneo.dev can move to another VPS without rewriting mail that already points at it.
      */
     public static function trackingBaseUrl(): string
     {
-        $base = trim((string) config('mailer.tracking.base_url', ''));
-        if ($base === '')
-        {
-            $base = (string) config('app.url');
-        }
+        return rtrim((string) config('services.go.url', 'https://go.idoneo.dev'), '/');
+    }
 
-        return rtrim($base, '/');
+    public static function openTrackingUrl(string $token): string
+    {
+        return self::trackingBaseUrl().'/message/track/'.$token;
     }
 
     /**
@@ -259,7 +259,7 @@ class EmailTrackingHelper
 
     public static function unsubscribeUrl(string $email): string
     {
-        return url('/unsubscribe/'.rawurlencode($email));
+        return self::trackingBaseUrl().'/unsubscribe/'.rawurlencode($email);
     }
 
     /**

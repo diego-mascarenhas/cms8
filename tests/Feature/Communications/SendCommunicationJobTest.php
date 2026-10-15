@@ -108,6 +108,7 @@ class SendCommunicationJobTest extends TestCase
             'services.mailbaby.api_key' => 'test-key',
             'services.mailbaby.api_url' => 'https://api.mailbaby.net',
             'services.mailbaby.order_id' => 80474,
+            'services.go.url' => 'https://go.idoneo.dev',
         ]);
 
         $user = User::factory()->withPersonalTeam()->create();
@@ -129,7 +130,7 @@ class SendCommunicationJobTest extends TestCase
                 && (int) $request['id'] === 80474
                 && $request['to'] === 'ada@example.test'
                 && str_contains((string) $request['from'], 'billing@example.test')
-                && str_contains((string) $request['body'], '/communications/track/')
+                && str_contains((string) $request['body'], 'https://go.idoneo.dev/communications/track/')
                 && str_contains((string) $request['body'], '/click');
         });
 
@@ -137,7 +138,10 @@ class SendCommunicationJobTest extends TestCase
         $this->assertSame(CommunicationStatus::Sent, $communication->status);
         $this->assertSame('mailbaby', $communication->metadata['email_provider'] ?? null);
         $this->assertSame('1a0b9f105f6000dfc3', $communication->metadata['provider_message_id'] ?? null);
-        $this->assertStringContainsString('/communications/track/', $communication->trackingUrl());
+        $this->assertSame(
+            'https://go.idoneo.dev/communications/track/'.$communication->trackingToken(),
+            $communication->trackingUrl(),
+        );
     }
 
     public function test_whatsapp_job_sends_media_like_assistant(): void

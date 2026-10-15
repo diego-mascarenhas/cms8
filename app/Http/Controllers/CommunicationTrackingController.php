@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\RecordTrackEventJob;
 use App\Models\Communication;
 use App\Services\Communications\CommunicationLinkTracker;
 use Illuminate\Http\RedirectResponse;
@@ -12,11 +13,9 @@ class CommunicationTrackingController extends Controller
 {
     public function open(string $token): Response
     {
-        $communication = Communication::findByTrackingToken($token);
-        if ($communication)
-        {
-            $communication->markOpened();
-        }
+        RecordTrackEventJob::dispatch('communication.open', [
+            'token' => $token,
+        ]);
 
         $pixel = base64_decode('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==');
 
@@ -43,7 +42,10 @@ class CommunicationTrackingController extends Controller
             abort(404);
         }
 
-        $communication->markClicked($url);
+        RecordTrackEventJob::dispatch('communication.click', [
+            'communication_id' => $communication->id,
+            'url' => $url,
+        ]);
 
         return redirect()->away($url);
     }

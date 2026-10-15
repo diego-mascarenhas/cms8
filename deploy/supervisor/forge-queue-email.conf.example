@@ -6,6 +6,7 @@
 ;   notifications       — notificaciones a contactos
 ;   mailer              — mensajes / reenvíos
 ;   campaign            — envíos masivos de campaña
+;   track               — aperturas, clics, conversiones y bajas (go.idoneo.dev)
 ;
 ; Communications transaccional va en forge-queue-communications.conf.example.
 ;
@@ -13,7 +14,7 @@
 
 [program:humano-queue-email]
 directory=/home/forge/staging.humano.app
-command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
+command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=track,task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
 process_name=%(program_name)s_%(process_num)02d
 autostart=true
 autorestart=true

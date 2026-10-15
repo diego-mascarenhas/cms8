@@ -12,6 +12,22 @@ class CommunicationOpenTrackingTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_tracking_urls_use_the_go_host(): void
+    {
+        config(['services.go.url' => 'https://go.idoneo.dev']);
+        $communication = $this->sentCommunication();
+        $token = $communication->trackingToken();
+
+        $this->assertSame(
+            'https://go.idoneo.dev/communications/track/'.$token,
+            $communication->trackingUrl(),
+        );
+        $this->assertStringStartsWith(
+            'https://go.idoneo.dev/communications/track/'.$token.'/click?',
+            $communication->clickTrackingUrl('https://idoneo.dev'),
+        );
+    }
+
     public function test_pixel_marks_communication_opened_once(): void
     {
         $communication = $this->sentCommunication();

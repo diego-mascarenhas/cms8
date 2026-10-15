@@ -13,6 +13,13 @@ class CommunicationClickTrackingTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['services.go.url' => 'https://go.idoneo.dev']);
+    }
+
     public function test_plain_urls_are_wrapped_with_signed_click_links(): void
     {
         $communication = $this->sentCommunication(
@@ -21,7 +28,10 @@ class CommunicationClickTrackingTest extends TestCase
 
         $html = $communication->trackedMessageHtml();
 
-        $this->assertStringContainsString('/communications/track/'.$communication->trackingToken().'/click', $html);
+        $this->assertStringContainsString(
+            'https://go.idoneo.dev/communications/track/'.$communication->trackingToken().'/click',
+            $html,
+        );
         $this->assertStringContainsString('url='.urlencode('https://idoneo.dev'), $html);
         $this->assertStringContainsString('sig='.$communication->clickSignature('https://idoneo.dev'), $html);
         $this->assertStringNotContainsString('href="https://idoneo.dev"', $html);
@@ -31,9 +41,11 @@ class CommunicationClickTrackingTest extends TestCase
     {
         $communication = $this->sentCommunication('https://idoneo.dev');
         $url = $communication->clickTrackingUrl('https://idoneo.dev');
+        $path = parse_url($url, PHP_URL_PATH).'?'.parse_url($url, PHP_URL_QUERY);
 
-        $this->get($url)->assertRedirect('https://idoneo.dev');
-        $this->get($url)->assertRedirect('https://idoneo.dev');
+        $this->assertStringStartsWith('https://go.idoneo.dev/communications/track/', $url);
+        $this->get($path)->assertRedirect('https://idoneo.dev');
+        $this->get($path)->assertRedirect('https://idoneo.dev');
 
         $communication->refresh();
         $this->assertTrue($communication->hasOpened());

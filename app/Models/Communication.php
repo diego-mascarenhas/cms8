@@ -147,7 +147,7 @@ class Communication extends Model implements HasMedia
 
     public function trackingUrl(): string
     {
-        return route('communications.track.open', ['token' => $this->trackingToken()]);
+        return $this->publicTrackingBase().'/communications/track/'.$this->trackingToken();
     }
 
     public function trackedMessageHtml(): string
@@ -162,11 +162,21 @@ class Communication extends Model implements HasMedia
 
     public function clickTrackingUrl(string $url): string
     {
-        return route('communications.track.click', [
-            'token' => $this->trackingToken(),
+        $query = http_build_query([
             'url' => $url,
             'sig' => $this->clickSignature($url),
-        ]);
+        ], '', '&', PHP_QUERY_RFC3986);
+
+        return $this->publicTrackingBase().'/communications/track/'.$this->trackingToken().'/click?'.$query;
+    }
+
+    /**
+     * Host that records opens and clicks. go.idoneo.dev can move to another VPS
+     * without rewriting mail that already points at it.
+     */
+    private function publicTrackingBase(): string
+    {
+        return rtrim((string) config('services.go.url', 'https://go.idoneo.dev'), '/');
     }
 
     public static function findByTrackingToken(string $token): ?self
