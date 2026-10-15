@@ -853,6 +853,19 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 ]);
             }
 
+            if ($channel === 'whatsapp'
+                && ! $this->shouldSkipLinkedPeerAutoReply($request, $cleanFrom)
+                && $this->isWhatsAppPing((string) $body))
+            {
+                $this->sendWhatsApp($cleanFrom, 'pong');
+
+                return response()->json([
+                    'status' => 'success',
+                    'conversation_id' => $conversation->id,
+                    'ping' => true,
+                ]);
+            }
+
             if (! empty($media))
             {
                 $ingestions = [];
@@ -1501,6 +1514,11 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         return app(UserResolverService::class)
             ->findContactInTeamByPhone($teamId, $fromPhone)
             ?->id;
+    }
+
+    private function isWhatsAppPing(string $body): bool
+    {
+        return preg_match('/^\/ping\s*$/iu', trim($body)) === 1;
     }
 
     private function inboundAssistantMayAutoReply(string $fromPhone, ?string $toPhone = null): bool

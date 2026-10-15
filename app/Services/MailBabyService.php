@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -372,11 +373,30 @@ class MailBabyService
             'delivered' => (int) ($row['delivered'] ?? 0) === 1,
             'code' => $row['code'] ?? null,
             'response' => $row['response'] ?? null,
-            'created' => $row['created'] ?? null,
+            'created' => $this->mailLogInstant($row['created'] ?? null),
             'user' => $row['user'] ?? null,
             'subject' => $row['subject'] ?? null,
             'from' => $row['from'] ?? null,
             'to' => $row['to'] ?? null,
         ];
+    }
+
+    /**
+     * MailBaby stamps log times in US Eastern, without an offset.
+     */
+    private function mailLogInstant(mixed $created): ?string
+    {
+        if (! is_string($created) || trim($created) === '')
+        {
+            return null;
+        }
+
+        try
+        {
+            return Carbon::parse($created, 'America/New_York')->toIso8601String();
+        } catch (\Throwable)
+        {
+            return $created;
+        }
     }
 }
