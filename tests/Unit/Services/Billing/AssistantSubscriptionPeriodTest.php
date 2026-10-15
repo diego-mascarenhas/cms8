@@ -56,6 +56,25 @@ class AssistantSubscriptionPeriodTest extends TestCase
         $this->assertSame(200, $end);
     }
 
+    public function test_prefers_the_item_period_when_it_is_later_than_the_root(): void
+    {
+        [$start, $end] = AssistantSubscriptionService::periodTimestampsFromStripeSubscription([
+            'current_period_start' => 1_781_136_000,
+            'current_period_end' => 1_783_728_000,
+            'items' => [
+                'data' => [
+                    [
+                        'current_period_start' => 1_791_676_800,
+                        'current_period_end' => 1_794_355_200,
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->assertSame(1_791_676_800, $start);
+        $this->assertSame(1_794_355_200, $end);
+    }
+
     public function test_returns_nulls_when_period_is_missing(): void
     {
         [$start, $end] = AssistantSubscriptionService::periodTimestampsFromStripeSubscription([]);

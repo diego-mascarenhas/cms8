@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Enums\TeamBillingFrequency;
+use App\Services\Billing\AssistantSubscriptionService;
 use App\Support\TeamUsageInvoiceFrequency;
 use Carbon\Carbon;
 use PHPUnit\Framework\TestCase;
@@ -64,6 +65,18 @@ class TeamUsageInvoiceFrequencyTest extends TestCase
         [$from, $closesOn] = TeamUsageInvoiceFrequency::weeklyWindow($start, Carbon::parse('2026-10-01 09:00:00'));
         $this->assertSame('2026-09-30', $from->toDateString());
         $this->assertSame('2026-10-07', $closesOn->toDateString());
+    }
+
+    public function test_a_closed_stripe_period_rolls_forward_to_the_open_cycle(): void
+    {
+        [$from, $to] = AssistantSubscriptionService::openMonthlyPeriod(
+            Carbon::parse('2026-06-11 00:00:00'),
+            Carbon::parse('2026-07-11 00:00:00'),
+            Carbon::parse('2026-10-15 08:28:00'),
+        );
+
+        $this->assertSame('2026-10-11', $from->toDateString());
+        $this->assertSame('2026-11-11', $to->toDateString());
     }
 
     public function test_monthly_window_uses_the_change_day_as_anniversary(): void
