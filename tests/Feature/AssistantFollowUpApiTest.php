@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\Contact;
+use App\Models\ContactInteraction;
+use App\Models\ContactSentimentHistory;
 use App\Models\ContactStatus;
 use App\Models\Conversation;
 use App\Models\List60;
 use App\Models\List60Status;
 use App\Models\Module;
 use App\Models\User;
+use Database\Seeders\ContactSentimentSeeder;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
@@ -150,8 +153,10 @@ class AssistantFollowUpApiTest extends TestCase
             'at' => now()->subHour(),
         ]);
 
+        $this->seed(ContactSentimentSeeder::class);
+
         AnonymousAgent::fake([
-            '{"summary":"Pidió precio.\\nPreguntó por usuarios.\\nResponder hoy.","intent_key":"buy"}',
+            '{"summary":"Pidió precio.\\nPreguntó por usuarios.\\nResponder hoy.","intent_key":"buy","channel":"whatsapp","subject":"Precio del plan","reply":"El plan incluye hasta 5 usuarios. Te paso el precio hoy."}',
         ]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
@@ -163,11 +168,26 @@ class AssistantFollowUpApiTest extends TestCase
             ->assertJsonPath('contact_id', $contact->id)
             ->assertJsonPath('summary', "Pidió precio.\nPreguntó por usuarios.\nResponder hoy.")
             ->assertJsonPath('intent.key', 'buy')
-            ->assertJsonPath('intent.name', 'Comprar');
+            ->assertJsonPath('intent.name', 'Comprar')
+            ->assertJsonPath('suggestion.channel', 'whatsapp')
+            ->assertJsonPath('suggestion.subject', 'Precio del plan')
+            ->assertJsonPath('suggestion.body', 'El plan incluye hasta 5 usuarios. Te paso el precio hoy.')
+            ->assertJsonPath('suggestion.clear', true)
+            ->assertJsonPath('interaction.type', 'whatsapp');
+
+        $interaction = ContactInteraction::query()->where('contact_id', $contact->id)->first();
+        $this->assertNotNull($interaction);
+        $this->assertSame('Precio del plan', $interaction->subject);
+        $this->assertSame('follow_up_suggestion', $interaction->metadata['source'] ?? null);
+
+        $history = ContactSentimentHistory::query()->where('contact_id', $contact->id)->first();
+        $this->assertNotNull($history);
+        $this->assertSame('Intención clara: Comprar', $history->notes);
 
         $digest = $contact->fresh()->data->inbox_digest;
         $this->assertSame("Pidió precio.\nPreguntó por usuarios.\nResponder hoy.", $digest->summary);
         $this->assertSame('buy', $digest->intent_key);
+        $this->assertSame('whatsapp', $digest->channel);
         $this->assertSame(now()->toDateString(), $digest->date);
     }
 

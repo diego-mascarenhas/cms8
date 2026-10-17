@@ -360,12 +360,23 @@ class MailerAudienceController extends Controller
         }
 
         $validated = $request->validated();
-        unset($validated['opportunity_id']);
+        $interactionId = $validated['interaction_id'] ?? null;
+        unset($validated['opportunity_id'], $validated['interaction_id']);
 
-        $interaction = new ContactInteraction($validated);
-        $interaction->contact_id = $contact->id;
-        $interaction->user_id = $user->id;
-        $interaction->save();
+        if ($interactionId)
+        {
+            $interaction = ContactInteraction::query()
+                ->where('contact_id', $contact->id)
+                ->findOrFail($interactionId);
+            $interaction->fill($validated);
+            $interaction->save();
+        } else
+        {
+            $interaction = new ContactInteraction($validated);
+            $interaction->contact_id = $contact->id;
+            $interaction->user_id = $user->id;
+            $interaction->save();
+        }
 
         $type = $interaction->type instanceof ContactInteractionType
             ? $interaction->type
@@ -416,7 +427,15 @@ class MailerAudienceController extends Controller
             ->with([
                 'contact' => function ($builder): void
                 {
-                    $builder->withoutGlobalScopes()->with(['status', 'categories', 'user']);
+                    $builder->withoutGlobalScopes()->with([
+                        'status',
+                        'categories',
+                        'user',
+                        'currentEnterprise:id,name',
+                        'enterprises:id,name',
+                        'currentSentiment.sentiment',
+                        'currentSentiment.intent',
+                    ]);
                 },
                 'status:id,name',
                 'responsible:id,name',
@@ -1028,10 +1047,16 @@ class MailerAudienceController extends Controller
 
         return [
             'id' => (int) $entry->id,
-            'contact' => $this->formatContact($entry->contact),
+            'contact' => array_merge($this->formatContact($entry->contact), [
+                'sentiment' => $this->formatContactSentiment($entry->contact),
+                'intent' => $this->formatContactIntent($entry->contact),
+                'digest' => $this->formatInboxDigest($entry->contact),
+                'enterprise' => $this->formatClientEnterprise($entry->contact),
+            ]),
             'status' => $entry->status?->name,
             'date_next' => $entry->date_next?->toDateString(),
             'notes' => $notes !== '' ? $notes : null,
+            'responsible_id' => $entry->responsible_id ? (int) $entry->responsible_id : null,
             'responsible' => $entry->responsible?->name,
         ];
     }
@@ -1093,6 +1118,90 @@ class MailerAudienceController extends Controller
             'email_last_error' => $contact->storedChannelLastError('email'),
             'whatsapp_last_error' => $contact->storedChannelLastError('whatsapp'),
             'last_message' => $contact->lastOutboundMessage(),
+        ];
+    }
+
+    /**
+     * @return array{id: int, name: string, emoji: string}|null
+     */
+    /**
+     * @return array{summary: string, intent_key: string|null, channel: string|null}|null
+     */
+    private function formatInboxDigest(Contact $contact): ?array
+    {
+        $data = $contact->data;
+        $digest = is_object($data) ? ($data->inbox_digest ?? null) : (is_array($data) ? ($data['inbox_digest'] ?? null) : null);
+        if (is_object($digest))
+        {
+            $digest = get_object_vars($digest);
+        }
+        if (! is_array($digest))
+        {
+            return null;
+        }
+
+        $summary = trim((string) ($digest['summary'] ?? ''));
+        if ($summary === '')
+        {
+            return null;
+        }
+
+        $channel = trim((string) ($digest['channel'] ?? ''));
+
+        return [
+            'summary' => $summary,
+            'intent_key' => filled($digest['intent_key'] ?? null) ? (string) $digest['intent_key'] : null,
+            'channel' => $channel !== '' ? $channel : null,
+        ];
+    }
+
+    private function formatClientEnterprise(Contact $contact): ?string
+    {
+        if (strcasecmp(trim((string) ($contact->status?->name ?? '')), 'Cliente') !== 0)
+        {
+            return null;
+        }
+
+        $name = trim((string) ($contact->currentEnterprise?->name ?? ''));
+        if ($name === '')
+        {
+            $name = trim((string) ($contact->enterprises->first()?->name ?? ''));
+        }
+
+        return $name !== '' ? $name : null;
+    }
+
+    private function formatContactSentiment(Contact $contact): ?array
+    {
+        $sentiment = $contact->currentSentiment?->sentiment;
+        if ($sentiment === null)
+        {
+            return null;
+        }
+
+        return [
+            'id' => (int) $sentiment->id,
+            'name' => (string) $sentiment->name,
+            'emoji' => (string) $sentiment->emoji,
+        ];
+    }
+
+    /**
+     * @return array{id: int, key: string, name: string, emoji: string}|null
+     */
+    private function formatContactIntent(Contact $contact): ?array
+    {
+        $intent = $contact->currentSentiment?->intent;
+        if ($intent === null)
+        {
+            return null;
+        }
+
+        return [
+            'id' => (int) $intent->id,
+            'key' => (string) $intent->key,
+            'name' => $intent->displayName(),
+            'emoji' => (string) $intent->emoji,
         ];
     }
 
