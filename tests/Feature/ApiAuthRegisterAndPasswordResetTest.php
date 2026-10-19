@@ -65,6 +65,44 @@ class ApiAuthRegisterAndPasswordResetTest extends TestCase
         $this->assertSame('cus_referrer_inbox', $user->currentTeam?->referred_by);
     }
 
+    public function test_register_rejects_a_generated_name_and_an_invalid_email(): void
+    {
+        $this->postJson('/api/auth/register', [
+            'name' => 'PpkRIqEwHZHKvLfEgMUKzOk',
+            'email' => 'bot@example.com',
+            'password' => 'secret12',
+        ])->assertStatus(400)
+            ->assertJsonFragment(['Escribí un nombre real.']);
+
+        $this->postJson('/api/auth/register', [
+            'name' => 'Ana Pérez',
+            'email' => 'no-es-un-email',
+            'password' => 'secret12',
+        ])->assertStatus(400)
+            ->assertJsonFragment(['El correo electrónico no es válido']);
+
+        $this->assertNull(User::query()->where('email', 'bot@example.com')->first());
+    }
+
+    public function test_purge_command_removes_only_empty_token_accounts(): void
+    {
+        $spam = User::factory()->withPersonalTeam()->create([
+            'name' => 'PpkRIqEwHZHKvLfEgMUKzOk',
+            'email' => 'spam-token@example.com',
+        ]);
+        $real = User::factory()->withPersonalTeam()->create([
+            'name' => 'Ana Pérez',
+            'email' => 'ana.real@example.com',
+        ]);
+
+        $this->artisan('users:purge-spam-registrations', ['--force' => true])
+            ->assertSuccessful();
+
+        $this->assertNull(User::query()->find($spam->id));
+        $this->assertNull(Team::query()->where('user_id', $spam->id)->first());
+        $this->assertNotNull(User::query()->find($real->id));
+    }
+
     public function test_register_rejects_duplicate_email(): void
     {
         User::factory()->create(['email' => 'ana@example.com']);

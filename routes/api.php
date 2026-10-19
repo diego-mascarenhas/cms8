@@ -522,7 +522,7 @@ Route::prefix('client')->group(function ()
 Route::group(['prefix' => 'auth'], function ()
 {
     Route::post('login', [AuthController::class, 'login']);
-    Route::post('register', [AuthController::class, 'register']);
+    Route::post('register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
     Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:6,1');
     Route::post('reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:6,1');
     Route::post('login-token', [AuthController::class, 'loginWithSignedToken'])->middleware('throttle:6,1');

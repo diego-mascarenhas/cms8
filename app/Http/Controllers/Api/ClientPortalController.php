@@ -19,6 +19,7 @@ use App\Services\RevisionAlphaBilling;
 use App\Services\TeamMailerUsageStatsService;
 use App\Services\TeamProspectUsageStatsService;
 use App\Services\TeamWhatsAppUsageStatsService;
+use App\Support\SpamRegistrationName;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -49,7 +50,13 @@ class ClientPortalController extends Controller
     public function register(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail): void
+            {
+                if (is_string($value) && SpamRegistrationName::isRandomToken($value))
+                {
+                    $fail('Escribí un nombre real.');
+                }
+            }],
             'email' => ['required', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'company_name' => ['nullable', 'string', 'max:255'],
