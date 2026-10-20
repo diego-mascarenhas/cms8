@@ -36,6 +36,9 @@ class MailerSendPaceTest extends TestCase
             'services.email.delay.random_seconds' => 0,
             'services.email.delay.base_minutes' => 1,
             'services.email.delay.fast_spacing_seconds' => 0,
+            'services.email.delay.cold_spacing_seconds' => 30,
+            'services.email.delay.opening_spacing_seconds' => 60,
+            'services.email.delay.opening_sends' => 10,
         ]);
     }
 
@@ -60,7 +63,7 @@ class MailerSendPaceTest extends TestCase
         $this->assertSame(2, (int) $foundationTimes[0]->diffInSeconds($foundationTimes[1]));
 
         $this->assertCount(2, $scaleTimes);
-        $this->assertSame(30, (int) $scaleTimes[0]->diffInSeconds($scaleTimes[1]));
+        $this->assertSame(60, (int) $scaleTimes[0]->diffInSeconds($scaleTimes[1]));
 
         $this->assertSame(
             '124 envíos por hora',
@@ -108,7 +111,7 @@ class MailerSendPaceTest extends TestCase
         $this->assertNull($message->fresh()->currentSendPaceText());
     }
 
-    public function test_scale_sends_reached_contacts_immediately_and_paces_the_rest(): void
+    public function test_scale_starts_known_contacts_slowly_and_keeps_the_gap(): void
     {
         $message = $this->messageWithContacts(EmailPlan::SCALE, 'known');
         $contacts = Contact::query()->where('team_id', $message->team_id)->orderBy('id')->get();
@@ -145,12 +148,12 @@ class MailerSendPaceTest extends TestCase
             ->first()
             ->scheduled_for;
 
-        $this->assertSame($message->started_at->format('Y-m-d H:i:s'), $knownTime->format('Y-m-d H:i:s'));
-        $this->assertTrue($coldTime->greaterThan($knownTime));
-        $this->assertSame(30, (int) $knownTime->diffInSeconds($coldTime));
+        $this->assertTrue($knownTime->greaterThan($message->started_at));
+        $this->assertSame(60, (int) $message->started_at->diffInSeconds($knownTime));
+        $this->assertSame(60, (int) $knownTime->diffInSeconds($coldTime));
     }
 
-    public function test_a_whitelisted_team_paces_new_addresses_and_sends_known_ones_immediately(): void
+    public function test_a_whitelisted_team_starts_slowly_for_known_and_new_addresses(): void
     {
         $message = $this->messageWithContacts(EmailPlan::FREE, 'listed');
         config(['humano_pricing.plan_access_team_ids' => [(int) $message->team_id]]);
@@ -177,9 +180,9 @@ class MailerSendPaceTest extends TestCase
         $times = $this->scheduledTimes($message->id);
 
         $this->assertCount(2, $times);
-        $this->assertSame(30, (int) $times[0]->diffInSeconds($times[1]));
+        $this->assertSame(60, (int) $times[0]->diffInSeconds($times[1]));
         $this->assertSame(
-            $message->started_at->format('Y-m-d H:i:s'),
+            $message->started_at->copy()->addSeconds(60)->format('Y-m-d H:i:s'),
             $times[0]->format('Y-m-d H:i:s'),
         );
     }
@@ -208,7 +211,7 @@ class MailerSendPaceTest extends TestCase
         $times = $this->scheduledTimes($message->id);
 
         $this->assertCount(2, $times);
-        $this->assertSame(30, (int) $times[0]->diffInSeconds($times[1]));
+        $this->assertSame(60, (int) $times[0]->diffInSeconds($times[1]));
         $this->assertTrue($times[0]->greaterThan($bunch));
     }
 
@@ -441,6 +444,38 @@ class MailerSendPaceTest extends TestCase
         Artisan::call('campaigns:send-scheduled');
 
         Bus::assertNothingDispatched();
+    }
+
+    public function test_the_send_cron_does_not_dump_a_fast_backlog(): void
+    {
+        Bus::fake();
+        $message = $this->messageWithContacts(EmailPlan::SCALE, 'backlog');
+        $ownerId = (int) Contact::query()->where('team_id', $message->team_id)->value('creator_id');
+
+        foreach ([1, 2, 3] as $index)
+        {
+            Contact::factory()->create([
+                'team_id' => $message->team_id,
+                'creator_id' => $ownerId,
+                'responsible_id' => $ownerId,
+                'email' => 'backlog-'.$index.'@example.test',
+            ]);
+        }
+
+        foreach (Contact::query()->where('team_id', $message->team_id)->get() as $contact)
+        {
+            MessageDelivery::query()->create([
+                'team_id' => $message->team_id,
+                'message_id' => $message->id,
+                'contact_id' => $contact->id,
+                'status_id' => 1,
+                'scheduled_for' => now()->subMinute(),
+            ]);
+        }
+
+        Artisan::call('campaigns:send-scheduled');
+
+        Bus::assertDispatched(SendMessageCampaignJob::class, 2);
     }
 
     /**

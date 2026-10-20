@@ -390,7 +390,7 @@ trait HasEmailLimits
     }
 
     /**
-     * Scale submits the whole campaign at once. Complimentary teams get that pace too.
+     * Scale and complimentary teams use a fast steady pace. Complimentary teams get that pace too.
      */
     public function sendsMailerWithoutSpacing(): bool
     {
@@ -413,7 +413,7 @@ trait HasEmailLimits
     }
 
     /**
-     * Known recipients go out immediately. Addresses with no prior send wait out the cold gap.
+     * Addresses with no prior send wait out the cold gap. The fast plan uses that same gap after the opening.
      */
     public function mailerSpacingSecondsForContact(bool $previouslyReached): float
     {
@@ -423,6 +423,23 @@ trait HasEmailLimits
         }
 
         return $this->mailerSendSpacingSeconds();
+    }
+
+    /**
+     * Gap before the next fast-plan send. The first sends of a start or resume wait longer.
+     */
+    public function mailerFastGapSeconds(int $index): int
+    {
+        $steady = max(1, (int) round($this->mailerSpacingSecondsForContact(false)));
+        $opening = max($steady, (int) config('services.email.delay.opening_spacing_seconds', 60));
+        $openingCount = max(0, (int) config('services.email.delay.opening_sends', 10));
+
+        if ($index < $openingCount)
+        {
+            return $opening;
+        }
+
+        return $steady;
     }
 
     public function mailerPaceTextForSpacing(float $spacingSeconds): string
@@ -516,7 +533,9 @@ trait HasEmailLimits
     {
         if ($this->sendsMailerWithoutSpacing())
         {
-            return (int) config('services.email.processing.fast_deliveries_per_send_run', 1000);
+            $spacing = max(1, (int) round($this->mailerSpacingSecondsForContact(false)));
+
+            return max(1, (int) floor(60 / $spacing));
         }
 
         return $this->getEmailPlan()->sendDispatchBatch();
