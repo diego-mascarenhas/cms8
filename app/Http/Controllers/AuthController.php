@@ -15,6 +15,7 @@ use App\Services\TeamSiteAssistantPromptService;
 use App\Support\AuthIntendedUrlGuard;
 use App\Support\ChatMessageAvatar;
 use App\Support\EnsureRegisteredUserRole;
+use App\Support\SpamRegistrationName;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,8 +37,14 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $rules = [
-            'name' => 'required|string',
-            'email' => 'required|string|unique:users',
+            'name' => ['required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail): void
+            {
+                if (is_string($value) && SpamRegistrationName::isRandomToken($value))
+                {
+                    $fail('Escribí un nombre real.');
+                }
+            }],
+            'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
             'ref' => 'nullable|string|max:64',
         ];

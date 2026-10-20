@@ -29,6 +29,11 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        RateLimiter::for('auth-register', function (Request $request)
+        {
+            return Limit::perMinute(6)->by((string) $request->ip());
+        });
+
         RateLimiter::for('payment-link-checkout', function (Request $request)
         {
             $perMinute = in_array(config('app.env'), ['local', 'testing'], true) ? 500 : 20;

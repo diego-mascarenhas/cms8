@@ -7,6 +7,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use App\Support\PendingTeamInvitation;
+use App\Support\SpamRegistrationName;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -33,7 +34,13 @@ class CreateNewUser implements CreatesNewUsers
         $emailRules = ['required', 'string', 'email', 'max:255', 'unique:users'];
 
         Validator::make($input, [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255', function (string $attribute, mixed $value, \Closure $fail): void
+            {
+                if (is_string($value) && SpamRegistrationName::isRandomToken($value))
+                {
+                    $fail('Escribí un nombre real.');
+                }
+            }],
             'email' => array_merge($emailRules, $pendingInvitation ? [
                 function (string $attribute, mixed $value, \Closure $fail) use ($pendingInvitation): void
                 {

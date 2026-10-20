@@ -7,6 +7,7 @@ use App\Jobs\ValidateAudienceEmailDomainsJob;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactStatus;
+use App\Models\Enterprise;
 use App\Models\List60;
 use App\Models\Message;
 use App\Models\MessageDelivery;
@@ -16,6 +17,7 @@ use App\Models\User;
 use App\Services\Mail\EmailDomainDns;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
+use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
 use Database\Seeders\MessageTypeSeeder;
@@ -679,7 +681,31 @@ class MailerAudienceApiTest extends TestCase
             ->assertJsonPath('data.0.contact.email', 'lucia.garcia@cliente.com')
             ->assertJsonPath('data.0.contact.display_name', 'Lucía García')
             ->assertJsonPath('data.0.notes', 'News «Volvimos». No lo abrió. No hizo clic.')
-            ->assertJsonPath('data.0.responsible', $user->name);
+            ->assertJsonPath('data.0.responsible', $user->name)
+            ->assertJsonPath('data.0.responsible_id', $user->id)
+            ->assertJsonPath('data.0.contact.sentiment', null)
+            ->assertJsonPath('data.0.contact.intent', null)
+            ->assertJsonPath('data.0.contact.digest', null)
+            ->assertJsonPath('data.0.contact.enterprise', null);
+
+        $this->seed(EnterpriseStatusSeeder::class);
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Arte en Vidrio',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+        $contact->enterprises()->attach($enterprise->id);
+        $contact->forceFill([
+            'status_id' => (int) ContactStatus::query()->where('name', 'Cliente')->value('id'),
+            'current_enterprise_id' => $enterprise->id,
+        ])->save();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/list60')
+            ->assertOk()
+            ->assertJsonPath('data.0.contact.status.name', 'Cliente')
+            ->assertJsonPath('data.0.contact.enterprise', 'Arte en Vidrio');
     }
 
     public function test_records_a_contact_interaction_from_the_mailer_list(): void

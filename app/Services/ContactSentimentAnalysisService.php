@@ -189,9 +189,12 @@ PROMPT;
         ]);
     }
 
-    public function storeInboxDigest(Contact $contact, string $summary, ?string $intentKey = null): void
+    /**
+     * @param  array<string, mixed>  $extra
+     */
+    public function storeInboxDigest(Contact $contact, string $summary, ?string $intentKey = null, bool $truncate = true, array $extra = []): void
     {
-        $clean = $this->clampSummary($summary);
+        $clean = $truncate ? $this->clampSummary($summary) : trim($summary);
         if ($clean === '')
         {
             return;
@@ -199,11 +202,11 @@ PROMPT;
 
         $data = $contact->data;
         $payload = is_array($data) ? $data : (is_object($data) ? get_object_vars($data) : []);
-        $payload['inbox_digest'] = [
+        $payload['inbox_digest'] = array_merge([
             'date' => now()->toDateString(),
             'summary' => $clean,
             'intent_key' => $intentKey,
-        ];
+        ], $extra);
         $contact->update(['data' => $payload]);
     }
 

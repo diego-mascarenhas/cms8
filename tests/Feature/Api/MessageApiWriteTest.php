@@ -11,6 +11,7 @@ use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Message;
 use App\Models\MessageDelivery;
+use App\Models\MessageDeliveryStat;
 use App\Models\Module;
 use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
@@ -721,6 +722,51 @@ class MessageApiWriteTest extends TestCase
             ->assertOk()
             ->assertJsonPath('pagination.total', 1)
             ->assertJsonPath('data.0.contact_email', 'roto@example.test');
+    }
+
+    public function test_show_keeps_open_rate_within_the_stats_column_when_opens_exceed_deliveries(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Aperturas sin entrega',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        foreach ([
+            ['delivered' => true, 'opened' => true],
+            ['delivered' => false, 'opened' => true],
+            ['delivered' => false, 'opened' => true],
+            ['delivered' => false, 'opened' => false],
+        ] as $flags)
+        {
+            $contact = Contact::factory()->create([
+                'team_id' => $team->id,
+                'creator_id' => $user->id,
+                'responsible_id' => $user->id,
+            ]);
+
+            MessageDelivery::query()->create([
+                'team_id' => $team->id,
+                'message_id' => $message->id,
+                'contact_id' => $contact->id,
+                'status_id' => 2,
+                'sent_at' => now()->subHour(),
+                'delivered_at' => $flags['delivered'] ? now()->subMinutes(30) : null,
+                'opened_at' => $flags['opened'] ? now()->subMinutes(10) : null,
+            ]);
+        }
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id)
+            ->assertOk()
+            ->assertJsonPath('data.stats.open_rate', 75);
+
+        $this->assertEquals(75, (float) MessageDeliveryStat::query()->where('message_id', $message->id)->value('ratio'));
     }
 
     public function test_unsubscribed_stat_counts_lost_contacts_and_filters_them(): void

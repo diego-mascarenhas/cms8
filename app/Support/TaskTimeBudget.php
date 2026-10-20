@@ -143,7 +143,7 @@ class TaskTimeBudget
      * People who logged time. Anyone with an open timer is listed first.
      *
      * @param  Collection<int, Time>  $times
-     * @return list<array{id: int, name: string, working: bool}>
+     * @return list<array{id: int, name: string, working: bool, profile_photo_url: string|null}>
      */
     public static function workers(Collection $times): array
     {
@@ -168,6 +168,7 @@ class TaskTimeBudget
                 'id' => (int) $user->id,
                 'name' => $name,
                 'working' => $working,
+                'profile_photo_url' => $user->profile_photo_url,
             ];
         }
 

@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\ContactInteractionType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\FinishFollowUpContactRequest;
 use App\Http\Requests\Api\SummarizeFollowUpContactRequest;
 use App\Http\Requests\Api\UpdateList60ResponsibleRequest;
 use App\Models\Contact;
+use App\Models\ContactInteraction;
+use App\Models\ContactSentiment;
+use App\Models\ContactSentimentHistory;
 use App\Models\ContactStatus;
 use App\Models\List60;
 use App\Models\Team;
@@ -133,12 +137,83 @@ class AssistantFollowUpController extends Controller
             ], 422);
         }
 
+        $suggestion = $result['suggestion'];
+        if ($suggestion['clear'])
+        {
+            $this->markClearIntent($contact, $result['intent']);
+        }
+
         return response()->json([
             'success' => true,
             'contact_id' => $contact->id,
             'summary' => $result['summary'],
             'intent' => $result['intent'],
+            'suggestion' => $suggestion,
+            'interaction' => $this->storeSuggestedInteraction($request->user(), $contact, $suggestion),
         ]);
+    }
+
+    /**
+     * @param  array{id: int|null, key: string, name: string, emoji: string}|null  $intent
+     */
+    private function markClearIntent(Contact $contact, ?array $intent): void
+    {
+        if ($intent === null || $intent['id'] === null)
+        {
+            return;
+        }
+
+        $contact->loadMissing('currentSentiment');
+        $sentimentId = $contact->currentSentiment?->sentiment_id
+            ?? ContactSentiment::query()->where('name', 'Neutral')->value('id');
+
+        if ($sentimentId === null)
+        {
+            return;
+        }
+
+        ContactSentimentHistory::query()->create([
+            'contact_id' => $contact->id,
+            'sentiment_id' => $sentimentId,
+            'intent_id' => $intent['id'],
+            'notes' => 'Intención clara: '.$intent['name'],
+        ]);
+    }
+
+    /**
+     * @param  array{channel: string, subject: string, body: string, clear: bool}  $suggestion
+     * @return array{id: int, type: string, type_label: string}|null
+     */
+    private function storeSuggestedInteraction(?User $user, Contact $contact, array $suggestion): ?array
+    {
+        if ($user === null || ! $user->can('logInteraction', $contact))
+        {
+            return null;
+        }
+
+        $subject = trim($suggestion['subject']);
+        $body = trim($suggestion['body']);
+        if ($subject === '' && $body === '')
+        {
+            return null;
+        }
+
+        $type = ContactInteractionType::tryFrom($suggestion['channel']) ?? ContactInteractionType::Note;
+        $interaction = ContactInteraction::query()->create([
+            'contact_id' => $contact->id,
+            'user_id' => $user->id,
+            'type' => $type,
+            'subject' => $subject !== '' ? $subject : null,
+            'body' => $body !== '' ? $body : null,
+            'occurred_at' => now(),
+            'metadata' => ['source' => 'follow_up_suggestion'],
+        ]);
+
+        return [
+            'id' => (int) $interaction->id,
+            'type' => $type->value,
+            'type_label' => $type->label(),
+        ];
     }
 
     private function teamAdvisor(Team $team, int $userId): ?User

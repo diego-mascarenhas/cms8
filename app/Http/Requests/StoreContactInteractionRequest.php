@@ -22,6 +22,7 @@ class StoreContactInteractionRequest extends FormRequest
             'subject' => ['nullable', 'string', 'max:255'],
             'body' => ['nullable', 'string'],
             'occurred_at' => ['required', 'date'],
+            'interaction_id' => ['nullable', 'integer'],
             'opportunity_id' => ['nullable', 'integer', 'exists:opportunities,id'],
         ];
     }
