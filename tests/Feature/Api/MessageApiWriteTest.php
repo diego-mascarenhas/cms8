@@ -937,10 +937,10 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.contact_status.id', $followStatusId)
             ->assertJsonPath('data.contact_categories.0.id', $category->id)
-            ->assertJsonPath('data.mail_html', '<p>Original</p>');
+            ->assertJsonPath('data.mail_html', '<p>Tampered</p>');
 
         $message->refresh();
-        $this->assertSame('<p>Original</p>', $message->mail_html);
+        $this->assertSame('<p>Tampered</p>', $message->mail_html);
         $this->assertSame($followStatusId, (int) $message->contact_status_id);
         $this->assertEquals([$category->id], $message->contactCategories()->pluck('categories.id')->all());
     }
