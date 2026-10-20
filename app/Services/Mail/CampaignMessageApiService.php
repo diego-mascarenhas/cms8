@@ -8,6 +8,7 @@ use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryStat;
 use App\Models\Team;
+use App\Services\MailerCategoryService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -339,6 +340,7 @@ class CampaignMessageApiService
             'contact_status' => $message->contactStatus ? [
                 'id' => $message->contactStatus->id,
                 'name' => $message->contactStatus->name,
+                'label_class' => (string) ($message->contactStatus->label_class ?? ''),
             ] : null,
             'contact_status_label' => $message->contactStatus
                 ? $message->contactStatus->name
@@ -533,7 +535,7 @@ class CampaignMessageApiService
     }
 
     /**
-     * @return list<array{id: int, name: string}>
+     * @return list<array{id: int, name: string, color: string|null}>
      */
     private function formatContactCategories(Message $message): array
     {
@@ -543,6 +545,7 @@ class CampaignMessageApiService
             ->map(fn (Category $category): array => [
                 'id' => $category->id,
                 'name' => $category->name,
+                'color' => MailerCategoryService::normalizeColor($category->color),
             ])
             ->values()
             ->all();
