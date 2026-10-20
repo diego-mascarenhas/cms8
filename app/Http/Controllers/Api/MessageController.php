@@ -792,15 +792,15 @@ class MessageController extends Controller
         }
 
         $mailHtml = null;
-        if ($typeId === 1 && ! $hasDeliveries)
+        if ($typeId === 1)
         {
             if (array_key_exists('mail_html', $validated) && is_string($validated['mail_html']) && trim($validated['mail_html']) !== '')
             {
                 $mailHtml = $validated['mail_html'];
-            } elseif (array_key_exists('template_html', $validated) && is_string($validated['template_html']) && trim($validated['template_html']) !== '')
+            } elseif (! $hasDeliveries && array_key_exists('template_html', $validated) && is_string($validated['template_html']) && trim($validated['template_html']) !== '')
             {
                 $mailHtml = $validated['template_html'];
-            } elseif ($templateId !== null && $templateId > 0)
+            } elseif (! $hasDeliveries && $templateId !== null && $templateId > 0)
             {
                 $template = \App\Models\Template::query()
                     ->where('team_id', $team->id)
