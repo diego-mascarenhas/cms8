@@ -79,6 +79,8 @@ return [
             'random_seconds' => (int) env('EMAIL_DELAY_RANDOM_SECONDS', 60), // Random 0-X seconds added
             'fast_spacing_seconds' => (int) env('EMAIL_FAST_SPACING_SECONDS', 0),
             'cold_spacing_seconds' => (int) env('EMAIL_COLD_SPACING_SECONDS', 30),
+            'opening_spacing_seconds' => (int) env('EMAIL_OPENING_SPACING_SECONDS', 60),
+            'opening_sends' => (int) env('EMAIL_OPENING_SENDS', 10),
         ],
 
         // Campaign processing limits. Basic is 3,000/day, Foundation 20,000 per 12 hours, Scale is a burst.

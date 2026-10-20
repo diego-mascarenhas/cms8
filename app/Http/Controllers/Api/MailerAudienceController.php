@@ -284,16 +284,7 @@ class MailerAudienceController extends Controller
             ], 422);
         }
 
-        $contact->rememberRemovedEmail();
-        $contact->email = null;
-        $contact->save();
-
-        MessageDelivery::query()
-            ->where('team_id', $team->id)
-            ->where('contact_id', $contact->id)
-            ->where('status_id', 1)
-            ->whereNull('sent_at')
-            ->delete();
+        $contact->clearStoredEmail();
 
         $contact->load(['status', 'categories', 'user']);
 

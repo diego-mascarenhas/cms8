@@ -936,17 +936,27 @@ class MessageController extends Controller
             $baseTime = now();
             $message->loadMissing('team');
             $spacingSeconds = $message->team?->mailerSendSpacingSeconds() ?? (86400 / 3000);
+            $fast = (bool) $message->team?->sendsMailerWithoutSpacing();
             $allPending = MessageDelivery::where('message_id', $id)
                 ->where('status_id', 1) // only pending, not failed
                 ->whereNull('delivered_at')
                 ->orderBy('id', 'asc')
                 ->get();
 
+            $cursor = $baseTime->copy();
             foreach ($allPending as $index => $delivery)
             {
-                // Stagger via scheduled_for so SendMessageCampaignJob can release(); do not set sent_at until mail is sent
+                if ($fast)
+                {
+                    $cursor = $cursor->copy()->addSeconds($message->team?->mailerFastGapSeconds($index) ?? 60);
+                    $scheduledFor = $cursor->copy();
+                } else
+                {
+                    $scheduledFor = $baseTime->copy()->addSeconds((int) round($index * $spacingSeconds));
+                }
+
                 $delivery->update([
-                    'scheduled_for' => $baseTime->copy()->addSeconds((int) round($index * $spacingSeconds)),
+                    'scheduled_for' => $scheduledFor,
                     'sent_at' => null,
                 ]);
             }

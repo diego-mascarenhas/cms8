@@ -123,7 +123,6 @@ class ProcessActiveCampaigns extends Command
         $fast = (bool) $team?->sendsMailerWithoutSpacing();
         $spacingSeconds = $team?->mailerSendSpacingSeconds() ?? (86400 / 3000);
         $jitterSeconds = $team?->mailerSendJitterSeconds() ?? 0;
-        $coldSpacing = $team?->mailerSpacingSecondsForContact(false) ?? $spacingSeconds;
         $reached = $fast
             ? $message->previouslyReachedContactIds($validContactIds)
             : [];
@@ -137,13 +136,22 @@ class ProcessActiveCampaigns extends Command
                 ))
                 ->values();
         }
-        $coldIndex = $fast
-            ? MessageDelivery::query()
+        $cursor = $baseTime->copy();
+        if ($fast && $deliveryIndex > 0)
+        {
+            $latestScheduled = MessageDelivery::query()
                 ->where('message_id', $message->id)
                 ->whereNull('campaign_id')
-                ->when($reached !== [], fn ($query) => $query->whereNotIn('contact_id', array_keys($reached)))
-                ->count()
-            : 0;
+                ->max('scheduled_for');
+            if ($latestScheduled)
+            {
+                $cursor = Carbon::parse($latestScheduled);
+                if ($cursor->lt(now()))
+                {
+                    $cursor = now();
+                }
+            }
+        }
 
         foreach ($validContacts as $contact)
         {
@@ -166,25 +174,27 @@ class ProcessActiveCampaigns extends Command
                 }
             } else
             {
-                $previouslyReached = isset($reached[$contact->id]);
-                if ($fast && $previouslyReached)
+                if ($fast)
                 {
-                    $extraSeconds = 0;
-                } elseif ($fast)
-                {
-                    $extraSeconds = (int) round(($coldIndex + 1) * $coldSpacing);
-                    $coldIndex++;
+                    $gap = $team?->mailerFastGapSeconds($deliveryIndex) ?? 60;
+                    $cursor = $cursor->copy()->addSeconds($gap);
+                    $scheduledTime = $cursor->copy();
+                    $extraSeconds = $gap;
                 } else
                 {
                     $extraSeconds = (int) round(($deliveryIndex * $spacingSeconds) + ($jitterSeconds > 0 ? rand(0, $jitterSeconds) : 0));
+                    $scheduledTime = $baseTime->copy()->addSeconds($extraSeconds);
                 }
-                $scheduledTime = $baseTime->copy()->addSeconds($extraSeconds);
 
                 // Ensure scheduled time respects minimum hours between emails
                 $nextAvailableTime = $message->getNextAvailableTimeForContact($contact);
                 if ($scheduledTime->lt($nextAvailableTime))
                 {
-                    $scheduledTime = $nextAvailableTime->copy()->addSeconds($extraSeconds);
+                    $scheduledTime = $nextAvailableTime->copy()->addSeconds($fast ? 0 : $extraSeconds);
+                    if ($fast)
+                    {
+                        $cursor = $scheduledTime->copy();
+                    }
                 }
 
                 $scheduledTime = $message->alignScheduledTimeWithSendingSchedule($scheduledTime);

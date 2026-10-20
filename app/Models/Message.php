@@ -361,7 +361,6 @@ class Message extends Model
         $team = $this->team;
         $fast = (bool) $team?->sendsMailerWithoutSpacing();
         $spacingSeconds = $team?->mailerSendSpacingSeconds() ?? (86400 / 3000);
-        $coldSpacing = $team?->mailerSpacingSecondsForContact(false) ?? $spacingSeconds;
         $reached = $fast
             ? $this->previouslyReachedContactIds($pending->pluck('contact_id')->map(fn ($id): int => (int) $id)->all())
             : [];
@@ -378,31 +377,33 @@ class Message extends Model
         }
 
         $baseTime = now();
+        $cursor = $baseTime->copy();
         $deliveryIndex = 0;
-        $coldIndex = 0;
 
         foreach ($pending as $delivery)
         {
-            $previouslyReached = isset($reached[$delivery->contact_id]);
-            if ($fast && $previouslyReached)
+            if ($fast)
             {
+                $gap = $team?->mailerFastGapSeconds($deliveryIndex) ?? 60;
+                $cursor = $cursor->copy()->addSeconds($gap);
+                $scheduledTime = $cursor->copy();
                 $extraSeconds = 0;
-            } elseif ($fast)
-            {
-                $extraSeconds = (int) round(($coldIndex + 1) * $coldSpacing);
-                $coldIndex++;
             } else
             {
                 $extraSeconds = (int) round($deliveryIndex * $spacingSeconds);
+                $scheduledTime = $baseTime->copy()->addSeconds($extraSeconds);
             }
 
-            $scheduledTime = $baseTime->copy()->addSeconds($extraSeconds);
             if ($delivery->contact)
             {
                 $nextAvailableTime = $this->getNextAvailableTimeForContact($delivery->contact);
                 if ($scheduledTime->lt($nextAvailableTime))
                 {
                     $scheduledTime = $nextAvailableTime->copy()->addSeconds($extraSeconds);
+                    if ($fast)
+                    {
+                        $cursor = $scheduledTime->copy();
+                    }
                 }
             }
 
