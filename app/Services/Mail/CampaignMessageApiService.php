@@ -269,7 +269,7 @@ class CampaignMessageApiService
         $sent = (int) ($message->sent_count ?? 0);
         $delivered = (int) ($message->delivered_count ?? 0);
         $opened = (int) ($message->opened_count ?? 0);
-        $openRate = $delivered > 0 ? round(($opened / $delivered) * 100, 2) : 0.0;
+        $openRate = $this->openRate($opened, $delivered, $sent);
         $team->loadMissing('settings');
 
         return [
@@ -424,7 +424,7 @@ class CampaignMessageApiService
                 ->where('status_id', 4)
                 ->count();
 
-        $openRate = $delivered > 0 ? round(($opened / $delivered) * 100, 2) : 0.0;
+        $openRate = $this->openRate($opened, $delivered, $sent);
 
         MessageDeliveryStat::updateOrCreate(
             ['message_id' => $message->id],
@@ -455,6 +455,34 @@ class CampaignMessageApiService
             'unsubscribed' => $unsubscribed,
             'open_rate' => $openRate,
         ];
+    }
+
+    /**
+     * Opens divided by deliveries. When opens outnumber recorded deliveries, use sends so the rate stays within the stats column.
+     */
+    private function openRate(int $opened, int $delivered, int $sent): float
+    {
+        if ($opened < 1)
+        {
+            return 0.0;
+        }
+
+        if ($delivered > 0)
+        {
+            $rate = round(($opened / $delivered) * 100, 2);
+            if ($rate <= 100)
+            {
+                return $rate;
+            }
+        }
+
+        $base = max($sent, $delivered);
+        if ($base < 1)
+        {
+            return 100.0;
+        }
+
+        return min(100, round(($opened / $base) * 100, 2));
     }
 
     /**
@@ -813,7 +841,7 @@ class CampaignMessageApiService
                     'delivered' => $delivered,
                     'opened' => $opened,
                     'failed' => (int) $message->failed_count,
-                    'open_rate' => $delivered > 0 ? round(($opened / $delivered) * 100, 2) : 0.0,
+                    'open_rate' => $this->openRate($opened, $delivered, (int) $message->sent_count),
                 ];
                 $progress = $this->campaignProgress($stats);
                 if ($progress !== null && $subscribers > 0)
