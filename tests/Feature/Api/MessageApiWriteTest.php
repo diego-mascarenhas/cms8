@@ -721,7 +721,7 @@ class MessageApiWriteTest extends TestCase
             ->getJson('/api/message/'.$message->id.'/deliveries?status=failed')
             ->assertOk()
             ->assertJsonPath('pagination.total', 1)
-            ->assertJsonPath('data.0.contact_email', 'roto@example.test');
+            ->assertJsonPath('data.0.contact_email', '—');
     }
 
     public function test_show_keeps_open_rate_within_the_stats_column_when_opens_exceed_deliveries(): void
@@ -1092,15 +1092,15 @@ class MessageApiWriteTest extends TestCase
 
         $delivery->markAsError('Invalid email address');
         $contact->refresh();
-        $this->assertFalse($contact->storedChannelValid('email'));
-        $this->assertSame('Invalid email address', $contact->storedChannelLastError('email'));
+        $this->assertNull($contact->email);
+        $this->assertSame('roto@example.test', data_get($contact->data, 'removed_email'));
         $this->assertSame('failed', $contact->lastOutboundMessage()['status'] ?? null);
         $this->assertSame('Invalid email address', $contact->lastOutboundMessage()['summary'] ?? null);
 
         $contact->recordOutboundChannel('email', 'roto@example.test', null, 'sent', 'Aviso');
         $contact->refresh();
-        $this->assertFalse($contact->storedChannelValid('email'));
-        $this->assertSame('Invalid email address', $contact->storedChannelLastError('email'));
+        $this->assertNull($contact->email);
+        $this->assertSame('roto@example.test', data_get($contact->data, 'removed_email'));
 
         $spam = Contact::factory()->create([
             'team_id' => $team->id,
@@ -1116,6 +1116,7 @@ class MessageApiWriteTest extends TestCase
             '550 This message was classified as rSPAM and may not be delivered',
         );
         $this->assertNotNull($spam->fresh()->storedChannelLastError('email'));
+        $this->assertSame('spam-retry@example.test', $spam->fresh()->email);
         $spam->recordOutboundChannel('email', 'spam-retry@example.test', null, 'sent', 'Aviso');
         $this->assertNull($spam->fresh()->storedChannelLastError('email'));
 
@@ -1156,6 +1157,77 @@ class MessageApiWriteTest extends TestCase
         $this->assertFalse($contact->storedChannelValid('whatsapp'));
         $this->assertSame('whatsapp', $contact->lastOutboundMessage()['channel'] ?? null);
         $this->assertSame('Nota previa', data_get($contact->data, 'notes'));
+    }
+
+    public function test_a_missing_mailbox_bounce_clears_the_email_and_keeps_the_old_address(): void
+    {
+        [$user, $team] = $this->adminWithToken();
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'gone@example.test',
+        ]);
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Rebote',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        $bounced = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 2,
+            'email_provider' => 'mailbaby',
+            'provider_message_id' => 'mb-missing-user',
+            'sent_at' => now(),
+        ]);
+        $pending = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->addHour(),
+        ]);
+
+        $this->postJson('/webhooks/mailbaby', [
+            'event' => 'bounced',
+            'id' => 'mb-missing-user',
+            'reason' => '550 No Such User Here',
+        ])->assertOk();
+
+        $contact->refresh();
+        $this->assertNull($contact->email);
+        $this->assertSame('gone@example.test', data_get($contact->data, 'removed_email'));
+        $this->assertNull(MessageDelivery::query()->find($pending->id));
+        $this->assertNotNull(MessageDelivery::query()->find($bounced->id));
+
+        $kept = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'full@example.test',
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $kept->id,
+            'status_id' => 2,
+            'email_provider' => 'mailbaby',
+            'provider_message_id' => 'mb-full',
+            'sent_at' => now(),
+        ]);
+
+        $this->postJson('/webhooks/mailbaby', [
+            'event' => 'bounced',
+            'id' => 'mb-full',
+            'reason' => '452 4.2.2 Mailbox full',
+        ])->assertOk();
+
+        $this->assertSame('full@example.test', $kept->fresh()->email);
     }
 
     public function test_resend_clears_the_failure_and_queues_a_manual_send(): void

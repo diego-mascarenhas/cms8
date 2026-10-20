@@ -224,6 +224,7 @@ class MessageDelivery extends Model
                 is_string($errorMessage) && $errorMessage !== '' ? $errorMessage : (string) ($this->message?->name ?? ''),
                 $permanent ? $errorMessage : null,
             );
+            $contact->dropPermanentlyRejectedEmail($errorMessage);
         }
 
         // Check if this is a critical error and handle campaign pausing

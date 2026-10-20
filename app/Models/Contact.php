@@ -406,13 +406,23 @@ class Contact extends Model implements HasMedia
 
         foreach ([
             'invalid email',
+            'invalid recipient',
             'user unknown',
             'unknown user',
+            'unknown recipient',
+            'user not found',
+            'recipient not found',
+            'no such user',
+            'no such recipient',
+            'no mailbox',
             'mailbox not found',
             'does not exist',
-            'no such user',
+            'account disabled',
+            'account has been disabled',
             'recipient address rejected',
             '5.1.1',
+            '5.1.6',
+            '5.1.10',
             'not exist',
         ] as $needle)
         {
@@ -622,6 +632,38 @@ class Contact extends Model implements HasMedia
         $data = $this->dataArray();
         $data['removed_email'] = $email;
         $this->data = $data;
+    }
+
+    /**
+     * Drop a dead address the same way as the manual clear: keep it in JSON and cancel pending sends.
+     */
+    public function clearStoredEmail(): void
+    {
+        $this->rememberRemovedEmail();
+        $this->email = null;
+        $this->save();
+
+        MessageDelivery::query()
+            ->where('team_id', $this->team_id)
+            ->where('contact_id', $this->id)
+            ->where('status_id', 1)
+            ->whereNull('sent_at')
+            ->delete();
+    }
+
+    public function dropPermanentlyRejectedEmail(?string $reason): void
+    {
+        if (! is_string($reason) || $reason === '' || ! self::emailFailureIsPermanent($reason))
+        {
+            return;
+        }
+
+        if (trim((string) $this->email) === '')
+        {
+            return;
+        }
+
+        $this->clearStoredEmail();
     }
 
     public function applyEmailDomainCheck(?bool $domainExists): void

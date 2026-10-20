@@ -229,6 +229,7 @@ class MailBabyWebhookController extends Controller
                 $bounceReason,
                 $bounceType === 'hard' ? $bounceReason : null,
             );
+            $delivery->contact->dropPermanentlyRejectedEmail(is_string($bounceReason) ? $bounceReason : null);
         }
 
         Log::warning('MailBaby webhook: Email bounced', [
@@ -246,6 +247,12 @@ class MailBabyWebhookController extends Controller
     private function determineBounceType(array $data): string
     {
         $reason = strtolower($data['reason'] ?? $data['message'] ?? $data['type'] ?? '');
+        $rawReason = (string) ($data['reason'] ?? $data['message'] ?? $data['error'] ?? $data['type'] ?? '');
+
+        if (Contact::emailFailureIsPermanent($rawReason))
+        {
+            return 'hard';
+        }
 
         // Hard bounces (permanent failures)
         if (str_contains($reason, 'permanent') ||
@@ -353,6 +360,7 @@ class MailBabyWebhookController extends Controller
                 $reason,
                 $permanent ? $reason : null,
             );
+            $delivery->contact->dropPermanentlyRejectedEmail($reason);
         }
 
         Log::error('MailBaby webhook: Email failed', [
