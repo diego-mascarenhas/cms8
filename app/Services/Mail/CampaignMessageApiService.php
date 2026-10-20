@@ -8,10 +8,10 @@ use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryStat;
 use App\Models\Team;
+use App\Services\MailerCategoryService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 
 class CampaignMessageApiService
 {
@@ -339,6 +339,7 @@ class CampaignMessageApiService
             'contact_status' => $message->contactStatus ? [
                 'id' => $message->contactStatus->id,
                 'name' => $message->contactStatus->name,
+                'label_class' => (string) ($message->contactStatus->label_class ?? ''),
             ] : null,
             'contact_status_label' => $message->contactStatus
                 ? $message->contactStatus->name
@@ -533,7 +534,7 @@ class CampaignMessageApiService
     }
 
     /**
-     * @return list<array{id: int, name: string}>
+     * @return list<array{id: int, name: string, color: string|null}>
      */
     private function formatContactCategories(Message $message): array
     {
@@ -543,6 +544,7 @@ class CampaignMessageApiService
             ->map(fn (Category $category): array => [
                 'id' => $category->id,
                 'name' => $category->name,
+                'color' => MailerCategoryService::normalizeColor($category->color),
             ])
             ->values()
             ->all();
@@ -779,11 +781,12 @@ class CampaignMessageApiService
      */
     private function countsByDay(int $teamId, string $column, Carbon $since, Carbon $until): array
     {
-        $expression = $this->sqlDay($column);
-        $rows = MessageDelivery::query()
+        $query = MessageDelivery::query()
             ->where('team_id', $teamId)
             ->whereNotNull($column)
-            ->whereBetween($column, [$since, $until])
+            ->whereBetween($column, [$since, $until]);
+        $expression = $this->sqlDay($column, $query);
+        $rows = $query
             ->selectRaw($expression.' as day, COUNT(*) as total')
             ->groupByRaw($expression)
             ->get();
@@ -797,14 +800,14 @@ class CampaignMessageApiService
         return $counts;
     }
 
-    private function sqlDay(string $column): string
+    private function sqlDay(string $column, Builder $query): string
     {
         if (! in_array($column, ['sent_at', 'opened_at', 'clicked_at'], true))
         {
             throw new \InvalidArgumentException('Unsupported day column.');
         }
 
-        if (DB::connection()->getDriverName() === 'pgsql')
+        if ($query->getConnection()->getDriverName() === 'pgsql')
         {
             return "to_char({$column}, 'YYYY-MM-DD')";
         }
