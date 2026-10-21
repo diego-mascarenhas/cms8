@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -751,6 +752,25 @@ class Contact extends Model implements HasMedia
 
         unset($data['channels'][$channel]);
         $this->data = $data;
+    }
+
+    public static function emailTakenOnTeam(int $teamId, string $email, ?int $ignoreId = null): bool
+    {
+        $normalized = Str::lower(trim($email));
+        if ($teamId < 1 || $normalized === '')
+        {
+            return false;
+        }
+
+        return static::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereNull('deleted_at')
+            ->whereRaw('lower(email) = ?', [$normalized])
+            ->when($ignoreId !== null && $ignoreId > 0, function (Builder $query) use ($ignoreId): void
+            {
+                $query->where('id', '!=', $ignoreId);
+            })
+            ->exists();
     }
 
     /**

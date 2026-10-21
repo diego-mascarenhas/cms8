@@ -5,7 +5,6 @@ namespace App\Http\Requests\Api;
 use App\Models\Contact;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class UpdateMailerAudienceContactRequest extends FormRequest
 {
@@ -37,9 +36,18 @@ class UpdateMailerAudienceContactRequest extends FormRequest
         $emailRules = ['nullable', 'email:rfc', 'max:255'];
         if ($email !== '' && ! $this->emailUnchangedForContact($contactId, $teamId, $email))
         {
-            $emailRules[] = Rule::unique('contacts', 'email')
-                ->where(fn ($query) => $query->where('team_id', $teamId))
-                ->ignore($contactId);
+            $emailRules[] = function (string $attribute, mixed $value, \Closure $fail) use ($teamId, $contactId): void
+            {
+                if (! is_string($value))
+                {
+                    return;
+                }
+
+                if (Contact::emailTakenOnTeam($teamId, $value, $contactId))
+                {
+                    $fail(__('Ese email ya está en la audiencia.'));
+                }
+            };
         }
 
         return [
