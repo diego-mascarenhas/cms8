@@ -1074,6 +1074,17 @@ class ProjectApiTest extends TestCase
         $this->assertArrayNotHasKey('responsible', $suggested);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/tasks/'.$suggest->id.'/client-feedback', [
+                'action' => 'suggest',
+                'message' => 'Y el título también.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.status.name', 'TO_DO')
+            ->assertJsonPath('message', 'Sugerencia enviada.');
+
+        $this->assertSame(2, TaskCommunication::query()->where('task_id', $suggest->id)->count());
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/tasks/'.$complete->id.'/client-feedback', [
                 'action' => 'complete',
             ])
