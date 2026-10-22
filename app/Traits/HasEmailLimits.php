@@ -436,10 +436,43 @@ trait HasEmailLimits
 
         if ($index < $openingCount)
         {
-            return $opening;
+            return $this->mailerNextGapSeconds($opening);
         }
 
-        return $steady;
+        return $this->mailerNextGapSeconds($steady);
+    }
+
+    /**
+     * Slowest average gap between two sends of the same news. Longer plans are pulled up to this.
+     */
+    public function mailerMaxAverageSpacingSeconds(): int
+    {
+        return max(60, (int) config('services.email.delay.max_average_spacing_seconds', 300));
+    }
+
+    /**
+     * Keep a gap that is already faster than the cap. A slower gap becomes a random draw around the cap.
+     */
+    public function mailerNextGapSeconds(int $spacingSeconds): int
+    {
+        $spacing = max(0, $spacingSeconds);
+        $cap = $this->mailerMaxAverageSpacingSeconds();
+        if ($spacing < $cap)
+        {
+            return $spacing;
+        }
+
+        $ratio = (float) config('services.email.delay.spacing_jitter_ratio', 0.4);
+        if ($ratio <= 0)
+        {
+            return $cap;
+        }
+
+        $ratio = min(0.9, $ratio);
+        $low = max(1, (int) round($cap * (1 - $ratio)));
+        $high = max($low, (int) round($cap * (1 + $ratio)));
+
+        return random_int($low, $high);
     }
 
     public function mailerPaceTextForSpacing(float $spacingSeconds): string

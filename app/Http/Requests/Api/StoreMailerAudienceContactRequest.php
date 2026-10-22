@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Models\Contact;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 
 class StoreMailerAudienceContactRequest extends FormRequest
 {
@@ -38,7 +38,18 @@ class StoreMailerAudienceContactRequest extends FormRequest
                 'required',
                 'email:rfc',
                 'max:255',
-                Rule::unique('contacts', 'email')->where(fn ($query) => $query->where('team_id', $teamId)),
+                function (string $attribute, mixed $value, \Closure $fail) use ($teamId): void
+                {
+                    if (! is_string($value))
+                    {
+                        return;
+                    }
+
+                    if (Contact::emailTakenOnTeam($teamId, $value))
+                    {
+                        $fail(__('Ese email ya está en la audiencia.'));
+                    }
+                },
             ],
             'status_id' => ['nullable', 'integer', 'exists:contact_statuses,id'],
             'category_ids' => ['nullable', 'array'],

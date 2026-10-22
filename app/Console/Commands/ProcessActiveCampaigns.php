@@ -123,6 +123,11 @@ class ProcessActiveCampaigns extends Command
         $fast = (bool) $team?->sendsMailerWithoutSpacing();
         $spacingSeconds = $team?->mailerSendSpacingSeconds() ?? (86400 / 3000);
         $jitterSeconds = $team?->mailerSendJitterSeconds() ?? 0;
+        $rawSpacing = max(1, (int) round($spacingSeconds));
+        $spacingCap = $team?->mailerMaxAverageSpacingSeconds() ?? 300;
+        $slowSteps = ! $fast && $rawSpacing >= $spacingCap;
+        $slowCursor = $baseTime->copy()->addSeconds($slowSteps ? $deliveryIndex * $spacingCap : 0);
+        $slowPlaced = 0;
         $reached = $fast
             ? $message->previouslyReachedContactIds($validContactIds)
             : [];
@@ -182,8 +187,20 @@ class ProcessActiveCampaigns extends Command
                     $extraSeconds = $gap;
                 } else
                 {
-                    $extraSeconds = (int) round(($deliveryIndex * $spacingSeconds) + ($jitterSeconds > 0 ? rand(0, $jitterSeconds) : 0));
-                    $scheduledTime = $baseTime->copy()->addSeconds($extraSeconds);
+                    if ($slowSteps)
+                    {
+                        if ($slowPlaced > 0)
+                        {
+                            $slowCursor = $slowCursor->copy()->addSeconds($team?->mailerNextGapSeconds($rawSpacing) ?? $spacingCap);
+                        }
+                        $extraSeconds = 0;
+                        $scheduledTime = $slowCursor->copy();
+                        $slowPlaced++;
+                    } else
+                    {
+                        $extraSeconds = (int) round(($deliveryIndex * $spacingSeconds) + ($jitterSeconds > 0 ? rand(0, $jitterSeconds) : 0));
+                        $scheduledTime = $baseTime->copy()->addSeconds($extraSeconds);
+                    }
                 }
 
                 // Ensure scheduled time respects minimum hours between emails

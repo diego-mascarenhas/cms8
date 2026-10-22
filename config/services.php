@@ -81,6 +81,8 @@ return [
             'cold_spacing_seconds' => (int) env('EMAIL_COLD_SPACING_SECONDS', 30),
             'opening_spacing_seconds' => (int) env('EMAIL_OPENING_SPACING_SECONDS', 60),
             'opening_sends' => (int) env('EMAIL_OPENING_SENDS', 10),
+            'max_average_spacing_seconds' => (int) env('EMAIL_MAX_AVERAGE_SPACING_SECONDS', 300),
+            'spacing_jitter_ratio' => (float) env('EMAIL_SPACING_JITTER_RATIO', 0.4),
         ],
 
         // Campaign processing limits. Basic is 3,000/day, Foundation 20,000 per 12 hours, Scale is a burst.

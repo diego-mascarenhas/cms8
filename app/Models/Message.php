@@ -24,7 +24,7 @@ class Message extends Model
 
     public const PAUSE_REASON_MANUAL = 'La pausaste manualmente.';
 
-    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'contact_country_id', 'template_id', 'text', 'from_name', 'from_address', 'mail_html', 'status_id', 'pause_reason', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at', 'scheduled_send_at'];
+    protected $fillable = ['name', 'type_id', 'category_id', 'contact_status_id', 'contact_country_id', 'template_id', 'text', 'from_name', 'from_address', 'mail_html', 'status_id', 'pause_reason', 'show_unsubscribe', 'enable_open_tracking', 'enable_click_tracking', 'min_hours_between_emails', 'urgent', 'send_allowed_weekdays', 'send_window_start', 'send_window_end', 'team_id', 'started_at', 'scheduled_send_at'];
 
     protected $casts = [
         'status_id' => 'boolean',
@@ -32,6 +32,7 @@ class Message extends Model
         'enable_open_tracking' => 'boolean',
         'enable_click_tracking' => 'boolean',
         'min_hours_between_emails' => 'integer',
+        'urgent' => 'boolean',
         'send_allowed_weekdays' => 'array',
         'started_at' => 'datetime',
         'scheduled_send_at' => 'datetime',
@@ -361,6 +362,9 @@ class Message extends Model
         $team = $this->team;
         $fast = (bool) $team?->sendsMailerWithoutSpacing();
         $spacingSeconds = $team?->mailerSendSpacingSeconds() ?? (86400 / 3000);
+        $rawSpacing = max(1, (int) round($spacingSeconds));
+        $spacingCap = $team?->mailerMaxAverageSpacingSeconds() ?? 300;
+        $slowSteps = ! $fast && $rawSpacing >= $spacingCap;
         $reached = $fast
             ? $this->previouslyReachedContactIds($pending->pluck('contact_id')->map(fn ($id): int => (int) $id)->all())
             : [];
@@ -378,6 +382,7 @@ class Message extends Model
 
         $baseTime = now();
         $cursor = $baseTime->copy();
+        $slowCursor = $baseTime->copy();
         $deliveryIndex = 0;
 
         foreach ($pending as $delivery)
@@ -390,8 +395,19 @@ class Message extends Model
                 $extraSeconds = 0;
             } else
             {
-                $extraSeconds = (int) round($deliveryIndex * $spacingSeconds);
-                $scheduledTime = $baseTime->copy()->addSeconds($extraSeconds);
+                if ($slowSteps)
+                {
+                    if ($deliveryIndex > 0)
+                    {
+                        $slowCursor = $slowCursor->copy()->addSeconds($team?->mailerNextGapSeconds($rawSpacing) ?? $spacingCap);
+                    }
+                    $extraSeconds = 0;
+                    $scheduledTime = $slowCursor->copy();
+                } else
+                {
+                    $extraSeconds = (int) round($deliveryIndex * $spacingSeconds);
+                    $scheduledTime = $baseTime->copy()->addSeconds($extraSeconds);
+                }
             }
 
             if ($delivery->contact)
@@ -458,6 +474,11 @@ class Message extends Model
      */
     public function gapHours(): int
     {
+        if ($this->urgent)
+        {
+            return 0;
+        }
+
         $override = $this->team?->mailerMinHoursOverride();
         if ($override !== null)
         {

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Task;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Spatie\MediaLibrary\Support\PathGenerator\PathGenerator;
 
@@ -42,16 +43,10 @@ class TaskMediaPathGenerator implements PathGenerator
      */
     public function getPath(Media $media): string
     {
-        if (! $media->model)
-        {
-            throw new \Exception('Media model is null - cannot generate path');
-        }
+        $task = $this->taskFor($media);
 
-        $teamId = $media->model->team_id ?? 1;
-        $taskId = $media->model->id;
-
-        $teamHash = $this->getTeamHash($teamId);
-        $taskHash = $this->getTaskHash($taskId);
+        $teamHash = $this->getTeamHash($task->team_id ?? 1);
+        $taskHash = $this->getTaskHash($task->id);
 
         return "tasks/{$teamHash}/{$taskHash}/";
     }
@@ -61,16 +56,10 @@ class TaskMediaPathGenerator implements PathGenerator
      */
     public function getPathForConversions(Media $media): string
     {
-        if (! $media->model)
-        {
-            throw new \Exception('Media model is null - cannot generate path');
-        }
+        $task = $this->taskFor($media);
 
-        $teamId = $media->model->team_id ?? 1;
-        $taskId = $media->model->id;
-
-        $teamHash = $this->getTeamHash($teamId);
-        $taskHash = $this->getTaskHash($taskId);
+        $teamHash = $this->getTeamHash($task->team_id ?? 1);
+        $taskHash = $this->getTaskHash($task->id);
 
         return "tasks/{$teamHash}/{$taskHash}/conversions/";
     }
@@ -80,17 +69,36 @@ class TaskMediaPathGenerator implements PathGenerator
      */
     public function getPathForResponsiveImages(Media $media): string
     {
-        if (! $media->model)
+        $task = $this->taskFor($media);
+
+        $teamHash = $this->getTeamHash($task->team_id ?? 1);
+        $taskHash = $this->getTaskHash($task->id);
+
+        return "tasks/{$teamHash}/{$taskHash}/responsive/";
+    }
+
+    /**
+     * The team scope hides a task from a client whose current team is not the project's.
+     * Media still belongs to that task, so the path can be built from the unscoped record.
+     */
+    private function taskFor(Media $media): Task
+    {
+        $model = $media->model;
+
+        if (! $model instanceof Task)
+        {
+            $model = Task::withoutGlobalScopes()->find($media->model_id);
+            if ($model)
+            {
+                $media->setRelation('model', $model);
+            }
+        }
+
+        if (! $model instanceof Task)
         {
             throw new \Exception('Media model is null - cannot generate path');
         }
 
-        $teamId = $media->model->team_id ?? 1;
-        $taskId = $media->model->id;
-
-        $teamHash = $this->getTeamHash($teamId);
-        $taskHash = $this->getTaskHash($taskId);
-
-        return "tasks/{$teamHash}/{$taskHash}/responsive/";
+        return $model;
     }
 }

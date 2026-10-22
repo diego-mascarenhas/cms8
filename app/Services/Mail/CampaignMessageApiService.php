@@ -329,6 +329,7 @@ class CampaignMessageApiService
             'enable_click_tracking' => (bool) $message->enable_click_tracking,
             'list60_enabled' => $team->hasModule('list60'),
             'min_hours_between_emails' => (int) ($message->min_hours_between_emails ?? 0),
+            'urgent' => (bool) $message->urgent,
             'send_allowed_weekdays' => $message->send_allowed_weekdays,
             'send_window_start' => $message->send_window_start,
             'send_window_end' => $message->send_window_end,

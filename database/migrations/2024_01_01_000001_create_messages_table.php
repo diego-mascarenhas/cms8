@@ -27,6 +27,7 @@ return new class extends Migration
             $table->boolean('enable_open_tracking')->default(1);
             $table->boolean('enable_click_tracking')->default(1);
             $table->integer('min_hours_between_emails')->default(48);
+            $table->boolean('urgent')->default(false);
             $table->unsignedBigInteger('team_id');
             $table->timestamp('started_at')->nullable();
             $table->timestamp('scheduled_send_at')->nullable();

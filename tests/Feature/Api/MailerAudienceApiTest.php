@@ -241,6 +241,24 @@ class MailerAudienceApiTest extends TestCase
         ]);
     }
 
+    public function test_duplicate_email_is_rejected_even_when_only_the_case_differs(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/mailer/audience', [
+                'name' => 'Otra',
+                'email' => 'Lucia.Garcia@cliente.com',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.email.0', 'Ese email ya está en la audiencia.');
+
+        $this->assertSame(
+            1,
+            Contact::withoutGlobalScopes()->where('team_id', $team->id)->whereRaw('lower(email) = ?', ['lucia.garcia@cliente.com'])->count(),
+        );
+    }
+
     public function test_updates_audience_contact_and_categories(): void
     {
         [$user, $team, $token, $category] = $this->adminWithToken();

@@ -644,6 +644,7 @@ class TaskController extends Controller
             'estimated_hours' => 'nullable|numeric|min:0',
             'start_date' => 'nullable|date',
             'due_date' => 'nullable|date|after_or_equal:start_date',
+            'attachment' => 'nullable|file|image|max:10240',
         ]);
 
         $user = $request->user();
@@ -652,7 +653,10 @@ class TaskController extends Controller
         $boardId = $validated['board_id'] ?? null;
         if (! empty($validated['project_id']))
         {
-            $project = Project::find($validated['project_id']);
+            $project = Project::query()
+                ->withoutGlobalScope('team')
+                ->withoutGlobalScope('ownership')
+                ->find($validated['project_id']);
             if ($project && $user->can('view', $project) && ! $boardId)
             {
                 $boardId = $project->board_id;
@@ -660,6 +664,15 @@ class TaskController extends Controller
         } elseif ($boardId)
         {
             $project = Project::where('board_id', $boardId)->first();
+        }
+
+        $creatingAsClient = $project && $project->viewedAsClient($user);
+        if (! $creatingAsClient && $user->hasRole('client') && ! $user->hasAnyRole(['admin', 'root', 'collaborator', 'developer', 'editor', 'technical']))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No puedes crear tareas en este proyecto.'),
+            ], 403);
         }
 
         $dueDate = $validated['due_date'] ?? now()->addDays(7)->toDateString();
@@ -678,8 +691,10 @@ class TaskController extends Controller
         }
 
         // Obtener el estado inicial (TO_DO por defecto, o IN_PROGRESS si se inicia el timer)
-        $defaultStatus = TaskStatus::where('name', $validated['start_timer'] ?? false ? 'IN_PROGRESS' : 'TO_DO')->first();
-        $statusId = $validated['status_id'] ?? ($defaultStatus?->id ?? 1);
+        $defaultStatus = TaskStatus::where('name', ($validated['start_timer'] ?? false) && ! $creatingAsClient ? 'IN_PROGRESS' : 'TO_DO')->first();
+        $statusId = $creatingAsClient
+            ? ($defaultStatus?->id ?? 1)
+            : ($validated['status_id'] ?? ($defaultStatus?->id ?? 1));
 
         $nextOrder = $boardId
             ? ((int) Task::where('board_id', $boardId)->max('order') + 1)
@@ -687,21 +702,28 @@ class TaskController extends Controller
 
         // Crear la tarea
         $task = Task::create([
-            'team_id' => $user->currentTeam->id,
             'board_id' => $boardId,
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
-            'responsible_id' => $validated['responsible_id'] ?? $user->id,
+            'responsible_id' => $creatingAsClient
+                ? ($project->responsible_id ?: $user->id)
+                : ($validated['responsible_id'] ?? $user->id),
             'status_id' => $statusId,
-            'estimated_hours' => $validated['estimated_hours'] ?? 1,
+            'estimated_hours' => $creatingAsClient ? null : ($validated['estimated_hours'] ?? 1),
             'order' => $nextOrder,
             'start_date' => $validated['start_date'] ?? now()->toDateString(),
             'due_date' => $dueDate,
+            'team_id' => $creatingAsClient ? $project->team_id : $user->currentTeam->id,
         ]);
+
+        if ($request->hasFile('attachment'))
+        {
+            $task->addMediaFromRequest('attachment')->toMediaCollection('attachments');
+        }
 
         // Si se solicita, iniciar el timer automáticamente
         $timeId = null;
-        if ($validated['start_timer'] ?? false)
+        if (($validated['start_timer'] ?? false) && ! $creatingAsClient)
         {
             // Stop any other running timer and persist duration
             Time::where('user_id', $user->id)
@@ -1217,6 +1239,104 @@ class TaskController extends Controller
     }
 
     /**
+     * Client reply on a task that is in review: suggest changes (back to to-do) or mark it done.
+     *
+     * @param  int  $id
+     */
+    public function clientFeedback(Request $request, $id): JsonResponse
+    {
+        $task = Task::withoutGlobalScope('team')->find($id);
+
+        if (! $task)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No se encontró la tarea.'),
+            ], 404);
+        }
+
+        $project = $this->projectForClientTask($request->user(), $task);
+
+        if ($project instanceof JsonResponse)
+        {
+            return $project;
+        }
+
+        $request->validate([
+            'action' => 'required|in:suggest,complete',
+            'message' => 'nullable|string|max:5000',
+            'attachment' => 'nullable|file|image|max:10240',
+        ]);
+
+        $task->load('status');
+        if ($task->status?->name !== 'REVIEW')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Solo puedes responder tareas que están en revisión.'),
+            ], 422);
+        }
+
+        $action = (string) $request->input('action');
+        $message = trim((string) $request->input('message', ''));
+
+        if ($action === 'suggest' && $message === '')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Cuéntanos qué habría que cambiar.'),
+            ], 422);
+        }
+
+        if ($request->hasFile('attachment'))
+        {
+            $task->clearMediaCollection('attachments');
+            $task->addMediaFromRequest('attachment')->toMediaCollection('attachments');
+        }
+
+        if ($action === 'suggest')
+        {
+            $note = 'Sugerencia del cliente ('.now()->format('d/m/Y')."):\n".$message;
+            $task->description = trim(($task->description ? $task->description."\n\n" : '').$note);
+
+            TaskCommunication::create([
+                'task_id' => $task->id,
+                'user_id' => $request->user()->id,
+                'recipients' => ['responsible'],
+                'method' => 'internal',
+                'subject' => 'Sugerencia de cambios',
+                'message' => $message,
+                'sent_at' => now(),
+            ]);
+
+            $nextStatus = TaskStatus::where('name', 'TO_DO')->firstOrFail();
+        } else
+        {
+            $nextStatus = TaskStatus::where('name', 'DONE')->firstOrFail();
+        }
+
+        $task->status_id = $nextStatus->id;
+        $task->save();
+        $task->load('status');
+
+        return response()->json([
+            'success' => true,
+            'message' => $action === 'suggest'
+                ? __('Sugerencia enviada. La tarea volvió a por hacer.')
+                : __('Tarea marcada como completada.'),
+            'data' => [
+                'id' => $task->id,
+                'attachment' => $task->attachmentUrl(),
+                'status' => [
+                    'id' => $task->status?->id,
+                    'name' => $task->status?->name,
+                    'translated_name' => $task->status?->translated_name,
+                ],
+            ],
+        ]);
+    }
+
+    /**
      * Replace the task image. Same rules as the kanban: one image, 10 MB max.
      *
      * @param  int  $id
@@ -1224,11 +1344,10 @@ class TaskController extends Controller
      */
     public function storeAttachment(Request $request, $id)
     {
-        $task = Task::findOrFail($id);
-        $denied = $this->denyUnlessCanManageTask($request, $task);
-        if ($denied)
+        $task = $this->taskForAttachment($request, $id);
+        if ($task instanceof JsonResponse)
         {
-            return $denied;
+            return $task;
         }
 
         $request->validate([
@@ -1257,11 +1376,10 @@ class TaskController extends Controller
      */
     public function destroyAttachment(Request $request, $id)
     {
-        $task = Task::findOrFail($id);
-        $denied = $this->denyUnlessCanManageTask($request, $task);
-        if ($denied)
+        $task = $this->taskForAttachment($request, $id);
+        if ($task instanceof JsonResponse)
         {
-            return $denied;
+            return $task;
         }
 
         $task->clearMediaCollection('attachments');
@@ -1328,6 +1446,62 @@ class TaskController extends Controller
     /**
      * @return \Illuminate\Http\JsonResponse|null
      */
+    private function taskForAttachment(Request $request, $id): Task|JsonResponse
+    {
+        $task = Task::withoutGlobalScope('team')->find($id);
+
+        if (! $task)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No se encontró la tarea.'),
+            ], 404);
+        }
+
+        $project = $this->projectForClientTask($request->user(), $task);
+        if (! $project instanceof JsonResponse)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('La imagen se adjunta al sugerir cambios.'),
+            ], 403);
+        }
+
+        $scoped = Task::find($id);
+        if (! $scoped)
+        {
+            return $project;
+        }
+
+        $denied = $this->denyUnlessCanManageTask($request, $scoped);
+        if ($denied)
+        {
+            return $denied;
+        }
+
+        return $scoped;
+    }
+
+    private function projectForClientTask(User $user, Task $task): Project|JsonResponse
+    {
+        $project = Project::query()
+            ->withoutGlobalScope('team')
+            ->withoutGlobalScope('ownership')
+            ->where('board_id', $task->board_id)
+            ->where('team_id', $task->team_id)
+            ->first();
+
+        if (! $project || ! $project->viewedAsClient($user) || ! $user->can('view', $project))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No tienes permiso para responder esta tarea.'),
+            ], 403);
+        }
+
+        return $project;
+    }
+
     private function denyUnlessCanManageTask(Request $request, Task $task)
     {
         if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole('admin'))
@@ -1407,15 +1581,48 @@ class TaskController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function communications($id)
+    public function communications(Request $request, $id)
     {
-        $task = Task::findOrFail($id);
+        $task = Task::withoutGlobalScope('team')->find($id);
 
+        if (! $task)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No se encontró la tarea.'),
+            ], 404);
+        }
+
+        $project = $this->projectForClientTask($request->user(), $task);
+        $asClient = ! $project instanceof JsonResponse;
+
+        if (! $asClient)
+        {
+            $scoped = Task::find($id);
+            if (! $scoped)
+            {
+                return $project;
+            }
+
+            $task = $scoped;
+        }
+
+        $viewerId = (int) $request->user()->id;
         $communications = TaskCommunication::where('task_id', $task->id)
             ->with('user')
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn (TaskCommunication $communication) => $this->formatCommunication($communication));
+            ->map(function (TaskCommunication $communication) use ($asClient, $viewerId)
+            {
+                $formatted = $this->formatCommunication($communication);
+
+                if ($asClient)
+                {
+                    $formatted['sender_name'] = (int) $communication->user_id === $viewerId ? 'Tú' : 'Equipo';
+                }
+
+                return $formatted;
+            });
 
         return response()->json([
             'success' => true,

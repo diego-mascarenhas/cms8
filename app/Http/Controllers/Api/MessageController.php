@@ -861,6 +861,11 @@ class MessageController extends Controller
                 $payload['min_hours_between_emails'] = 48;
             }
 
+            if ($request->exists('urgent'))
+            {
+                $payload['urgent'] = $request->boolean('urgent');
+            }
+
             if (array_key_exists('send_allowed_weekdays', $validated) || $existing === null)
             {
                 $payload['send_allowed_weekdays'] = $weekdays;
