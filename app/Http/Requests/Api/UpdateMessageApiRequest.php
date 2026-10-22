@@ -69,6 +69,7 @@ class UpdateMessageApiRequest extends FormRequest
             'enable_open_tracking' => ['nullable', 'boolean'],
             'enable_click_tracking' => ['nullable', 'boolean'],
             'min_hours_between_emails' => ['nullable', 'numeric', 'min:0', 'max:8760'],
+            'urgent' => ['nullable', 'boolean'],
             'send_allowed_weekdays' => ['nullable', 'array', 'min:1'],
             'send_allowed_weekdays.*' => ['integer', 'between:1,7', 'distinct'],
             'send_window_start' => ['nullable', 'string', 'regex:/^\d{2}:\d{2}$/', 'required_with:send_window_end'],

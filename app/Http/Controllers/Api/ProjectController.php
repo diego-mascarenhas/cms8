@@ -17,6 +17,7 @@ use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\Task;
 use App\Models\TaskBoard;
+use App\Models\TaskCommunication;
 use App\Models\TaskStatus;
 use App\Models\Time;
 use App\Models\User;
@@ -335,7 +336,15 @@ class ProjectController extends Controller
                     ->get()
                     ->groupBy('task_id');
 
-                $tasks = $projectTasks->map(function ($task) use (&$totalSeconds, $clientView, $timesByTask)
+                $notesByTask = $clientView
+                    ? TaskCommunication::query()
+                        ->whereIn('task_id', $projectTasks->pluck('id'))
+                        ->orderBy('created_at')
+                        ->get()
+                        ->groupBy('task_id')
+                    : collect();
+
+                $tasks = $projectTasks->map(function ($task) use (&$totalSeconds, $clientView, $timesByTask, $notesByTask, $user)
                 {
                     $status = [
                         'id' => $task->status?->id,
@@ -351,6 +360,18 @@ class ProjectController extends Controller
                             'id' => $task->id,
                             'title' => $task->title,
                             'order' => $task->order,
+                            'attachment' => $task->attachmentUrl(),
+                            'notes' => $notesByTask->get($task->id, collect())->map(function (TaskCommunication $note) use ($user)
+                            {
+                                return [
+                                    'id' => $note->id,
+                                    'subject' => $note->subject,
+                                    'message' => $note->message,
+                                    'response' => $note->response,
+                                    'sender_name' => (int) $note->user_id === (int) $user->id ? 'Tú' : 'Equipo',
+                                    'created_at' => $note->created_at?->toIso8601String(),
+                                ];
+                            })->values()->all(),
                             'status' => $status,
                         ];
                     }

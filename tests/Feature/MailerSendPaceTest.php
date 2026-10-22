@@ -478,6 +478,109 @@ class MailerSendPaceTest extends TestCase
         Bus::assertDispatched(SendMessageCampaignJob::class, 2);
     }
 
+    public function test_urgent_send_skips_the_hours_between_news(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->assignEmailPlan(EmailPlan::BASIC);
+        $team->setSetting('mailer_min_hours_between_emails', 48, ['type' => 'integer', 'group' => 'mailer']);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'urgent@example.test',
+        ]);
+        $sentAt = now()->subHour()->startOfSecond();
+        $prior = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Prior',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $prior->id,
+            'contact_id' => $contact->id,
+            'status_id' => 2,
+            'sent_at' => $sentAt,
+            'scheduled_for' => $sentAt,
+        ]);
+
+        $waiting = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Waiting',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+            'min_hours_between_emails' => 48,
+            'urgent' => false,
+            'started_at' => now(),
+        ]);
+        $urgent = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Urgent',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+            'min_hours_between_emails' => 48,
+            'urgent' => true,
+            'started_at' => now(),
+        ]);
+
+        Artisan::call('campaigns:process-active', ['--message' => $waiting->id]);
+        Artisan::call('campaigns:process-active', ['--message' => $urgent->id]);
+
+        $waitingAt = MessageDelivery::query()
+            ->where('message_id', $waiting->id)
+            ->where('contact_id', $contact->id)
+            ->first()
+            ->scheduled_for;
+        $urgentAt = MessageDelivery::query()
+            ->where('message_id', $urgent->id)
+            ->where('contact_id', $contact->id)
+            ->first()
+            ->scheduled_for;
+
+        $this->assertTrue($waitingAt->greaterThanOrEqualTo($sentAt->copy()->addHours(48)));
+        $this->assertTrue($urgentAt->lessThan($sentAt->copy()->addHours(2)));
+    }
+
+    public function test_a_two_hour_gap_is_pulled_up_to_about_five_minutes(): void
+    {
+        config([
+            'services.email.delay.cold_spacing_seconds' => 7200,
+            'services.email.delay.opening_spacing_seconds' => 7200,
+            'services.email.delay.spacing_jitter_ratio' => 0.4,
+        ]);
+
+        $message = $this->messageWithContacts(EmailPlan::SCALE, 'capped');
+        $team = $message->team;
+        $samples = [];
+        for ($i = 0; $i < 30; $i++)
+        {
+            $samples[] = $team->mailerNextGapSeconds(7200);
+        }
+
+        $this->assertGreaterThanOrEqual(180, min($samples));
+        $this->assertLessThanOrEqual(420, max($samples));
+        $this->assertNotContains(7200, $samples);
+        $average = array_sum($samples) / count($samples);
+        $this->assertGreaterThan(240, $average);
+        $this->assertLessThan(360, $average);
+
+        Artisan::call('campaigns:process-active', ['--message' => $message->id]);
+        $times = $this->scheduledTimes($message->id);
+        $this->assertCount(2, $times);
+        $gap = (int) $times[0]->diffInSeconds($times[1]);
+        $this->assertGreaterThanOrEqual(180, $gap);
+        $this->assertLessThanOrEqual(420, $gap);
+    }
+
     /**
      * @return \Illuminate\Support\Collection<int, \Illuminate\Support\Carbon>
      */

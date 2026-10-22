@@ -937,6 +937,10 @@ class MessageController extends Controller
             $message->loadMissing('team');
             $spacingSeconds = $message->team?->mailerSendSpacingSeconds() ?? (86400 / 3000);
             $fast = (bool) $message->team?->sendsMailerWithoutSpacing();
+            $rawSpacing = max(1, (int) round($spacingSeconds));
+            $spacingCap = $message->team?->mailerMaxAverageSpacingSeconds() ?? 300;
+            $slowSteps = ! $fast && $rawSpacing >= $spacingCap;
+            $slowCursor = $baseTime->copy();
             $allPending = MessageDelivery::where('message_id', $id)
                 ->where('status_id', 1) // only pending, not failed
                 ->whereNull('delivered_at')
@@ -952,7 +956,17 @@ class MessageController extends Controller
                     $scheduledFor = $cursor->copy();
                 } else
                 {
-                    $scheduledFor = $baseTime->copy()->addSeconds((int) round($index * $spacingSeconds));
+                    if ($slowSteps)
+                    {
+                        if ($index > 0)
+                        {
+                            $slowCursor = $slowCursor->copy()->addSeconds($message->team?->mailerNextGapSeconds($rawSpacing) ?? $spacingCap);
+                        }
+                        $scheduledFor = $slowCursor->copy();
+                    } else
+                    {
+                        $scheduledFor = $baseTime->copy()->addSeconds((int) round($index * $spacingSeconds));
+                    }
                 }
 
                 $delivery->update([

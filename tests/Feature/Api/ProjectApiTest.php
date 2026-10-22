@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\Task;
 use App\Models\TaskBoard;
+use App\Models\TaskCommunication;
 use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\Time;
@@ -25,7 +26,9 @@ use Database\Seeders\LanguageSeeder;
 use Database\Seeders\ProjectStatusSeeder;
 use Database\Seeders\TaskStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -940,5 +943,189 @@ class ProjectApiTest extends TestCase
         $this->assertArrayNotHasKey('total_time_seconds', $show->json('data'));
         $this->assertArrayNotHasKey('responsible', $show->json('data.tasks.0'));
         $this->assertArrayNotHasKey('estimated_hours', $show->json('data.tasks.0'));
+    }
+
+    public function test_client_suggests_changes_completes_review_tasks_and_creates_one(): void
+    {
+        Storage::fake('public');
+        [$owner, $team, , $enterprise] = $this->adminWithToken();
+        $this->seed(TaskStatusSeeder::class);
+        Role::firstOrCreate(['name' => 'client', 'guard_name' => 'web']);
+
+        $clientUser = User::factory()->create();
+        $clientUser->assignRole('client');
+        $team->users()->attach($clientUser, ['role' => 'client']);
+        $clientUser->forceFill(['current_team_id' => $team->id])->save();
+
+        $contact = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Portal Client',
+            'email' => $clientUser->email,
+            'user_id' => $clientUser->id,
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+            'status_id' => ContactStatus::query()->firstOrFail()->id,
+            'language' => 'es',
+            'country' => 724,
+        ]);
+        $contact->enterprises()->attach($enterprise->id);
+
+        $board = TaskBoard::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Client board',
+            'is_default' => false,
+            'order' => 0,
+        ]);
+
+        $project = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'name' => 'Client portal project',
+            'responsible_id' => $owner->id,
+            'status_id' => 9,
+            'board_id' => $board->id,
+        ]);
+
+        $review = TaskStatus::query()->where('name', 'REVIEW')->firstOrFail();
+        $inProgress = TaskStatus::query()->where('name', 'IN_PROGRESS')->firstOrFail();
+
+        $suggest = Task::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'board_id' => $board->id,
+            'responsible_id' => $owner->id,
+            'title' => 'Login a Colab',
+            'description' => 'Primera versión',
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addWeek()->toDateString(),
+            'status_id' => $review->id,
+            'order' => 1,
+        ]);
+
+        $complete = Task::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'board_id' => $board->id,
+            'responsible_id' => $owner->id,
+            'title' => 'Home',
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addWeek()->toDateString(),
+            'status_id' => $review->id,
+            'order' => 2,
+        ]);
+
+        $busy = Task::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'board_id' => $board->id,
+            'responsible_id' => $owner->id,
+            'title' => 'En curso',
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addWeek()->toDateString(),
+            'status_id' => $inProgress->id,
+            'order' => 3,
+        ]);
+
+        $homeTeam = Team::factory()->create(['name' => 'Equipo del cliente']);
+        $homeTeam->users()->attach($clientUser, ['role' => 'client']);
+        $clientUser->forceFill(['current_team_id' => $homeTeam->id])->save();
+
+        $token = $clientUser->createToken('client-test')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/tasks/'.$busy->id.'/client-feedback', [
+                'action' => 'suggest',
+                'message' => 'Todavía no',
+            ])
+            ->assertStatus(422);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/tasks/'.$suggest->id.'/client-feedback', [
+                'action' => 'suggest',
+                'message' => 'El botón de entrar no se ve en el móvil.',
+                'attachment' => UploadedFile::fake()->image('cambio.jpg', 40, 40),
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.status.name', 'TO_DO');
+
+        $suggest->refresh();
+        $this->assertSame('TO_DO', $suggest->status->name);
+        $this->assertStringContainsString('El botón de entrar no se ve en el móvil.', (string) $suggest->description);
+        $this->assertCount(1, $suggest->getMedia('attachments'));
+        $this->assertTrue(
+            TaskCommunication::query()
+                ->where('task_id', $suggest->id)
+                ->where('user_id', $clientUser->id)
+                ->where('subject', 'Sugerencia de cambios')
+                ->exists(),
+        );
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/tasks/'.$suggest->id.'/communications')
+            ->assertOk()
+            ->assertJsonPath('data.0.message', 'El botón de entrar no se ve en el móvil.')
+            ->assertJsonPath('data.0.sender_name', 'Tú')
+            ->assertJsonMissing(['sender_name' => $owner->name]);
+
+        $projectView = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id);
+
+        $projectView->assertOk();
+        $suggested = collect($projectView->json('data.tasks'))->firstWhere('id', $suggest->id);
+        $this->assertSame('El botón de entrar no se ve en el móvil.', $suggested['notes'][0]['message']);
+        $this->assertSame('Tú', $suggested['notes'][0]['sender_name']);
+        $this->assertArrayNotHasKey('responsible', $suggested);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/tasks/'.$complete->id.'/client-feedback', [
+                'action' => 'complete',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.status.name', 'DONE');
+
+        $created = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/tasks', [
+                'title' => 'Revisar el menú',
+                'project_id' => $project->id,
+                'attachment' => UploadedFile::fake()->image('menu.jpg', 40, 40),
+            ]);
+
+        $created->assertCreated()
+            ->assertJsonPath('data.title', 'Revisar el menú')
+            ->assertJsonPath('data.status.name', 'TO_DO');
+
+        $newTask = Task::withoutGlobalScopes()->findOrFail($created->json('data.task_id'));
+        $this->assertSame($owner->id, $newTask->responsible_id);
+        $this->assertNull($newTask->estimated_hours);
+        $this->assertCount(1, $newTask->getMedia('attachments'));
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/tasks/'.$newTask->id.'/attachment', [
+                'attachment' => UploadedFile::fake()->image('nueva.jpg', 40, 40),
+            ])
+            ->assertForbidden();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/tasks/'.$newTask->id.'/attachment')
+            ->assertForbidden();
+
+        $this->assertCount(1, Task::withoutGlobalScopes()->findOrFail($newTask->id)->getMedia('attachments'));
+
+        $other = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => Enterprise::withoutGlobalScopes()->create([
+                'team_id' => $team->id,
+                'name' => 'Otra empresa',
+                'type_id' => 1,
+                'status_id' => 1,
+            ])->id,
+            'name' => 'Ajeno',
+            'responsible_id' => $owner->id,
+            'status_id' => 9,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/tasks', [
+                'title' => 'No debería',
+                'project_id' => $other->id,
+            ])
+            ->assertForbidden();
     }
 }

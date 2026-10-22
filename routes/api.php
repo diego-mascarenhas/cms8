@@ -669,6 +669,7 @@ Route::middleware('auth.api')->group(function ()
         Route::post('/{id}/start', [TaskController::class, 'start']);
         Route::post('/{id}/stop', [TaskController::class, 'stop']);
         Route::put('/{id}/status', [TaskController::class, 'updateStatus']);
+        Route::post('/{id}/client-feedback', [TaskController::class, 'clientFeedback']);
         Route::get('/{id}/time', [TaskController::class, 'time']);
     });
 
