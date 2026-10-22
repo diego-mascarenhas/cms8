@@ -11,9 +11,11 @@ use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\Time;
 use App\Models\User;
+use App\Support\TaskImageOptimizer;
 use App\Support\TaskTimeBudget;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -645,6 +647,7 @@ class TaskController extends Controller
             'start_date' => 'nullable|date',
             'due_date' => 'nullable|date|after_or_equal:start_date',
             'attachment' => 'nullable|file|image|max:10240',
+            'keep_original' => 'nullable|boolean',
         ]);
 
         $user = $request->user();
@@ -716,7 +719,10 @@ class TaskController extends Controller
             'team_id' => $creatingAsClient ? $project->team_id : $user->currentTeam->id,
         ]);
 
-        if ($request->hasFile('attachment'))
+        if ($creatingAsClient)
+        {
+            $this->storeClientImage($task, $request, false);
+        } elseif ($request->hasFile('attachment'))
         {
             $task->addMediaFromRequest('attachment')->toMediaCollection('attachments');
         }
@@ -1266,10 +1272,16 @@ class TaskController extends Controller
             'action' => 'required|in:suggest,complete',
             'message' => 'nullable|string|max:5000',
             'attachment' => 'nullable|file|image|max:10240',
+            'keep_original' => 'nullable|boolean',
         ]);
 
         $task->load('status');
-        if ($task->status?->name !== 'REVIEW')
+        $previous = $task->status?->name;
+        $action = (string) $request->input('action');
+        $message = trim((string) $request->input('message', ''));
+        $hasNotes = TaskCommunication::where('task_id', $task->id)->exists();
+
+        if ($action === 'complete' && $previous !== 'REVIEW')
         {
             return response()->json([
                 'success' => false,
@@ -1277,8 +1289,15 @@ class TaskController extends Controller
             ], 422);
         }
 
-        $action = (string) $request->input('action');
-        $message = trim((string) $request->input('message', ''));
+        if ($action === 'suggest' && (in_array($previous, ['DONE', 'CANCELLED'], true) || (! $hasNotes && $previous !== 'REVIEW')))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => in_array($previous, ['DONE', 'CANCELLED'], true)
+                    ? __('No puedes sugerir cambios en una tarea terminada.')
+                    : __('Solo puedes responder tareas que están en revisión.'),
+            ], 422);
+        }
 
         if ($action === 'suggest' && $message === '')
         {
@@ -1288,11 +1307,7 @@ class TaskController extends Controller
             ], 422);
         }
 
-        if ($request->hasFile('attachment'))
-        {
-            $task->clearMediaCollection('attachments');
-            $task->addMediaFromRequest('attachment')->toMediaCollection('attachments');
-        }
+        $this->storeClientImage($task, $request, true);
 
         if ($action === 'suggest')
         {
@@ -1322,7 +1337,9 @@ class TaskController extends Controller
         return response()->json([
             'success' => true,
             'message' => $action === 'suggest'
-                ? __('Sugerencia enviada. La tarea volvió a por hacer.')
+                ? ($previous === 'TO_DO'
+                    ? __('Sugerencia enviada.')
+                    : __('Sugerencia enviada. La tarea volvió a por hacer.'))
                 : __('Tarea marcada como completada.'),
             'data' => [
                 'id' => $task->id,
@@ -1334,6 +1351,30 @@ class TaskController extends Controller
                 ],
             ],
         ]);
+    }
+
+    private function storeClientImage(Task $task, Request $request, bool $replace): void
+    {
+        if (! $request->hasFile('attachment'))
+        {
+            return;
+        }
+
+        $uploaded = $request->file('attachment');
+        if (! $uploaded instanceof UploadedFile)
+        {
+            return;
+        }
+
+        $keepOriginal = filter_var($request->input('keep_original'), FILTER_VALIDATE_BOOLEAN);
+        $file = app(TaskImageOptimizer::class)->apply($uploaded, $keepOriginal);
+
+        if ($replace && $task->getMedia('attachments')->isNotEmpty())
+        {
+            $task->clearMediaCollection('attachments');
+        }
+
+        $task->addMedia($file)->toMediaCollection('attachments');
     }
 
     /**
