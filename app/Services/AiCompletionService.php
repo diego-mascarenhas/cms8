@@ -20,6 +20,7 @@ class AiCompletionService
         'proposals',
         'challenges',
         'innovation',
+        'website',
     ];
 
     /**

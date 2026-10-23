@@ -61,6 +61,47 @@ class AiCompletionTest extends TestCase
         $this->assertGreaterThan(0, (int) $log->json_tokens);
     }
 
+    public function test_website_module_logs_token_usage_for_content_site_chat(): void
+    {
+        AnonymousAgent::fake(['{"summary":"Título nuevo","files":[]}']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        Role::findOrCreate('admin');
+        $user->assignRole('admin');
+
+        $team = $user->currentTeam;
+        $created = $team->createApiToken('Content', '*');
+
+        $module = Module::query()->firstOrCreate(
+            ['key' => 'website'],
+            [
+                'name' => 'Sitio web',
+                'is_core' => false,
+                'group' => 'content',
+                'order' => 3,
+                'status' => 1,
+            ],
+        );
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$created['plain'])
+            ->postJson('/api/ai/complete', [
+                'module' => 'website',
+                'prompt' => 'Cambiá el título de la portada.',
+                'service' => 'ContentSiteChat',
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.module', 'website');
+        $response->assertJsonPath('data.service', 'ContentSiteChat');
+        $this->assertGreaterThan(0, (int) $response->json('data.usage.total_tokens'));
+
+        $this->assertDatabaseHas('token_usage_logs', [
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'service' => 'ContentSiteChat',
+        ]);
+    }
+
     public function test_complete_rejects_unknown_module(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
