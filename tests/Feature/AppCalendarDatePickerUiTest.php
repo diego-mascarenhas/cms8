@@ -21,6 +21,9 @@ class AppCalendarDatePickerUiTest extends TestCase
             ->assertSee('id="event-start-date-settings"', false)
             ->assertSee('id="event-end-date-settings"', false)
             ->assertSee(__('Selecciona una fecha'), false)
-            ->assertSee('ti-calendar', false);
+            ->assertSee('ti-calendar', false)
+            ->assertSee('id="eventMeetRoom"', false)
+            ->assertSee('data-meet-base="'.rtrim((string) config('services.revisionalpha.meet_url'), '/').'"', false)
+            ->assertSee('Abrir sala', false);
     }
 }

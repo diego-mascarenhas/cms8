@@ -68,6 +68,53 @@
 </script>
 <script src="{{ asset('assets/js/app-calendar-events.js') }}"></script>
 <script src="{{ asset('assets/js/app-calendar.js') }}"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var button = document.getElementById('eventMeetRoom');
+    var urlInput = document.getElementById('eventURL');
+    var openLink = document.getElementById('eventMeetOpen');
+    var sidebar = document.getElementById('addEventSidebar');
+    if (!button || !urlInput) {
+      return;
+    }
+    var base = button.getAttribute('data-meet-base').replace(/\/$/, '');
+
+    function roomSlug() {
+      var raw = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
+      return 'ra-' + raw.replace(/-/g, '').slice(0, 12);
+    }
+
+    function syncMeetLink() {
+      var value = urlInput.value.trim();
+      var isMeet = value.indexOf(base + '/') === 0;
+      button.textContent = isMeet ? 'Nueva sala' : 'Crear sala';
+      if (!openLink) {
+        return;
+      }
+      openLink.classList.toggle('d-none', !isMeet);
+      if (isMeet) {
+        openLink.href = value;
+      }
+    }
+
+    button.addEventListener('click', function () {
+      urlInput.value = base + '/' + roomSlug();
+      urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+      syncMeetLink();
+    });
+
+    urlInput.addEventListener('input', syncMeetLink);
+    if (sidebar) {
+      sidebar.addEventListener('shown.bs.offcanvas', syncMeetLink);
+    }
+    var form = urlInput.closest('form');
+    if (form) {
+      form.addEventListener('reset', function () {
+        window.setTimeout(syncMeetLink, 0);
+      });
+    }
+  });
+</script>
 @endsection
 
 @section('content')
@@ -198,7 +245,12 @@
             </div>
             <div class="mb-3">
               <label class="form-label" for="eventURL">{{ __('Event URL') }}</label>
-              <input type="url" class="form-control" id="eventURL" name="eventURL" placeholder="https://www.google.com" />
+              <input type="url" class="form-control" id="eventURL" name="eventURL" placeholder="{{ rtrim((string) config('services.revisionalpha.meet_url'), '/') }}/sala" />
+              <div class="d-flex flex-wrap gap-2 mt-2">
+                <button type="button" class="btn btn-sm btn-label-primary" id="eventMeetRoom" data-meet-base="{{ rtrim((string) config('services.revisionalpha.meet_url'), '/') }}">Crear sala</button>
+                <a class="btn btn-sm btn-label-secondary d-none" id="eventMeetOpen" href="#" target="_blank" rel="noopener">Abrir sala</a>
+              </div>
+              <small class="text-muted d-block mt-2">La sala se abre en Revision Alpha y es pública: quien tenga el enlace entra.</small>
             </div>
             <div class="mb-3 select2-primary">
               <label class="form-label" for="eventGuests">{{ __('Add Guests') }}</label>

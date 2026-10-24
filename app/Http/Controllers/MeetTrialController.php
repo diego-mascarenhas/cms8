@@ -4,43 +4,46 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 
 class MeetTrialController extends Controller
 {
-    public const DOMAIN = 'meet.jit.si';
-
-    public const DEFAULT_ROOM = 'idoneo-cms8-prueba';
-
-    public function show(Request $request, ?string $room = null): View|RedirectResponse
+    public function show(Request $request, ?string $room = null): RedirectResponse
     {
-        if ($room !== null)
+        $base = rtrim((string) config('services.revisionalpha.meet_url'), '/');
+        $query = [];
+        $name = $this->displayName($request->query('nombre'));
+
+        if ($name !== '')
         {
-            $normalized = $this->normalizeRoom($room);
-
-            if ($normalized === null)
-            {
-                return redirect()->route('meet.trial', $request->query());
-            }
-
-            if ($normalized !== $room)
-            {
-                return redirect()->route('meet.trial', array_merge(
-                    ['room' => $normalized],
-                    $request->query(),
-                ));
-            }
+            $query['nombre'] = $name;
         }
 
-        $roomName = $room ?? self::DEFAULT_ROOM;
+        if ($room === null)
+        {
+            return redirect()->away($this->withQuery($base, $query));
+        }
 
-        return view('meet.trial', [
-            'domain' => self::DOMAIN,
-            'roomName' => $roomName,
-            'displayName' => $this->displayName($request->query('nombre')),
-            'shareUrl' => route('meet.trial', ['room' => $roomName]),
-            'directUrl' => 'https://'.self::DOMAIN.'/'.$roomName,
-        ]);
+        $normalized = $this->normalizeRoom($room);
+
+        if ($normalized === null)
+        {
+            return redirect()->away($this->withQuery($base, $query));
+        }
+
+        return redirect()->away($this->withQuery($base.'/'.$normalized, $query));
+    }
+
+    /**
+     * @param  array<string, string>  $query
+     */
+    private function withQuery(string $url, array $query): string
+    {
+        if ($query === [])
+        {
+            return $url;
+        }
+
+        return $url.'?'.http_build_query($query);
     }
 
     private function normalizeRoom(string $room): ?string
