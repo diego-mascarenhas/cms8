@@ -128,6 +128,10 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertDontSee('analyticsChart', false);
         $response->assertSee(__('app.dashboard_panel_contacts_trend_title'), false);
         $response->assertSee('dashboard-insight-actions', false);
+        $response->assertDontSee('ti-report', false);
+        $response->assertDontSee('ti-sitemap', false);
+        $response->assertDontSee(__('app.weekly_plan_report'), false);
+        $response->assertDontSee(__('Organización'), false);
         $response->assertSee(route('strategy.index'), false);
         $response->assertSee(__('app.weekly_plan_strategy_link'), false);
         $response->assertSee('@container (max-width: 26rem)', false);
