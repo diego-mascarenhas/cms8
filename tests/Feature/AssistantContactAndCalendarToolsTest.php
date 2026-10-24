@@ -346,6 +346,8 @@ class AssistantContactAndCalendarToolsTest extends TestCase
 
         $this->assertSame('12:00:00', $event->start->utc()->format('H:i:s'));
         $this->assertSame('13:00:00', $event->end->utc()->format('H:i:s'));
+        $this->assertMatchesRegularExpression('#/meet/ra-[a-f0-9]{12}$#', (string) $event->url);
+        $this->assertStringContainsString('Meet link: '.$event->url, $out);
     }
 
     public function test_create_calendar_event_links_guest_contacts(): void

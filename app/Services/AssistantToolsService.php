@@ -38,6 +38,7 @@ use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
 use App\Support\CalendarEventDateTimeParser;
+use App\Support\MeetRoomLink;
 use App\Support\TeamTaskBoardResolver;
 use App\Support\WhatsAppProductRelevanceSearch;
 use Illuminate\Support\Carbon;
@@ -674,7 +675,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'create_calendar_event',
-                'description' => 'Create an event in the team calendar. REQUIRED: pass start and end as local wall-clock times in Y-m-d H:i:s (e.g. 2026-06-10 14:00:00) or ISO 8601 with timezone. Refuses creation if another event overlaps that time (use check_calendar_availability first to suggest free slots). When the user says "today", "hoy", or "ahora", you MUST use the actual current date (YYYY-MM-DD) for that day — e.g. if today is 2026-03-16 and they say "hoy a las 15", use start 2026-03-16 15:00:00. Never use a different year or date unless the user explicitly states it. To invite CRM contacts, pass guest_contact_ids (array of contact ids from search/list) — do NOT only mention guests in notes.',
+                'description' => 'Create an event in the team calendar. REQUIRED: pass start and end as local wall-clock times in Y-m-d H:i:s (e.g. 2026-06-10 14:00:00) or ISO 8601 with timezone. Refuses creation if another event overlaps that time (use check_calendar_availability first to suggest free slots). When the user says "today", "hoy", or "ahora", you MUST use the actual current date (YYYY-MM-DD) for that day — e.g. if today is 2026-03-16 and they say "hoy a las 15", use start 2026-03-16 15:00:00. Never use a different year or date unless the user explicitly states it. To invite CRM contacts, pass guest_contact_ids (array of contact ids from search/list) — do NOT only mention guests in notes. A public meet room is created automatically and returned as Meet link. Paste that exact link in the reply.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -2353,14 +2354,19 @@ class AssistantToolsService
             $guestLinkWarning = ' Guest linking was skipped due to an internal error; the event was still created.';
         }
 
+        $allDay = (bool) ($input['all_day'] ?? false);
+        $url = isset($input['url']) && trim((string) $input['url']) !== ''
+            ? trim((string) $input['url'])
+            : ($allDay ? null : MeetRoomLink::forNewRoom());
+
         $event = CalendarEvent::withoutGlobalScopes()->create([
             'team_id' => $teamId,
             'title' => $title,
             'start' => $start,
             'end' => $end,
-            'all_day' => (bool) ($input['all_day'] ?? false),
+            'all_day' => $allDay,
             'notes' => isset($input['notes']) && $input['notes'] !== '' ? (string) $input['notes'] : null,
-            'url' => isset($input['url']) && $input['url'] !== '' ? (string) $input['url'] : null,
+            'url' => $url,
             'label' => isset($input['label']) && $input['label'] !== '' ? (string) $input['label'] : 'Business',
             'location' => isset($input['location']) && trim((string) $input['location']) !== '' ? trim((string) $input['location']) : null,
         ]);
@@ -2378,6 +2384,7 @@ class AssistantToolsService
         }
 
         PushCalendarEventToGoogleJob::dispatch($event->id, 'created');
+        $emailed = app(CalendarEventInvitationService::class)->notify($event, 'created');
 
         $expectedGuest = $this->calendarEventExpectsGuest($input, $title);
         $guestSummary = $guestIds !== []
@@ -2392,7 +2399,9 @@ class AssistantToolsService
             .' to '
             .CalendarEventDateTimeParser::formatWallClock($event->end).'.'
             .$guestSummary
-            .$guestLinkWarning,
+            .$guestLinkWarning
+            .($event->url ? ' Meet link: '.$event->url.'. Paste this link in your reply.' : '')
+            .($emailed > 0 ? ' Invitation email sent to the guests.' : ''),
         );
     }
 
@@ -2474,6 +2483,10 @@ class AssistantToolsService
             return 'Event with id '.$eventId.' not found. Use list_calendar_events to see available events.';
         }
 
+        $beforeStart = $event->start->copy();
+        $beforeEnd = $event->end->copy();
+        $beforeGuestIds = $event->guests()->pluck('contacts.id')->map(fn ($id) => (int) $id)->all();
+
         $updates = [];
 
         if (array_key_exists('title', $input) && trim((string) $input['title']) !== '')
@@ -2545,7 +2558,23 @@ class AssistantToolsService
             $this->syncCalendarEventGuests($event, $teamId, $guestIds);
         }
 
-        $event->refresh();
+        $event->refresh()->load('guests');
+        $scheduleChanged = ! $event->start->equalTo($beforeStart) || ! $event->end->equalTo($beforeEnd);
+        $emailed = 0;
+        if ($scheduleChanged)
+        {
+            $emailed = app(CalendarEventInvitationService::class)->notify($event, 'updated');
+        } else
+        {
+            $newGuestIds = array_values(array_diff(
+                $event->guests->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                $beforeGuestIds,
+            ));
+            if ($newGuestIds !== [])
+            {
+                $emailed = app(CalendarEventInvitationService::class)->notify($event, 'created', $newGuestIds);
+            }
+        }
 
         $guestSummary = $event->guests()->exists()
             ? ' Guests: '.$this->formatCalendarGuestNames($event->load('guests')).'.'
@@ -2556,7 +2585,8 @@ class AssistantToolsService
             .CalendarEventDateTimeParser::formatWallClock($event->start)
             .' to '
             .CalendarEventDateTimeParser::formatWallClock($event->end).'.'
-            .$guestSummary,
+            .$guestSummary
+            .($emailed > 0 ? ' Invitation email sent to the guests.' : ''),
         );
     }
 

@@ -406,6 +406,12 @@
                         <i class="ti ti-map-pin ti-xs me-1"></i>Facturación
                     </a>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="availability-tab" data-bs-toggle="tab" href="#availability" role="tab"
+                        aria-controls="availability" aria-selected="false">
+                        <i class="ti ti-calendar ti-xs me-1"></i>Disponibilidad
+                    </a>
+                </li>
                 @endrole
                 @can('viewAny', \App\Models\Ticket::class)
                 <li class="nav-item" role="presentation">
@@ -436,6 +442,9 @@
                 @role('admin|collaborator')
                 <div class="tab-pane fade" id="billing" role="tabpanel" aria-labelledby="billing-tab">
                     @include('contact.partials.billing')
+                </div>
+                <div class="tab-pane fade" id="availability" role="tabpanel" aria-labelledby="availability-tab">
+                    @include('components.availability-calendar', $availabilityCalendar)
                 </div>
                 @endrole
                 @can('viewAny', \App\Models\Ticket::class)

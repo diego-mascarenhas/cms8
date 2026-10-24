@@ -6,6 +6,7 @@ use App\Jobs\PushCalendarEventToGoogleJob;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\Team;
+use App\Support\MeetRoomLink;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -252,6 +253,8 @@ class PerformanceDigestCalendarSchedulingContextService
             'end' => $end,
             'all_day' => false,
             'label' => 'Business',
+            'url' => MeetRoomLink::forNewRoom(),
+            'location' => 'Revision Alpha',
         ]);
 
         if ($contact !== null)
