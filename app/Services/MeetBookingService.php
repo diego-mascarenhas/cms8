@@ -93,7 +93,7 @@ class MeetBookingService
             'all_day' => false,
             'label' => 'Business',
             'url' => $url,
-            'location' => 'Revision Alpha',
+            'location' => 'REVISION ALPHA',
         ]);
         $event->guests()->sync([$contact->id]);
         PushCalendarEventToGoogleJob::dispatch($event->id, 'created');

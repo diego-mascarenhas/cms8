@@ -250,7 +250,7 @@
                 <button type="button" class="btn btn-sm btn-label-primary" id="eventMeetRoom" data-meet-base="{{ rtrim((string) config('services.revisionalpha.meet_url'), '/') }}">Crear sala</button>
                 <a class="btn btn-sm btn-label-secondary d-none" id="eventMeetOpen" href="#" target="_blank" rel="noopener">Abrir sala</a>
               </div>
-              <small class="text-muted d-block mt-2">La sala se abre en Revision Alpha y es pública: quien tenga el enlace entra.</small>
+              <small class="text-muted d-block mt-2">La sala se abre en REVISION ALPHA y es pública: quien tenga el enlace entra.</small>
             </div>
             <div class="mb-3 select2-primary">
               <label class="form-label" for="eventGuests">{{ __('Add Guests') }}</label>

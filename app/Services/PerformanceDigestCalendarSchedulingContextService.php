@@ -254,7 +254,7 @@ class PerformanceDigestCalendarSchedulingContextService
             'all_day' => false,
             'label' => 'Business',
             'url' => MeetRoomLink::forNewRoom(),
-            'location' => 'Revision Alpha',
+            'location' => 'REVISION ALPHA',
         ]);
 
         if ($contact !== null)
