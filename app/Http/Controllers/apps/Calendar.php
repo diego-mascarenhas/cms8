@@ -6,13 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Jobs\PushCalendarEventToGoogleJob;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
+use App\Services\CalendarEventInvitationService;
 use App\Services\PaidAds\PaidAdCampaignCalendarSyncer;
 use App\Support\CalendarEventDateTimeParser;
+use App\Support\MeetRoomLink;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 class Calendar extends Controller
 {
+    public function __construct(private CalendarEventInvitationService $invitations) {}
+
     public function index(Request $request)
     {
         $eventsUrl = route('app-calendar-events');
@@ -105,7 +109,7 @@ class Calendar extends Controller
             'start' => $eventStart,
             'end' => $eventEnd,
             'all_day' => $allDay,
-            'url' => $validated['url'] ?? null,
+            'url' => filled($validated['url'] ?? null) ? $validated['url'] : ($allDay ? null : MeetRoomLink::forNewRoom()),
             'label' => $validated['label'] ?? 'Business',
             'location' => $validated['location'] ?? null,
             'notes' => $validated['description'] ?? null,
@@ -114,6 +118,7 @@ class Calendar extends Controller
         $this->syncEventGuests($event, $teamId, $validated['guests'] ?? []);
 
         PushCalendarEventToGoogleJob::dispatch($event->id, 'created');
+        $this->invitations->notify($event->load('guests'), 'created');
 
         return response()->json($this->eventToFullCalendar($event->load('guests')), 201);
     }
@@ -147,6 +152,9 @@ class Calendar extends Controller
         ]);
 
         $allDay = $request->has('all_day') ? $request->boolean('all_day') : $event->all_day;
+        $beforeStart = $event->start->copy();
+        $beforeEnd = $event->end->copy();
+        $beforeGuestIds = $event->guests()->pluck('contacts.id')->map(fn ($id) => (int) $id)->all();
 
         $eventStart = $event->start;
         $eventEnd = $event->end;
@@ -160,7 +168,9 @@ class Calendar extends Controller
             'start' => $eventStart,
             'end' => $eventEnd,
             'all_day' => $allDay,
-            'url' => array_key_exists('url', $validated) ? ($validated['url'] ?: null) : $event->url,
+            'url' => array_key_exists('url', $validated)
+                ? (filled($validated['url']) ? $validated['url'] : ($allDay ? null : $event->url))
+                : $event->url,
             'label' => $validated['label'] ?? $event->label,
             'location' => array_key_exists('location', $validated) ? ($validated['location'] ?: null) : $event->location,
             'notes' => array_key_exists('description', $validated) ? ($validated['description'] ?: null) : $event->notes,
@@ -174,7 +184,24 @@ class Calendar extends Controller
 
         PushCalendarEventToGoogleJob::dispatch($event->id, 'updated');
 
-        return response()->json($this->eventToFullCalendar($event->fresh()->load('guests')));
+        $event->refresh()->load('guests');
+        $scheduleChanged = ! $event->start->equalTo($beforeStart) || ! $event->end->equalTo($beforeEnd);
+        if ($scheduleChanged)
+        {
+            $this->invitations->notify($event, 'updated');
+        } else
+        {
+            $newGuestIds = array_values(array_diff(
+                $event->guests->pluck('id')->map(fn ($id) => (int) $id)->all(),
+                $beforeGuestIds,
+            ));
+            if ($newGuestIds !== [])
+            {
+                $this->invitations->notify($event, 'created', $newGuestIds);
+            }
+        }
+
+        return response()->json($this->eventToFullCalendar($event));
     }
 
     /**

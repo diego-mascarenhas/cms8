@@ -592,9 +592,15 @@ class ContactController extends Controller
             );
         }
 
+        $availabilityCalendar = null;
+        if (auth()->user()->hasAnyRole(['admin', 'collaborator']))
+        {
+            $availabilityCalendar = \App\Support\ContactAvailabilityCalendar::payload($data);
+        }
+
         return view(
             'contact.show',
-            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile', 'contactOpportunities', 'contactTickets', 'mergedInto', 'list60TeamUsers'),
+            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile', 'contactOpportunities', 'contactTickets', 'mergedInto', 'list60TeamUsers', 'availabilityCalendar'),
         );
     }
 

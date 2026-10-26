@@ -58,6 +58,7 @@ use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\ManualController;
+use App\Http\Controllers\MeetTrialController;
 use App\Http\Controllers\MercadoPagoPaymentSyncController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageTrackingController;
@@ -187,6 +188,8 @@ Route::get('/stack/slide', function ()
 })->name('stack.slide');
 
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
+
+Route::get('/meet/{room?}', [MeetTrialController::class, 'show'])->name('meet.trial');
 
 Route::get('/pricing', [\App\Http\Controllers\front_pages\Pricing::class, 'index'])->name('pricing');
 Route::get('/front-pages/pricing', [\App\Http\Controllers\front_pages\Pricing::class, 'index'])->name('front-pages.pricing');

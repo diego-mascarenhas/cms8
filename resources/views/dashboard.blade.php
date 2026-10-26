@@ -670,12 +670,14 @@
                                     Mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
                                 </p> --}}
                                 <div class="dashboard-insight-actions mt-auto pt-2">
-                                    <a href="{{ route('weekly-plan.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">
-                                        <i class="ti ti-report me-1"></i>{{ __('app.weekly_plan_report') }}
-                                    </a>
-                                    <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">
-                                        <i class="ti ti-sitemap me-1"></i>{{ __('Organización') }}
-                                    </a>
+                                    @if(auth()->user()->hasAnyRole(['admin', 'root']))
+                                        <a href="{{ route('weekly-plan.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">
+                                            <i class="ti ti-report me-1"></i>{{ __('app.weekly_plan_report') }}
+                                        </a>
+                                        <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">
+                                            <i class="ti ti-sitemap me-1"></i>{{ __('Organización') }}
+                                        </a>
+                                    @endif
                                     <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">
                                         <i class="ti ti-target me-1"></i>{{ __('app.weekly_plan_strategy_link') }}
                                     </a>

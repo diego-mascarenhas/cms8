@@ -213,6 +213,7 @@ return [
 
     'revisionalpha' => [
         'url' => env('REVISIONALPHA_APP_URL', 'https://revisionalpha.test'),
+        'meet_url' => rtrim((string) env('REVISIONALPHA_MEET_URL', rtrim((string) env('REVISIONALPHA_APP_URL', 'https://revisionalpha.test'), '/').'/meet'), '/'),
         'portal_secret' => env('CMS8_PORTAL_SECRET'),
     ],
 

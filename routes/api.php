@@ -1006,6 +1006,8 @@ Route::middleware('team.token')->prefix('team')->group(function ()
     Route::post('communications', [CommunicationController::class, 'store'])->name('api.team.communications.store');
     Route::get('communications/{id}', [CommunicationController::class, 'show'])->whereNumber('id')->name('api.team.communications.show');
     Route::get('/settings', [TeamController::class, 'settings']);
+    Route::get('meet/slots', [\App\Http\Controllers\Api\MeetBookingController::class, 'slots'])->name('api.team.meet.slots');
+    Route::post('meet/bookings', [\App\Http\Controllers\Api\MeetBookingController::class, 'store'])->name('api.team.meet.bookings.store');
 
     // Team contacts
     Route::resource('contacts', TeamContactController::class);

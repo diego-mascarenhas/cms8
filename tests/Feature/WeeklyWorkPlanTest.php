@@ -255,7 +255,11 @@ class WeeklyWorkPlanTest extends TestCase
         $response->assertSee('ti-calendar-week', false);
         $response->assertSee('Presentar impuestos del T3 2026 (hasta el 20 de octubre)', false);
         $response->assertSee(route('weekly-plan.index'), false);
+        $response->assertSee('ti-report', false);
+        $response->assertSee(__('app.weekly_plan_report'), false);
+        $response->assertSee(route('organization.index'), false);
         $response->assertSee('ti-sitemap', false);
+        $response->assertSee(__('Organización'), false);
         $response->assertSee(route('strategy.index'), false);
         $response->assertDontSee('Haz tenido una gran IDEA', false);
     }
