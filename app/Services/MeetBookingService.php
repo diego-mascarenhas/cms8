@@ -15,7 +15,11 @@ use Illuminate\Validation\ValidationException;
 
 class MeetBookingService
 {
-    private const SLOT_MINUTES = 30;
+    private const SLOT_MINUTES = 45;
+
+    private const SLOT_STEP_MINUTES = 60;
+
+    private const LEAD_MINUTES = 60;
 
     private const WORKDAY_START_HOUR = 9;
 
@@ -36,7 +40,7 @@ class MeetBookingService
 
         $dayStart = $day->copy()->setTime(self::WORKDAY_START_HOUR, 0);
         $dayEnd = $day->copy()->setTime(self::WORKDAY_END_HOUR, 0);
-        $now = Carbon::now($timezone);
+        $earliest = Carbon::now($timezone)->addMinutes(self::LEAD_MINUTES);
         $busy = $this->busyEvents($teamId, $dayStart, $dayEnd);
         $slots = [];
         $cursor = $dayStart->copy();
@@ -49,7 +53,7 @@ class MeetBookingService
                 break;
             }
 
-            if ($cursor->greaterThan($now) && ! $this->overlaps($cursor, $slotEnd, $busy))
+            if ($cursor->greaterThanOrEqualTo($earliest) && ! $this->overlaps($cursor, $slotEnd, $busy))
             {
                 $slots[] = [
                     'start' => $cursor->format('Y-m-d H:i'),
@@ -58,10 +62,33 @@ class MeetBookingService
                 ];
             }
 
-            $cursor->addMinutes(self::SLOT_MINUTES);
+            $cursor->addMinutes(self::SLOT_STEP_MINUTES);
         }
 
         return $slots;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function openDates(int $teamId, CarbonInterface $month): array
+    {
+        $timezone = CalendarEventDateTimeParser::wallClockTimezone();
+        $cursor = Carbon::parse($month->format('Y-m-01'), $timezone)->startOfMonth();
+        $last = $cursor->copy()->endOfMonth()->startOfDay();
+        $dates = [];
+
+        while ($cursor->lte($last))
+        {
+            if ($this->slots($teamId, $cursor) !== [])
+            {
+                $dates[] = $cursor->toDateString();
+            }
+
+            $cursor->addDay();
+        }
+
+        return $dates;
     }
 
     /**

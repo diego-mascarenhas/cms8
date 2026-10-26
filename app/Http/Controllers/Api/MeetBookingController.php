@@ -13,11 +13,26 @@ class MeetBookingController extends Controller
 {
     public function slots(Request $request, MeetBookingService $booking): JsonResponse
     {
+        $teamId = (int) $request->input('team_id');
+        $month = (string) $request->query('month', '');
+
+        if ($month !== '')
+        {
+            $validated = $request->validate([
+                'month' => ['required', 'date_format:Y-m'],
+            ]);
+            $start = Carbon::parse($validated['month'].'-01');
+
+            return response()->json([
+                'month' => $start->format('Y-m'),
+                'dates' => $booking->openDates($teamId, $start),
+            ]);
+        }
+
         $validated = $request->validate([
             'date' => ['required', 'date_format:Y-m-d'],
         ]);
 
-        $teamId = (int) $request->input('team_id');
         $day = Carbon::parse($validated['date']);
 
         return response()->json([

@@ -47,9 +47,61 @@ class MeetBookingTest extends TestCase
         ]);
 
         $booking = app(MeetBookingService::class);
+        $slots = $booking->slots($host->team_id, Carbon::parse('2026-10-26'));
 
-        $this->assertNotEmpty($booking->slots($host->team_id, Carbon::parse('2026-10-26')));
+        $this->assertSame(
+            ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'],
+            array_column($slots, 'label'),
+        );
+        $this->assertSame('2026-10-26 09:45', $slots[0]['end']);
         $this->assertSame([], $booking->slots($host->team_id, Carbon::parse('2026-10-27')));
+    }
+
+    public function test_slots_require_one_hour_of_notice(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-26 08:01:00', 'Europe/Madrid'));
+        $host = $this->hostContact();
+        $host->weeklyAvailability()->create([
+            'team_id' => $host->team_id,
+            'monday' => true,
+            'tuesday' => true,
+            'wednesday' => true,
+            'thursday' => true,
+            'friday' => true,
+            'saturday' => false,
+            'sunday' => false,
+        ]);
+
+        $labels = array_column(
+            app(MeetBookingService::class)->slots($host->team_id, Carbon::parse('2026-10-26')),
+            'label',
+        );
+
+        $this->assertNotContains('09:00', $labels);
+        $this->assertSame('10:00', $labels[0]);
+    }
+
+    public function test_closed_days_are_left_out_of_the_month(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-26 08:00:00', 'Europe/Madrid'));
+        $host = $this->hostContact();
+        $host->weeklyAvailability()->create([
+            'team_id' => $host->team_id,
+            'monday' => true,
+            'tuesday' => false,
+            'wednesday' => true,
+            'thursday' => true,
+            'friday' => true,
+            'saturday' => false,
+            'sunday' => false,
+        ]);
+
+        $dates = app(MeetBookingService::class)->openDates($host->team_id, Carbon::parse('2026-11-01'));
+
+        $this->assertNotContains('2026-11-01', $dates);
+        $this->assertContains('2026-11-02', $dates);
+        $this->assertNotContains('2026-11-03', $dates);
+        $this->assertNotContains('2026-11-07', $dates);
     }
 
     public function test_booking_creates_the_room_and_pastes_the_link_on_the_event(): void
@@ -77,6 +129,10 @@ class MeetBookingTest extends TestCase
         $event = CalendarEvent::withoutGlobalScopes()->findOrFail($booked['event_id']);
 
         $this->assertSame($booked['url'], $event->url);
+        $this->assertSame(
+            Carbon::parse($booked['start'])->addMinutes(45)->format('Y-m-d H:i'),
+            $booked['end'],
+        );
         $this->assertMatchesRegularExpression('#https://revisionalpha.test/meet/ra-[a-f0-9]{12}$#', $event->url);
         $this->assertTrue($event->guests()->where('email', 'ana@example.com')->exists());
     }

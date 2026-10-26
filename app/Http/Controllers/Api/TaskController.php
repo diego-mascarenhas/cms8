@@ -448,6 +448,11 @@ class TaskController extends Controller
             $query->whereNotIn('name', ['DONE', 'CANCELLED']);
         });
 
+        if ($this->collaboratorSeesProjectTasks($user))
+        {
+            $pendingQuery->whereIn('board_id', $this->collaboratorBoardIds($user));
+        }
+
         $total = (clone $pendingQuery)->count();
         $mine = (clone $pendingQuery)->where('responsible_id', $user->id)->count();
 
@@ -473,8 +478,16 @@ class TaskController extends Controller
         $query = Task::with(['status', 'category', 'project', 'responsible']);
 
         $seeEveryTask = $request->boolean('all') && $user->hasAnyRole(['admin', 'root']);
+        $seeProjectTasks = $request->boolean('all') && $this->collaboratorSeesProjectTasks($user);
 
-        if (! $seeEveryTask && (! $user->hasRole('admin') || (! $request->filled('board_id') && ! $request->filled('project_id'))))
+        if ($seeProjectTasks)
+        {
+            $query->whereIn('board_id', $this->collaboratorBoardIds($user))
+                ->whereHas('status', function ($status)
+                {
+                    $status->whereIn('name', ['TO_DO', 'IN_PROGRESS', 'REVIEW']);
+                });
+        } elseif (! $seeEveryTask && (! $user->hasRole('admin') || (! $request->filled('board_id') && ! $request->filled('project_id'))))
         {
             $query->where('responsible_id', $user->id);
         }
@@ -917,6 +930,27 @@ class TaskController extends Controller
                 ],
             ],
         ]);
+    }
+
+    private function collaboratorSeesProjectTasks(User $user): bool
+    {
+        return $user->hasRole('collaborator') && ! $user->hasAnyRole(['admin', 'root']);
+    }
+
+    /**
+     * Boards of the projects this collaborator participates in.
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    private function collaboratorBoardIds(User $user): Collection
+    {
+        return Project::query()
+            ->whereNotNull('board_id')
+            ->whereHas('participants', function ($participants) use ($user)
+            {
+                $participants->where('users.id', $user->id);
+            })
+            ->pluck('board_id');
     }
 
     private function moveTaskToInProgress(Task $task): void
