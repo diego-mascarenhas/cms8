@@ -39,6 +39,9 @@ class CalendarEventInvitationMail extends Mailable
     {
         return new Content(
             view: 'emails.calendar-event-invitation',
+            with: [
+                'header' => 'Reunión',
+            ],
         );
     }
 }

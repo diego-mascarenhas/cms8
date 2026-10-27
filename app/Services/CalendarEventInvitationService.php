@@ -34,6 +34,19 @@ class CalendarEventInvitationService
         $when = $this->scheduleLabel($event);
         $sent = 0;
         $seen = [];
+        $guestEmails = [];
+
+        foreach ($guests as $guest)
+        {
+            $email = strtolower(trim((string) $guest->email));
+            if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL))
+            {
+                $guestEmails[] = $email;
+            }
+        }
+
+        $copies = $this->administratorCopies($event, $guestEmails);
+        $copied = false;
 
         foreach ($guests as $guest)
         {
@@ -48,7 +61,14 @@ class CalendarEventInvitationService
 
             try
             {
-                Mail::to($email, $name !== '' ? $name : null)->send(new CalendarEventInvitationMail(
+                $message = Mail::to($email, $name !== '' ? $name : null);
+                if (! $copied && $copies !== [])
+                {
+                    $message->bcc($copies);
+                    $copied = true;
+                }
+
+                $message->send(new CalendarEventInvitationMail(
                     guestName: $name,
                     title: (string) $event->title,
                     when: $when,
@@ -69,6 +89,40 @@ class CalendarEventInvitationService
         }
 
         return $sent;
+    }
+
+    /**
+     * @param  list<string>  $except
+     * @return list<string>
+     */
+    private function administratorCopies(CalendarEvent $event, array $except): array
+    {
+        $team = Team::query()->find($event->team_id);
+        if (! $team instanceof Team)
+        {
+            return [];
+        }
+
+        $skip = array_fill_keys($except, true);
+        $copies = [];
+
+        foreach ($team->allUsers() as $user)
+        {
+            if (! $user->canManageTeam($team))
+            {
+                continue;
+            }
+
+            $email = strtolower(trim((string) $user->email));
+            if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL) || isset($skip[$email]) || isset($copies[$email]))
+            {
+                continue;
+            }
+
+            $copies[$email] = true;
+        }
+
+        return array_keys($copies);
     }
 
     /**

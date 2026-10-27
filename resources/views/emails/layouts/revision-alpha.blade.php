@@ -60,10 +60,11 @@
 										<td>
 											<h1 style="text-align: left; margin: 0; padding: 0">
 												<img
-													src="{{ $siteUrl }}/assets/revision-alpha-new-logo-color.svg"
-													alt="revision alpha"
-													width="300"
-													style="display: block; position: relative; margin: 0; padding: 0"
+													src="{{ $siteUrl }}/assets/img/logo-header-email.png"
+													alt="REVISION ALPHA"
+													width="309"
+													height="43"
+													style="display: block; width: 309px; height: 43px; border: 0; margin: 0; padding: 0"
 												/>
 											</h1>
 										</td>
@@ -108,16 +109,16 @@
 												</tr>
 												<tr>
 													<td>
-														<a
-															href="https://www.revisionalpha.com/"
-															style="font-size: 17px; color: #ffffff; text-decoration: none"
-															><img
-																src="{{ $siteUrl }}/assets/revision-alpha-new-logo-blanco-y-rojo.svg"
-																alt="revision alpha"
-																style="display: block; position: relative; width: 150px"
+														<a href="https://www.revisionalpha.com/" style="text-decoration: none">
+															<img
+																src="{{ $siteUrl }}/assets/img/logo-footer-email.png"
+																alt="REVISION ALPHA"
+																width="180"
+																height="25"
+																style="display: block; width: 180px; height: 25px; border: 0; margin: 0 0 8px 0; padding: 0"
 															/>
-															www.revisionalpha.com</a
-														>
+														</a>
+														<a href="https://www.revisionalpha.com/" style="font-size: 17px; color: #ffffff; text-decoration: none">www.revisionalpha.com</a>
 													</td>
 												</tr>
 												<tr>
