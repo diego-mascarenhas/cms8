@@ -311,12 +311,22 @@ class Message extends Model
             ->get(['scheduled_for'])
             ->pluck('scheduled_for');
 
-        if ($pendingAt->count() >= 2)
+        if ($pendingAt->count() >= 2 && $pendingAt->first()->lte(now()->addMinutes(15)))
         {
-            $span = abs($pendingAt->first()->diffInSeconds($pendingAt->last()));
-            $this->loadMissing('team');
+            $horizon = $pendingAt->first()->copy()->addHours(6);
+            $live = $pendingAt->filter(fn (Carbon $at): bool => $at->lte($horizon))->values();
+            if ($live->count() >= 2)
+            {
+                $span = abs($live->first()->diffInSeconds($live->last()));
+                $this->loadMissing('team');
 
-            return $this->team?->mailerPaceTextForSpacing($span / ($pendingAt->count() - 1)) ?? 'Inmediata';
+                return $this->team?->mailerPaceTextForSpacing($span / ($live->count() - 1)) ?? 'Inmediata';
+            }
+        }
+
+        if ($pendingAt->isNotEmpty() && $pendingAt->first()->gt(now()->addMinutes(15)))
+        {
+            return '0 envíos por hora';
         }
 
         $sentAt = MessageDelivery::query()
@@ -344,6 +354,15 @@ class Message extends Model
      */
     public function reschedulePendingDeliveries(): void
     {
+        $this->reflowPendingSendTimes(true);
+    }
+
+    /**
+     * Ready contacts keep the live drip. A contact still inside the hours-between-news
+     * wait is scheduled on their own clock and does not push the live drip forward.
+     */
+    public function reflowPendingSendTimes(bool $force = false): void
+    {
         $this->loadMissing('team');
         $pending = MessageDelivery::query()
             ->where('message_id', $this->id)
@@ -351,7 +370,6 @@ class Message extends Model
             ->whereNull('sent_at')
             ->where('status_id', 1)
             ->with('contact')
-            ->orderBy('id')
             ->get();
 
         if ($pending->isEmpty())
@@ -368,64 +386,129 @@ class Message extends Model
         $reached = $fast
             ? $this->previouslyReachedContactIds($pending->pluck('contact_id')->map(fn ($id): int => (int) $id)->all())
             : [];
+        $origin = $force ? now() : $this->pendingScheduleOrigin();
 
-        if ($fast)
+        $ready = [];
+        $waiting = [];
+        foreach ($pending as $delivery)
         {
-            $pending = $pending
-                ->sortBy(fn (MessageDelivery $delivery): string => sprintf(
-                    '%d-%08d',
-                    isset($reached[$delivery->contact_id]) ? 0 : 1,
-                    $delivery->id,
-                ))
-                ->values();
+            $notBefore = $delivery->contact
+                ? $this->getNextAvailableTimeForContact($delivery->contact)
+                : now();
+            $item = ['delivery' => $delivery, 'not_before' => $notBefore];
+            if ($notBefore->lte(now()))
+            {
+                $ready[] = $item;
+            } else
+            {
+                $waiting[] = $item;
+            }
         }
 
-        $baseTime = now();
-        $cursor = $baseTime->copy();
-        $slowCursor = $baseTime->copy();
-        $deliveryIndex = 0;
-
-        foreach ($pending as $delivery)
+        usort($ready, function (array $left, array $right) use ($fast, $reached): int
         {
             if ($fast)
             {
-                $gap = $team?->mailerFastGapSeconds($deliveryIndex) ?? 60;
+                $leftRank = isset($reached[$left['delivery']->contact_id]) ? 0 : 1;
+                $rightRank = isset($reached[$right['delivery']->contact_id]) ? 0 : 1;
+                if ($leftRank !== $rightRank)
+                {
+                    return $leftRank <=> $rightRank;
+                }
+            }
+
+            return $left['delivery']->id <=> $right['delivery']->id;
+        });
+        usort($waiting, function (array $left, array $right): int
+        {
+            $byTime = $left['not_before']->getTimestamp() <=> $right['not_before']->getTimestamp();
+            if ($byTime !== 0)
+            {
+                return $byTime;
+            }
+
+            return $left['delivery']->id <=> $right['delivery']->id;
+        });
+
+        $this->placeScheduleGroup($ready, $origin, $force, $fast, true, $spacingSeconds, $spacingCap, $slowSteps);
+        $this->placeScheduleGroup($waiting, $origin, $force, $fast, false, $spacingSeconds, $spacingCap, $slowSteps);
+    }
+
+    private function pendingScheduleOrigin(): Carbon
+    {
+        $lastSentAt = MessageDelivery::query()
+            ->where('message_id', $this->id)
+            ->whereNull('campaign_id')
+            ->whereNotNull('sent_at')
+            ->max('sent_at');
+
+        if ($lastSentAt !== null)
+        {
+            return now();
+        }
+
+        return ($this->started_at ?? now())->copy();
+    }
+
+    /**
+     * @param  list<array{delivery: MessageDelivery, not_before: Carbon}>  $group
+     */
+    private function placeScheduleGroup(
+        array $group,
+        Carbon $origin,
+        bool $force,
+        bool $fast,
+        bool $readyGroup,
+        float $spacingSeconds,
+        int $spacingCap,
+        bool $slowSteps,
+    ): void {
+        $team = $this->team;
+        $cursor = $origin->copy();
+
+        foreach ($group as $index => $item)
+        {
+            if ($fast)
+            {
+                $gap = $team?->mailerFastGapSeconds($index) ?? 60;
                 $cursor = $cursor->copy()->addSeconds($gap);
-                $scheduledTime = $cursor->copy();
-                $extraSeconds = 0;
+                $ideal = $cursor->copy();
+            } elseif ($slowSteps)
+            {
+                if ($index > 0)
+                {
+                    $cursor = $cursor->copy()->addSeconds($spacingCap);
+                }
+                $ideal = $cursor->copy();
             } else
             {
-                if ($slowSteps)
-                {
-                    if ($deliveryIndex > 0)
-                    {
-                        $slowCursor = $slowCursor->copy()->addSeconds($team?->mailerNextGapSeconds($rawSpacing) ?? $spacingCap);
-                    }
-                    $extraSeconds = 0;
-                    $scheduledTime = $slowCursor->copy();
-                } else
-                {
-                    $extraSeconds = (int) round($deliveryIndex * $spacingSeconds);
-                    $scheduledTime = $baseTime->copy()->addSeconds($extraSeconds);
-                }
+                $ideal = $origin->copy()->addSeconds((int) round($index * $spacingSeconds));
+                $cursor = $ideal->copy();
             }
 
-            if ($delivery->contact)
+            if (! $readyGroup && $item['not_before']->gt($ideal))
             {
-                $nextAvailableTime = $this->getNextAvailableTimeForContact($delivery->contact);
-                if ($scheduledTime->lt($nextAvailableTime))
-                {
-                    $scheduledTime = $nextAvailableTime->copy()->addSeconds($extraSeconds);
-                    if ($fast)
-                    {
-                        $cursor = $scheduledTime->copy();
-                    }
-                }
+                $ideal = $item['not_before']->copy();
+                $cursor = $ideal->copy();
             }
 
-            $delivery->scheduled_for = $this->alignScheduledTimeWithSendingSchedule($scheduledTime);
-            $delivery->save();
-            $deliveryIndex++;
+            $aligned = $this->alignScheduledTimeWithSendingSchedule($ideal);
+            $current = $item['delivery']->scheduled_for;
+            $tooLate = $aligned->copy()->addHours(2);
+            $replace = $force
+                || $current === null
+                || ($readyGroup && $current->gt($tooLate))
+                || (! $readyGroup && ($current->lt($item['not_before']) || $current->gt($tooLate)));
+
+            if ($replace)
+            {
+                $item['delivery']->scheduled_for = $aligned;
+                $item['delivery']->save();
+                $cursor = $aligned->copy();
+            } else
+            {
+                $cursor = $current->copy();
+            }
         }
     }
 

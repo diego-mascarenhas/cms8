@@ -581,6 +581,113 @@ class MailerSendPaceTest extends TestCase
         $this->assertLessThanOrEqual(420, $gap);
     }
 
+    public function test_a_ready_contact_is_not_queued_behind_someone_still_waiting(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->assignEmailPlan(EmailPlan::SCALE);
+        $team->setSetting('mailer_min_hours_between_emails', 72, ['type' => 'integer', 'group' => 'mailer']);
+
+        $waitingContact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'waiting@example.test',
+        ]);
+        $readyContact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'ready@example.test',
+        ]);
+        $sentAt = now()->subHour()->startOfSecond();
+        $prior = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Prior',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $prior->id,
+            'contact_id' => $waitingContact->id,
+            'status_id' => 2,
+            'sent_at' => $sentAt,
+            'scheduled_for' => $sentAt,
+        ]);
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Live',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+            'min_hours_between_emails' => 48,
+            'started_at' => now(),
+        ]);
+
+        Artisan::call('campaigns:process-active', ['--message' => $message->id]);
+
+        $readyAt = MessageDelivery::query()
+            ->where('message_id', $message->id)
+            ->where('contact_id', $readyContact->id)
+            ->first()
+            ->scheduled_for;
+        $waitingAt = MessageDelivery::query()
+            ->where('message_id', $message->id)
+            ->where('contact_id', $waitingContact->id)
+            ->first()
+            ->scheduled_for;
+
+        $this->assertTrue($readyAt->lt($waitingAt));
+        $this->assertTrue($readyAt->lessThan(now()->addMinutes(5)));
+        $this->assertTrue($waitingAt->greaterThanOrEqualTo($sentAt->copy()->addHours(72)));
+    }
+
+    public function test_an_eligible_contact_parked_days_out_rejoins_the_live_drip(): void
+    {
+        $message = $this->messageWithContacts(EmailPlan::SCALE, 'parked');
+        Artisan::call('campaigns:process-active', ['--message' => $message->id]);
+
+        MessageDelivery::query()
+            ->where('message_id', $message->id)
+            ->update(['scheduled_for' => now()->addDays(3)]);
+
+        Artisan::call('campaigns:process-active', ['--message' => $message->id]);
+
+        $times = $this->scheduledTimes($message->id);
+        $this->assertCount(2, $times);
+        $this->assertTrue($times[0]->lessThan(now()->addMinutes(5)));
+        $this->assertSame(60, (int) $times[0]->diffInSeconds($times[1]));
+
+        $kept = $times[0]->format('Y-m-d H:i:s');
+        Artisan::call('campaigns:process-active', ['--message' => $message->id]);
+
+        $this->assertSame($kept, $this->scheduledTimes($message->id)->first()->format('Y-m-d H:i:s'));
+    }
+
+    public function test_the_pace_line_is_zero_when_the_next_sends_are_not_due_yet(): void
+    {
+        $message = $this->messageWithContacts(EmailPlan::SCALE, 'idle');
+        $contacts = Contact::query()->where('team_id', $message->team_id)->orderBy('id')->get();
+        $later = now()->addDays(2)->startOfSecond();
+
+        foreach ($contacts as $index => $contact)
+        {
+            MessageDelivery::query()->create([
+                'team_id' => $message->team_id,
+                'message_id' => $message->id,
+                'contact_id' => $contact->id,
+                'status_id' => 1,
+                'scheduled_for' => $later->copy()->addSeconds($index * 65),
+            ]);
+        }
+
+        $this->assertSame('0 envíos por hora', $message->currentSendPaceText());
+    }
+
     /**
      * @return \Illuminate\Support\Collection<int, \Illuminate\Support\Carbon>
      */
