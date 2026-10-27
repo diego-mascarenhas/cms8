@@ -269,12 +269,32 @@ class MessageDelivery extends Model
             'over quota',
             'try again',
             'temporary',
+            'timed out',
             '4.2.2',
             '4.2.1',
             'greylist',
             'graylist',
             'insufficient system storage',
         ];
+    }
+
+    /**
+     * The relay accepted the send, or a later open proved it arrived.
+     * The API path stores sent_at and leaves delivered_at empty.
+     */
+    public function countsAsDelivered(): bool
+    {
+        if ((int) $this->status_id === 4)
+        {
+            return false;
+        }
+
+        if ($this->delivered_at !== null || $this->opened_at !== null)
+        {
+            return true;
+        }
+
+        return $this->sent_at !== null && $this->sent_at->isPast();
     }
 
     public function isTemporaryFailure(): bool

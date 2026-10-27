@@ -229,7 +229,8 @@ class SendMessageCampaignJob implements ShouldQueue
             'email_provider' => 'mailbaby',
             'provider_message_id' => $result['message_id'] ?? null,
             'sent_at' => now(),
-            'delivery_status' => 'sent',
+            'delivered_at' => now(),
+            'delivery_status' => 'delivered',
             'status_id' => 2,
             'provider_data' => $result['data'] ?? null,
         ]);
