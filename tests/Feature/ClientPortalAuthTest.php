@@ -259,7 +259,8 @@ class ClientPortalAuthTest extends TestCase
         $this->assertStringContainsString('#36f1cd', $html);
         $this->assertStringContainsString('#FF1A1D', $html);
         $this->assertStringContainsString('www.revisionalpha.com', $html);
-        $this->assertStringContainsString('revision-alpha-new-logo-color.svg', $html);
+        $this->assertStringContainsString('logo-header-email.png', $html);
+        $this->assertStringNotContainsString('.svg', $html);
     }
 
     public function test_staff_replies_use_the_agent_name_instead_of_the_company(): void

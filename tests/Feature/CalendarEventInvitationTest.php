@@ -59,7 +59,10 @@ class CalendarEventInvitationTest extends TestCase
                 && $mail->url === $url
                 && str_contains($mail->when, '10:00')
                 && str_contains($html, $url)
-                && str_contains($html, 'Entrar a la sala');
+                && str_contains($html, 'Entrar a la sala')
+                && str_contains($html, 'logo-header-email.png')
+                && str_contains($html, '<em>Reunión</em>')
+                && ! str_contains($html, '.svg');
         });
         Mail::assertSentCount(1);
     }

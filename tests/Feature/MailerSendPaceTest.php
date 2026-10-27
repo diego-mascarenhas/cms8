@@ -412,6 +412,75 @@ class MailerSendPaceTest extends TestCase
         Bus::assertDispatched(SendMessageCampaignJob::class, 1);
     }
 
+    public function test_a_paused_message_does_not_postpone_a_live_send(): void
+    {
+        Bus::fake();
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->assignEmailPlan(EmailPlan::BASIC);
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'paused-gap@example.test',
+        ]);
+
+        $paused = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Paused',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+            'min_hours_between_emails' => 72,
+            'started_at' => now()->subDays(6),
+        ]);
+        $live = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Live',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+            'min_hours_between_emails' => 72,
+            'started_at' => now()->subDays(6),
+        ]);
+
+        $sentAt = now()->subDays(8)->startOfSecond();
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $paused->id,
+            'contact_id' => $contact->id,
+            'status_id' => 2,
+            'sent_at' => $sentAt,
+            'scheduled_for' => $sentAt,
+        ]);
+
+        $staleSlot = now()->subDay()->startOfSecond();
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $paused->id,
+            'contact_id' => $contact->id,
+            'status_id' => 1,
+            'scheduled_for' => $staleSlot,
+        ]);
+
+        $dueAt = now()->subMinute()->startOfSecond();
+        $liveDelivery = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $live->id,
+            'contact_id' => $contact->id,
+            'status_id' => 1,
+            'scheduled_for' => $dueAt,
+        ]);
+
+        Artisan::call('campaigns:send-scheduled');
+
+        $this->assertSame($dueAt->format('Y-m-d H:i:s'), $liveDelivery->fresh()->scheduled_for->format('Y-m-d H:i:s'));
+        Bus::assertDispatched(SendMessageCampaignJob::class, 1);
+    }
+
     public function test_the_send_cron_skips_a_delivery_whose_contact_has_no_email(): void
     {
         Bus::fake();

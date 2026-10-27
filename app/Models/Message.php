@@ -621,6 +621,10 @@ class Message extends Model
             ->where('id', '!=', $delivery->id)
             ->whereNull('sent_at')
             ->where('status_id', 1)
+            ->whereHas('message', function ($query): void
+            {
+                $query->where('status_id', true);
+            })
             ->where(function ($query) use ($delivery): void
             {
                 $query->where('scheduled_for', '<', $delivery->scheduled_for)
@@ -675,6 +679,10 @@ class Message extends Model
             ->where('message_id', '<', $this->id)
             ->whereNull('sent_at')
             ->whereNotNull('scheduled_for')
+            ->whereHas('message', function ($query): void
+            {
+                $query->where('status_id', true);
+            })
             ->orderByDesc('scheduled_for')
             ->value('scheduled_for');
 

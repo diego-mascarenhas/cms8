@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\CalendarEventInvitationMail;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\Team;
@@ -12,6 +13,7 @@ use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -135,6 +137,50 @@ class MeetBookingTest extends TestCase
         );
         $this->assertMatchesRegularExpression('#https://revisionalpha.test/meet/ra-[a-f0-9]{12}$#', $event->url);
         $this->assertTrue($event->guests()->where('email', 'ana@example.com')->exists());
+    }
+
+    public function test_booking_copies_the_confirmation_to_administrators(): void
+    {
+        Mail::fake();
+        config([
+            'mail.from.address' => 'agenda@example.test',
+            'mail.from.name' => 'Agenda',
+        ]);
+        Carbon::setTestNow(Carbon::parse('2026-10-26 08:00:00', 'Europe/Madrid'));
+        $host = $this->hostContact();
+        $host->user->forceFill(['email' => 'owner@example.com'])->save();
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $admin = User::factory()->create(['email' => 'admin@example.com']);
+        $admin->assignRole('admin');
+        $host->team->users()->attach($admin->id, ['role' => 'admin']);
+        $collaborator = User::factory()->create(['email' => 'colab@example.com']);
+        $collaborator->assignRole('collaborator');
+        $host->team->users()->attach($collaborator->id, ['role' => 'editor']);
+        $host->weeklyAvailability()->create([
+            'team_id' => $host->team_id,
+            'monday' => true,
+            'tuesday' => true,
+            'wednesday' => true,
+            'thursday' => true,
+            'friday' => true,
+            'saturday' => false,
+            'sunday' => false,
+        ]);
+
+        app(MeetBookingService::class)->book(
+            $host->team_id,
+            'Ana López',
+            'ana@example.com',
+            '2026-10-26 10:00',
+        );
+
+        Mail::assertSent(CalendarEventInvitationMail::class, function (CalendarEventInvitationMail $mail): bool
+        {
+            return $mail->hasTo('ana@example.com')
+                && $mail->hasBcc('owner@example.com')
+                && $mail->hasBcc('admin@example.com')
+                && ! $mail->hasBcc('colab@example.com');
+        });
     }
 
     public function test_team_token_can_list_slots(): void
