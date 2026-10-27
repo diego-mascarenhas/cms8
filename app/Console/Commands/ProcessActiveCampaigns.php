@@ -236,6 +236,8 @@ class ProcessActiveCampaigns extends Command
             }
         }
 
+        $message->reflowPendingSendTimes();
+
         return $createdCount;
     }
 
