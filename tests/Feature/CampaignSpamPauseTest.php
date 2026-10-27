@@ -7,8 +7,6 @@ use App\Models\Contact;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\User;
-use App\Services\Mail\CampaignMessageApiService;
-use App\Services\Mail\MessageCampaignActivationService;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
@@ -40,6 +38,48 @@ class CampaignSpamPauseTest extends TestCase
         $this->assertTrue(Message::isProviderSpamRejection(self::SPAM_ERROR));
         $this->assertFalse(Message::isProviderSpamRejection('550 5.1.1 The email account that you tried to reach does not exist.'));
         $this->assertFalse(Message::isCriticalError(self::SPAM_ERROR));
+        $this->assertFalse(Message::isProviderSpamRejection('Connection to "relay.outboundspamprotection.com:587" timed out.'));
+        $this->assertTrue(Message::isCriticalError('Connection to "relay.outboundspamprotection.com:587" timed out.'));
+    }
+
+    public function test_a_relay_timeout_does_not_pause_the_campaign_as_spam(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Structured',
+            'type_id' => 1,
+            'text' => 'Hello',
+            'team_id' => $team->id,
+            'status_id' => 1,
+            'started_at' => now()->subHour(),
+        ]);
+        $timeout = 'Connection to "relay.outboundspamprotection.com:587" timed out.';
+
+        foreach (['one@acme.test', 'two@acme.test'] as $email)
+        {
+            $delivery = MessageDelivery::query()->create([
+                'team_id' => $team->id,
+                'message_id' => $message->id,
+                'contact_id' => $this->contact($user, $email)->id,
+                'status_id' => 2,
+            ]);
+            $delivery->markAsError($timeout);
+        }
+
+        $this->assertTrue((bool) $message->fresh()->status_id);
+        $this->assertNull($message->fresh()->pause_reason);
+
+        $third = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $this->contact($user, 'three@acme.test')->id,
+            'status_id' => 2,
+        ]);
+        $third->markAsError($timeout);
+
+        $this->assertFalse((bool) $message->fresh()->status_id);
+        $this->assertSame(Message::PAUSE_REASON_ERRORS, $message->fresh()->pause_reason);
     }
 
     public function test_the_first_spam_rejection_pauses_the_campaign_and_stops_new_deliveries(): void

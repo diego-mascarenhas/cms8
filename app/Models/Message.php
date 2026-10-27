@@ -868,6 +868,7 @@ class Message extends Model
             // Mail server errors
             'Connection refused',
             'Connection timed out',
+            'timed out',
             'Host not found',
             'Mail server temporarily rejected',
             'Relay access denied',
@@ -885,15 +886,15 @@ class Message extends Model
     }
 
     /**
-     * MailBaby (and similar relays) rejected this message as spam. One hit is enough to stop the campaign.
+     * The relay rejected this message as spam. One hit is enough to stop the campaign.
+     * A connection error that only names the relay host is not a spam verdict.
      */
     public static function isProviderSpamRejection(string $errorMessage): bool
     {
         $lower = mb_strtolower($errorMessage);
 
         return str_contains($lower, 'rspam')
-            || str_contains($lower, 'classified as spam')
-            || str_contains($lower, 'outboundspamprotec');
+            || str_contains($lower, 'classified as spam');
     }
 
     /**

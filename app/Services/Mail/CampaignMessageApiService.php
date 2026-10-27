@@ -111,7 +111,16 @@ class CampaignMessageApiService
 
         if ($status === 'delivered')
         {
-            $query->whereNotNull('delivered_at');
+            $query->where('status_id', '!=', 4)
+                ->where(function ($query): void
+                {
+                    $query->whereNotNull('delivered_at')
+                        ->orWhereNotNull('opened_at')
+                        ->orWhere(function ($query): void
+                        {
+                            $query->whereNotNull('sent_at')->where('sent_at', '<=', now());
+                        });
+                });
 
             return;
         }
@@ -219,7 +228,7 @@ class CampaignMessageApiService
         {
             return $delivery->isTemporaryFailure() ? 'temporary' : 'failed';
         }
-        if ($delivery->delivered_at)
+        if ($delivery->countsAsDelivered())
         {
             return 'delivered';
         }
@@ -394,7 +403,7 @@ class CampaignMessageApiService
             return $delivery->sent_at && $delivery->sent_at->isPast();
         })->count();
 
-        $delivered = $deliveries->whereNotNull('delivered_at')->count();
+        $delivered = $deliveries->filter(fn (MessageDelivery $delivery): bool => $delivery->countsAsDelivered())->count();
         $opened = $deliveries->whereNotNull('opened_at')->count();
         $clicks = $deliveries->whereNotNull('clicked_at')->count();
 

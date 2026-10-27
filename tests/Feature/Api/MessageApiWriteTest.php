@@ -724,6 +724,81 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('data.0.contact_email', '—');
     }
 
+    public function test_an_api_send_counts_as_delivered_and_a_timeout_counts_as_an_error(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Envío por API',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        $opened = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'abrio@example.test',
+        ]);
+        $accepted = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'aceptado@example.test',
+        ]);
+        $timedOut = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'corte@example.test',
+        ]);
+
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $opened->id,
+            'status_id' => 2,
+            'email_provider' => 'mailbaby',
+            'sent_at' => now()->subHour(),
+            'opened_at' => now()->subMinutes(30),
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $accepted->id,
+            'status_id' => 2,
+            'email_provider' => 'mailbaby',
+            'sent_at' => now()->subHour(),
+        ]);
+        $timeout = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $timedOut->id,
+            'status_id' => 2,
+            'email_provider' => 'mailbaby',
+            'sent_at' => now()->subMinutes(20),
+            'opened_at' => now()->subMinutes(15),
+        ]);
+        $timeout->markAsError('Connection to "relay.example.test:587" timed out.');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id)
+            ->assertOk()
+            ->assertJsonPath('data.stats.delivered', 2)
+            ->assertJsonPath('data.stats.opened', 2)
+            ->assertJsonPath('data.stats.temporary', 1)
+            ->assertJsonPath('data.stats.failed', 0);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries?status=temporary')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.status_key', 'temporary');
+    }
+
     public function test_show_keeps_open_rate_within_the_stats_column_when_opens_exceed_deliveries(): void
     {
         [$user, $team, $token] = $this->adminWithToken();
