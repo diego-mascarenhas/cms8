@@ -1913,29 +1913,26 @@ class ContactController extends Controller
         ]);
 
         $contact = Contact::findOrFail($id);
+        $teamId = (int) ($contact->team_id ?: auth()->user()->current_team_id);
 
         try
         {
-            // Create the user
             $user = \App\Models\User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'phone' => $request->phone ? preg_replace('/[^0-9]/', '', $request->phone) : null,
                 'password' => \Hash::make($request->password),
-                'current_team_id' => auth()->user()->currentTeam->id,
-                'email_verified_at' => null,  // Force email verification
             ]);
 
-            // Assign role
             $user->assignRole($request->role);
+            $user->teams()->syncWithoutDetaching([
+                $teamId => ['role' => $request->role],
+            ]);
+            $user->forceFill(['current_team_id' => $teamId])->save();
 
-            // Add user to current team
-            $user->teams()->attach(auth()->user()->currentTeam->id);
-
-            // Link user to contact
             $contact->update(['user_id' => $user->id]);
 
-            NewUserWelcomeEmailNotifier::queue($user, auth()->user()->currentTeam);
+            NewUserWelcomeEmailNotifier::queue($user, $user->currentTeam);
 
             return response()->json([
                 'success' => true,
@@ -2029,31 +2026,28 @@ class ContactController extends Controller
         ]);
 
         $contact = Contact::findOrFail($id);
+        $teamId = (int) ($contact->team_id ?: auth()->user()->current_team_id);
 
         try
         {
-            // Create the user
             $user = \App\Models\User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'phone' => $request->phone ? preg_replace('/[^0-9]/', '', $request->phone) : null,
                 'password' => \Hash::make($request->password),
-                'current_team_id' => auth()->user()->currentTeam->id,
-                'email_verified_at' => null,  // Force email verification
             ]);
 
-            // Assign role
             $user->assignRole($request->role);
+            $user->teams()->syncWithoutDetaching([
+                $teamId => ['role' => $request->role],
+            ]);
+            $user->forceFill(['current_team_id' => $teamId])->save();
 
-            // Add user to current team
-            $user->teams()->attach(auth()->user()->currentTeam->id);
-
-            // Link user to contact
             $contact->update(['user_id' => $user->id]);
 
             $redirectRoute = $type === 'contact' ? 'contact.show' : 'collaborator.show';
 
-            NewUserWelcomeEmailNotifier::queue($user, auth()->user()->currentTeam);
+            NewUserWelcomeEmailNotifier::queue($user, $user->currentTeam);
 
             return redirect()->route($redirectRoute, $id)->with('success', 'Usuario creado y vinculado correctamente');
         } catch (\Exception $e)
