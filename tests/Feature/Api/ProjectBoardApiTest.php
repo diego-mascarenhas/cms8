@@ -152,6 +152,40 @@ class ProjectBoardApiTest extends TestCase
         ]);
     }
 
+    public function test_team_developer_who_is_not_project_responsible_can_reorder_on_board(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Role::firstOrCreate(['name' => 'developer', 'guard_name' => 'web']);
+
+        [, $adminToken, $project, $task] = $this->projectWithTask();
+        $admin = User::findOrFail($project->responsible_id);
+
+        $developer = User::factory()->create();
+        $admin->currentTeam->users()->attach($developer, ['role' => 'developer']);
+        $developer->forceFill(['current_team_id' => $admin->current_team_id])->save();
+        $developer->assignRole('developer');
+
+        $devToken = $developer->createToken('dev-reorder')->plainTextToken;
+        $inProgress = TaskStatus::where('name', 'IN_PROGRESS')->firstOrFail();
+
+        $this->withHeader('Authorization', 'Bearer '.$devToken)
+            ->getJson('/api/projects/'.$project->id.'/board')
+            ->assertOk();
+
+        $this->withHeader('Authorization', 'Bearer '.$devToken)
+            ->putJson('/api/projects/'.$project->id.'/board/reorder', [
+                'task_id' => $task->id,
+                'status_id' => $inProgress->id,
+                'order' => 0,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.status_id', $inProgress->id);
+    }
+
     public function test_can_update_and_delete_task_via_api(): void
     {
         [$user, $token, $project, $task] = $this->projectWithTask();
