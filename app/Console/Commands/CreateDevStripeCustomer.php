@@ -141,8 +141,10 @@ class CreateDevStripeCustomer extends Command
             {
                 // Usar precios por defecto para desarrollo
                 $priceIdsArray = [
-                    'price_1SitE6RwN51ygFdeuoV0tTLf', // Mailer Basic
-                    'price_1SitGURwN51ygFdeoS4K9YDn', // Mailer Foundation
+                    'price_1UWMPeRwN51ygFdeQDA9m6cR', // Mailer Basic
+                    // 'price_1SitE6RwN51ygFdeuoV0tTLf', // Mailer Basic, en €
+                    'price_1UWMPeRwN51ygFdemVIxQEZK', // Mailer Foundation
+                    // 'price_1SitGURwN51ygFdeoS4K9YDn', // Mailer Foundation, en €
                     'price_1SqaWJRwN51ygFdew8AD7i0S', // WordPress Profesional
                     'price_1SqaWPRwN51ygFdeviaeCVOz', // WordPress Support
                 ];

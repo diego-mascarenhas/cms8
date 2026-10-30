@@ -35,7 +35,11 @@ class PublicHumanoPricingPageTest extends TestCase
         $response->assertDontSee(__('humano_pricing.plans.mailer_basic.name'), false);
         $response->assertDontSee('id="plan-mentor"', false);
         $response->assertDontSee('id="plan-innovation"', false);
-        $response->assertSee('5kQ4gzacZ3Nk9HM0Qd43S07', false);
+        $response->assertSee('54', false);
+        $response->assertSee('USD', false);
+        $response->assertSee('9B63cxgJsgRw16SaIP1B60f', false);
+        $response->assertSee('bJe9AVal48l07vg7wD1B60e', false);
+        $response->assertDontSee('5kQ4gzacZ3Nk9HM0Qd43S07', false);
         $response->assertSee('6oU9AT3OB5VsbPUeH343S06', false);
         $response->assertDontSee('4gM4gz3OB0B82fkcyV43S05', false);
         $response->assertDontSee(__('humano_pricing.coming_soon'), false);

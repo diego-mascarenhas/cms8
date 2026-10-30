@@ -20,8 +20,10 @@ return [
     'rates_heading' => 'Tarifas',
     'rates_intro' => 'Hay cinco productos. Si el equipo no tiene tarifa propia, se usa la de plataforma y, si tampoco existe, la de configuración.',
     'rates_tokens' => 'Multiplicador de tokens: el cliente ve N × tokens reales a tarifa OpenRouter, sin recargo extra. Por defecto ×10.',
-    'rates_whatsapp' => 'Envío WhatsApp: EUR por mensaje saliente. Por defecto 0,003 EUR.',
-    'rates_mailer' => 'Envío mail: EUR por email de excedente (por encima del tope mensual del plan). Por defecto 0,002 EUR.',
+    'rates_whatsapp' => 'Envío WhatsApp: USD por mensaje saliente. Por defecto 0,03 USD.',
+    // 'rates_whatsapp' => 'Envío WhatsApp: EUR por mensaje saliente. Por defecto 0,003 EUR.', // en €
+    'rates_mailer' => 'Envío mail: USD por email de excedente (por encima del tope mensual del plan). Por defecto 0,003 USD.',
+    // 'rates_mailer' => 'Envío mail: EUR por email de excedente (por encima del tope mensual del plan). Por defecto 0,002 EUR.', // en €
     'rates_prospect' => 'Prospección: EUR por crédito consumido al importar un prospecto. Por defecto 0,15 EUR.',
     'rates_storage' => 'Almacenamiento: EUR por MB ocupado ahora (ficheros del equipo, multimedia, adjuntos y fotos de producto). Por defecto 0,02 EUR.',
     'rates_history' => 'Al guardar una tarifa nueva, la anterior se conserva (SCD2) para el consumo ya ocurrido. El historial de la página muestra Desde / Hasta / Actual.',

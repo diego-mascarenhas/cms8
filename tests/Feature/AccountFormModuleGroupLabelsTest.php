@@ -310,9 +310,9 @@ class AccountFormModuleGroupLabelsTest extends TestCase
         $this->assertSame(8.0, TokenBillingRateService::clientTokenMultiplier($team));
         $this->assertSame(10.0, TokenBillingRateService::clientTokenMultiplier($team, now()->subMinute()));
         $this->assertSame(0.002, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend));
-        $this->assertSame(0.003, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, now()->subMinute()));
+        $this->assertSame(0.03, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, now()->subMinute()));
         $this->assertSame('0.008', MailerPaygPricing::pricePerEmail($team));
-        $this->assertSame('0.002', MailerPaygPricing::pricePerEmail($team, now()->subMinute()));
+        $this->assertSame('0.003', MailerPaygPricing::pricePerEmail($team, now()->subMinute()));
         $this->assertSame(0.2, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::ProspectCredit));
         $this->assertSame(0.15, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::ProspectCredit, now()->subMinute()));
         $this->assertSame(TeamBillingFrequency::Weekly, TeamUsageInvoiceFrequency::for($team));

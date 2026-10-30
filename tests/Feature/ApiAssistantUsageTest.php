@@ -56,8 +56,8 @@ class ApiAssistantUsageTest extends TestCase
             ->assertJsonPath('data.sources', [])
             ->assertJsonPath('data.lines', [])
             ->assertJsonPath('data.whatsapp.messages_sent', 0)
-            ->assertJsonPath('data.whatsapp.our_rate', 0.003)
-            ->assertJsonPath('data.whatsapp.currency', 'EUR')
+            ->assertJsonPath('data.whatsapp.our_rate', 0.03)
+            ->assertJsonPath('data.whatsapp.currency', 'USD')
             ->assertJsonPath('data.prospect.credits_used', 0)
             ->assertJsonPath('data.prospect.amount_due_cents', 0)
             ->assertJsonPath('data.prospect.currency', 'EUR')
@@ -136,7 +136,7 @@ class ApiAssistantUsageTest extends TestCase
         $response->assertJsonPath('data.token_multiplier', 10);
         $response->assertJsonPath('data.client_presented', true);
         $response->assertJsonPath('data.whatsapp.messages_sent', 1);
-        $response->assertJsonPath('data.whatsapp.our_rate', 0.003);
+        $response->assertJsonPath('data.whatsapp.our_rate', 0.03);
         $response->assertJsonPath('data.totals.amount_cents', 1000);
         $response->assertJsonPath('data.all.amount_cents', 1000);
         $response->assertJsonPath('data.all.tokens', 10_000_000);

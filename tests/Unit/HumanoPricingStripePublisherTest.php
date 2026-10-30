@@ -17,8 +17,8 @@ class HumanoPricingStripePublisherTest extends TestCase
             ['assistant', 'shop_basic', 'shop_premium', 'shop_profesional', 'ads', 'projects'],
             $ids,
         );
-        $this->assertSame('19', collect($publisher->publishablePlans())->firstWhere('id', 'shop_basic')['monthly_amount']);
-        $this->assertSame('190', collect($publisher->publishablePlans())->firstWhere('id', 'shop_basic')['yearly_amount']);
+        $this->assertSame('22', collect($publisher->publishablePlans())->firstWhere('id', 'shop_basic')['monthly_amount']);
+        $this->assertSame('220', collect($publisher->publishablePlans())->firstWhere('id', 'shop_basic')['yearly_amount']);
         $this->assertSame('49', collect($publisher->publishablePlans())->firstWhere('id', 'ads')['monthly_amount']);
         $this->assertSame('490', collect($publisher->publishablePlans())->firstWhere('id', 'ads')['yearly_amount']);
         $this->assertSame('290', collect($publisher->publishablePlans())->firstWhere('id', 'projects')['yearly_amount']);
@@ -56,16 +56,19 @@ class HumanoPricingStripePublisherTest extends TestCase
         $assistant = collect(config('humano_pricing.plans'))->firstWhere('id', 'assistant');
 
         $this->assertSame('prod_V89Ch5pNA8GG1s', $shop['stripe_product_id'] ?? null);
-        $this->assertSame('price_1U7suBRwN51ygFde4qEpYyXf', $shop['stripe_price_monthly_id'] ?? null);
-        $this->assertSame('19', $shop['monthly_amount'] ?? null);
-        $this->assertSame('190', $shop['yearly_amount'] ?? null);
-        $this->assertSame('price_1U8cY9RwN51ygFdeLbP98VNT', $shop['stripe_price_yearly_id'] ?? null);
+        $this->assertSame('price_1UWLNLRwN51ygFdeeomEu4Rk', $shop['stripe_price_monthly_id'] ?? null);
+        $this->assertSame('22', $shop['monthly_amount'] ?? null);
+        $this->assertSame('220', $shop['yearly_amount'] ?? null);
+        $this->assertSame('price_1UWLNLRwN51ygFdeOitvbO0T', $shop['stripe_price_yearly_id'] ?? null);
+        $this->assertSame('usd', $shop['currency'] ?? null);
         $this->assertSame('prod_V89CoEJptr2nT5', $ads['stripe_product_id'] ?? null);
         $this->assertSame('49', $ads['monthly_amount'] ?? null);
         $this->assertSame('prod_V8JgY0BNt1q78v', $assistant['stripe_product_id'] ?? null);
-        $this->assertSame('price_1U832rRwN51ygFdeO4vRvsls', $assistant['stripe_price_monthly_id'] ?? null);
-        $this->assertSame('price_1U832sRwN51ygFdepkVDBeFy', $assistant['stripe_price_yearly_id'] ?? null);
-        $this->assertSame('49', $assistant['monthly_amount'] ?? null);
+        $this->assertSame('price_1UWNBpRwN51ygFdeqcYBCOrR', $assistant['stripe_price_monthly_id'] ?? null);
+        $this->assertSame('price_1UWNBpRwN51ygFdeHgkwyYVM', $assistant['stripe_price_yearly_id'] ?? null);
+        $this->assertSame('54', $assistant['monthly_amount'] ?? null);
+        $this->assertSame('540', $assistant['yearly_amount'] ?? null);
+        $this->assertSame('usd', $assistant['currency'] ?? null);
     }
 
     public function test_shop_plan_names_are_audience_tiers(): void

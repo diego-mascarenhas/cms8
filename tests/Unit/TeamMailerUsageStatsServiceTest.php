@@ -41,7 +41,7 @@ class TeamMailerUsageStatsServiceTest extends TestCase
         $this->assertSame(5, $all['emails_sent']);
         $this->assertSame(5, $all['amount_due_cents']);
         $this->assertSame(0.01, $all['our_rate']);
-        $this->assertSame('EUR', $all['currency']);
+        $this->assertSame('USD', $all['currency']);
 
         $period = TeamMailerUsageStatsService::forTeam($team, now()->startOfMonth(), now()->endOfMonth());
         $this->assertSame(4, $period['emails_sent']);
