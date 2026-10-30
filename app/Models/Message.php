@@ -369,7 +369,7 @@ class Message extends Model
             ->whereNull('campaign_id')
             ->whereNull('sent_at')
             ->where('status_id', 1)
-            ->with('contact')
+            ->with(['contact.country'])
             ->get();
 
         if ($pending->isEmpty())
@@ -492,11 +492,14 @@ class Message extends Model
                 $cursor = $ideal->copy();
             }
 
-            $aligned = $this->alignScheduledTimeWithSendingSchedule($ideal);
+            $contact = $item['delivery']->contact;
+            $aligned = $this->alignScheduledTimeWithSendingSchedule($ideal, $contact);
             $current = $item['delivery']->scheduled_for;
             $tooLate = $aligned->copy()->addHours(2);
+            $outsideSchedule = $current !== null && ! $this->scheduledMomentIsAllowed($current, $contact);
             $replace = $force
                 || $current === null
+                || $outsideSchedule
                 || ($readyGroup && $current->gt($tooLate))
                 || (! $readyGroup && ($current->lt($item['not_before']) || $current->gt($tooLate)));
 
@@ -656,6 +659,13 @@ class Message extends Model
             return false;
         }
 
+        $delivery->loadMissing('contact');
+        $next = $this->alignScheduledTimeWithSendingSchedule($next, $delivery->contact);
+        if ($next->lte(now()))
+        {
+            return false;
+        }
+
         $delivery->forceFill(['scheduled_for' => $next])->save();
 
         return true;
@@ -778,65 +788,160 @@ class Message extends Model
     }
 
     /**
-     * Adjust a candidate send time so it falls on an allowed weekday and within the optional daily time window (app timezone).
+     * Adjust a candidate send time so it falls on an allowed weekday and within the daily window.
+     * Team settings can skip weekends and use the contact's local business hours.
      */
-    public function alignScheduledTimeWithSendingSchedule(Carbon $candidate): Carbon
+    public function alignScheduledTimeWithSendingSchedule(Carbon $candidate, ?\App\Models\Contact $contact = null): Carbon
     {
-        $t = $candidate->copy()->timezone((string) config('app.timezone'));
+        $this->loadMissing('team');
+        $timezone = $this->sendingScheduleTimezone($contact);
+        $appTimezone = (string) config('app.timezone');
+        $t = $candidate->copy()->timezone($timezone);
+        [$windowStart, $windowEnd] = $this->effectiveSendingWindow();
+        $usesWindow = $windowStart !== null && $windowEnd !== null;
+        $allowed = $this->effectiveAllowedWeekdayIsos();
 
-        if (! $this->hasSendingScheduleConstraints())
+        if ($allowed === range(1, 7) && ! $usesWindow)
         {
-            return $t;
+            return $candidate->copy()->timezone($appTimezone);
         }
-
-        $allowed = $this->normalizedAllowedWeekdayIsos();
-        $usesWindow = $this->sendingWindowConfigured();
 
         for ($i = 0; $i < 21; $i++)
         {
             if (! in_array((int) $t->isoWeekday(), $allowed, true))
             {
                 $t->addDay();
+                if ($usesWindow)
+                {
+                    $t->startOfDay()->setTimeFromTimeString($windowStart);
+                }
 
                 continue;
             }
 
             if (! $usesWindow)
             {
-                return $t;
+                return $t->copy()->timezone($appTimezone);
             }
 
-            if ($this->momentIsWithinSendingWindow($t))
+            if ($this->momentIsInsideWindow($t, $windowStart, $windowEnd))
             {
-                return $t;
+                return $t->copy()->timezone($appTimezone);
             }
 
-            $startM = $this->parseTimeToMinutes((string) $this->send_window_start);
+            $startM = $this->parseTimeToMinutes($windowStart);
             $m = $this->minuteOfDay($t);
 
             if ($m < $startM)
             {
-                $this->applyWindowStartToMoment($t);
+                $t->setTimeFromTimeString($windowStart);
 
-                return $t;
+                return $t->copy()->timezone($appTimezone);
             }
 
-            // Past end-of-window → try next day's window opening
             $t->addDay()->startOfDay();
-            $this->applyWindowStartToMoment($t);
+            $t->setTimeFromTimeString($windowStart);
         }
 
-        return $t;
+        return $t->copy()->timezone($appTimezone);
     }
 
-    private function applyWindowStartToMoment(Carbon $t): void
+    /**
+     * A due send that falls on a weekend or outside business hours waits for the next opening.
+     */
+    public function deferDeliveryOutsideSchedule(MessageDelivery $delivery): bool
     {
-        if (! $this->sendingWindowConfigured())
+        $this->loadMissing('team');
+        $delivery->loadMissing('contact');
+        $scheduledFor = $delivery->scheduled_for;
+        if ($scheduledFor && $this->scheduledMomentIsAllowed($scheduledFor, $delivery->contact))
         {
-            return;
+            return false;
         }
 
-        $t->setTimeFromTimeString($this->send_window_start);
+        $next = $this->alignScheduledTimeWithSendingSchedule($scheduledFor ?? now(), $delivery->contact);
+        if ($next->lte(now()))
+        {
+            return false;
+        }
+
+        $delivery->forceFill(['scheduled_for' => $next])->save();
+
+        return true;
+    }
+
+    public function scheduledMomentIsAllowed(Carbon $moment, ?\App\Models\Contact $contact = null): bool
+    {
+        $this->loadMissing('team');
+        $local = $moment->copy()->timezone($this->sendingScheduleTimezone($contact));
+        if (! in_array((int) $local->isoWeekday(), $this->effectiveAllowedWeekdayIsos(), true))
+        {
+            return false;
+        }
+
+        [$windowStart, $windowEnd] = $this->effectiveSendingWindow();
+        if ($windowStart === null || $windowEnd === null)
+        {
+            return true;
+        }
+
+        return $this->momentIsInsideWindow($local, $windowStart, $windowEnd);
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function effectiveAllowedWeekdayIsos(): array
+    {
+        $allowed = $this->normalizedAllowedWeekdayIsos();
+        if ($this->team?->mailerSkipsWeekends())
+        {
+            $allowed = array_values(array_filter(
+                $allowed,
+                fn (int $day): bool => $day >= 1 && $day <= 5,
+            ));
+        }
+
+        return $allowed === [] ? [1, 2, 3, 4, 5] : $allowed;
+    }
+
+    /**
+     * @return array{0: ?string, 1: ?string}
+     */
+    private function effectiveSendingWindow(): array
+    {
+        if ($this->team?->mailerUsesContactBusinessHours())
+        {
+            return [$this->team->mailerBusinessHoursStart(), $this->team->mailerBusinessHoursEnd()];
+        }
+
+        if ($this->sendingWindowConfigured())
+        {
+            return [(string) $this->send_window_start, (string) $this->send_window_end];
+        }
+
+        return [null, null];
+    }
+
+    private function sendingScheduleTimezone(?\App\Models\Contact $contact): string
+    {
+        if ($this->team?->mailerUsesContactBusinessHours())
+        {
+            $zone = $contact?->mailerTimezone();
+            if (is_string($zone) && $zone !== '')
+            {
+                return $zone;
+            }
+        }
+
+        return (string) config('app.timezone');
+    }
+
+    private function momentIsInsideWindow(Carbon $moment, string $start, string $end): bool
+    {
+        $nowM = $this->minuteOfDay($moment);
+
+        return $nowM >= $this->parseTimeToMinutes($start) && $nowM <= $this->parseTimeToMinutes($end);
     }
 
     /**

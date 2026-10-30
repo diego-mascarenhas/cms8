@@ -65,6 +65,8 @@ class MailerPreferencesController extends Controller
             'enable_open_tracking' => 'mailer_enable_open_tracking',
             'enable_click_tracking' => 'mailer_enable_click_tracking',
             'show_unsubscribe' => 'mailer_show_unsubscribe',
+            'skip_weekends' => 'mailer_skip_weekends',
+            'use_contact_business_hours' => 'mailer_use_contact_business_hours',
         ] as $input => $key)
         {
             $team->setSetting($key, $request->boolean($input) ? '1' : '0', [
@@ -73,6 +75,17 @@ class MailerPreferencesController extends Controller
                 'is_encrypted' => false,
             ]);
         }
+
+        $team->setSetting('mailer_business_hours_start', (string) $validated['business_hours_start'], [
+            'group' => 'mailer',
+            'type' => 'string',
+            'is_encrypted' => false,
+        ]);
+        $team->setSetting('mailer_business_hours_end', (string) $validated['business_hours_end'], [
+            'group' => 'mailer',
+            'type' => 'string',
+            'is_encrypted' => false,
+        ]);
 
         $team->unsetRelation('settings');
         $team->load('settings');
@@ -90,6 +103,10 @@ class MailerPreferencesController extends Controller
      *     enable_open_tracking: bool,
      *     enable_click_tracking: bool,
      *     show_unsubscribe: bool,
+     *     skip_weekends: bool,
+     *     use_contact_business_hours: bool,
+     *     business_hours_start: string,
+     *     business_hours_end: string,
      *     can_update: bool
      * }
      */
@@ -105,6 +122,10 @@ class MailerPreferencesController extends Controller
             'enable_open_tracking' => $team->mailerTracksOpens(),
             'enable_click_tracking' => $team->mailerTracksClicks(),
             'show_unsubscribe' => $team->mailerShowsUnsubscribe(),
+            'skip_weekends' => $team->mailerSkipsWeekends(),
+            'use_contact_business_hours' => $team->mailerUsesContactBusinessHours(),
+            'business_hours_start' => $team->mailerBusinessHoursStart(),
+            'business_hours_end' => $team->mailerBusinessHoursEnd(),
             'can_update' => (bool) $request->user()?->can('update', $team),
         ];
     }

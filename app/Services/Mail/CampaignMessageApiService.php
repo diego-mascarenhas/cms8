@@ -84,7 +84,9 @@ class CampaignMessageApiService
             'status_text' => $this->deliveryStatusText($delivery),
             'has_opened' => $delivery->opened_at !== null,
             'has_clicked' => $delivery->clicked_at !== null,
-            'failed_at' => $delivery->failureRecordedAt()?->toIso8601String(),
+            'failed_at' => $delivery->countsAsSendFailure()
+                ? $delivery->failureRecordedAt()?->toIso8601String()
+                : null,
             'unsubscribed_at' => $delivery->contact?->unsubscribedAt()?->toIso8601String(),
             'in_list60' => $delivery->contact?->list60 !== null,
             'email_valid' => $delivery->contact?->storedChannelValid('email'),
@@ -167,6 +169,8 @@ class CampaignMessageApiService
     private function whereStillFailed(Builder $query): void
     {
         $query->where('message_deliveries.status_id', 4)
+            ->whereNull('message_deliveries.opened_at')
+            ->whereNull('message_deliveries.clicked_at')
             ->whereNotExists(function ($later): void
             {
                 $later->selectRaw('1')
@@ -224,7 +228,7 @@ class CampaignMessageApiService
 
     private function deliveryStatusKey(MessageDelivery $delivery): string
     {
-        if ((int) $delivery->status_id === 4)
+        if ($delivery->countsAsSendFailure())
         {
             return $delivery->isTemporaryFailure() ? 'temporary' : 'failed';
         }
@@ -407,7 +411,7 @@ class CampaignMessageApiService
         $opened = $deliveries->whereNotNull('opened_at')->count();
         $clicks = $deliveries->whereNotNull('clicked_at')->count();
 
-        $stillFailed = $deliveries->where('status_id', 4)->filter(function ($failedDelivery) use ($deliveries)
+        $stillFailed = $deliveries->filter(fn (MessageDelivery $delivery): bool => $delivery->countsAsSendFailure())->filter(function ($failedDelivery) use ($deliveries)
         {
             $hasSuccessfulResend = $deliveries->first(function ($delivery) use ($failedDelivery)
             {
@@ -996,11 +1000,15 @@ class CampaignMessageApiService
             'deliveries as temporary_count' => function ($query): void
             {
                 $query->where('message_deliveries.status_id', 4)
+                    ->whereNull('opened_at')
+                    ->whereNull('clicked_at')
                     ->whereRaw('('.$this->temporaryFailureSql().')');
             },
             'deliveries as failed_count' => function ($query): void
             {
                 $query->where('message_deliveries.status_id', 4)
+                    ->whereNull('opened_at')
+                    ->whereNull('clicked_at')
                     ->whereRaw('NOT ('.$this->temporaryFailureSql().')');
             },
             'deliveries as unsubscribed_count' => function ($query): void

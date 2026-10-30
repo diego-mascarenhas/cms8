@@ -780,14 +780,30 @@ class MessageApiWriteTest extends TestCase
             'status_id' => 2,
             'email_provider' => 'mailbaby',
             'sent_at' => now()->subMinutes(20),
-            'opened_at' => now()->subMinutes(15),
         ]);
         $timeout->markAsError('Connection to "relay.example.test:587" timed out.');
+
+        $openedAfterError = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'abrio-igual@example.test',
+        ]);
+        $openedFailure = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $openedAfterError->id,
+            'status_id' => 2,
+            'email_provider' => 'mailbaby',
+            'sent_at' => now()->subMinutes(25),
+            'opened_at' => now()->subMinutes(10),
+        ]);
+        $openedFailure->markAsError('Connection to "relay.example.test:587" timed out.');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/message/'.$message->id)
             ->assertOk()
-            ->assertJsonPath('data.stats.delivered', 2)
+            ->assertJsonPath('data.stats.delivered', 3)
             ->assertJsonPath('data.stats.opened', 2)
             ->assertJsonPath('data.stats.temporary', 1)
             ->assertJsonPath('data.stats.failed', 0);
@@ -1363,12 +1379,20 @@ class MessageApiWriteTest extends TestCase
                 'enable_open_tracking' => false,
                 'enable_click_tracking' => true,
                 'show_unsubscribe' => false,
+                'skip_weekends' => true,
+                'use_contact_business_hours' => true,
+                'business_hours_start' => '09:00',
+                'business_hours_end' => '16:00',
             ])
             ->assertOk()
             ->assertJsonPath('data.min_hours_between_emails', 72)
             ->assertJsonPath('data.enable_open_tracking', false)
             ->assertJsonPath('data.enable_click_tracking', true)
-            ->assertJsonPath('data.show_unsubscribe', false);
+            ->assertJsonPath('data.show_unsubscribe', false)
+            ->assertJsonPath('data.skip_weekends', true)
+            ->assertJsonPath('data.use_contact_business_hours', true)
+            ->assertJsonPath('data.business_hours_start', '09:00')
+            ->assertJsonPath('data.business_hours_end', '16:00');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/mailer/preferences')

@@ -822,6 +822,51 @@ class Contact extends Model implements HasMedia
         return $this->belongsTo(Country::class, 'country', 'id');
     }
 
+    /**
+     * IANA zone from the phone prefix, then the contact's country.
+     */
+    public function mailerTimezone(): ?string
+    {
+        $clock = \App\Helpers\PhoneHelper::clockForPhone($this->phone);
+        if (is_array($clock) && is_string($clock['timezone'] ?? null) && $clock['timezone'] !== '')
+        {
+            return $clock['timezone'];
+        }
+
+        $code = strtoupper((string) ($this->country()->value('code') ?? ''));
+        if (strlen($code) !== 2)
+        {
+            return null;
+        }
+
+        $zones = \DateTimeZone::listIdentifiers(\DateTimeZone::PER_COUNTRY, $code);
+        if ($zones === [])
+        {
+            return null;
+        }
+
+        $preferred = [
+            'US' => 'America/New_York',
+            'CA' => 'America/Toronto',
+            'MX' => 'America/Mexico_City',
+            'BR' => 'America/Sao_Paulo',
+            'AR' => 'America/Argentina/Buenos_Aires',
+            'CL' => 'America/Santiago',
+            'CO' => 'America/Bogota',
+            'PE' => 'America/Lima',
+            'AU' => 'Australia/Sydney',
+            'RU' => 'Europe/Moscow',
+            'ES' => 'Europe/Madrid',
+        ];
+
+        if (isset($preferred[$code]) && in_array($preferred[$code], $zones, true))
+        {
+            return $preferred[$code];
+        }
+
+        return $zones[0];
+    }
+
     public function person(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Person::class);
