@@ -214,7 +214,7 @@ class ProcessActiveCampaigns extends Command
                     }
                 }
 
-                $scheduledTime = $message->alignScheduledTimeWithSendingSchedule($scheduledTime);
+                $scheduledTime = $message->alignScheduledTimeWithSendingSchedule($scheduledTime, $contact);
 
                 MessageDelivery::create([
                     'team_id' => $message->team_id,

@@ -284,17 +284,27 @@ class MessageDelivery extends Model
      */
     public function countsAsDelivered(): bool
     {
+        if ($this->opened_at !== null || $this->clicked_at !== null || $this->delivered_at !== null)
+        {
+            return true;
+        }
+
         if ((int) $this->status_id === 4)
         {
             return false;
         }
 
-        if ($this->delivered_at !== null || $this->opened_at !== null)
+        return $this->sent_at !== null && $this->sent_at->isPast();
+    }
+
+    public function countsAsSendFailure(): bool
+    {
+        if ((int) $this->status_id !== 4)
         {
-            return true;
+            return false;
         }
 
-        return $this->sent_at !== null && $this->sent_at->isPast();
+        return $this->opened_at === null && $this->clicked_at === null;
     }
 
     public function isTemporaryFailure(): bool

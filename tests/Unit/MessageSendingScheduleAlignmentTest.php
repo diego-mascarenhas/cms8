@@ -2,7 +2,10 @@
 
 namespace Tests\Unit;
 
+use App\Models\Contact;
 use App\Models\Message;
+use App\Models\Team;
+use App\Models\TeamSetting;
 use Carbon\Carbon;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -75,5 +78,49 @@ class MessageSendingScheduleAlignmentTest extends TestCase
 
         $this->assertSame('2025-06-09', $aligned->format('Y-m-d'));
         $this->assertSame('10:15', $aligned->format('H:i'));
+    }
+
+    public function test_team_weekend_skip_moves_saturday_to_monday_morning(): void
+    {
+        $message = $this->messageWithTeamSchedule(skipWeekends: true, businessHours: true);
+        $candidate = Carbon::parse('2025-06-07 18:30:00', 'UTC');
+        $aligned = $message->alignScheduledTimeWithSendingSchedule($candidate);
+
+        $this->assertSame(
+            '2025-06-09 09:00',
+            $aligned->timezone((string) config('app.timezone'))->format('Y-m-d H:i'),
+        );
+    }
+
+    public function test_business_hours_follow_the_contact_timezone(): void
+    {
+        $message = $this->messageWithTeamSchedule(skipWeekends: true, businessHours: true);
+        $contact = new Contact([
+            'phone' => '5491112345678',
+        ]);
+        $candidate = Carbon::parse('2025-06-06 20:30:00', 'UTC');
+        $aligned = $message->alignScheduledTimeWithSendingSchedule($candidate, $contact);
+
+        $this->assertSame('2025-06-09 09:00', $aligned->timezone('America/Argentina/Buenos_Aires')->format('Y-m-d H:i'));
+    }
+
+    private function messageWithTeamSchedule(bool $skipWeekends, bool $businessHours): Message
+    {
+        $team = new Team;
+        $team->setRelation('settings', collect([
+            new TeamSetting(['key' => 'mailer_skip_weekends', 'type' => 'boolean', 'value' => $skipWeekends ? '1' : '0']),
+            new TeamSetting(['key' => 'mailer_use_contact_business_hours', 'type' => 'boolean', 'value' => $businessHours ? '1' : '0']),
+            new TeamSetting(['key' => 'mailer_business_hours_start', 'type' => 'string', 'value' => '09:00']),
+            new TeamSetting(['key' => 'mailer_business_hours_end', 'type' => 'string', 'value' => '16:00']),
+        ]));
+
+        $message = new Message([
+            'send_allowed_weekdays' => null,
+            'send_window_start' => null,
+            'send_window_end' => null,
+        ]);
+        $message->setRelation('team', $team);
+
+        return $message;
     }
 }

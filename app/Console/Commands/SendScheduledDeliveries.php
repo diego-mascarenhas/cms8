@@ -42,7 +42,7 @@ class SendScheduledDeliveries extends Command
             {
                 $query->where('status_id', 1);
             })
-            ->with(['contact', 'message', 'team']) // eager load relations
+            ->with(['contact.country', 'message.team', 'team'])
             ->orderBy('scheduled_for', 'asc')
             ->limit(max(
                 (int) config('services.email.processing.deliveries_per_send_run', 20),
@@ -73,6 +73,11 @@ class SendScheduledDeliveries extends Command
             $limit = $delivery->team?->mailerDispatchBatch()
                 ?? (int) config('services.email.processing.deliveries_per_send_run', 5);
             if (($queuedByPace[$pace] ?? 0) >= $limit)
+            {
+                continue;
+            }
+
+            if ($delivery->message?->deferDeliveryOutsideSchedule($delivery))
             {
                 continue;
             }

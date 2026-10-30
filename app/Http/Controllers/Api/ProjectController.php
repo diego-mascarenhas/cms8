@@ -951,8 +951,27 @@ class ProjectController extends Controller
             ], 401);
         }
 
-        $project = Project::findOrFail($id);
-        $this->authorize('update', $project);
+        $project = $this->visibleProjectsQuery($user)
+            ->where('id', $id)
+            ->first();
+
+        if (! $project)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Proyecto no encontrado',
+            ], 404);
+        }
+
+        if ($project->viewedAsClient($user))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'No tienes permisos para ver el tablero',
+            ], 403);
+        }
+
+        $this->authorize('view', $project);
 
         if (! $project->board_id)
         {

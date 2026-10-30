@@ -535,6 +535,37 @@ trait HasEmailLimits
         return $this->mailerPreference('mailer_show_unsubscribe', true);
     }
 
+    public function mailerSkipsWeekends(): bool
+    {
+        return $this->mailerPreference('mailer_skip_weekends', false);
+    }
+
+    public function mailerUsesContactBusinessHours(): bool
+    {
+        return $this->mailerPreference('mailer_use_contact_business_hours', false);
+    }
+
+    public function mailerBusinessHoursStart(): string
+    {
+        return $this->mailerClockSetting('mailer_business_hours_start', '09:00');
+    }
+
+    public function mailerBusinessHoursEnd(): string
+    {
+        return $this->mailerClockSetting('mailer_business_hours_end', '16:00');
+    }
+
+    private function mailerClockSetting(string $key, string $default): string
+    {
+        $value = trim((string) $this->getSetting($key, $default));
+        if (preg_match('/^\d{2}:\d{2}$/', $value) !== 1)
+        {
+            return $default;
+        }
+
+        return $value;
+    }
+
     public function hasMailerPreference(string $key): bool
     {
         $value = $this->getSetting($key);

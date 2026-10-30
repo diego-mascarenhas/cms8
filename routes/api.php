@@ -1008,6 +1008,9 @@ Route::middleware('team.token')->prefix('team')->group(function ()
     Route::get('/settings', [TeamController::class, 'settings']);
     Route::get('meet/slots', [\App\Http\Controllers\Api\MeetBookingController::class, 'slots'])->name('api.team.meet.slots');
     Route::post('meet/bookings', [\App\Http\Controllers\Api\MeetBookingController::class, 'store'])->name('api.team.meet.bookings.store');
+    Route::post('meet/knocks', [\App\Http\Controllers\Api\MeetKnockController::class, 'store'])->name('api.team.meet.knocks.store');
+    Route::post('meet/knocks/admit', [\App\Http\Controllers\Api\MeetKnockController::class, 'admit'])->name('api.team.meet.knocks.admit');
+    Route::get('meet/knocks/{id}', [\App\Http\Controllers\Api\MeetKnockController::class, 'show'])->where('id', '[a-f0-9]{16}')->name('api.team.meet.knocks.show');
 
     // Team contacts
     Route::resource('contacts', TeamContactController::class);
