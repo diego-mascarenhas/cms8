@@ -134,6 +134,37 @@ class MeetBookingService
         ];
     }
 
+    /**
+     * @return array{event_id: int, contact_id: int, url: string}
+     */
+    public function scheduleWalkIn(int $teamId, string $name, string $email, string $url): array
+    {
+        $contact = $this->guestContact($teamId, $name, strtolower(trim($email)));
+        $start = CalendarEventDateTimeParser::parseForStorage(
+            Carbon::now(CalendarEventDateTimeParser::wallClockTimezone())->format('Y-m-d H:i'),
+        );
+        $end = (clone $start)->addMinutes(self::SLOT_MINUTES);
+        $event = CalendarEvent::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'title' => 'Reunión ahora '.$contact->name,
+            'start' => $start,
+            'end' => $end,
+            'all_day' => false,
+            'label' => 'Business',
+            'url' => $url,
+            'location' => 'REVISION ALPHA',
+        ]);
+        $event->guests()->sync([$contact->id]);
+        PushCalendarEventToGoogleJob::dispatch($event->id, 'created');
+        app(CalendarEventInvitationService::class)->notify($event->load('guests'), 'created');
+
+        return [
+            'event_id' => (int) $event->id,
+            'contact_id' => (int) $contact->id,
+            'url' => $url,
+        ];
+    }
+
     private function dayIsOpen(int $teamId, CarbonInterface $day): bool
     {
         $hosts = $this->hosts($teamId);
