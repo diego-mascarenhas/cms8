@@ -23,9 +23,10 @@ class MeetKnockService
     /**
      * @return array{id: string, token: string, room: string, status: string}
      */
-    public function request(int $teamId, string $name): array
+    public function request(int $teamId, string $name, string $email, ?string $appUrl = null): array
     {
         $name = $this->name($name);
+        $email = strtolower(trim($email));
         $team = $this->team($teamId);
         $sender = $this->sender($team);
         $recipients = $this->recipients($team);
@@ -35,18 +36,33 @@ class MeetKnockService
             throw new RuntimeException('No se pudo avisar al equipo.');
         }
 
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL))
+        {
+            throw new RuntimeException('Ingresá un email válido.');
+        }
+
         $id = bin2hex(random_bytes(8));
         $token = bin2hex(random_bytes(16));
         $room = MeetRoomLink::slug();
+        $appBase = $this->appUrl($appUrl);
         $knock = [
             'id' => $id,
             'token' => $token,
             'name' => $name,
+            'email' => $email,
             'room' => $room,
+            'app_url' => $appBase,
             'status' => 'waiting',
             'created_at' => Carbon::now()->getTimestamp(),
             'notified_at' => Carbon::now()->getTimestamp(),
         ];
+
+        app(MeetBookingService::class)->scheduleWalkIn(
+            $teamId,
+            $name,
+            $email,
+            $appBase.'/meet/'.$room,
+        );
 
         if ($this->send($knock, $sender, $recipients) < 1)
         {
@@ -148,11 +164,14 @@ class MeetKnockService
      */
     private function send(array $knock, array $sender, array $recipients): int
     {
+        $previousUrl = config('services.revisionalpha.url');
+        config(['services.revisionalpha.url' => $knock['app_url'] ?? $previousUrl]);
+
         try
         {
             Mail::to($recipients)->send(new MeetKnockMail(
                 guestName: $knock['name'],
-                joinUrl: MeetRoomLink::url($knock['room']).'?entrar='.$knock['token'],
+                joinUrl: $this->joinUrl($knock),
                 fromAddress: $sender['from_address'],
                 fromName: $sender['from_name'],
             ));
@@ -166,7 +185,34 @@ class MeetKnockService
             ]);
 
             return 0;
+        } finally
+        {
+            config(['services.revisionalpha.url' => $previousUrl]);
         }
+    }
+
+    /**
+     * @param  array{room: string, token: string, app_url?: string}  $knock
+     */
+    private function joinUrl(array $knock): string
+    {
+        $base = rtrim((string) ($knock['app_url'] ?? config('services.revisionalpha.url')), '/');
+
+        return $base.'/meet/'.$knock['room'].'?entrar='.$knock['token'];
+    }
+
+    private function appUrl(?string $appUrl): string
+    {
+        $appUrl = rtrim(trim((string) $appUrl), '/');
+        $scheme = strtolower((string) parse_url($appUrl, PHP_URL_SCHEME));
+        $host = (string) parse_url($appUrl, PHP_URL_HOST);
+
+        if (! in_array($scheme, ['http', 'https'], true) || $host === '')
+        {
+            return rtrim((string) config('services.revisionalpha.url'), '/');
+        }
+
+        return $appUrl;
     }
 
     /**

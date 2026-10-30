@@ -14,14 +14,23 @@ class MeetKnockController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:60'],
+            'email' => ['required', 'email', 'max:255'],
+            'app_url' => ['nullable', 'string', 'max:200'],
         ], [
             'name.required' => 'Escribí tu nombre.',
             'name.max' => 'El nombre es demasiado largo.',
+            'email.required' => 'Escribí tu email.',
+            'email.email' => 'Ingresá un email válido.',
         ]);
 
         try
         {
-            $knock = $knocks->request((int) $request->input('team_id'), $validated['name']);
+            $knock = $knocks->request(
+                (int) $request->input('team_id'),
+                $validated['name'],
+                $validated['email'],
+                $validated['app_url'] ?? null,
+            );
         } catch (RuntimeException $exception)
         {
             return response()->json(['message' => $exception->getMessage()], 503);

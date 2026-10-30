@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mail\MeetKnockMail;
+use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\Team;
 use App\Models\User;
@@ -48,7 +49,7 @@ class MeetKnockTest extends TestCase
         $host->team->users()->attach($collaborator->id, ['role' => 'editor']);
 
         $knocks = app(MeetKnockService::class);
-        $created = $knocks->request($host->team_id, '  Ana   López ');
+        $created = $knocks->request($host->team_id, '  Ana   López ', 'ana@example.com');
 
         $this->assertSame('waiting', $created['status']);
         $this->assertMatchesRegularExpression('/^[a-f0-9]{16}$/', $created['id']);
@@ -89,13 +90,45 @@ class MeetKnockTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-10-30 11:00:00', 'Europe/Madrid'));
         $host = $this->hostContact();
         $knocks = app(MeetKnockService::class);
-        $created = $knocks->request($host->team_id, 'Ana');
+        $created = $knocks->request($host->team_id, 'Ana', 'ana@example.com');
 
         Carbon::setTestNow(Carbon::parse('2026-10-30 11:12:00', 'Europe/Madrid'));
 
         $this->assertSame(['status' => 'expired'], $knocks->status($host->team_id, $created['id']));
         $this->assertNull($knocks->admit($host->team_id, $created['token']));
         Mail::assertSent(MeetKnockMail::class, 1);
+    }
+
+    public function test_knock_email_uses_the_revision_alpha_app_url(): void
+    {
+        config([
+            'services.revisionalpha.url' => 'https://revisionalpha.com',
+            'services.revisionalpha.meet_url' => 'https://revisionalpha.com/meet',
+        ]);
+        $host = $this->hostContact();
+
+        $created = app(MeetKnockService::class)->request($host->team_id, 'Ana', 'ana@example.com', 'https://revisionalpha.com');
+
+        Mail::assertSent(MeetKnockMail::class, function (MeetKnockMail $mail) use ($created): bool
+        {
+            $html = $mail->render();
+
+            return $mail->joinUrl === 'https://revisionalpha.com/meet/'.$created['room'].'?entrar='.$created['token']
+                && str_contains($html, 'https://revisionalpha.com/assets/img/logo-header-email.png')
+                && str_contains($html, 'https://revisionalpha.com/assets/img/logo-footer-email.png')
+                && ! str_contains($html, 'revisionalpha.test/assets/img/');
+        });
+
+        $event = CalendarEvent::withoutGlobalScopes()
+            ->where('url', 'https://revisionalpha.com/meet/'.$created['room'])
+            ->first();
+        $this->assertNotNull($event);
+        $this->assertSame('Reunión ahora Ana', $event->title);
+        $this->assertTrue($event->guests()->withoutGlobalScopes()->where('contacts.email', 'ana@example.com')->exists());
+
+        $again = app(MeetKnockService::class)->request($host->team_id, 'Ana', 'ana@example.com', 'https://revisionalpha.com');
+        $this->assertNotSame($created['room'], $again['room']);
+        $this->assertSame(1, Contact::withoutGlobalScopes()->where('team_id', $host->team_id)->where('email', 'ana@example.com')->count());
     }
 
     public function test_team_token_can_request_and_admit_a_walk_in_meeting(): void
@@ -109,7 +142,10 @@ class MeetKnockTest extends TestCase
         ]);
         $headers = ['Authorization' => 'Bearer '.$token];
 
-        $created = $this->postJson('/api/team/meet/knocks', ['name' => 'Ana'], $headers)
+        $created = $this->postJson('/api/team/meet/knocks', [
+            'name' => 'Ana',
+            'email' => 'ana@example.com',
+        ], $headers)
             ->assertCreated()
             ->assertJsonPath('status', 'waiting');
 
