@@ -16,6 +16,7 @@
   <title>{{ __('cms_landing.page_title') }}</title>
   @include('layouts.partials.favicon')
   <link rel="canonical" href="{{ $pageUrl }}">
+  @include('layouts.partials.json-ld')
   <meta property="og:type" content="website">
   <meta property="og:url" content="{{ $pageUrl }}">
   <meta property="og:title" content="{{ __('cms_landing.page_title') }}">

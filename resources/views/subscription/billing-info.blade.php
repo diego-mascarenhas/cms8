@@ -194,24 +194,30 @@
                         $planDetails = [
                             'basic' => [
                                 'name' => 'Basic',
-                                'price' => $prices['basic']['amount'] ?? '15.99',
-                                'currency' => $prices['basic']['currency'] ?? 'EUR',
+                                'price' => $prices['basic']['amount'] ?? '17.99',
+                                // 'price' => $prices['basic']['amount'] ?? '15.99', // en €
+                                'currency' => $prices['basic']['currency'] ?? 'USD',
+                                // 'currency' => $prices['basic']['currency'] ?? 'EUR', // en €
                                 'emails_month' => '10,000',
                                 'emails_day' => '500',
                                 'contacts' => '3,000',
                             ],
                             'foundation' => [
                                 'name' => 'Foundation',
-                                'price' => $prices['foundation']['amount'] ?? '35.99',
-                                'currency' => $prices['foundation']['currency'] ?? 'EUR',
+                                'price' => $prices['foundation']['amount'] ?? '39.99',
+                                // 'price' => $prices['foundation']['amount'] ?? '35.99', // en €
+                                'currency' => $prices['foundation']['currency'] ?? 'USD',
+                                // 'currency' => $prices['foundation']['currency'] ?? 'EUR', // en €
                                 'emails_month' => '50,000',
                                 'emails_day' => '2,000',
                                 'contacts' => '20,000',
                             ],
                             'scale' => [
                                 'name' => 'Scale',
-                                'price' => $prices['scale']['amount'] ?? '119.99',
-                                'currency' => $prices['scale']['currency'] ?? 'EUR',
+                                'price' => $prices['scale']['amount'] ?? '133.99',
+                                // 'price' => $prices['scale']['amount'] ?? '119.99', // en €
+                                'currency' => $prices['scale']['currency'] ?? 'USD',
+                                // 'currency' => $prices['scale']['currency'] ?? 'EUR', // en €
                                 'emails_month' => '100,000',
                                 'emails_day' => 'Ilimitados',
                                 'contacts' => '50,000',

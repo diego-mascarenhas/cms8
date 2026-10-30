@@ -137,6 +137,13 @@ Route::middleware('throttle:120,1')->get('/shop/{slug}', [PublicShopController::
     ->name('public-shop.show');
 
 // main
+Route::get('/llms.txt', function ()
+{
+    return response(\App\Support\LlmsTxt::body(), 200, [
+        'Content-Type' => 'text/plain; charset=UTF-8',
+    ]);
+})->name('llms');
+
 Route::get('/', [HomeController::class, 'index']);
 Route::get('/inicio', [HumanoLandingController::class, 'index'])->name('humano');
 Route::get('/slash', [SlashLandingController::class, 'index'])->name('slash');

@@ -25,14 +25,17 @@ class SubscriptionProductSeeder extends Seeder
             [
                 'stripe_id' => 'prod_TgFjxc4y8IGwPW',
                 'stripe_product' => 'prod_TgFjxc4y8IGwPW',
-                'stripe_price' => 'price_1SitE6RwN51ygFdeuoV0tTLf',
+                'stripe_price' => 'price_1UWMPeRwN51ygFdeQDA9m6cR',
+                // 'stripe_price' => 'price_1SitE6RwN51ygFdeuoV0tTLf', // en €
                 'name' => 'Mailer Basic',
                 'description' => 'Perfecto para pequeñas empresas que están comenzando con email marketing',
                 'category' => 'mailer',
                 'plan' => 'basic',
                 'type' => 'mailer',
-                'currency' => 'eur',
-                'unit_amount' => 15.99,
+                'currency' => 'usd',
+                // 'currency' => 'eur', // en €
+                'unit_amount' => 17.99,
+                // 'unit_amount' => 15.99, // en €
                 'recurring_interval' => 'month',
                 'recurring_interval_count' => 1,
                 'active' => true,
@@ -40,14 +43,17 @@ class SubscriptionProductSeeder extends Seeder
             [
                 'stripe_id' => 'prod_TgFmhp9iYHH3Q4',
                 'stripe_product' => 'prod_TgFmhp9iYHH3Q4',
-                'stripe_price' => 'price_1SitGURwN51ygFdeoS4K9YDn',
+                'stripe_price' => 'price_1UWMPeRwN51ygFdemVIxQEZK',
+                // 'stripe_price' => 'price_1SitGURwN51ygFdeoS4K9YDn', // en €
                 'name' => 'Mailer Foundation',
                 'description' => 'Ideal para empresas que necesitan escalar sus campañas de email marketing',
                 'category' => 'mailer',
                 'plan' => 'foundation',
                 'type' => 'mailer',
-                'currency' => 'eur',
-                'unit_amount' => 35.99,
+                'currency' => 'usd',
+                // 'currency' => 'eur', // en €
+                'unit_amount' => 39.99,
+                // 'unit_amount' => 35.99, // en €
                 'recurring_interval' => 'month',
                 'recurring_interval_count' => 1,
                 'active' => true,
@@ -55,14 +61,17 @@ class SubscriptionProductSeeder extends Seeder
             [
                 'stripe_id' => 'prod_TgFmbs3kRkpGxu',
                 'stripe_product' => 'prod_TgFmbs3kRkpGxu',
-                'stripe_price' => 'price_1SitHHRwN51ygFde3eMKuUtU',
+                'stripe_price' => 'price_1UWMPfRwN51ygFdeWTLmCKeN',
+                // 'stripe_price' => 'price_1SitHHRwN51ygFde3eMKuUtU', // en €
                 'name' => 'Mailer Scale',
                 'description' => 'Solución completa para empresas que requieren máxima personalización y soporte',
                 'category' => 'mailer',
                 'plan' => 'scale',
                 'type' => 'mailer',
-                'currency' => 'eur',
-                'unit_amount' => 119.99,
+                'currency' => 'usd',
+                // 'currency' => 'eur', // en €
+                'unit_amount' => 133.99,
+                // 'unit_amount' => 119.99, // en €
                 'recurring_interval' => 'month',
                 'recurring_interval_count' => 1,
                 'active' => true,

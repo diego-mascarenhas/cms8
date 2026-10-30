@@ -184,11 +184,23 @@ class AssistantSubscriptionService
                 }
             }
 
+            $subscriptionData = [
+                'metadata' => [
+                    'team_id' => (string) $team->id,
+                    'subscription_type' => (string) ($plan['subscription_type'] ?? $planId),
+                ],
+            ];
+            $trialDays = $this->planTrialDays($plan);
+            if ($trialDays > 0)
+            {
+                $subscriptionData['trial_period_days'] = $trialDays;
+            }
+
             $session = \Stripe\Checkout\Session::create([
                 'customer' => $customerId,
                 'mode' => 'subscription',
                 'locale' => 'es',
-                'payment_method_collection' => 'if_required',
+                'payment_method_collection' => $trialDays > 0 ? 'always' : 'if_required',
                 'line_items' => [[
                     'price' => $priceId,
                     'quantity' => 1,
@@ -197,12 +209,7 @@ class AssistantSubscriptionService
                 'cancel_url' => $cancelUrl,
                 'allow_promotion_codes' => true,
                 'client_reference_id' => (string) $team->id,
-                'subscription_data' => [
-                    'metadata' => [
-                        'team_id' => (string) $team->id,
-                        'subscription_type' => (string) ($plan['subscription_type'] ?? $planId),
-                    ],
-                ],
+                'subscription_data' => $subscriptionData,
                 'metadata' => [
                     'team_id' => (string) $team->id,
                     'plan' => $planId,
@@ -1031,6 +1038,14 @@ class AssistantSubscriptionService
 
     /**
      * @param  array<string, mixed>  $plan
+     */
+    private function planTrialDays(array $plan): int
+    {
+        return max(0, (int) ($plan['trial_days'] ?? 0));
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
      * @return array<string, mixed>
      */
     private function planPayload(array $plan): array
@@ -1055,9 +1070,15 @@ class AssistantSubscriptionService
             'yearly_amount' => (string) ($plan['yearly_amount'] ?? ''),
             'unit_amount' => (string) ($plan['unit_amount'] ?? ''),
             'billing_model' => 'subscription',
-            'currency' => 'EUR',
+            'currency' => strtoupper((string) ($plan['currency'] ?? 'eur')),
             'checkout_available' => (bool) ($plan['checkout_available'] ?? false),
         ];
+
+        $trialDays = $this->planTrialDays($plan);
+        if ($trialDays > 0)
+        {
+            $payload['trial_days'] = $trialDays;
+        }
 
         $subscribersLimit = $this->planSubscribersLimit($id, $plan);
         if ($subscribersLimit !== null)
@@ -1600,7 +1621,7 @@ class AssistantSubscriptionService
                 ]);
             }
 
-            $stripeSubscription = \Stripe\Subscription::create([
+            $subscriptionParams = [
                 'customer' => $customerId,
                 'items' => [[
                     'price' => $priceId,
@@ -1613,7 +1634,14 @@ class AssistantSubscriptionService
                     'subscription_type' => (string) ($plan['subscription_type'] ?? $planId),
                     'plan' => $planId,
                 ],
-            ]);
+            ];
+            $trialDays = $this->planTrialDays($plan);
+            if ($trialDays > 0)
+            {
+                $subscriptionParams['trial_period_days'] = $trialDays;
+            }
+
+            $stripeSubscription = \Stripe\Subscription::create($subscriptionParams);
 
             $this->subscriptionSyncer->syncFromStripeSubscription(
                 $team,

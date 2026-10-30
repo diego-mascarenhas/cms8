@@ -14,7 +14,7 @@ class MailerPaygPricing
         $teamId = $team instanceof Team ? (int) $team->id : $team;
         if ($teamId === null && $on === null)
         {
-            return TeamBillingRate::formatAmount((float) (config('emailer.payg.price_per_email', 0.002) ?: 0));
+            return TeamBillingRate::formatAmount((float) (config('emailer.payg.price_per_email', 0.003) ?: 0)); // en €: 0.002
         }
 
         return TeamBillingRate::formattedAmountOn($teamId, TeamBillingProduct::MailerSend, $on);
@@ -22,7 +22,7 @@ class MailerPaygPricing
 
     public static function currency(): string
     {
-        return strtoupper(trim((string) config('emailer.payg.currency', 'EUR')) ?: 'EUR');
+        return strtoupper(trim((string) config('emailer.payg.currency', 'USD')) ?: 'USD'); // en €: EUR
     }
 
     public static function amountToCents(string $amount): int

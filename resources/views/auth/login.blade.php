@@ -7,6 +7,10 @@ $configData = Helper::appClasses();
 
 @section('title', __('auth.login.title'))
 
+@section('jsonLd')
+  @include('layouts.partials.json-ld')
+@endsection
+
 @section('page-style')
 {{-- Page Css files --}}
 <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/page-auth.css') }}">

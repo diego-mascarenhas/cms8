@@ -20,8 +20,10 @@ return [
     'rates_heading' => 'Rates',
     'rates_intro' => 'There are five products. If the team has no row, the platform default is used, then config.',
     'rates_tokens' => 'Token multiplier: the client sees N × real tokens at OpenRouter rates, with no extra markup. Default ×10.',
-    'rates_whatsapp' => 'WhatsApp send: EUR per outbound message. Default 0.003 EUR.',
-    'rates_mailer' => 'Mail send: EUR per overage email (above the plan monthly cap). Default 0.002 EUR.',
+    'rates_whatsapp' => 'WhatsApp send: USD per outbound message. Default 0.03 USD.',
+    // 'rates_whatsapp' => 'WhatsApp send: EUR per outbound message. Default 0.003 EUR.', // en €
+    'rates_mailer' => 'Mail send: USD per overage email (above the plan monthly cap). Default 0.003 USD.',
+    // 'rates_mailer' => 'Mail send: EUR per overage email (above the plan monthly cap). Default 0.002 EUR.', // en €
     'rates_prospect' => 'Prospecting: EUR per credit used when a prospect is imported. Default 0.15 EUR.',
     'rates_storage' => 'Storage: EUR per MB occupied now (team files, multimedia, attachments, and product photos). Default 0.02 EUR.',
     'rates_history' => 'Saving a new rate keeps the previous one (SCD2) for usage that already happened. The page history shows From / Until / Current.',

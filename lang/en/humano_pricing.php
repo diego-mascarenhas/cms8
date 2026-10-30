@@ -82,7 +82,8 @@ return [
             'name' => 'Pay as you go',
             'description' => 'No monthly fee. Buy credits and pay only for emails you send.',
             'features' => [
-                '€0.002 per email sent',
+                '$0.003 per email sent',
+                // '€0.002 per email sent', // en €
                 'Buy credits when you need them',
                 'No fixed monthly quota',
             ],
@@ -93,7 +94,8 @@ return [
             'features' => [
                 'Up to 3,000 subscribers',
                 '10,000 emails included each month',
-                'Extra emails at €0.002, billed separately from tokens',
+                'Extra emails at $0.003, billed separately from tokens',
+                // 'Extra emails at €0.002, billed separately from tokens', // en €
             ],
         ],
         'mailer_foundation' => [
@@ -102,7 +104,8 @@ return [
             'features' => [
                 'Up to 20,000 subscribers',
                 '50,000 emails included each month',
-                'Extra emails at €0.002, billed separately from tokens',
+                'Extra emails at $0.003, billed separately from tokens',
+                // 'Extra emails at €0.002, billed separately from tokens', // en €
             ],
         ],
         'mailer_scale' => [
@@ -111,7 +114,8 @@ return [
             'features' => [
                 'Up to 50,000 subscribers',
                 '100,000 emails included each month',
-                'Extra emails at €0.002, billed separately from tokens',
+                'Extra emails at $0.003, billed separately from tokens',
+                // 'Extra emails at €0.002, billed separately from tokens', // en €
             ],
         ],
         'shop_basic' => [

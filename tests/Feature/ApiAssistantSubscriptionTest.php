@@ -91,8 +91,8 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.whatsapp_usage.messages_sent', 0);
         $response->assertJsonPath('data.whatsapp_usage.our_amount_cents', 0);
         $response->assertJsonPath('data.whatsapp_usage.amount_due_cents', 0);
-        $response->assertJsonPath('data.whatsapp_usage.currency', 'EUR');
-        $this->assertSame(0.003, $response->json('data.whatsapp_usage.our_rate'));
+        $response->assertJsonPath('data.whatsapp_usage.currency', 'USD');
+        $this->assertSame(0.03, $response->json('data.whatsapp_usage.our_rate'));
         $this->assertSame(0.005, $response->json('data.whatsapp_usage.reference_rate'));
         $response->assertJsonPath('data.prospect_usage.credits_used', 0);
         $response->assertJsonPath('data.prospect_usage.amount_due_cents', 0);
@@ -201,7 +201,7 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.token_usage.amount_due_cents', 0);
         $response->assertJsonPath('data.mailer_usage.emails_sent', 0);
         $response->assertJsonPath('data.mailer_usage.amount_due_cents', 0);
-        $this->assertSame(0.002, $response->json('data.mailer_usage.our_rate'));
+        $this->assertSame(0.003, $response->json('data.mailer_usage.our_rate'));
     }
 
     public function test_innovation_catalog_bills_sent_emails_in_current_period(): void
@@ -1051,7 +1051,9 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('success', true);
         $response->assertJsonPath('data.plan.id', 'shop_basic');
         $response->assertJsonPath('data.plan.name', 'Shop Freelancer');
-        $response->assertJsonPath('data.plan.monthly_amount', '19');
+        $response->assertJsonPath('data.plan.monthly_amount', '22');
+        $response->assertJsonPath('data.plan.currency', 'USD');
+        $response->assertJsonPath('data.plan.trial_days', 30);
         $response->assertJsonPath('data.subscription', null);
         $response->assertJsonPath('data.can_checkout', true);
         $this->assertSame(
@@ -1059,11 +1061,15 @@ class ApiAssistantSubscriptionTest extends TestCase
             collect($response->json('data.plans'))->pluck('id')->all(),
         );
         $this->assertSame(
-            ['19', '39', '79'],
+            ['22', '44', '88'],
             collect($response->json('data.plans'))->pluck('monthly_amount')->all(),
         );
         $this->assertSame(
-            ['190', '390', '790'],
+            [30, 30, 30],
+            collect($response->json('data.plans'))->pluck('trial_days')->all(),
+        );
+        $this->assertSame(
+            ['220', '440', '880'],
             collect($response->json('data.plans'))->pluck('yearly_amount')->all(),
         );
         $this->assertSame(
@@ -1085,10 +1091,12 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('success', true);
         $response->assertJsonPath('data.plan.id', 'mailer_basic');
         $response->assertJsonPath('data.plan.name', 'Mailer Basic');
-        $response->assertJsonPath('data.plan.monthly_amount', '15.99');
+        $response->assertJsonPath('data.plan.monthly_amount', '17.99');
+        $response->assertJsonPath('data.plan.currency', 'USD');
         $response->assertJsonPath('data.subscription', null);
         $response->assertJsonPath('data.can_checkout', true);
-        $response->assertJsonPath('data.mailer_usage.price_per_email', '0.002');
+        $response->assertJsonPath('data.mailer_usage.price_per_email', '0.003');
+        $response->assertJsonPath('data.mailer_usage.currency', 'USD');
         $response->assertJsonPath('data.mailer_usage.emails_included', 10000);
         $response->assertJsonPath('data.mailer_usage.emails_sent', 0);
         $response->assertJsonPath('data.mailer_usage.amount_due_cents', 0);
@@ -1097,14 +1105,22 @@ class ApiAssistantSubscriptionTest extends TestCase
             collect($response->json('data.plans'))->pluck('id')->all(),
         );
         $this->assertSame(
-            ['15.99', '35.99', '119.99'],
+            ['17.99', '39.99', '133.99'],
             collect($response->json('data.plans'))->pluck('monthly_amount')->all(),
+        );
+        $this->assertSame(
+            ['USD', 'USD', 'USD'],
+            collect($response->json('data.plans'))->pluck('currency')->all(),
         );
         $this->assertSame(
             [3000, 20000, 50000],
             collect($response->json('data.plans'))->pluck('subscribers_limit')->all(),
         );
         $this->assertSame('Mailer Scale', $response->json('data.plans.2.name'));
+        $this->assertSame(
+            [30, 30, 30],
+            collect($response->json('data.plans'))->pluck('trial_days')->all(),
+        );
     }
 
     public function test_mailer_catalog_bills_sent_emails_in_current_period(): void

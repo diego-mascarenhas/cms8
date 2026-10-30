@@ -92,7 +92,7 @@ $showFlashAlerts = $showFlashAlerts ?? true;
               <div class="d-flex justify-content-center align-items-baseline flex-wrap gap-1">
                 <h1 class="price-toggle price-yearly display-4 mb-0 text-primary">{{ $plan['yearly_amount'] }}</h1>
                 <h1 class="price-toggle price-monthly display-4 mb-0 text-primary d-none">{{ $plan['monthly_amount'] }}</h1>
-                <span class="h4 text-muted mb-0">€</span>
+                <span class="h4 text-muted mb-0">{{ strtoupper((string) ($plan['currency'] ?? 'eur')) === 'USD' ? 'USD' : '€' }}</span>
                 <span class="h6 text-muted pricing-duration mt-auto mb-2 fw-normal price-toggle price-yearly">{{ __('humano_pricing.per_year_suffix') }}</span>
                 <span class="h6 text-muted pricing-duration mt-auto mb-2 fw-normal price-toggle price-monthly d-none">{{ __('humano_pricing.per_month_suffix') }}</span>
               </div>

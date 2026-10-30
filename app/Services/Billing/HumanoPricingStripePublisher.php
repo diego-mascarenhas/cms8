@@ -85,7 +85,7 @@ class HumanoPricingStripePublisher
             $yearlyCents = $yearlyAmount !== '' && (float) $yearlyAmount > 0
                 ? (int) round(((float) $yearlyAmount) * 100)
                 : 0;
-            $currency = 'eur';
+            $currency = strtolower((string) ($plan['currency'] ?? 'eur'));
 
             $existing = $this->findProductByPlanId($planId);
 
