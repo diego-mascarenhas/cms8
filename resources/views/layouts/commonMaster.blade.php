@@ -82,6 +82,10 @@ $contentLayout = (isset($container) ? (($container === 'container-xxl') ? "layou
     gtag('config', '{{ config('app.google_analytics_id') }}');
   </script>
   @endif
+
+  @hasSection('jsonLd')
+    @yield('jsonLd')
+  @endif
 </head>
 
 <body>
