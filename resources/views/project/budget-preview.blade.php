@@ -61,6 +61,7 @@
 
         $rows[] = [
             'title' => (string) ($t['title'] ?? '—'),
+            'report' => trim((string) ($t['description'] ?? '')),
             'hours' => $formatHoursHuman($hoursCharged),
             'level' => $level,
             'labor' => ($laborCharged !== null || $chargedTokens > 0) ? $formatEuros($laborDisplay) : '—',
@@ -127,6 +128,7 @@
         hr { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
         h2 { font-size: 14px; color: #111827; margin: 24px 0 8px; font-weight: 700; }
         .prose { color: #374151; margin: 0 0 8px; }
+        .labor-report { font-size: 11px; color: #4b5563; margin-top: 4px; line-height: 1.35; font-weight: 400; }
         table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; }
         th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
         th {
@@ -335,7 +337,7 @@
                 <tbody>
                     @foreach ($rows as $row)
                         <tr>
-                            <td>{{ $row['title'] }}</td>
+                            <td>{{ $row['title'] }}@if (($row['report'] ?? '') !== '')<div class="labor-report">{{ $row['report'] }}</div>@endif</td>
                             <td class="num">{{ $row['hours'] }}</td>
                             <td class="num">{{ $row['level'] }}</td>
                             <td class="num">{{ $row['labor'] }}</td>
