@@ -27,3 +27,5 @@ The Next.js apps and Access Validation load that property in production. Local `
 | Filament | Product | | https://fanyion.com | `GOOGLE_ANALYTICS_MEASUREMENT_ID` is empty in `app.fanyion` |
 
 Communications and Tickets use the default property in code. Their `.env.example` does not list `NEXT_PUBLIC_GOOGLE_ANALYTICS_ID`.
+
+Client previews mount on Web at `/{slug}` and are not separate apps. RSalud is the first: https://idoneo.dev/rsalud. `CLIENT_SITE=rsalud` with an empty `CLIENT_SITE_BASE_PATH` later serves that same site at `/` on the client domain. DNS stays unchanged until that move.
