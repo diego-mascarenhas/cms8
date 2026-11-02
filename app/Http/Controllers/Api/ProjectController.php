@@ -248,6 +248,7 @@ class ProjectController extends Controller
             'description' => (string) ($spec['ai_interpretation'] ?? $brief),
             'data' => [
                 'budget_given' => $brief,
+                'client_summary' => $spec['client_summary'] ?? '',
                 'ai_interpretation' => $spec['ai_interpretation'] ?? '',
                 'dimension' => $spec['dimension'] ?? '',
                 'estimated_times' => $spec['estimated_times'] ?? '',
@@ -634,6 +635,7 @@ class ProjectController extends Controller
         $originalBrief = trim((string) ($data['budget_given'] ?? ''));
         $data = array_merge($data, [
             'budget_given' => $originalBrief !== '' ? $originalBrief : (string) ($spec['budget_given'] ?? ''),
+            'client_summary' => $spec['client_summary'] ?? ($data['client_summary'] ?? ''),
             'ai_interpretation' => $spec['ai_interpretation'] ?? ($data['ai_interpretation'] ?? ''),
             'dimension' => $spec['dimension'] ?? ($data['dimension'] ?? ''),
             'estimated_times' => $spec['estimated_times'] ?? ($data['estimated_times'] ?? ''),

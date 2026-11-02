@@ -20,12 +20,14 @@
         return \App\Helpers\Helpers::formatHoursHuman($hours, ! $useSavedQuote);
     };
 
-    $formatEuros = function ($amount): string {
+    $quoteCurrency = $budgetService->normalizeQuoteCurrency(data_get($project->data, 'quote_currency', 'EUR'));
+    $summary = $budgetService->publicPreviewSummary($project);
+    $formatEuros = function ($amount) use ($budgetService, $quoteCurrency): string {
         if (! is_numeric($amount)) {
             return '—';
         }
 
-        return number_format((float) $amount, 2, ',', '.').' €';
+        return $budgetService->formatQuoteMoney($amount, $quoteCurrency);
     };
 
     $rows = [];
@@ -72,13 +74,16 @@
 
     $grandTotal = (int) round($totalLabor + $totalTokenBillable);
     $weeks = $totalHours > 0 ? (int) ceil($totalHours / 40) : 0;
-    $hasContent = $dimension !== '' || $estimatedTimes !== '' || $resources !== '' || count($rows) > 0;
+    $hasContent = $summary !== '' || $dimension !== '' || $estimatedTimes !== '' || $resources !== '' || count($rows) > 0;
     $discountPercent = is_numeric($project->discount) ? max(0.0, min(100.0, (float) $project->discount)) : 0.0;
     $laborDiscountAmount = round($totalLabor * ($discountPercent / 100), 2);
     $discountedLabor = round($totalLabor - $laborDiscountAmount, 2);
     $discountedTotal = (int) round($discountedLabor + $totalTokenBillable);
     $payableTotal = $discountPercent > 0 ? $discountedTotal : $grandTotal;
-    $depositAmount = (int) round($payableTotal * 0.30);
+    $manualQuoteAmount = data_get($project->data, 'quote_amount');
+    $manualQuoteAmount = is_numeric($manualQuoteAmount) ? round((float) $manualQuoteAmount, 2) : null;
+    $clientTotal = $manualQuoteAmount ?? (float) $payableTotal;
+    $depositAmount = (int) round($clientTotal * 0.30);
     $clientResponse = is_array($clientResponse ?? null) ? $clientResponse : null;
     $responseStatus = is_array($clientResponse) ? ($clientResponse['status'] ?? null) : null;
     $budgetToken = $budgetToken ?? data_get($project->data, 'budget_preview_token');
@@ -127,6 +132,7 @@
         .meta strong { color: #111827; }
         hr { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
         h2 { font-size: 14px; color: #111827; margin: 24px 0 8px; font-weight: 700; }
+        h3 { font-size: 12px; color: #374151; margin: 16px 0 6px; font-weight: 700; }
         .prose { color: #374151; margin: 0 0 8px; }
         .labor-report { font-size: 11px; color: #4b5563; margin-top: 4px; line-height: 1.35; font-weight: 400; }
         table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; }
@@ -152,6 +158,10 @@
             padding: 10px 14px;
             margin: 14px 0;
         }
+        .scope-item { margin: 0 0 14px; }
+        .scope-item strong { color: #111827; display: block; }
+        .scope-item .labor-report { display: block; }
+        .price-lead { font-size: 22px; font-weight: 700; color: #111827; margin: 0; }
         .footer {
             margin-top: 32px;
             padding-top: 10px;
@@ -274,7 +284,7 @@
 <body>
 <div class="sheet">
     <div class="report-header">
-        <h1>{{ __('Summary of requested quote and values') }}</h1>
+        <h1>{{ __('Proposal') }}</h1>
         <img src="{{ $logoUrl }}" alt="IDONEO">
     </div>
 
@@ -292,8 +302,55 @@
     @unless ($hasContent)
         <p class="empty">{{ __('No budget breakdown available.') }}</p>
     @else
+        @if (count($rows) > 0 || $summary !== '')
+            <h2>{{ __('Scope') }}</h2>
+            @foreach (preg_split("/\r\n|\n|\r/", $summary) ?: [] as $line)
+                @if (trim($line) !== '')
+                    <p class="prose">{{ trim($line) }}</p>
+                @endif
+            @endforeach
+            @foreach ($rows as $row)
+                <div class="scope-item">
+                    <strong>{{ $row['title'] }}</strong>
+                    @if (($row['report'] ?? '') !== '')
+                        <span class="labor-report">{{ $row['report'] }}</span>
+                    @endif
+                </div>
+            @endforeach
+        @endif
+
+        @if (count($rows) > 0)
+            <h2>{{ __('Investment') }}</h2>
+            <p class="price-lead">{{ $formatEuros($clientTotal) }} + {{ __('I.V.A.') }}</p>
+            <div class="highlight">
+                <div style="display:grid;grid-template-columns:1fr auto;gap:4px 16px;max-width:320px;">
+                    <span>{{ __('Labor') }}</span>
+                    <span style="text-align:right;">{{ $formatEuros($discriminateTokens || ! $includeTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)) }}</span>
+                    @if ($discriminateTokens)
+                        <span>{{ __('Tokens') }}</span>
+                        <span style="text-align:right;">{{ $formatEuros($totalTokenBillable) }}</span>
+                    @endif
+                    <span>{{ __('Subtotal') }}</span>
+                    <span style="text-align:right;">{{ $formatEuros($grandTotal) }}</span>
+                    @if ($discountPercent > 0)
+                        <span>{{ __('Discount on labor') }} (−{{ rtrim(rtrim(number_format($discountPercent, 1, ',', ''), '0'), ',') }}%)</span>
+                        <span style="text-align:right;">−{{ $formatEuros($laborDiscountAmount) }}</span>
+                    @endif
+                    <strong>{{ __('Total') }}</strong>
+                    <strong style="text-align:right;">{{ $formatEuros($clientTotal) }} + {{ __('I.V.A.') }}</strong>
+                </div>
+            </div>
+            @if ($weeks > 0)
+                <p class="prose">{{ __('Estimated development time, :weeks weeks after the budget has been confirmed.', ['weeks' => $weeks]) }}</p>
+            @endif
+        @endif
+
+        @if ($dimension !== '' || $estimatedTimes !== '' || $resources !== '' || count($rows) > 0)
+            <h2>{{ __('Quote detail') }}</h2>
+        @endif
+
         @if ($dimension !== '')
-            <h2>{{ __('Dimension') }}</h2>
+            <h3>{{ __('Dimension') }}</h3>
             @foreach (preg_split("/\r\n|\n|\r/", $dimension) ?: [] as $line)
                 @if (trim($line) !== '')
                     <p class="prose">{{ trim($line) }}</p>
@@ -302,7 +359,7 @@
         @endif
 
         @if ($estimatedTimes !== '')
-            <h2>{{ __('Estimated times') }}</h2>
+            <h3>{{ __('Estimated times') }}</h3>
             @foreach (preg_split("/\r\n|\n|\r/", $estimatedTimes) ?: [] as $line)
                 @if (trim($line) !== '')
                     <p class="prose">{{ trim($line) }}</p>
@@ -311,7 +368,7 @@
         @endif
 
         @if ($resources !== '')
-            <h2>{{ __('Resources') }}</h2>
+            <h3>{{ __('Resources') }}</h3>
             @foreach (preg_split("/\r\n|\n|\r/", $resources) ?: [] as $line)
                 @if (trim($line) !== '')
                     <p class="prose">{{ trim($line) }}</p>
@@ -320,7 +377,7 @@
         @endif
 
         @if (count($rows) > 0)
-            <h2>{{ __('Details') }}</h2>
+            <h3>{{ __('Details') }}</h3>
             <table>
                 <thead>
                     <tr>
@@ -330,7 +387,7 @@
                         <th class="num">{{ __('labor') }}</th>
                         @if ($discriminateTokens)
                             <th class="num">{{ __('Tokens') }}</th>
-                            <th class="num">{{ __('Tokens') }} €</th>
+                            <th class="num">{{ __('Tokens') }} {{ $quoteCurrency }}</th>
                         @endif
                     </tr>
                 </thead>
@@ -357,29 +414,6 @@
                     </tr>
                 </tbody>
             </table>
-
-            <div class="highlight">
-                <div style="display:grid;grid-template-columns:1fr auto;gap:4px 16px;max-width:320px;">
-                    <span>{{ __('Labor') }}</span>
-                    <span style="text-align:right;">{{ $formatEuros($discriminateTokens || ! $includeTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)) }}</span>
-                    @if ($discriminateTokens)
-                        <span>{{ __('Tokens') }}</span>
-                        <span style="text-align:right;">{{ $formatEuros($totalTokenBillable) }}</span>
-                    @endif
-                    <span>{{ __('Subtotal') }}</span>
-                    <span style="text-align:right;">{{ $formatEuros($grandTotal) }}</span>
-                    @if ($discountPercent > 0)
-                        <span>{{ __('Discount on labor') }} (−{{ rtrim(rtrim(number_format($discountPercent, 1, ',', ''), '0'), ',') }}%)</span>
-                        <span style="text-align:right;">−{{ $formatEuros($laborDiscountAmount) }}</span>
-                    @endif
-                    <strong>{{ __('Total') }}</strong>
-                    <strong style="text-align:right;">{{ $formatEuros($payableTotal) }} + {{ __('I.V.A.') }}</strong>
-                </div>
-            </div>
-
-            @if ($weeks > 0)
-                <p class="prose">{{ __('Estimated development time, :weeks weeks after the budget has been confirmed.', ['weeks' => $weeks]) }}</p>
-            @endif
         @endif
     @endunless
 
@@ -415,7 +449,7 @@
                 ]) }}
                 <br>
                 {{ __('The remaining amount (:remaining): if you authorize the debit, it will be charged when the project is completed; if you pay yourself, payment is due upon completion or within 30 days after the agreed completion date.', [
-                    'remaining' => $formatEuros(max(0, $payableTotal - $depositAmount)),
+                    'remaining' => $formatEuros(max(0, $clientTotal - $depositAmount)),
                 ]) }}
             </div>
 

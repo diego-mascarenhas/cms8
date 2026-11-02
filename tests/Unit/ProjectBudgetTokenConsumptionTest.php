@@ -345,6 +345,12 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         $this->assertSame('1 hora y media', $preview['rows'][0]['hours']);
         $this->assertSame('135,00 €', $preview['rows'][0]['labor']);
         $this->assertSame('135,00 €', $preview['totals']['labor']);
+        $this->assertSame('EUR', $preview['quote_currency']);
+
+        $project->data = array_merge($project->data, ['quote_currency' => 'ARS']);
+        $arsPreview = $service->publicPreview($project);
+        $this->assertSame('135,00 ARS', $arsPreview['totals']['labor']);
+        $this->assertSame('ARS', $arsPreview['quote_currency']);
     }
 
     #[Test]
@@ -521,5 +527,30 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         ]));
         $this->assertSame('openai/gpt-4.1', $service->normalizeTokenModel(ProjectBudgetSpecService::DEFAULT_TOKEN_MODEL)['id'] ?? null);
         $this->assertNull($service->normalizeTokenModel(['name' => 'Broken']));
+    }
+
+    #[Test]
+    public function the_budget_spec_prompt_asks_for_a_commercial_client_summary(): void
+    {
+        $service = new ProjectBudgetSpecService;
+        $method = new \ReflectionMethod($service, 'getDefaultBudgetSpecPrompt');
+        $prompt = $method->invoke($service);
+
+        $this->assertStringContainsString('"client_summary"', $prompt);
+        $this->assertStringContainsString('Commercial synthesis for a non-technical client', $prompt);
+    }
+
+    #[Test]
+    public function client_safe_payload_keeps_the_commercial_summary(): void
+    {
+        $service = new ProjectBudgetSpecService;
+
+        $safe = $service->toClientSafe([
+            'client_summary' => 'Front de cotización listo para operar la escala.',
+            'ai_interpretation' => 'Notas internas.',
+            'suggested_tasks' => [],
+        ]);
+
+        $this->assertSame('Front de cotización listo para operar la escala.', $safe['client_summary']);
     }
 }

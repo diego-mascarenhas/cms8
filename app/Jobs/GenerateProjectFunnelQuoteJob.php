@@ -77,6 +77,7 @@ class GenerateProjectFunnelQuoteJob implements ShouldQueue
             'description' => (string) ($spec['ai_interpretation'] ?? $this->brief),
             'data' => array_merge($data, [
                 'budget_given' => $this->brief,
+                'client_summary' => $spec['client_summary'] ?? '',
                 'ai_interpretation' => $spec['ai_interpretation'] ?? '',
                 'dimension' => $spec['dimension'] ?? '',
                 'estimated_times' => $spec['estimated_times'] ?? '',

@@ -70,6 +70,7 @@ class ProjectBudgetSpecService
      * Generate a full budget specification (includes prices for internal use).
      *
      * @return array{
+     *   client_summary: string,
      *   ai_interpretation: string,
      *   dimension: string,
      *   estimated_times: string,
@@ -152,6 +153,7 @@ class ProjectBudgetSpecService
         );
 
         return [
+            'client_summary' => (string) ($decoded['client_summary'] ?? ''),
             'ai_interpretation' => (string) ($decoded['ai_interpretation'] ?? ''),
             'dimension' => (string) ($decoded['dimension'] ?? ''),
             'estimated_times' => (string) ($decoded['estimated_times'] ?? ''),
@@ -519,6 +521,7 @@ class ProjectBudgetSpecService
      *
      * @param  array<string, mixed>  $spec
      * @return array{
+     *   client_summary: string,
      *   ai_interpretation: string,
      *   dimension: string,
      *   estimated_times: string,
@@ -532,6 +535,7 @@ class ProjectBudgetSpecService
         $tasks = is_array($spec['suggested_tasks'] ?? null) ? $spec['suggested_tasks'] : [];
 
         return [
+            'client_summary' => (string) ($spec['client_summary'] ?? ''),
             'ai_interpretation' => (string) ($spec['ai_interpretation'] ?? ''),
             'dimension' => (string) ($spec['dimension'] ?? ''),
             'estimated_times' => (string) ($spec['estimated_times'] ?? ''),
@@ -1747,6 +1751,8 @@ class ProjectBudgetSpecService
         $savings = (float) data_get($project->data, 'token_consumption.savings_percent', 57);
         $aiUsage = $this->resolveProjectAiUsagePercent(is_array($project->data) ? $project->data : []);
         $useSavedQuote = $this->usesSavedQuote($project);
+        $quoteCurrency = $this->normalizeQuoteCurrency(data_get($project->data, 'quote_currency', 'EUR'));
+        $formatMoney = fn (float|int $amount): string => $this->formatQuoteMoney($amount, $quoteCurrency);
 
         $rows = [];
         $totalLabor = 0.0;
@@ -1786,9 +1792,9 @@ class ProjectBudgetSpecService
                 'title' => (string) ($task['title'] ?? '—'),
                 'hours' => Helpers::formatHoursHuman($hoursCharged, ! $useSavedQuote),
                 'level' => trim((string) ($task['resource_level'] ?? '')) ?: '—',
-                'labor' => ($laborCharged !== null || $chargedTokens > 0) ? $this->formatEuros($laborDisplay) : '—',
+                'labor' => ($laborCharged !== null || $chargedTokens > 0) ? $formatMoney($laborDisplay) : '—',
                 'tokens' => ($displayTokens > 0 || $chargedTokens > 0) ? $this->formatTokenCount($displayTokens) : '—',
-                'token_cost' => ($displayTokens > 0 || $chargedTokens > 0) ? $this->formatEuros($chargedTokens) : '—',
+                'token_cost' => ($displayTokens > 0 || $chargedTokens > 0) ? $formatMoney($chargedTokens) : '—',
             ];
         }
 
@@ -1798,6 +1804,7 @@ class ProjectBudgetSpecService
         $discountedLabor = round($totalLabor - $laborDiscountAmount, 2);
         $discountedTotal = (int) round($discountedLabor + $totalTokenBillable);
         $payableTotal = $discountPercent > 0 ? $discountedTotal : $grandTotal;
+        $clientTotal = $this->resolveClientQuoteAmount($project, $payableTotal);
         $clientResponse = is_array(data_get($project->data, 'budget_client_response'))
             ? data_get($project->data, 'budget_client_response')
             : null;
@@ -1810,6 +1817,7 @@ class ProjectBudgetSpecService
             'name' => trim((string) ($project->real_name ?: $project->name)),
             'client_name' => trim((string) (optional($project->enterprise)->name ?? '')),
             'summary' => $this->publicPreviewSummary($project),
+            'quote_currency' => $quoteCurrency,
             'dimension' => trim((string) data_get($project->data, 'dimension', '')),
             'estimated_times' => trim((string) data_get($project->data, 'estimated_times', '')),
             'resources' => trim((string) data_get($project->data, 'resources', '')),
@@ -1817,15 +1825,15 @@ class ProjectBudgetSpecService
             'include_tokens' => $includeTokens,
             'rows' => $rows,
             'totals' => [
-                'labor' => $this->formatEuros($discriminateTokens || ! $includeTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)),
+                'labor' => $formatMoney($discriminateTokens || ! $includeTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)),
                 'tokens' => $totalDisplayTokens > 0 ? $this->formatTokenCount($totalDisplayTokens) : '—',
-                'token_cost' => $this->formatEuros($totalTokenBillable),
-                'subtotal' => $this->formatEuros($grandTotal),
+                'token_cost' => $formatMoney($totalTokenBillable),
+                'subtotal' => $formatMoney($grandTotal),
                 'discount_percent' => $discountPercent,
-                'discount_amount' => $this->formatEuros($laborDiscountAmount),
-                'total' => $this->formatEuros($payableTotal),
-                'deposit' => $this->formatEuros((int) round($payableTotal * 0.30)),
-                'remaining' => $this->formatEuros(max(0, $payableTotal - (int) round($payableTotal * 0.30))),
+                'discount_amount' => $formatMoney($laborDiscountAmount),
+                'total' => $formatMoney($clientTotal),
+                'deposit' => $formatMoney((int) round($clientTotal * 0.30)),
+                'remaining' => $formatMoney(max(0, $clientTotal - (int) round($clientTotal * 0.30))),
                 'weeks' => $totalHours > 0 ? (int) ceil($totalHours / 40) : 0,
             ],
             'client_response' => $clientResponse,
@@ -1837,9 +1845,10 @@ class ProjectBudgetSpecService
         ];
     }
 
-    private function publicPreviewSummary(Project $project): string
+    public function publicPreviewSummary(Project $project): string
     {
         $candidates = [
+            data_get($project->data, 'client_summary', ''),
             data_get($project->data, 'ai_interpretation', ''),
             strip_tags((string) ($project->description ?? '')),
         ];
@@ -1954,13 +1963,43 @@ class ProjectBudgetSpecService
         return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
     }
 
+    public function resolveClientQuoteAmount(Project $project, float|int $calculated): float
+    {
+        $manual = data_get($project->data, 'quote_amount');
+        if (is_numeric($manual) && (float) $manual >= 0)
+        {
+            return round((float) $manual, 2);
+        }
+
+        return (float) $calculated;
+    }
+
+    public function normalizeQuoteCurrency(mixed $code): string
+    {
+        $code = strtoupper(trim((string) $code));
+
+        return in_array($code, ['EUR', 'USD', 'ARS'], true) ? $code : 'EUR';
+    }
+
+    public function formatQuoteMoney(float|int $amount, string $currencyCode = 'EUR'): string
+    {
+        $formatted = number_format((float) $amount, 2, ',', '.');
+
+        return match ($this->normalizeQuoteCurrency($currencyCode))
+        {
+            'USD' => 'US$ '.$formatted,
+            'ARS' => $formatted.' ARS',
+            default => $formatted.' €',
+        };
+    }
+
     private function formatEuros(float|int $amount): string
     {
-        return number_format((float) $amount, 2, ',', '.').' €';
+        return $this->formatQuoteMoney($amount, 'EUR');
     }
 
     private function getDefaultBudgetSpecPrompt(): string
     {
-        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"ai_interpretation\": Neutral 1-2 paragraph description of the project itself (what it is and the main deliverables). Write it as a general project summary. Do not narrate the client's request and do not start with phrases like \"El cliente solicita\", \"The client requests\" or \"The client wants\".\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"token_consumption\": Object with \"notes\" (one line per labor: \"{title}: {N} K\", no Tokens AI prefix), and optional input_tokens/output_tokens/total_tokens/cost_euros/savings_percent/billable_euros/currency.\n- \"suggested_tasks\": (optional) Array: each object with \"title\", \"description\" (a short report of that labor: what it is, what is included, and what stays out), \"category_name\" (match existing task category), \"estimated_hours\" (decimal), \"resource_level\" (Senior/Junior/Consultor), \"unit_price\" (number), \"estimated_tokens\" (integer). Use empty array if not applicable.\n\nWhen the budget is a system (web, app, API, or shop) and it asks for hosting, deploy, a VPS, or production:\n- Put it on a REVISIÓN ALPHA dedicated server and name the plan in that range that matches the project type. The dedicated plans are value (personal projects and small sites), Essential (professional sites), Comfort (business applications) and Elite (demanding or high-traffic applications): https://revisionalpha.com/servidores-dedicados. VALUE is one of those plans, not a separate family. If the text names another plan, use that name. Do not invent CPU, RAM, or disk. Stack map: https://revisionalpha.com/hosting/stack\n- Mention the MCP of IDONEO with MCP/TOON. Consumption is charged according to use: https://mcp.idoneo.dev. Do not quote per-million token rates in client-facing fields.\n- Mention that security is active and the firewall is active (CrowdSec, anti-DDoS, and honeypot).\n- The hosting fee stays outside the quote. Deploying onto that plan stays inside when publication is in scope.\nPut that hosting note in \"resources\" and, when publication is a labor, in that task description.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs. Every suggested task must include description, resource_level, unit_price and estimated_tokens.";
+        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"client_summary\": Commercial synthesis for a non-technical client. This is the text they read at the top of the proposal. Clear, concise, and complete about the scope: what they get, in plain language a buyer understands. Two to four short sentences. No internal jargon, no hourly rates, no per-million token prices, and do not start with \"El cliente solicita\", \"The client requests\" or \"The client wants\". Keep dimension, times and resources out of this field.\n- \"ai_interpretation\": Neutral 1-2 paragraph description of the project itself (what it is and the main deliverables). Write it as a general project summary. Do not narrate the client's request and do not start with phrases like \"El cliente solicita\", \"The client requests\" or \"The client wants\".\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"token_consumption\": Object with \"notes\" (one line per labor: \"{title}: {N} K\", no Tokens AI prefix), and optional input_tokens/output_tokens/total_tokens/cost_euros/savings_percent/billable_euros/currency.\n- \"suggested_tasks\": (optional) Array: each object with \"title\", \"description\" (a short report of that labor: what it is, what is included, and what stays out), \"category_name\" (match existing task category), \"estimated_hours\" (decimal), \"resource_level\" (Senior/Junior/Consultor), \"unit_price\" (number), \"estimated_tokens\" (integer). Use empty array if not applicable.\n\nWhen the budget is a system (web, app, API, or shop) and it asks for hosting, deploy, a VPS, or production:\n- Put it on a REVISIÓN ALPHA dedicated server and name the plan in that range that matches the project type. The dedicated plans are value (personal projects and small sites), Essential (professional sites), Comfort (business applications) and Elite (demanding or high-traffic applications): https://revisionalpha.com/servidores-dedicados. VALUE is one of those plans, not a separate family. If the text names another plan, use that name. Do not invent CPU, RAM, or disk. Stack map: https://revisionalpha.com/hosting/stack\n- Mention the MCP of IDONEO with MCP/TOON. Consumption is charged according to use: https://mcp.idoneo.dev. Do not quote per-million token rates in client-facing fields.\n- Mention that security is active and the firewall is active (CrowdSec, anti-DDoS, and honeypot).\n- The hosting fee stays outside the quote. Deploying onto that plan stays inside when publication is in scope.\nPut that hosting note in \"resources\" and, when publication is a labor, in that task description.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs. Every suggested task must include description, resource_level, unit_price and estimated_tokens.";
     }
 }
