@@ -193,6 +193,10 @@
         if (budgetReceived) {
             parts.push('{{ __("Budget received") }}:\n' + budgetReceived);
         }
+        var typedAmount = ($('#quote_amount').val() || '').trim();
+        if (typedAmount !== '' && !isNaN(parseFloat(typedAmount))) {
+            parts.push('Importe que el cliente acepta: ' + typedAmount + '. Las horas de cada labor tienen que recalcularse, con la tarifa de su nivel, para que la suma sea ese importe.');
+        }
         var budgetGiven = parts.join('\n\n');
         if (!budgetGiven) {
             Swal.fire({
@@ -235,6 +239,8 @@
                         var html = buildSuggestedTasksTable(res.suggested_tasks);
                         $('#suggested-tasks-container').html(html).removeClass('d-none');
                         $('#data_suggested_tasks').val(JSON.stringify(res.suggested_tasks));
+                        rememberQuoteTasks(res.suggested_tasks);
+                        lastFittedAmount = null;
                         applyTokenConsumption(res.token_consumption, res.suggested_tasks);
                         refreshBudgetPreview();
                     } else {
@@ -655,12 +661,114 @@
             targetTotal: targetTotal
         };
     }
+    var quoteTaskBaseline = null;
+    var lastFittedAmount = undefined;
+    function rememberQuoteTasks(tasks) {
+        quoteTaskBaseline = JSON.parse(JSON.stringify(tasks || []));
+    }
+    function levelRateCard(tasks) {
+        var weights = { junior: 0.6, mid: 0.8, senior: 1, consultor: 1.2 };
+        var observed = {};
+        (tasks || []).forEach(function(task) {
+            var level = String(task.resource_level || '').trim().toLowerCase();
+            if (!weights[level]) level = 'senior';
+            var rate = parseFloat(task.hourly_rate);
+            if (isNaN(rate) || rate <= 0) {
+                var hours = parseFloat(task.estimated_hours);
+                var price = parseFloat(task.unit_price);
+                if (!isNaN(hours) && hours > 0 && !isNaN(price) && price > 0) rate = price / hours;
+            }
+            if (!isNaN(rate) && rate > 0) {
+                if (!observed[level]) observed[level] = [];
+                observed[level].push(rate);
+            }
+        });
+        Object.keys(observed).forEach(function(level) { observed[level].sort(function(a, b) { return a - b; }); });
+        var anchor = observed.senior ? 'senior' : (Object.keys(observed)[0] || 'senior');
+        var anchorRate = observed[anchor] ? observed[anchor][Math.floor((observed[anchor].length - 1) / 2)] : 120;
+        var senior = anchorRate / weights[anchor];
+        var card = {};
+        Object.keys(weights).forEach(function(level) {
+            card[level] = Math.round(senior * weights[level] * 100) / 100;
+        });
+        return card;
+    }
+    function taskHourlyRate(task, card) {
+        var rate = parseFloat(task.hourly_rate);
+        if (!isNaN(rate) && rate > 0) return Math.round(rate * 100) / 100;
+        var hours = parseFloat(task.estimated_hours);
+        var price = parseFloat(task.unit_price);
+        if (!isNaN(hours) && hours > 0 && !isNaN(price) && price > 0) return Math.round((price / hours) * 100) / 100;
+        var level = String(task.resource_level || '').trim().toLowerCase();
+        return card[level] || card.senior;
+    }
+    function fitTasksToAmount(tasks, target) {
+        var card = levelRateCard(tasks);
+        var included = [];
+        tasks.forEach(function(task, index) {
+            if (task.included === false) return;
+            var rate = taskHourlyRate(task, card);
+            var price = parseFloat(task.unit_price);
+            var hours = parseFloat(task.estimated_hours);
+            var weight = (!isNaN(price) && price > 0) ? price : ((!isNaN(hours) && hours > 0) ? hours * rate : rate);
+            included.push({ index: index, rate: rate, weight: Math.max(0.01, weight), hours: isNaN(hours) ? 0 : hours });
+        });
+        if (!included.length || target < 0) return tasks;
+        var base = included.reduce(function(sum, line) { return sum + line.weight; }, 0);
+        var assigned = 0;
+        included.forEach(function(line, position) {
+            var share = position === included.length - 1
+                ? Math.round((target - assigned) * 100) / 100
+                : Math.round(target * (line.weight / base) * 100) / 100;
+            var hours = line.rate > 0 ? Math.round((share / line.rate) * 100) / 100 : 0;
+            var price = Math.round(hours * line.rate * 100) / 100;
+            if (position === included.length - 1) {
+                price = Math.round((target - assigned) * 100) / 100;
+                hours = line.rate > 0 ? Math.round((price / line.rate) * 100) / 100 : 0;
+            }
+            assigned = Math.round((assigned + price) * 100) / 100;
+            var task = tasks[line.index];
+            var previousHours = line.hours;
+            task.hourly_rate = line.rate;
+            task.estimated_hours = hours;
+            task.unit_price = price;
+            if (previousHours > 0 && task.estimated_tokens) {
+                task.estimated_tokens = Math.round(Number(task.estimated_tokens) * (hours / previousHours));
+            }
+        });
+        return tasks;
+    }
+    function applyManualQuoteToTasks() {
+        var current = readSuggestedTasks();
+        if (!current) return;
+        if (!quoteTaskBaseline) rememberQuoteTasks(current);
+        var manual = ($('#quote_amount').val() || '').trim();
+        var tasks = JSON.parse(JSON.stringify(quoteTaskBaseline));
+        if (manual !== '' && !isNaN(parseFloat(manual))) {
+            tasks = fitTasksToAmount(tasks, parseFloat(manual));
+        }
+        $('#data_suggested_tasks').val(JSON.stringify(tasks));
+        if ($('#suggested-tasks-container').length && tasks.length) {
+            $('#suggested-tasks-container').html(buildSuggestedTasksTable(tasks)).removeClass('d-none');
+        }
+    }
     function refreshBudgetPreview() {
         var raw = $('#data_suggested_tasks').val();
         var tasks = [];
         try {
             if (raw) tasks = JSON.parse(raw);
         } catch (e) { }
+        var manualNow = ($('#quote_amount').val() || '').trim();
+        if (manualNow !== lastFittedAmount) {
+            lastFittedAmount = manualNow;
+            applyManualQuoteToTasks();
+            raw = $('#data_suggested_tasks').val();
+            try {
+                tasks = raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                tasks = [];
+            }
+        }
         var clientSummary = ($('#data_client_summary').val() || '').trim();
         var dimension = ($('#data_dimension').val() || '').trim();
         var estimatedTimes = ($('#data_estimated_times').val() || '').trim();
@@ -683,6 +791,7 @@
         var totalTokenBillable = 0;
         var totalHours = 0;
         var taskItems = '';
+        var includedLines = [];
         tasks.forEach(function(t) {
             var title = (t.title || '—');
             var included = t.included !== false;
@@ -696,46 +805,42 @@
             var hoursCharged = rounded.hours;
             var tokenBillable = tokenInclude ? balanced.tokenBillable : 0;
             var displayTokens = tokenInclude ? balanced.displayTokens : 0;
-            var shownLabor = laborCharged;
-            if (tokenInclude && !tokenDiscriminate && !isNaN(laborCharged)) {
-                shownLabor = roundBudgetMoney(laborCharged + tokenBillable);
-            }
-            var details = [
-                formatHoursHuman(hoursCharged),
-                level,
-                !isNaN(shownLabor) ? formatEuros(shownLabor) : '—'
-            ];
-            if (tokenInclude && tokenDiscriminate && (balanced.tokens > 0 || tokenBillable > 0)) {
-                details.push(
-                    '{{ __("Tokens") }} ' + formatTokenCount(displayTokens)
-                    + ' · ' + formatEuros(tokenBillable)
-                );
-            }
-            var detailText = details.join(' · ');
-            // Quill splits nested <p> inside <li> into separate bullets — keep title + details in one <p>.
             var report = (t.description != null) ? String(t.description).trim() : '';
             var scopeHtml = '<p style="margin:0 0 1.15em 0;">'
                 + '<strong>' + escapeHtml(title) + '</strong>'
                 + (report !== '' ? '<br><span style="font-size:0.85em;line-height:1.35;opacity:0.85;">' + escapeHtml(report) + '</span>' : '')
                 + '</p>';
-            var itemHtml = '<p style="margin:0 0 1.15em 0;">'
-                + '<strong>' + escapeHtml(title) + '</strong><br>'
-                + '<span style="font-size:0.85em;line-height:1.35;opacity:0.85;">' + escapeHtml(detailText) + '</span>'
-                + '</p>';
             if (included) {
                 scopeItems += scopeHtml;
-                taskItems += itemHtml;
                 if (!isNaN(laborCharged)) totalLabor += laborCharged;
                 totalTokenBillable += tokenBillable;
                 totalHours += hoursCharged;
+                includedLines.push({
+                    title: title,
+                    level: level,
+                    hoursCharged: hoursCharged,
+                    laborCharged: isNaN(laborCharged) ? 0 : laborCharged,
+                    tokenBillable: tokenBillable,
+                    displayTokens: displayTokens,
+                    hasTokens: balanced.tokens > 0 || tokenBillable > 0
+                });
             } else {
                 scopeItems += '<p style="margin:0 0 1.15em 0;"><s>'
                     + '<strong>' + escapeHtml(title) + '</strong>'
                     + (report !== '' ? '<br><span style="font-size:0.85em;line-height:1.35;opacity:0.85;">' + escapeHtml(report) + '</span>' : '')
                     + '</s></p>';
+                var struckLabor = laborCharged;
+                if (tokenInclude && !tokenDiscriminate && !isNaN(laborCharged)) {
+                    struckLabor = roundBudgetMoney(laborCharged + tokenBillable);
+                }
+                var struckDetails = [
+                    formatHoursHuman(hoursCharged),
+                    level,
+                    !isNaN(struckLabor) ? formatEuros(struckLabor) : '—'
+                ];
                 taskItems += '<p style="margin:0 0 1.15em 0;"><s>'
                     + '<strong>' + escapeHtml(title) + '</strong><br>'
-                    + '<span style="font-size:0.85em;line-height:1.35;opacity:0.85;">' + escapeHtml(detailText) + '</span>'
+                    + '<span style="font-size:0.85em;line-height:1.35;opacity:0.85;">' + escapeHtml(struckDetails.join(' · ')) + '</span>'
                     + '</s></p>';
             }
         });
@@ -746,7 +851,7 @@
             }
             html += scopeItems;
         }
-        if (taskItems) {
+        if (taskItems || includedLines.length) {
             var grandTotal = Math.round(totalLabor + totalTokenBillable);
             var discount = parseFloat($('#discount').val());
             if (isNaN(discount) || discount < 0) discount = 0;
@@ -757,30 +862,73 @@
             var discountedTotal = Math.round(discountedLabor + totalTokenBillable);
             var payableTotal = discount > 0 ? discountedTotal : grandTotal;
             var discountLabel = String(discount).replace('.', ',');
-
-            html += '<p><br></p><p><strong>{{ __("Investment") }}</strong></p>';
-            if (tokenInclude && tokenDiscriminate) {
-                html += '<p>{{ __("Labor") }}: ' + formatEuros(totalLabor) + '</p>';
-                html += '<p>{{ __("Tokens") }}: ' + formatEuros(totalTokenBillable) + '</p>';
-            }
-            html += '<p>{{ __("Subtotal") }}: ' + formatEuros(grandTotal) + '</p>';
-            if (discount > 0) {
-                html += '<p>{{ __("Discount on labor") }} (−' + discountLabel + '%): −'
-                    + formatEuros(laborDiscountAmount) + '</p>';
-            }
             var manualRaw = ($('#quote_amount').val() || '').trim();
             var manualAmount = parseFloat(manualRaw);
             var clientTotal = (manualRaw !== '' && !isNaN(manualAmount)) ? manualAmount : payableTotal;
-            html += '<p><strong>{{ __("Total") }}: '
-                + formatEuros(clientTotal)
-                + ' + {{ __("I.V.A.") }}</strong></p>';
+            if (manualRaw === '') {
+                var notesCap = parseSuggestedMaximum($('#description').val() || '');
+                if (notesCap !== null && payableTotal > notesCap) {
+                    clientTotal = notesCap;
+                }
+            }
+            var scaledLines = scaleQuoteLines(clientTotal, includedLines.map(function(line) {
+                return { labor: line.laborCharged, tokens: line.tokenBillable };
+            }));
+            var linesAdjusted = Math.abs(clientTotal - payableTotal) >= 0.01;
+            if (linesAdjusted) {
+                totalLabor = 0;
+                totalTokenBillable = 0;
+                scaledLines.forEach(function(line, index) {
+                    includedLines[index].laborCharged = line.labor;
+                    includedLines[index].tokenBillable = line.tokens;
+                    totalLabor += line.labor;
+                    totalTokenBillable += line.tokens;
+                });
+                grandTotal = clientTotal;
+                discount = 0;
+            }
+            includedLines.forEach(function(line) {
+                var shownLabor = line.laborCharged;
+                if (tokenInclude && !tokenDiscriminate) {
+                    shownLabor = roundBudgetMoney(line.laborCharged + line.tokenBillable);
+                }
+                var details = [
+                    formatHoursHuman(line.hoursCharged),
+                    line.level,
+                    formatEuros(shownLabor)
+                ];
+                if (tokenInclude && tokenDiscriminate && line.hasTokens) {
+                    details.push(
+                        '{{ __("Tokens") }} ' + formatTokenCount(line.displayTokens)
+                        + ' · ' + formatEuros(line.tokenBillable)
+                    );
+                }
+                taskItems += '<p style="margin:0 0 1.15em 0;">'
+                    + '<strong>' + escapeHtml(line.title) + '</strong><br>'
+                    + '<span style="font-size:0.85em;line-height:1.35;opacity:0.85;">' + escapeHtml(details.join(' · ')) + '</span>'
+                    + '</p>';
+            });
+
             if (!quoteValueLocked) {
                 $('#project_price').val(clientTotal);
             }
 
             var weeks = totalHours > 0 ? Math.ceil(totalHours / 40) : 0;
-            html += '<p>' + escapeHtml('{{ __("Estimated development time, :weeks weeks after the budget has been confirmed.") }}'.replace(':weeks', weeks)) + '</p>';
             html += '<h3>{{ __("Details") }}</h3>' + taskItems;
+            var investmentHtml = '<p><br></p><p><strong>{{ __("Investment") }}</strong></p>';
+            if (tokenInclude && tokenDiscriminate) {
+                investmentHtml += '<p>{{ __("Labor") }}: ' + formatEuros(totalLabor) + '</p>';
+                investmentHtml += '<p>{{ __("Tokens") }}: ' + formatEuros(totalTokenBillable) + '</p>';
+            }
+            investmentHtml += '<p>{{ __("Subtotal") }}: ' + formatEuros(grandTotal) + '</p>';
+            if (discount > 0) {
+                investmentHtml += '<p>{{ __("Discount on labor") }} (−' + discountLabel + '%): −'
+                    + formatEuros(laborDiscountAmount) + '</p>';
+            }
+            investmentHtml += '<p><strong>{{ __("Total") }}: '
+                + formatEuros(clientTotal)
+                + ' + {{ __("I.V.A.") }}</strong></p>';
+            investmentHtml += '<p>' + escapeHtml('{{ __("Estimated development time, :weeks weeks after the budget has been confirmed.") }}'.replace(':weeks', weeks)) + '</p>';
         }
         if (dimension || estimatedTimes || resources) {
             html += '<h3>{{ __("Quote detail") }}</h3>';
@@ -794,11 +942,14 @@
                 html += '<h3>{{ __("Resources") }}</h3>' + textToHtmlBlocks(resources);
             }
         }
+        if (typeof investmentHtml !== 'undefined') {
+            html += investmentHtml;
+        }
 
         setBudgetPreviewHtml(html);
     }
 
-    $(document).on('change input', '#discount, #quote_currency, #quote_amount, #data_client_summary', function() {
+    $(document).on('change input', '#discount, #quote_currency, #quote_amount, #description, #data_client_summary', function() {
         refreshBudgetPreview();
     });
 
@@ -870,6 +1021,7 @@
             }
         }
         $('#data_suggested_tasks').val(JSON.stringify(tasks));
+        rememberQuoteTasks(tasks);
         syncTokenConsumptionFromTasks();
         refreshBudgetPreview();
     });
@@ -964,6 +1116,65 @@
         refreshBudgetPreview();
     });
 
+    function tokenModelProducesText(modality) {
+        if (!modality || modality === 'text') return true;
+        var output = String(modality).split('->').pop() || '';
+        return output.split('+').indexOf('text') !== -1;
+    }
+    function parseLocalizedAmount(raw) {
+        raw = String(raw || '').replace(/\s/g, '');
+        if (!raw) return null;
+        var hasComma = raw.indexOf(',') !== -1;
+        var hasDot = raw.indexOf('.') !== -1;
+        if (hasComma && hasDot) {
+            if (raw.lastIndexOf(',') > raw.lastIndexOf('.')) {
+                raw = raw.replace(/\./g, '').replace(',', '.');
+            } else {
+                raw = raw.replace(/,/g, '');
+            }
+        } else if (hasComma) {
+            raw = /,\d{1,2}$/.test(raw) ? raw.replace(',', '.') : raw.replace(/,/g, '');
+        } else if ((raw.match(/\./g) || []).length > 1) {
+            raw = raw.replace(/\./g, '');
+        } else if (/^\d{1,3}(?:\.\d{3})+$/.test(raw)) {
+            raw = raw.replace(/\./g, '');
+        }
+        var amount = parseFloat(raw);
+        return isNaN(amount) || amount < 0 ? null : Math.round(amount * 100) / 100;
+    }
+    function parseSuggestedMaximum(text) {
+        var match = String(text || '').match(/(?:m[aá]ximo(?:\s+sugerido)?|no\s+superar(?:\s+los)?|tope|hasta\s+un\s+m[aá]ximo|budget\s+max(?:imum)?|suggested\s+maximum|cap(?:\s+of)?)\s*[:\-]?\s*(?:us\s*\$|usd|eur|ars|€|\$)?\s*(\d{1,3}(?:[.\s]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/i);
+        return match ? parseLocalizedAmount(match[1]) : null;
+    }
+    function scaleQuoteLines(target, lines) {
+        target = Math.round(target * 100) / 100;
+        var base = 0;
+        lines.forEach(function(line) {
+            base += (line.labor || 0) + (line.tokens || 0);
+        });
+        base = Math.round(base * 100) / 100;
+        if (!lines.length || base <= 0 || Math.abs(base - target) < 0.009) {
+            return lines.map(function(line) {
+                return { labor: line.labor || 0, tokens: line.tokens || 0 };
+            });
+        }
+        var factor = target / base;
+        var running = 0;
+        return lines.map(function(line, index) {
+            var labor = Math.round((line.labor || 0) * factor * 100) / 100;
+            var tokens = Math.round((line.tokens || 0) * factor * 100) / 100;
+            if (index === lines.length - 1) {
+                labor = Math.round((target - running - tokens) * 100) / 100;
+                if (labor < 0) {
+                    tokens = Math.round((tokens + labor) * 100) / 100;
+                    labor = 0;
+                }
+            } else {
+                running = Math.round((running + labor + tokens) * 100) / 100;
+            }
+            return { labor: labor, tokens: tokens };
+        });
+    }
     function catalogPriceLabel(value) {
         if (value === null || value === undefined || value === '') return '—';
         var n = parseFloat(value);
@@ -996,7 +1207,7 @@
                 if (!Array.isArray(models)) return;
                 models.forEach(function(item) {
                     if (!item || typeof item.id !== 'string' || !item.id.trim()) return;
-                    if (item.modality && item.modality !== 'text') return;
+                    if (!tokenModelProducesText(item.modality)) return;
                     appendTokenModelOption({
                         id: item.id.trim(),
                         name: item.name || item.id,
@@ -1161,6 +1372,7 @@
 			<div class="col-12">
 				<label for="description" class="form-label">{{ __('Project Notes') }}</label>
 				<textarea id="description" name="description" class="form-control js-auto-resize @error('description') is-invalid @enderror" rows="4">{{ old('description', $data->description ?? '') }}</textarea>
+				<p class="text-muted small mb-0 mt-1">{{ __('If you write a suggested maximum, the quote stays under it and the lines are fitted to that amount.') }}</p>
 				@error('description')
     <div class="invalid-feedback">{{ $message }}</div>
 @enderror

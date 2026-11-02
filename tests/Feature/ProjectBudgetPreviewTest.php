@@ -114,6 +114,7 @@ class ProjectBudgetPreviewTest extends TestCase
         $content = $response->getContent();
         $this->assertLessThan(strpos($content, __('Quote detail')), strpos($content, __('Scope')));
         $this->assertLessThan(strpos($content, __('Dimension')), strpos($content, __('Quote detail')));
+        $this->assertLessThan(strpos($content, __('Investment')), strpos($content, __('Quote detail')));
     }
 
     #[Test]
@@ -148,6 +149,87 @@ class ProjectBudgetPreviewTest extends TestCase
             ->assertOk()
             ->assertSee('1.500,00 €', false)
             ->assertSee('450,00 €', false);
+    }
+
+    #[Test]
+    public function public_budget_preview_fits_the_lines_to_the_manual_amount(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'quote_finalized' => true,
+            'quote_currency' => 'USD',
+            'quote_amount' => 972,
+            'token_include' => false,
+            'suggested_tasks' => [
+                [
+                    'title' => 'Pantallas',
+                    'estimated_hours' => 2,
+                    'resource_level' => 'Senior',
+                    'unit_price' => 1000,
+                    'estimated_tokens' => 0,
+                    'included' => true,
+                ],
+                [
+                    'title' => 'Vista del pedido',
+                    'estimated_hours' => 1,
+                    'resource_level' => 'Senior',
+                    'unit_price' => 550.84,
+                    'estimated_tokens' => 0,
+                    'included' => true,
+                ],
+            ],
+        ]);
+
+        $this->get(route('project.budget-preview', [
+            'token' => $created['token'],
+            'report' => 1,
+        ]))
+            ->assertOk()
+            ->assertSee('US$ 972,00', false)
+            ->assertSee('US$ 625,00', false)
+            ->assertSee('US$ 347,00', false)
+            ->assertDontSee('1.550,84', false)
+            ->assertDontSee('1.000,00', false);
+    }
+
+    #[Test]
+    public function public_budget_preview_fits_the_lines_to_the_maximum_written_in_the_notes(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'quote_finalized' => true,
+            'quote_currency' => 'USD',
+            'token_include' => false,
+            'suggested_tasks' => [
+                [
+                    'title' => 'Pantallas',
+                    'estimated_hours' => 2,
+                    'resource_level' => 'Senior',
+                    'unit_price' => 1000,
+                    'estimated_tokens' => 0,
+                    'included' => true,
+                ],
+                [
+                    'title' => 'Vista del pedido',
+                    'estimated_hours' => 1,
+                    'resource_level' => 'Senior',
+                    'unit_price' => 550.84,
+                    'estimated_tokens' => 0,
+                    'included' => true,
+                ],
+            ],
+        ]);
+        $created['project']->forceFill([
+            'description' => 'Máximo sugerido: US$ 972',
+        ])->save();
+
+        $this->get(route('project.budget-preview', [
+            'token' => $created['token'],
+            'report' => 1,
+        ]))
+            ->assertOk()
+            ->assertSee('US$ 972,00', false)
+            ->assertSee('US$ 625,00', false)
+            ->assertSee('US$ 347,00', false)
+            ->assertDontSee('1.550,84', false);
     }
 
     #[Test]
