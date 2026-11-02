@@ -538,6 +538,7 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
 
         $this->assertStringContainsString('"client_summary"', $prompt);
         $this->assertStringContainsString('Commercial synthesis for a non-technical client', $prompt);
+        $this->assertStringContainsString('suggested maximum', $prompt);
     }
 
     #[Test]
@@ -552,5 +553,61 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         ]);
 
         $this->assertSame('Front de cotización listo para operar la escala.', $safe['client_summary']);
+    }
+
+    #[Test]
+    public function a_suggested_maximum_in_the_notes_caps_the_quote(): void
+    {
+        $service = new ProjectBudgetSpecService;
+
+        $this->assertSame(972.0, $service->suggestedMaximumFromText('Máximo sugerido: US$ 972'));
+        $this->assertSame(1550.5, $service->suggestedMaximumFromText('No superar los 1.550,50 €'));
+        $this->assertNull($service->suggestedMaximumFromText('Front de cotización de catering por escala.'));
+    }
+
+    #[Test]
+    public function quote_lines_fit_the_client_amount(): void
+    {
+        $service = new ProjectBudgetSpecService;
+
+        $scaled = $service->scaleQuoteLines(972, [
+            ['labor' => 1000, 'tokens' => 0],
+            ['labor' => 550.84, 'tokens' => 0],
+        ]);
+
+        $this->assertSame(972.0, round($scaled[0]['labor'] + $scaled[1]['labor'], 2));
+        $this->assertSame(626.76, $scaled[0]['labor']);
+        $this->assertSame(345.24, $scaled[1]['labor']);
+    }
+
+    #[Test]
+    public function a_manual_amount_recalculates_hours_at_each_level_rate(): void
+    {
+        $service = new ProjectBudgetSpecService;
+
+        $tasks = $service->fitTasksToAmount([
+            [
+                'title' => 'Maquetado',
+                'resource_level' => 'Junior',
+                'estimated_hours' => 10,
+                'hourly_rate' => 72,
+                'unit_price' => 720,
+                'included' => true,
+            ],
+            [
+                'title' => 'Arquitectura',
+                'resource_level' => 'Senior',
+                'estimated_hours' => 5,
+                'hourly_rate' => 120,
+                'unit_price' => 600,
+                'included' => true,
+            ],
+        ], 660);
+
+        $this->assertSame(660.0, round($tasks[0]['unit_price'] + $tasks[1]['unit_price'], 2));
+        $this->assertSame(72.0, round($tasks[0]['unit_price'] / $tasks[0]['estimated_hours'], 2));
+        $this->assertSame(120.0, round($tasks[1]['unit_price'] / $tasks[1]['estimated_hours'], 2));
+        $this->assertSame(5.0, $tasks[0]['estimated_hours']);
+        $this->assertSame(2.5, $tasks[1]['estimated_hours']);
     }
 }

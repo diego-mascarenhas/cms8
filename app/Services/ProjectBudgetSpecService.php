@@ -1746,6 +1746,24 @@ class ProjectBudgetSpecService
 
         $token = trim((string) data_get($project->data, 'budget_preview_token', ''));
         $suggestedTasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
+        $laborBase = 0.0;
+        foreach ($suggestedTasks as $task)
+        {
+            if (! is_array($task) || (($task['included'] ?? true) === false))
+            {
+                continue;
+            }
+            $laborBase += is_numeric($task['unit_price'] ?? null) ? (float) $task['unit_price'] : 0.0;
+        }
+        $quoteTarget = $this->resolveDisplayedQuoteAmount($project, $laborBase);
+        $manualAmount = data_get($project->data, 'quote_amount');
+        $notesCap = $this->suggestedMaximumFromText((string) ($project->description ?? ''));
+        $shouldFitTasks = (is_numeric($manualAmount) && (string) $manualAmount !== '')
+            || ($notesCap !== null && $laborBase > $notesCap);
+        if ($shouldFitTasks && abs($quoteTarget - $laborBase) >= 0.01)
+        {
+            $suggestedTasks = $this->fitTasksToAmount($suggestedTasks, $quoteTarget);
+        }
         $discriminateTokens = $this->showsTokenLines();
         $includeTokens = $this->includesTokenCharges();
         $savings = (float) data_get($project->data, 'token_consumption.savings_percent', 57);
@@ -1792,6 +1810,9 @@ class ProjectBudgetSpecService
                 'title' => (string) ($task['title'] ?? '—'),
                 'hours' => Helpers::formatHoursHuman($hoursCharged, ! $useSavedQuote),
                 'level' => trim((string) ($task['resource_level'] ?? '')) ?: '—',
+                'labor_amount' => (float) ($laborCharged ?? 0),
+                'token_amount' => $chargedTokens,
+                'display_tokens' => $displayTokens,
                 'labor' => ($laborCharged !== null || $chargedTokens > 0) ? $formatMoney($laborDisplay) : '—',
                 'tokens' => ($displayTokens > 0 || $chargedTokens > 0) ? $this->formatTokenCount($displayTokens) : '—',
                 'token_cost' => ($displayTokens > 0 || $chargedTokens > 0) ? $formatMoney($chargedTokens) : '—',
@@ -1804,7 +1825,39 @@ class ProjectBudgetSpecService
         $discountedLabor = round($totalLabor - $laborDiscountAmount, 2);
         $discountedTotal = (int) round($discountedLabor + $totalTokenBillable);
         $payableTotal = $discountPercent > 0 ? $discountedTotal : $grandTotal;
-        $clientTotal = $this->resolveClientQuoteAmount($project, $payableTotal);
+        $clientTotal = $this->resolveDisplayedQuoteAmount($project, $payableTotal);
+        $scaledLines = $this->scaleQuoteLines($clientTotal, array_map(
+            fn (array $row): array => [
+                'labor' => (float) ($row['labor_amount'] ?? 0),
+                'tokens' => (float) ($row['token_amount'] ?? 0),
+            ],
+            $rows,
+        ));
+        if (abs($clientTotal - (float) $payableTotal) >= 0.01)
+        {
+            $totalLabor = 0.0;
+            $totalTokenBillable = 0.0;
+            foreach ($rows as $index => $row)
+            {
+                $scaledLabor = (float) ($scaledLines[$index]['labor'] ?? 0);
+                $scaledTokens = (float) ($scaledLines[$index]['tokens'] ?? 0);
+                $rows[$index]['labor_amount'] = $scaledLabor;
+                $rows[$index]['token_amount'] = $scaledTokens;
+                $laborDisplay = $scaledLabor;
+                if ($includeTokens && ! $discriminateTokens)
+                {
+                    $laborDisplay += $scaledTokens;
+                }
+                $displayTokens = (int) ($row['display_tokens'] ?? 0);
+                $rows[$index]['labor'] = ($scaledLabor > 0 || $scaledTokens > 0) ? $formatMoney($laborDisplay) : '—';
+                $rows[$index]['token_cost'] = ($displayTokens > 0 || $scaledTokens > 0) ? $formatMoney($scaledTokens) : '—';
+                $totalLabor += $scaledLabor;
+                $totalTokenBillable += $scaledTokens;
+            }
+            $grandTotal = $clientTotal;
+            $discountPercent = 0.0;
+            $laborDiscountAmount = 0.0;
+        }
         $clientResponse = is_array(data_get($project->data, 'budget_client_response'))
             ? data_get($project->data, 'budget_client_response')
             : null;
@@ -1974,6 +2027,281 @@ class ProjectBudgetSpecService
         return (float) $calculated;
     }
 
+    public function resolveDisplayedQuoteAmount(Project $project, float|int $calculated): float
+    {
+        $manual = data_get($project->data, 'quote_amount');
+        if (is_numeric($manual) && (string) $manual !== '')
+        {
+            return $this->resolveClientQuoteAmount($project, $calculated);
+        }
+
+        $cap = $this->suggestedMaximumFromText((string) ($project->description ?? ''));
+        $calculatedAmount = (float) $calculated;
+        if ($cap !== null && $calculatedAmount > $cap)
+        {
+            return $cap;
+        }
+
+        return $calculatedAmount;
+    }
+
+    public function suggestedMaximumFromText(string $text): ?float
+    {
+        $text = trim($text);
+        if ($text === '')
+        {
+            return null;
+        }
+
+        $pattern = '/(?:m[aá]ximo(?:\s+sugerido)?|no\s+superar(?:\s+los)?|tope|hasta\s+un\s+m[aá]ximo|budget\s+max(?:imum)?|suggested\s+maximum|cap(?:\s+of)?)\s*[:\-]?\s*(?:us\s*\$|usd|eur|ars|€|\$)?\s*(\d{1,3}(?:[.\s]\d{3})+(?:[.,]\d{1,2})?|\d+(?:[.,]\d{1,2})?)/iu';
+        if (! preg_match($pattern, $text, $matches))
+        {
+            return null;
+        }
+
+        return $this->parseLocalizedAmount($matches[1]);
+    }
+
+    public function parseLocalizedAmount(string $raw): ?float
+    {
+        $raw = str_replace(' ', '', trim($raw));
+        if ($raw === '')
+        {
+            return null;
+        }
+
+        $hasComma = str_contains($raw, ',');
+        $hasDot = str_contains($raw, '.');
+        if ($hasComma && $hasDot)
+        {
+            if (strrpos($raw, ',') > strrpos($raw, '.'))
+            {
+                $raw = str_replace('.', '', $raw);
+                $raw = str_replace(',', '.', $raw);
+            } else
+            {
+                $raw = str_replace(',', '', $raw);
+            }
+        } elseif ($hasComma)
+        {
+            $raw = preg_match('/,\d{1,2}$/', $raw) ? str_replace(',', '.', $raw) : str_replace(',', '', $raw);
+        } elseif ($hasDot && substr_count($raw, '.') > 1)
+        {
+            $raw = str_replace('.', '', $raw);
+        } elseif ($hasDot && preg_match('/^\d{1,3}(?:\.\d{3})+$/', $raw))
+        {
+            $raw = str_replace('.', '', $raw);
+        }
+
+        if (! is_numeric($raw))
+        {
+            return null;
+        }
+
+        $amount = round((float) $raw, 2);
+
+        return $amount >= 0 ? $amount : null;
+    }
+
+    /**
+     * Hourly rates by level. A known line sets the anchor; the others follow Junior 0.6, Mid 0.8, Senior 1, Consultor 1.2.
+     *
+     * @param  array<int, array<string, mixed>>  $tasks
+     * @return array{junior: float, mid: float, senior: float, consultor: float}
+     */
+    public function resolveLevelRates(array $tasks): array
+    {
+        $weights = [
+            'junior' => 0.6,
+            'mid' => 0.8,
+            'senior' => 1.0,
+            'consultor' => 1.2,
+        ];
+        $observed = [];
+        foreach ($tasks as $task)
+        {
+            if (! is_array($task))
+            {
+                continue;
+            }
+            $level = $this->normalizeLevelKey($task['resource_level'] ?? '');
+            $rate = $this->observedTaskRate($task);
+            if ($rate !== null)
+            {
+                $observed[$level][] = $rate;
+            }
+        }
+        foreach ($observed as $level => $rates)
+        {
+            sort($rates);
+            $observed[$level] = $rates;
+        }
+
+        $anchorLevel = isset($observed['senior']) ? 'senior' : (array_key_first($observed) ?: 'senior');
+        $anchorRate = isset($observed[$anchorLevel])
+            ? $observed[$anchorLevel][(int) floor((count($observed[$anchorLevel]) - 1) / 2)]
+            : 120.0;
+        $senior = $anchorRate / $weights[$anchorLevel];
+        $rates = [];
+        foreach ($weights as $level => $weight)
+        {
+            $rates[$level] = round($senior * $weight, 2);
+        }
+
+        return $rates;
+    }
+
+    public function taskHourlyRate(array $task, ?array $levelRates = null): float
+    {
+        $observed = $this->observedTaskRate($task);
+        if ($observed !== null)
+        {
+            return $observed;
+        }
+
+        $levelRates ??= $this->resolveLevelRates([$task]);
+
+        return $levelRates[$this->normalizeLevelKey($task['resource_level'] ?? '')] ?? $levelRates['senior'];
+    }
+
+    /**
+     * Recalculate hours and line prices so the included labor equals the client amount.
+     * Each line keeps its level rate: price = hours × rate.
+     *
+     * @param  array<int, array<string, mixed>>  $tasks
+     * @return array<int, array<string, mixed>>
+     */
+    public function fitTasksToAmount(array $tasks, float $target): array
+    {
+        $target = round($target, 2);
+        $levelRates = $this->resolveLevelRates($tasks);
+        $included = [];
+        foreach ($tasks as $index => $task)
+        {
+            if (! is_array($task) || (($task['included'] ?? true) === false))
+            {
+                continue;
+            }
+            $rate = $this->taskHourlyRate($task, $levelRates);
+            $price = is_numeric($task['unit_price'] ?? null) ? (float) $task['unit_price'] : 0.0;
+            $hours = is_numeric($task['estimated_hours'] ?? null) ? (float) $task['estimated_hours'] : 0.0;
+            $weight = $price > 0 ? $price : ($hours > 0 ? $hours * $rate : $rate);
+            $included[] = [
+                'index' => $index,
+                'rate' => $rate,
+                'weight' => max(0.01, $weight),
+                'hours' => $hours,
+            ];
+        }
+        if ($included === [] || $target < 0)
+        {
+            return $tasks;
+        }
+
+        $base = array_sum(array_column($included, 'weight'));
+        $assigned = 0.0;
+        $last = count($included) - 1;
+        foreach ($included as $position => $line)
+        {
+            $index = $line['index'];
+            $rate = $line['rate'];
+            $share = $position === $last
+                ? round($target - $assigned, 2)
+                : round($target * ($line['weight'] / $base), 2);
+            $hours = $rate > 0 ? round($share / $rate, 2) : 0.0;
+            $price = round($hours * $rate, 2);
+            if ($position === $last)
+            {
+                $price = round($target - $assigned, 2);
+                $hours = $rate > 0 ? round($price / $rate, 2) : 0.0;
+            }
+            $assigned = round($assigned + $price, 2);
+            $previousHours = $line['hours'];
+            $tasks[$index]['hourly_rate'] = $rate;
+            $tasks[$index]['estimated_hours'] = $hours;
+            $tasks[$index]['unit_price'] = $price;
+            if ($previousHours > 0 && isset($tasks[$index]['estimated_tokens']) && is_numeric($tasks[$index]['estimated_tokens']))
+            {
+                $tasks[$index]['estimated_tokens'] = (int) round(((float) $tasks[$index]['estimated_tokens']) * ($hours / $previousHours));
+            }
+        }
+
+        return $tasks;
+    }
+
+    private function normalizeLevelKey(mixed $level): string
+    {
+        $key = strtolower(trim((string) $level));
+
+        return in_array($key, ['junior', 'mid', 'senior', 'consultor'], true) ? $key : 'senior';
+    }
+
+    private function observedTaskRate(array $task): ?float
+    {
+        if (isset($task['hourly_rate']) && is_numeric($task['hourly_rate']) && (float) $task['hourly_rate'] > 0)
+        {
+            return round((float) $task['hourly_rate'], 2);
+        }
+
+        $hours = is_numeric($task['estimated_hours'] ?? null) ? (float) $task['estimated_hours'] : 0.0;
+        $price = is_numeric($task['unit_price'] ?? null) ? (float) $task['unit_price'] : 0.0;
+        if ($hours > 0 && $price > 0)
+        {
+            return round($price / $hours, 2);
+        }
+
+        return null;
+    }
+
+    /**
+     * Fit labor and token amounts to a client total. The last line absorbs the rounding remainder.
+     *
+     * @param  array<int, array{labor: float, tokens: float}>  $lines
+     * @return array<int, array{labor: float, tokens: float}>
+     */
+    public function scaleQuoteLines(float $target, array $lines): array
+    {
+        $target = round($target, 2);
+        $base = 0.0;
+        foreach ($lines as $line)
+        {
+            $base += (float) ($line['labor'] ?? 0) + (float) ($line['tokens'] ?? 0);
+        }
+        $base = round($base, 2);
+        if ($lines === [] || $base <= 0.0 || abs($base - $target) < 0.009)
+        {
+            return $lines;
+        }
+
+        $factor = $target / $base;
+        $scaled = [];
+        $running = 0.0;
+        $last = count($lines) - 1;
+        foreach ($lines as $index => $line)
+        {
+            $labor = round(((float) ($line['labor'] ?? 0)) * $factor, 2);
+            $tokens = round(((float) ($line['tokens'] ?? 0)) * $factor, 2);
+            if ($index === $last)
+            {
+                $labor = round($target - $running - $tokens, 2);
+                if ($labor < 0)
+                {
+                    $tokens = round($tokens + $labor, 2);
+                    $labor = 0.0;
+                }
+            } else
+            {
+                $running = round($running + $labor + $tokens, 2);
+            }
+            $scaled[] = [
+                'labor' => $labor,
+                'tokens' => $tokens,
+            ];
+        }
+
+        return $scaled;
+    }
+
     public function normalizeQuoteCurrency(mixed $code): string
     {
         $code = strtoupper(trim((string) $code));
@@ -2000,6 +2328,6 @@ class ProjectBudgetSpecService
 
     private function getDefaultBudgetSpecPrompt(): string
     {
-        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"client_summary\": Commercial synthesis for a non-technical client. This is the text they read at the top of the proposal. Clear, concise, and complete about the scope: what they get, in plain language a buyer understands. Two to four short sentences. No internal jargon, no hourly rates, no per-million token prices, and do not start with \"El cliente solicita\", \"The client requests\" or \"The client wants\". Keep dimension, times and resources out of this field.\n- \"ai_interpretation\": Neutral 1-2 paragraph description of the project itself (what it is and the main deliverables). Write it as a general project summary. Do not narrate the client's request and do not start with phrases like \"El cliente solicita\", \"The client requests\" or \"The client wants\".\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"token_consumption\": Object with \"notes\" (one line per labor: \"{title}: {N} K\", no Tokens AI prefix), and optional input_tokens/output_tokens/total_tokens/cost_euros/savings_percent/billable_euros/currency.\n- \"suggested_tasks\": (optional) Array: each object with \"title\", \"description\" (a short report of that labor: what it is, what is included, and what stays out), \"category_name\" (match existing task category), \"estimated_hours\" (decimal), \"resource_level\" (Senior/Junior/Consultor), \"unit_price\" (number), \"estimated_tokens\" (integer). Use empty array if not applicable.\n\nWhen the budget is a system (web, app, API, or shop) and it asks for hosting, deploy, a VPS, or production:\n- Put it on a REVISIÓN ALPHA dedicated server and name the plan in that range that matches the project type. The dedicated plans are value (personal projects and small sites), Essential (professional sites), Comfort (business applications) and Elite (demanding or high-traffic applications): https://revisionalpha.com/servidores-dedicados. VALUE is one of those plans, not a separate family. If the text names another plan, use that name. Do not invent CPU, RAM, or disk. Stack map: https://revisionalpha.com/hosting/stack\n- Mention the MCP of IDONEO with MCP/TOON. Consumption is charged according to use: https://mcp.idoneo.dev. Do not quote per-million token rates in client-facing fields.\n- Mention that security is active and the firewall is active (CrowdSec, anti-DDoS, and honeypot).\n- The hosting fee stays outside the quote. Deploying onto that plan stays inside when publication is in scope.\nPut that hosting note in \"resources\" and, when publication is a labor, in that task description.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs. Every suggested task must include description, resource_level, unit_price and estimated_tokens.";
+        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"client_summary\": Commercial synthesis for a non-technical client. This is the text they read at the top of the proposal. Clear, concise, and complete about the scope: what they get, in plain language a buyer understands. Two to four short sentences. No internal jargon, no hourly rates, no per-million token prices, and do not start with \"El cliente solicita\", \"The client requests\" or \"The client wants\". Keep dimension, times and resources out of this field.\n- \"ai_interpretation\": Neutral 1-2 paragraph description of the project itself (what it is and the main deliverables). Write it as a general project summary. Do not narrate the client's request and do not start with phrases like \"El cliente solicita\", \"The client requests\" or \"The client wants\".\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"token_consumption\": Object with \"notes\" (one line per labor: \"{title}: {N} K\", no Tokens AI prefix), and optional input_tokens/output_tokens/total_tokens/cost_euros/savings_percent/billable_euros/currency.\n- \"suggested_tasks\": (optional) Array: each object with \"title\", \"description\" (a short report of that labor: what it is, what is included, and what stays out), \"category_name\" (match existing task category), \"estimated_hours\" (decimal), \"resource_level\" (Senior/Junior/Consultor), \"unit_price\" (number), \"estimated_tokens\" (integer). Use empty array if not applicable.\n\nWhen the budget is a system (web, app, API, or shop) and it asks for hosting, deploy, a VPS, or production:\n- Put it on a REVISIÓN ALPHA dedicated server and name the plan in that range that matches the project type. The dedicated plans are value (personal projects and small sites), Essential (professional sites), Comfort (business applications) and Elite (demanding or high-traffic applications): https://revisionalpha.com/servidores-dedicados. VALUE is one of those plans, not a separate family. If the text names another plan, use that name. Do not invent CPU, RAM, or disk. Stack map: https://revisionalpha.com/hosting/stack\n- Mention the MCP of IDONEO with MCP/TOON. Consumption is charged according to use: https://mcp.idoneo.dev. Do not quote per-million token rates in client-facing fields.\n- Mention that security is active and the firewall is active (CrowdSec, anti-DDoS, and honeypot).\n- The hosting fee stays outside the quote. Deploying onto that plan stays inside when publication is in scope.\nPut that hosting note in \"resources\" and, when publication is a labor, in that task description.\n\nPrice every labor with its level rate. Junior is 0.6× Senior, Mid is 0.8× Senior, Consultor is 1.2× Senior. If the text states a senior hourly rate, use it; otherwise Senior is 120. unit_price must equal estimated_hours × that rate. The client total is the sum of the included unit_price values. If the text states the amount the client accepts, change the hours (keep each level rate) until that sum equals the amount. If no amount is stated, calculate the total from the hours and rates; do not leave it open.\n\nIf the project notes state a suggested maximum (\"máximo sugerido\", \"no superar\", a ceiling or a cap), the sum of included unit_price values plus billable token cost must not exceed that amount. Reduce hours, keeping each level rate, so the quote fits under that ceiling. Do not go over it.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs. Every suggested task must include description, resource_level, unit_price and estimated_tokens.";
     }
 }

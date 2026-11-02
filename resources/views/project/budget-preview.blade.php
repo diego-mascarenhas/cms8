@@ -30,6 +30,22 @@
         return $budgetService->formatQuoteMoney($amount, $quoteCurrency);
     };
 
+    $laborBase = 0.0;
+    foreach ($suggestedTasks as $task) {
+        if (! is_array($task) || (($task['included'] ?? true) === false)) {
+            continue;
+        }
+        $laborBase += is_numeric($task['unit_price'] ?? null) ? (float) $task['unit_price'] : 0.0;
+    }
+    $quoteTarget = $budgetService->resolveDisplayedQuoteAmount($project, $laborBase);
+    $manualAmount = data_get($project->data, 'quote_amount');
+    $notesCap = $budgetService->suggestedMaximumFromText((string) ($project->description ?? ''));
+    $shouldFitTasks = (is_numeric($manualAmount) && (string) $manualAmount !== '')
+        || ($notesCap !== null && $laborBase > $notesCap);
+    if ($shouldFitTasks && abs($quoteTarget - $laborBase) >= 0.01) {
+        $suggestedTasks = $budgetService->fitTasksToAmount($suggestedTasks, $quoteTarget);
+    }
+
     $rows = [];
     $totalLabor = 0.0;
     $totalTokenBillable = 0.0;
@@ -66,6 +82,9 @@
             'report' => trim((string) ($t['description'] ?? '')),
             'hours' => $formatHoursHuman($hoursCharged),
             'level' => $level,
+            'labor_amount' => (float) ($laborCharged ?? 0),
+            'token_amount' => $chargedTokens,
+            'display_tokens' => $displayTokens,
             'labor' => ($laborCharged !== null || $chargedTokens > 0) ? $formatEuros($laborDisplay) : '—',
             'tokens' => ($displayTokens > 0 || $chargedTokens > 0) ? $budgetService->formatTokenCount($displayTokens) : '—',
             'token_cost' => ($displayTokens > 0 || $chargedTokens > 0) ? $formatEuros($chargedTokens) : '—',
@@ -80,9 +99,36 @@
     $discountedLabor = round($totalLabor - $laborDiscountAmount, 2);
     $discountedTotal = (int) round($discountedLabor + $totalTokenBillable);
     $payableTotal = $discountPercent > 0 ? $discountedTotal : $grandTotal;
-    $manualQuoteAmount = data_get($project->data, 'quote_amount');
-    $manualQuoteAmount = is_numeric($manualQuoteAmount) ? round((float) $manualQuoteAmount, 2) : null;
-    $clientTotal = $manualQuoteAmount ?? (float) $payableTotal;
+    $clientTotal = $budgetService->resolveDisplayedQuoteAmount($project, $payableTotal);
+    $scaledLines = $budgetService->scaleQuoteLines($clientTotal, array_map(
+        fn (array $row): array => [
+            'labor' => (float) ($row['labor_amount'] ?? 0),
+            'tokens' => (float) ($row['token_amount'] ?? 0),
+        ],
+        $rows,
+    ));
+    if (abs($clientTotal - (float) $payableTotal) >= 0.01) {
+        $totalLabor = 0.0;
+        $totalTokenBillable = 0.0;
+        foreach ($rows as $index => $row) {
+            $scaledLabor = (float) ($scaledLines[$index]['labor'] ?? 0);
+            $scaledTokens = (float) ($scaledLines[$index]['tokens'] ?? 0);
+            $rows[$index]['labor_amount'] = $scaledLabor;
+            $rows[$index]['token_amount'] = $scaledTokens;
+            $laborDisplay = $scaledLabor;
+            if ($includeTokens && ! $discriminateTokens) {
+                $laborDisplay += $scaledTokens;
+            }
+            $displayTokens = (int) ($row['display_tokens'] ?? 0);
+            $rows[$index]['labor'] = ($scaledLabor > 0 || $scaledTokens > 0) ? $formatEuros($laborDisplay) : '—';
+            $rows[$index]['token_cost'] = ($displayTokens > 0 || $scaledTokens > 0) ? $formatEuros($scaledTokens) : '—';
+            $totalLabor += $scaledLabor;
+            $totalTokenBillable += $scaledTokens;
+        }
+        $grandTotal = $clientTotal;
+        $discountPercent = 0.0;
+        $laborDiscountAmount = 0.0;
+    }
     $depositAmount = (int) round($clientTotal * 0.30);
     $clientResponse = is_array($clientResponse ?? null) ? $clientResponse : null;
     $responseStatus = is_array($clientResponse) ? ($clientResponse['status'] ?? null) : null;
