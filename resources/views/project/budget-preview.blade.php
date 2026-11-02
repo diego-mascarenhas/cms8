@@ -365,32 +365,6 @@
             @endforeach
         @endif
 
-        @if (count($rows) > 0)
-            <h2>{{ __('Investment') }}</h2>
-            <p class="price-lead">{{ $formatEuros($clientTotal) }} + {{ __('I.V.A.') }}</p>
-            <div class="highlight">
-                <div style="display:grid;grid-template-columns:1fr auto;gap:4px 16px;max-width:320px;">
-                    <span>{{ __('Labor') }}</span>
-                    <span style="text-align:right;">{{ $formatEuros($discriminateTokens || ! $includeTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)) }}</span>
-                    @if ($discriminateTokens)
-                        <span>{{ __('Tokens') }}</span>
-                        <span style="text-align:right;">{{ $formatEuros($totalTokenBillable) }}</span>
-                    @endif
-                    <span>{{ __('Subtotal') }}</span>
-                    <span style="text-align:right;">{{ $formatEuros($grandTotal) }}</span>
-                    @if ($discountPercent > 0)
-                        <span>{{ __('Discount on labor') }} (−{{ rtrim(rtrim(number_format($discountPercent, 1, ',', ''), '0'), ',') }}%)</span>
-                        <span style="text-align:right;">−{{ $formatEuros($laborDiscountAmount) }}</span>
-                    @endif
-                    <strong>{{ __('Total') }}</strong>
-                    <strong style="text-align:right;">{{ $formatEuros($clientTotal) }} + {{ __('I.V.A.') }}</strong>
-                </div>
-            </div>
-            @if ($weeks > 0)
-                <p class="prose">{{ __('Estimated development time, :weeks weeks after the budget has been confirmed.', ['weeks' => $weeks]) }}</p>
-            @endif
-        @endif
-
         @if ($dimension !== '' || $estimatedTimes !== '' || $resources !== '' || count($rows) > 0)
             <h2>{{ __('Quote detail') }}</h2>
         @endif
@@ -460,6 +434,32 @@
                     </tr>
                 </tbody>
             </table>
+        @endif
+
+        @if (count($rows) > 0)
+            <h2>{{ __('Investment') }}</h2>
+            <p class="price-lead">{{ $formatEuros($clientTotal) }} + {{ __('I.V.A.') }}</p>
+            <div class="highlight">
+                <div style="display:grid;grid-template-columns:1fr auto;gap:4px 16px;max-width:320px;">
+                    <span>{{ __('Labor') }}</span>
+                    <span style="text-align:right;">{{ $formatEuros($discriminateTokens || ! $includeTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)) }}</span>
+                    @if ($discriminateTokens)
+                        <span>{{ __('Tokens') }}</span>
+                        <span style="text-align:right;">{{ $formatEuros($totalTokenBillable) }}</span>
+                    @endif
+                    <span>{{ __('Subtotal') }}</span>
+                    <span style="text-align:right;">{{ $formatEuros($grandTotal) }}</span>
+                    @if ($discountPercent > 0)
+                        <span>{{ __('Discount on labor') }} (−{{ rtrim(rtrim(number_format($discountPercent, 1, ',', ''), '0'), ',') }}%)</span>
+                        <span style="text-align:right;">−{{ $formatEuros($laborDiscountAmount) }}</span>
+                    @endif
+                    <strong>{{ __('Total') }}</strong>
+                    <strong style="text-align:right;">{{ $formatEuros($clientTotal) }} + {{ __('I.V.A.') }}</strong>
+                </div>
+            </div>
+            @if ($weeks > 0)
+                <p class="prose">{{ __('Estimated development time, :weeks weeks after the budget has been confirmed.', ['weeks' => $weeks]) }}</p>
+            @endif
         @endif
     @endunless
 

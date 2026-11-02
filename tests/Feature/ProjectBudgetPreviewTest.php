@@ -114,6 +114,7 @@ class ProjectBudgetPreviewTest extends TestCase
         $content = $response->getContent();
         $this->assertLessThan(strpos($content, __('Quote detail')), strpos($content, __('Scope')));
         $this->assertLessThan(strpos($content, __('Dimension')), strpos($content, __('Quote detail')));
+        $this->assertLessThan(strpos($content, __('Investment')), strpos($content, __('Quote detail')));
     }
 
     #[Test]

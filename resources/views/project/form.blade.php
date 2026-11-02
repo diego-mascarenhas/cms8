@@ -909,26 +909,26 @@
                     + '</p>';
             });
 
-            html += '<p><br></p><p><strong>{{ __("Investment") }}</strong></p>';
-            if (tokenInclude && tokenDiscriminate) {
-                html += '<p>{{ __("Labor") }}: ' + formatEuros(totalLabor) + '</p>';
-                html += '<p>{{ __("Tokens") }}: ' + formatEuros(totalTokenBillable) + '</p>';
-            }
-            html += '<p>{{ __("Subtotal") }}: ' + formatEuros(grandTotal) + '</p>';
-            if (discount > 0) {
-                html += '<p>{{ __("Discount on labor") }} (−' + discountLabel + '%): −'
-                    + formatEuros(laborDiscountAmount) + '</p>';
-            }
-            html += '<p><strong>{{ __("Total") }}: '
-                + formatEuros(clientTotal)
-                + ' + {{ __("I.V.A.") }}</strong></p>';
             if (!quoteValueLocked) {
                 $('#project_price').val(clientTotal);
             }
 
             var weeks = totalHours > 0 ? Math.ceil(totalHours / 40) : 0;
-            html += '<p>' + escapeHtml('{{ __("Estimated development time, :weeks weeks after the budget has been confirmed.") }}'.replace(':weeks', weeks)) + '</p>';
             html += '<h3>{{ __("Details") }}</h3>' + taskItems;
+            var investmentHtml = '<p><br></p><p><strong>{{ __("Investment") }}</strong></p>';
+            if (tokenInclude && tokenDiscriminate) {
+                investmentHtml += '<p>{{ __("Labor") }}: ' + formatEuros(totalLabor) + '</p>';
+                investmentHtml += '<p>{{ __("Tokens") }}: ' + formatEuros(totalTokenBillable) + '</p>';
+            }
+            investmentHtml += '<p>{{ __("Subtotal") }}: ' + formatEuros(grandTotal) + '</p>';
+            if (discount > 0) {
+                investmentHtml += '<p>{{ __("Discount on labor") }} (−' + discountLabel + '%): −'
+                    + formatEuros(laborDiscountAmount) + '</p>';
+            }
+            investmentHtml += '<p><strong>{{ __("Total") }}: '
+                + formatEuros(clientTotal)
+                + ' + {{ __("I.V.A.") }}</strong></p>';
+            investmentHtml += '<p>' + escapeHtml('{{ __("Estimated development time, :weeks weeks after the budget has been confirmed.") }}'.replace(':weeks', weeks)) + '</p>';
         }
         if (dimension || estimatedTimes || resources) {
             html += '<h3>{{ __("Quote detail") }}</h3>';
@@ -941,6 +941,9 @@
             if (resources) {
                 html += '<h3>{{ __("Resources") }}</h3>' + textToHtmlBlocks(resources);
             }
+        }
+        if (typeof investmentHtml !== 'undefined') {
+            html += investmentHtml;
         }
 
         setBudgetPreviewHtml(html);
