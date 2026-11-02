@@ -528,7 +528,7 @@
     }
     function hoursInputHtml(index, hours) {
         var value = (hours != null && hours !== '') ? escapeHtml(String(hours)) : '';
-        return '<input type="number" step="0.5" min="0" class="form-control form-control-sm text-end suggested-estimated-hours" data-index="' + index + '" value="' + value + '"' + (quoteValueLocked ? ' readonly' : '') + '>';
+        return '<input type="number" step="any" min="0" class="form-control form-control-sm text-end suggested-estimated-hours" data-index="' + index + '" value="' + value + '"' + (quoteValueLocked ? ' readonly' : '') + '>';
     }
     function levelSelectHtml(index, current) {
         var currentText = String(current || '').trim();
@@ -1598,7 +1598,7 @@
 									</td>
 									<td>{{ $t['title'] ?? '—' }}</td>
 									<td class="text-center">{{ $t['category_name'] ?? '—' }}</td>
-									<td class="text-end"><input type="number" step="0.5" min="0" class="form-control form-control-sm text-end suggested-estimated-hours" data-index="{{ $i }}" value="{{ $hoursValue ?? '' }}" @if($quoteLocked) readonly @endif></td>
+									<td class="text-end"><input type="number" step="any" min="0" class="form-control form-control-sm text-end suggested-estimated-hours" data-index="{{ $i }}" value="{{ $hoursValue ?? '' }}" @if($quoteLocked) readonly @endif></td>
 									<td class="text-end suggested-token-col {{ ($tokenIncludeDefault && $tokenDiscriminateDefault) ? '' : 'd-none' }}"><input type="number" step="1" min="0" class="form-control form-control-sm text-end suggested-estimated-tokens" data-index="{{ $i }}" value="{{ $estimatedTokens }}" placeholder="0"></td>
 									<td class="text-end">
 										<select class="form-select form-select-sm suggested-resource-level" data-index="{{ $i }}" @disabled($quoteLocked)>
