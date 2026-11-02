@@ -112,6 +112,13 @@
                 placeholder: "{{ __('Choose an option') }}",
                 allowClear: true
             });
+            if ($('#quote_currency').length) {
+                $('#quote_currency').select2({
+                    width: '100%',
+                    minimumResultsForSearch: Infinity,
+                    dropdownParent: $('#quote_currency').parent()
+                });
+            }
             // Note: #responsible_id is initialized by the team-users-select component
         }
 
@@ -210,6 +217,7 @@
             },
             success: function(res) {
                 if (res.success) {
+                    $('#data_client_summary').val(res.client_summary || '');
                     $('#data_ai_interpretation').val(res.ai_interpretation || '');
                     $('#data_dimension').val(res.dimension || '');
                     $('#data_estimated_times').val(res.estimated_times || '');
@@ -329,7 +337,11 @@
         var rounded = Math.round(n * 100) / 100;
         var parts = rounded.toFixed(2).split('.');
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-        return parts[0] + ',' + parts[1] + ' €';
+        var formatted = parts[0] + ',' + parts[1];
+        var code = ($('#quote_currency').val() || 'EUR').toUpperCase();
+        if (code === 'USD') return 'US$ ' + formatted;
+        if (code === 'ARS') return formatted + ' ARS';
+        return formatted + ' €';
     }
     function resolveTaskTokens(t) {
         var tokens = parseInt(t.estimated_tokens, 10);
@@ -649,13 +661,14 @@
         try {
             if (raw) tasks = JSON.parse(raw);
         } catch (e) { }
+        var clientSummary = ($('#data_client_summary').val() || '').trim();
         var dimension = ($('#data_dimension').val() || '').trim();
         var estimatedTimes = ($('#data_estimated_times').val() || '').trim();
         var resources = ($('#data_resources').val() || '').trim();
         var savings = parseFloat($('#data_token_consumption_savings').val()) || 57;
         var aiUsage = tokenInclude ? resolveAiUsagePercent() : 0;
 
-        var hasContent = tasks.length > 0 || dimension || estimatedTimes || resources;
+        var hasContent = tasks.length > 0 || clientSummary || dimension || estimatedTimes || resources;
         if (!hasContent) {
             $('#budget-preview-container').addClass('d-none');
             setBudgetPreviewHtml('');
@@ -664,15 +677,7 @@
         $('#budget-preview-container').removeClass('d-none');
 
         var html = '';
-        if (dimension) {
-            html += '<h3>{{ __("Dimension") }}</h3>' + textToHtmlBlocks(dimension);
-        }
-        if (estimatedTimes) {
-            html += '<h3>{{ __("Estimated times") }}</h3>' + textToHtmlBlocks(estimatedTimes);
-        }
-        if (resources) {
-            html += '<h3>{{ __("Resources") }}</h3>' + textToHtmlBlocks(resources);
-        }
+        var scopeItems = '';
 
         var totalLabor = 0;
         var totalTokenBillable = 0;
@@ -708,24 +713,40 @@
             }
             var detailText = details.join(' · ');
             // Quill splits nested <p> inside <li> into separate bullets — keep title + details in one <p>.
+            var report = (t.description != null) ? String(t.description).trim() : '';
+            var scopeHtml = '<p style="margin:0 0 1.15em 0;">'
+                + '<strong>' + escapeHtml(title) + '</strong>'
+                + (report !== '' ? '<br><span style="font-size:0.85em;line-height:1.35;opacity:0.85;">' + escapeHtml(report) + '</span>' : '')
+                + '</p>';
             var itemHtml = '<p style="margin:0 0 1.15em 0;">'
                 + '<strong>' + escapeHtml(title) + '</strong><br>'
                 + '<span style="font-size:0.85em;line-height:1.35;opacity:0.85;">' + escapeHtml(detailText) + '</span>'
                 + '</p>';
             if (included) {
+                scopeItems += scopeHtml;
                 taskItems += itemHtml;
                 if (!isNaN(laborCharged)) totalLabor += laborCharged;
                 totalTokenBillable += tokenBillable;
                 totalHours += hoursCharged;
             } else {
+                scopeItems += '<p style="margin:0 0 1.15em 0;"><s>'
+                    + '<strong>' + escapeHtml(title) + '</strong>'
+                    + (report !== '' ? '<br><span style="font-size:0.85em;line-height:1.35;opacity:0.85;">' + escapeHtml(report) + '</span>' : '')
+                    + '</s></p>';
                 taskItems += '<p style="margin:0 0 1.15em 0;"><s>'
                     + '<strong>' + escapeHtml(title) + '</strong><br>'
                     + '<span style="font-size:0.85em;line-height:1.35;opacity:0.85;">' + escapeHtml(detailText) + '</span>'
                     + '</s></p>';
             }
         });
+        if (clientSummary || scopeItems) {
+            html += '<h3>{{ __("Scope") }}</h3>';
+            if (clientSummary) {
+                html += textToHtmlBlocks(clientSummary);
+            }
+            html += scopeItems;
+        }
         if (taskItems) {
-            html += '<h3>{{ __("Summary of requested quote and values") }}</h3>' + taskItems;
             var grandTotal = Math.round(totalLabor + totalTokenBillable);
             var discount = parseFloat($('#discount').val());
             if (isNaN(discount) || discount < 0) discount = 0;
@@ -737,7 +758,7 @@
             var payableTotal = discount > 0 ? discountedTotal : grandTotal;
             var discountLabel = String(discount).replace('.', ',');
 
-            html += '<p><br></p><p><strong>{{ __("Budget") }}</strong></p>';
+            html += '<p><br></p><p><strong>{{ __("Investment") }}</strong></p>';
             if (tokenInclude && tokenDiscriminate) {
                 html += '<p>{{ __("Labor") }}: ' + formatEuros(totalLabor) + '</p>';
                 html += '<p>{{ __("Tokens") }}: ' + formatEuros(totalTokenBillable) + '</p>';
@@ -747,21 +768,37 @@
                 html += '<p>{{ __("Discount on labor") }} (−' + discountLabel + '%): −'
                     + formatEuros(laborDiscountAmount) + '</p>';
             }
+            var manualRaw = ($('#quote_amount').val() || '').trim();
+            var manualAmount = parseFloat(manualRaw);
+            var clientTotal = (manualRaw !== '' && !isNaN(manualAmount)) ? manualAmount : payableTotal;
             html += '<p><strong>{{ __("Total") }}: '
-                + formatEuros(payableTotal)
+                + formatEuros(clientTotal)
                 + ' + {{ __("I.V.A.") }}</strong></p>';
             if (!quoteValueLocked) {
-                $('#project_price').val(payableTotal);
+                $('#project_price').val(clientTotal);
             }
 
             var weeks = totalHours > 0 ? Math.ceil(totalHours / 40) : 0;
             html += '<p>' + escapeHtml('{{ __("Estimated development time, :weeks weeks after the budget has been confirmed.") }}'.replace(':weeks', weeks)) + '</p>';
+            html += '<h3>{{ __("Details") }}</h3>' + taskItems;
+        }
+        if (dimension || estimatedTimes || resources) {
+            html += '<h3>{{ __("Quote detail") }}</h3>';
+            if (dimension) {
+                html += '<h3>{{ __("Dimension") }}</h3>' + textToHtmlBlocks(dimension);
+            }
+            if (estimatedTimes) {
+                html += '<h3>{{ __("Estimated times") }}</h3>' + textToHtmlBlocks(estimatedTimes);
+            }
+            if (resources) {
+                html += '<h3>{{ __("Resources") }}</h3>' + textToHtmlBlocks(resources);
+            }
         }
 
         setBudgetPreviewHtml(html);
     }
 
-    $(document).on('change input', '#discount', function() {
+    $(document).on('change input', '#discount, #quote_currency, #quote_amount, #data_client_summary', function() {
         refreshBudgetPreview();
     });
 
@@ -1223,7 +1260,7 @@
 				</div>
 				<input type="hidden" name="price" id="project_price" value="{{ old('price', $data->price ?? '') }}">
 				<div class="row g-3 align-items-start">
-					<div class="col-md-8 col-12">
+					<div class="col-12">
 						<label class="form-label d-flex justify-content-between align-items-center mb-1" for="data_ai_usage_percent">
 							<span class="small">{{ __('Hours↔tokens balance (%)') }}</span>
 							<strong class="small" id="data_ai_usage_percent_label">{{ (int) $aiUsagePercentDefault }}%</strong>
@@ -1232,9 +1269,35 @@
 						<input type="hidden" id="data_ai_usage_percent" name="data[ai_usage_percent]" value="{{ $aiUsagePercentDefault }}">
 						<p class="text-muted small mb-0">{{ __('Higher values reduce billable hours and move weight to tokens.') }}</p>
 					</div>
+				</div>
+				<div class="row g-3 align-items-start mt-1">
+					@php
+						$quoteCurrency = strtoupper((string) old('data.quote_currency', data_get($data, 'data.quote_currency', 'EUR')));
+						if (! in_array($quoteCurrency, ['EUR', 'USD', 'ARS'], true)) {
+							$quoteCurrency = 'EUR';
+						}
+						$quoteAmount = old('data.quote_amount', data_get($data, 'data.quote_amount', ''));
+						$quoteLocked = isset($data->id) && $data->quoteValueIsLocked();
+					@endphp
+					<div class="col-md-4 col-12">
+						<label for="quote_currency" class="form-label mb-1">{{ __('Currency') }}</label>
+						@if ($quoteLocked)
+							<input type="hidden" name="data[quote_currency]" value="{{ $quoteCurrency }}">
+						@endif
+						<select id="quote_currency" @if (! $quoteLocked) name="data[quote_currency]" @endif class="select2 form-select" @disabled($quoteLocked)>
+							<option value="EUR" @selected($quoteCurrency === 'EUR')>Euro (€)</option>
+							<option value="USD" @selected($quoteCurrency === 'USD')>Dólar (US$)</option>
+							<option value="ARS" @selected($quoteCurrency === 'ARS')>Peso (ARS)</option>
+						</select>
+					</div>
+					<div class="col-md-4 col-12">
+						<label for="quote_amount" class="form-label mb-1">{{ __('Amount') }}</label>
+						<input type="number" id="quote_amount" name="data[quote_amount]" class="form-control" step="0.01" min="0" inputmode="decimal" placeholder="{{ __('Calculated total') }}" value="{{ $quoteAmount }}" @readonly($quoteLocked)>
+						<p class="text-muted small mb-0 mt-1">{{ __('Leave the amount empty to use the calculated total. If you type one, that is the figure the client accepts.') }}</p>
+					</div>
 					<div class="col-md-4 col-12">
 						<label for="discount" class="form-label mb-1">{{ __('Discount') }} (%)</label>
-						<input type="number" class="form-control form-control-sm" id="discount" name="discount"
+						<input type="number" class="form-control" id="discount" name="discount"
 							step="1" min="0" max="100"
 							value="{{ old('discount', $data->discount ?? '') }}"
 							placeholder="0"
@@ -1261,6 +1324,11 @@
 				);
 				$tokenConsumptionNotes = (string) ($tokenConsumption['notes'] ?? '');
 			@endphp
+			<div class="col-12">
+				<label for="data_client_summary" class="form-label">{{ __('Client summary') }}</label>
+				<textarea id="data_client_summary" name="data[client_summary]" class="form-control js-auto-resize" rows="3">{{ old('data.client_summary', data_get($data, 'data.client_summary', '')) }}</textarea>
+				<p class="text-muted small mb-0 mt-1">{{ __('Text the client reads at the top of the proposal. Dimension, times and resources stay in the detail.') }}</p>
+			</div>
 			<div class="col-12">
 				<label for="data_dimension" class="form-label">{{ __('Dimension') }}</label>
 				<textarea id="data_dimension" name="data[dimension]" class="form-control js-auto-resize" rows="3">{{ old('data.dimension', data_get($data, 'data.dimension', '')) }}</textarea>

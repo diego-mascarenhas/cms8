@@ -39,6 +39,7 @@ class StoreProjectRequest extends FormRequest
             'data' => 'nullable|array',
             'data.budget_given' => 'nullable|string',
             'data.ai_interpretation' => 'nullable|string',
+            'data.client_summary' => 'nullable|string',
             'data.dimension' => 'nullable|string',
             'data.estimated_times' => 'nullable|string',
             'data.resources' => 'nullable|string',
@@ -59,6 +60,8 @@ class StoreProjectRequest extends FormRequest
             'data.token_consumption.savings_percent' => 'nullable|numeric|min:0|max:100',
             'data.token_consumption.billable_euros' => 'nullable|numeric|min:0',
             'data.token_consumption.currency' => 'nullable|string|max:8',
+            'data.quote_currency' => 'nullable|string|in:EUR,USD,ARS',
+            'data.quote_amount' => 'nullable|numeric|min:0',
             'data.budget_preview_html' => 'nullable|string',
             'data.suggested_tasks' => 'nullable',
         ];

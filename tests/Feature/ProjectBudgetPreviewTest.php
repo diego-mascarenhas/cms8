@@ -106,6 +106,67 @@ class ProjectBudgetPreviewTest extends TestCase
         $response->assertDontSee('Stripe', false);
         $response->assertDontSee('MCP/TOON', false);
         $response->assertSee(__('Tokens'), false);
+        $response->assertSee(__('Proposal'), false);
+        $response->assertSee(__('Scope'), false);
+        $response->assertSee(__('Investment'), false);
+        $response->assertSee(__('Quote detail'), false);
+        $response->assertSee('Medium scope mobile store release.', false);
+        $content = $response->getContent();
+        $this->assertLessThan(strpos($content, __('Quote detail')), strpos($content, __('Scope')));
+        $this->assertLessThan(strpos($content, __('Dimension')), strpos($content, __('Quote detail')));
+    }
+
+    #[Test]
+    public function public_budget_preview_uses_the_currency_stored_on_the_project(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'quote_currency' => 'USD',
+        ]);
+
+        $response = $this->get(route('project.budget-preview', [
+            'token' => $created['token'],
+            'report' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('US$', false);
+        $response->assertDontSee('€', false);
+        $this->assertSame('USD', data_get($created['project']->fresh()->data, 'quote_currency'));
+    }
+
+    #[Test]
+    public function public_budget_preview_uses_a_manual_amount_when_it_is_set(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'quote_amount' => 1500,
+        ]);
+
+        $this->get(route('project.budget-preview', [
+            'token' => $created['token'],
+            'report' => 1,
+        ]))
+            ->assertOk()
+            ->assertSee('1.500,00 €', false)
+            ->assertSee('450,00 €', false);
+    }
+
+    #[Test]
+    public function public_budget_preview_leads_with_the_client_summary(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'client_summary' => 'Cotización del front de catering, lista para operar la escala.',
+        ]);
+
+        $response = $this->get(route('project.budget-preview', [
+            'token' => $created['token'],
+            'report' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Cotización del front de catering, lista para operar la escala.', false);
+        $response->assertDontSee('El cliente solicita', false);
+        $content = $response->getContent();
+        $this->assertLessThan(strpos($content, __('Quote detail')), strpos($content, 'Cotización del front de catering'));
     }
 
     #[Test]

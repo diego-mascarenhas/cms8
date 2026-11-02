@@ -622,6 +622,7 @@ class ProjectFunnelController extends Controller
                 $funnel = is_array($projectData['funnel'] ?? null) ? $projectData['funnel'] : [];
                 $projectData = array_merge($projectData, [
                     'budget_given' => $brief,
+                    'client_summary' => $spec['client_summary'] ?? '',
                     'ai_interpretation' => $spec['ai_interpretation'] ?? '',
                     'dimension' => $spec['dimension'] ?? '',
                     'estimated_times' => $spec['estimated_times'] ?? '',
