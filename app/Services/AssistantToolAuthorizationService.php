@@ -90,6 +90,7 @@ class AssistantToolAuthorizationService
         'get_contact_categories',
         'assign_contact_to_category',
         'list_my_hosting',
+        'hosting_disk',
         'reset_cpanel_password',
         'manage_hosting_mailbox',
         'manage_hosting_ftp',

@@ -595,6 +595,70 @@ class HostingCustomerAssistantTest extends TestCase
         $this->assertSame($plan, $domain->fresh()->plan);
     }
 
+    public function test_rehearse_chat_greets_without_listing_subscriptions(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+
+        $this->artisan('hosting:rehearse', [
+            '--chat' => true,
+            '--contact' => $contact->id,
+            '--team' => $user->current_team_id,
+        ])->expectsQuestion('Cliente', 'Hola')
+            ->expectsQuestion('Cliente', 'chau')
+            ->expectsOutputToContain('Qué necesitás')
+            ->assertSuccessful();
+
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringNotContainsString('example.test', $output);
+        $this->assertStringNotContainsString('Suscripciones desactivadas', $output);
+        $this->assertSame('essential', $domain->fresh()->plan);
+    }
+
+    public function test_disk_space_of_a_cancelled_subscription_does_not_list_the_rest(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+        ServiceSync::query()->create([
+            'team_id' => $user->current_team_id,
+            'stripe_id' => 'sub_masbcr',
+            'customer_id' => 'cus_hosting_demo',
+            'status' => 'canceled',
+            'plan_name' => 'masbcr.com.ar',
+            'data' => ['category' => 'asesoramiento'],
+        ]);
+
+        $text = app(HostingCustomerAssistantService::class)->diskSpace(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            'masbcr.com.ar',
+        );
+
+        $this->assertStringContainsString('masbcr.com.ar', $text);
+        $this->assertStringContainsString('cancelada', $text);
+        $this->assertStringContainsString('no es hosting', $text);
+        $this->assertStringNotContainsString('example.test', $text);
+        $this->assertStringNotContainsString('Suscripciones desactivadas', $text);
+        $this->assertSame('essential', $domain->fresh()->plan);
+    }
+
+    public function test_disk_space_reads_the_quota_of_the_named_domain(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+        $domain->forceFill([
+            'data' => ['disk_used' => 1500, 'disk_limit' => 10000],
+        ])->save();
+
+        $text = app(HostingCustomerAssistantService::class)->diskSpace(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            'example.test',
+        );
+
+        $this->assertStringContainsString('example.test', $text);
+        $this->assertStringContainsString('1.500 MB', $text);
+        $this->assertStringContainsString('10.000 MB', $text);
+        $this->assertStringNotContainsString('Suscripciones desactivadas', $text);
+    }
+
     public function test_rehearse_command_refuses_to_run_in_production(): void
     {
         $this->app['env'] = 'production';

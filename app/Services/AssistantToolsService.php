@@ -65,6 +65,9 @@ class AssistantToolsService
     /** CRM contact of the current WhatsApp/web thread, when already resolved. */
     protected ?int $contextContactId = null;
 
+    /** Hosting rehearsal: mutating tools preview instead of changing Stripe or the server. */
+    protected bool $rehearsalDryRun = false;
+
     /**
      * When true, only the first {@see sendWhatsAppMessage()} in this request actually sends; further calls are no-ops
      * (stops duplicate customer messages when the model calls the tool twice, e.g. opening + meta confirmation).
@@ -217,6 +220,68 @@ class AssistantToolsService
             ? WhatsAppCartSessionKey::fromPhone($customerPhoneDigits)
             : null;
         $this->contextContactId = $contactId !== null && $contactId > 0 ? $contactId : null;
+    }
+
+    public function setRehearsalDryRun(bool $dryRun): void
+    {
+        $this->rehearsalDryRun = $dryRun;
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function rehearsalReply(string $name, array $input, int $teamId): ?string
+    {
+        if (! $this->rehearsalDryRun)
+        {
+            return null;
+        }
+
+        $hosting = app(\App\Services\Hosting\HostingCustomerAssistantService::class);
+        if ($name === 'request_hosting_upgrade')
+        {
+            $plan = trim((string) ($input['plan'] ?? $input['note'] ?? ''));
+            if ($plan === '')
+            {
+                return null;
+            }
+
+            return $hosting->rehearseUpgrade(
+                $teamId,
+                $this->contextContactId,
+                isset($input['domain']) ? (string) $input['domain'] : null,
+                $plan,
+            );
+        }
+
+        if ($name === 'manage_hosting_mailbox' || $name === 'manage_hosting_ftp')
+        {
+            $action = strtolower(trim((string) ($input['action'] ?? '')));
+            if (in_array($action, ['', 'list', 'settings'], true))
+            {
+                return null;
+            }
+
+            return 'Ensayo. No cambié Stripe ni el servidor.';
+        }
+
+        if (in_array($name, [
+            'reset_cpanel_password',
+            'create_contact',
+            'update_contact',
+            'assign_contact_to_category',
+            'create_calendar_event',
+            'update_calendar_event',
+            'confirm_whatsapp_order',
+            'add_to_whatsapp_cart',
+            'send_whatsapp_message',
+            'send_product_image',
+        ], true))
+        {
+            return 'Ensayo. No cambié Stripe ni el servidor.';
+        }
+
+        return null;
     }
 
     /**
@@ -994,11 +1059,25 @@ class AssistantToolsService
             ],
             [
                 'name' => 'list_my_hosting',
-                'description' => 'List the contact hosting domains and also deactivated subscriptions, with their status. Active consulting is not hosting. Deactivated subscriptions are visible and must not be changed. Call this before any hosting change when the domain is not obvious.',
+                'description' => 'List the contact hosting domains and also deactivated subscriptions, with their status. Active consulting is not hosting. Deactivated subscriptions are visible and must not be changed. Call this only when they ask which hosting, plans, or subscriptions they have. Do not call it for a greeting or for one domain\'s disk space.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [],
                     'required' => [],
+                ],
+            ],
+            [
+                'name' => 'hosting_disk',
+                'description' => 'Disk space used and the quota for one hosting domain of this contact. Pass the domain they named. Do not invent a number. A deactivated subscription or a non-hosting subscription has no server disk to report. Do not list the other subscriptions.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'domain' => [
+                            'type' => 'string',
+                            'description' => 'The domain they asked about, such as masbcr.com.ar',
+                        ],
+                    ],
+                    'required' => ['domain'],
                 ],
             ],
             [
@@ -1161,6 +1240,12 @@ class AssistantToolsService
             return $denied;
         }
 
+        $rehearsal = $this->rehearsalReply($name, $input, $teamId);
+        if ($rehearsal !== null)
+        {
+            return $rehearsal;
+        }
+
         $this->recordExecutedTool($name);
 
         try
@@ -1212,6 +1297,7 @@ class AssistantToolsService
                 'get_store_info' => $this->getStoreInfo($teamId),
                 'confirm_whatsapp_order' => $this->confirmWhatsAppOrder($teamId, $input),
                 'list_my_hosting' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->listForContact($teamId, $this->contextContactId),
+                'hosting_disk' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->diskSpace($teamId, $this->contextContactId, isset($input['domain']) ? (string) $input['domain'] : null),
                 'reset_cpanel_password' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->resetCpanelAccess($teamId, $this->contextContactId, $user, isset($input['domain']) ? (string) $input['domain'] : null),
                 'manage_hosting_mailbox' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->manageMailbox($teamId, $this->contextContactId, $user, (string) ($input['action'] ?? ''), isset($input['domain']) ? (string) $input['domain'] : null, isset($input['account']) ? (string) $input['account'] : null),
                 'manage_hosting_ftp' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->manageFtp($teamId, $this->contextContactId, $user, (string) ($input['action'] ?? ''), isset($input['domain']) ? (string) $input['domain'] : null, isset($input['account']) ? (string) $input['account'] : null),

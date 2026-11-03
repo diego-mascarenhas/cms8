@@ -5,14 +5,21 @@ namespace App\Console\Commands;
 use App\Models\Contact;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Assistant\AssistantActorContextService;
 use App\Services\AssistantToolIntentPromptService;
+use App\Services\AssistantToolsService;
+use App\Services\ChatAssistantReplyService;
 use App\Services\Hosting\HostingCustomerAssistantService;
 use App\Services\InboxProductOnboardingService;
 use App\Services\UserResolverService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
 class RehearseHostingAssistantCommand extends Command
 {
+    /** @var list<array{direction: string, body: string}> */
+    private array $history = [];
+
     protected $signature = 'hosting:rehearse
         {message? : Optional first WhatsApp message. Omit it to open a chat}
         {--chat : Keep the conversation open. "chau" leaves the flow}
@@ -137,6 +144,7 @@ class RehearseHostingAssistantCommand extends Command
         $this->line('WhatsApp · '.$who.' · '.$team->name);
         $this->line('Escribí como el cliente. "chau" sale del flujo.');
         $this->newLine();
+        app(AssistantToolsService::class)->setRehearsalDryRun(! $this->option('apply'));
 
         $pending = $firstMessage;
         while (true)
@@ -172,30 +180,111 @@ class RehearseHostingAssistantCommand extends Command
         HostingCustomerAssistantService $hosting,
         string $message,
     ): string {
-        $phone = trim((string) ($contact->phone ?? $contact->mobile ?? ''));
-        if (! $onboarding->asksAboutOwnAccount($message) && $phone !== '')
+        $text = $this->scriptedReply($contact, $team, $onboarding, $hosting, $message);
+        if ($text === null && ! app()->runningUnitTests())
         {
-            $handled = $onboarding->tryHandleInbound($team, $phone, $message);
-            $text = trim((string) data_get($handled, 'message', ''));
-            if ($text !== '')
-            {
-                return $text;
-            }
+            $text = $this->assistantReply($contact, $team, $message);
+        }
+        if ($text === null || $text === '')
+        {
+            $text = 'Decime si querés ver las suscripciones, el espacio de un dominio, el correo o un cambio de plan.';
         }
 
-        $lines = [$hosting->listForContact((int) $team->id, (int) $contact->id)];
-        $plan = trim((string) $this->option('plan'));
-        if ($plan !== '')
+        $this->history[] = ['direction' => 'inbound', 'body' => $message];
+        $this->history[] = ['direction' => 'outbound', 'body' => $text];
+
+        return $text;
+    }
+
+    private function scriptedReply(
+        Contact $contact,
+        Team $team,
+        InboxProductOnboardingService $onboarding,
+        HostingCustomerAssistantService $hosting,
+        string $message,
+    ): ?string {
+        if ($this->asksDisk($message))
         {
-            $lines[] = $hosting->rehearseUpgrade(
+            return $hosting->diskSpace(
                 (int) $team->id,
                 (int) $contact->id,
-                $this->option('domain') ? (string) $this->option('domain') : null,
-                $plan,
+                $this->diskDomain($message) ?? trim((string) $this->option('domain')),
             );
         }
 
-        return implode("\n\n", $lines);
+        if ($onboarding->asksAboutOwnAccount($message))
+        {
+            $lines = [$hosting->listForContact((int) $team->id, (int) $contact->id)];
+            $plan = trim((string) $this->option('plan'));
+            if ($plan !== '')
+            {
+                $lines[] = $hosting->rehearseUpgrade(
+                    (int) $team->id,
+                    (int) $contact->id,
+                    $this->option('domain') ? (string) $this->option('domain') : null,
+                    $plan,
+                );
+            }
+
+            return implode("\n\n", $lines);
+        }
+
+        if ($this->isGreeting($message))
+        {
+            return 'Hola. Soy el asistente de hosting. Puedo decirte las suscripciones, el espacio de un dominio, el correo o un cambio de plan. ¿Qué necesitás?';
+        }
+
+        return null;
+    }
+
+    private function assistantReply(Contact $contact, Team $team, string $message): string
+    {
+        $ownerId = (int) $team->user_id;
+        $phone = preg_replace('/\D+/', '', (string) ($contact->phone ?? $contact->mobile ?? '')) ?: null;
+        $reply = app(ChatAssistantReplyService::class)->getReply(
+            $message,
+            $this->history,
+            (int) $team->id,
+            true,
+            $ownerId > 0 ? $ownerId : null,
+            is_string($phone) && $phone !== '' ? $phone : null,
+            'hosting:assistant_hosting',
+            (int) $contact->id,
+            true,
+            AssistantActorContextService::CHANNEL_WHATSAPP,
+            false,
+            'Ensayo de WhatsApp del flujo Hosting cPanel. Respondé solo a este mensaje. No listes todas las suscripciones salvo que pregunte cuáles tiene. Si pregunta el espacio de un dominio, usá hosting_disk con ese dominio. No digas que enviaste un WhatsApp.',
+        );
+
+        $text = trim((string) ($reply['text'] ?? ''));
+
+        return $text !== '' ? $text : 'No pude armar la respuesta. Probá de nuevo con el dominio o la pregunta.';
+    }
+
+    private function asksDisk(string $message): bool
+    {
+        $normalized = mb_strtolower(Str::ascii($message));
+
+        return preg_match('/\b(espacio|disco|cuota|quota|capacidad|gigas?|megas?)\b/u', $normalized) === 1;
+    }
+
+    private function diskDomain(string $message): ?string
+    {
+        if (preg_match('/\b((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,})\b/i', $message, $matches) === 1)
+        {
+            return strtolower($matches[1]);
+        }
+
+        return null;
+    }
+
+    private function isGreeting(string $message): bool
+    {
+        $normalized = trim(mb_strtolower(Str::ascii($message)));
+        $normalized = trim($normalized, " \t\n\r\0\x0B!?.¡¿");
+
+        return preg_match('/^(hola|hey|hi|hello|buenas|buen dia|buenos dias|buenas tardes|buenas noches|que tal|gracias|ok|dale|perfecto)\b/u', $normalized) === 1
+            && preg_match('/\b(hosting|suscrip|subscrip|plan|dominio|espacio|disco|correo|ftp|cpanel)\b/u', $normalized) !== 1;
     }
 
     private function leavesFlow(string $message): bool

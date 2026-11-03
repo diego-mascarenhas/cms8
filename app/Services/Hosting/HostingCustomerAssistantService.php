@@ -57,6 +57,82 @@ class HostingCustomerAssistantService
         return implode("\n\n", $lines);
     }
 
+    public function diskSpace(int $teamId, ?int $contactId, ?string $domainName): string
+    {
+        $subscriptions = $this->customerSubscriptions($teamId, $contactId);
+        if (is_string($subscriptions))
+        {
+            return $subscriptions;
+        }
+
+        $needle = $this->normalizeHost((string) $domainName);
+        if ($needle === '')
+        {
+            return '¿De qué dominio querés el espacio?';
+        }
+
+        $matches = $subscriptions
+            ->filter(fn (ServiceSync $sync): bool => $this->subscriptionMatchesHost($sync, $needle))
+            ->values();
+        $exact = $matches
+            ->filter(fn (ServiceSync $sync): bool => $this->subscriptionHostIs($sync, $needle))
+            ->values();
+        if ($exact->isNotEmpty())
+        {
+            $matches = $exact;
+        }
+
+        if ($matches->isEmpty())
+        {
+            return 'No encuentro '.$needle.' entre las suscripciones de este contacto.';
+        }
+
+        if ($matches->count() > 1)
+        {
+            $lines = ['Hay más de una suscripción para eso. Decime cuál:'];
+            foreach ($matches as $subscription)
+            {
+                $lines[] = '- '.$this->subscriptionListLabel($subscription)
+                    .' · '.$this->subscriptionStatusLabel($subscription);
+            }
+
+            return implode("\n", $lines);
+        }
+
+        /** @var ServiceSync $subscription */
+        $subscription = $matches->first();
+        $label = $this->subscriptionListLabel($subscription);
+        $status = $this->subscriptionStatusLabel($subscription);
+
+        if (! $this->subscriptionGrantsHosting($subscription))
+        {
+            $kind = $subscription->isClientHosting()
+                ? 'es hosting, pero está '.$status
+                : 'está '.$status.' y no es hosting';
+
+            return $label.' '.$kind.'. No consulto el espacio de una suscripción que no está activa.';
+        }
+
+        if (! $subscription->isClientHosting())
+        {
+            return $label.' no es hosting. No tiene espacio de disco en el servidor.';
+        }
+
+        $domain = $this->domainForSubscription($subscription);
+        if (! $domain instanceof Domain || $domain->server === null)
+        {
+            return $label.' está activa, pero no tiene cuenta en el servidor. No hay espacio para consultar.';
+        }
+
+        $usage = $this->cpanelConnector->getAccountDiskUsage($domain->server, $domain);
+        if (! ($usage['success'] ?? false))
+        {
+            return 'No pude leer el espacio de '.$domain->domain.'.';
+        }
+
+        return $this->formatDiskUsage((string) $domain->domain, $usage);
+    }
+
     public function resetCpanelAccess(int $teamId, ?int $contactId, User $actor, ?string $domainName): string
     {
         $domain = $this->resolveCpanelDomain($teamId, $contactId, $domainName);
@@ -756,6 +832,83 @@ class HostingCustomerAssistantService
         $name = trim($subscription->clientFacingName());
 
         return $name !== '' ? $name : (string) $subscription->stripe_id;
+    }
+
+    private function subscriptionMatchesHost(ServiceSync $subscription, string $needle): bool
+    {
+        foreach ($this->subscriptionHosts($subscription) as $host)
+        {
+            if ($host === $needle || str_contains($host, $needle))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function subscriptionHostIs(ServiceSync $subscription, string $needle): bool
+    {
+        return in_array($needle, $this->subscriptionHosts($subscription), true);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function subscriptionHosts(ServiceSync $subscription): array
+    {
+        return array_values(array_unique(array_filter([
+            $this->normalizeHost($this->subscriptionListLabel($subscription)),
+            $this->normalizeHost((string) $subscription->hostingDomainCandidate()),
+            $this->normalizeHost($subscription->clientFacingName()),
+        ])));
+    }
+
+    private function normalizeHost(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $value = preg_replace('#^https?://#', '', $value) ?? $value;
+        $value = trim($value, " \t\n\r\0\x0B/.");
+
+        return $value;
+    }
+
+    private function domainForSubscription(ServiceSync $subscription): ?Domain
+    {
+        $name = $subscription->hostingDomainCandidate();
+        if ($name === null || $name === '')
+        {
+            return null;
+        }
+
+        return Domain::query()
+            ->with('server')
+            ->whereRaw('LOWER(domain) = ?', [strtolower($name)])
+            ->first();
+    }
+
+    /**
+     * @param  array<string, mixed>  $usage
+     */
+    private function formatDiskUsage(string $domain, array $usage): string
+    {
+        $used = $this->formatMegabytes((float) ($usage['used_mb'] ?? 0));
+        if (($usage['unlimited'] ?? false) === true || ($usage['limit_mb'] ?? null) === null)
+        {
+            return $domain.' usa '.$used.'. El disco no tiene límite.';
+        }
+
+        $limit = $this->formatMegabytes((float) $usage['limit_mb']);
+        $percent = (int) ($usage['usage_percent'] ?? 0);
+
+        return $domain.' usa '.$used.' de '.$limit.' ('.$percent.'%).';
+    }
+
+    private function formatMegabytes(float $megabytes): string
+    {
+        $decimals = abs($megabytes - round($megabytes)) < 0.05 ? 0 : 1;
+
+        return number_format($megabytes, $decimals, ',', '.').' MB';
     }
 
     private function subscriptionStatusLabel(ServiceSync $subscription): string
