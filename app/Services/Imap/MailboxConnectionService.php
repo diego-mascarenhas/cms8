@@ -4,6 +4,7 @@ namespace App\Services\Imap;
 
 use App\Enums\EmailFolder;
 use App\Jobs\ClassifyEmailSpamJob;
+use App\Jobs\HandleMailboxInboundJob;
 use App\Models\Email;
 use App\Models\Mailbox;
 use App\Services\Mail\MailInboxService;
@@ -301,6 +302,17 @@ class MailboxConnectionService
             } catch (\Throwable $e)
             {
                 Log::warning('Mail sync: could not dispatch spam classification job', ['email_id' => $email->id, 'error' => $e->getMessage()]);
+            }
+
+            if ($mailbox->user_id === null)
+            {
+                try
+                {
+                    HandleMailboxInboundJob::dispatch($email->id);
+                } catch (\Throwable $e)
+                {
+                    Log::warning('Mail sync: could not dispatch inbound classification job', ['email_id' => $email->id, 'error' => $e->getMessage()]);
+                }
             }
         }
 

@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Schema;
  *   `seen` TINYINT(1) NOT NULL DEFAULT 0,
  *   `flagged` TINYINT(1) NOT NULL DEFAULT 0,
  *   `folder` VARCHAR(32) NOT NULL DEFAULT 'inbox',
+ *   `inbound_handled_at` TIMESTAMP NULL,
  *   `created_at` TIMESTAMP NULL,
  *   `updated_at` TIMESTAMP NULL,
  *   INDEX `emails_message_id_index` (`message_id`),
@@ -41,6 +42,9 @@ use Illuminate\Support\Facades\Schema;
  * ALTER TABLE emails ADD COLUMN IF NOT EXISTS folder VARCHAR(32) NOT NULL DEFAULT 'inbox';
  * CREATE INDEX IF NOT EXISTS emails_team_id_folder_index ON emails (team_id, folder);
  * (No volver a crear emails_mailbox_id_message_id_unique: ya existe.)
+ *
+ * PostgreSQL — tabla YA EXISTE sin `inbound_handled_at`; ejecutar SOLO esto:
+ * ALTER TABLE emails ADD COLUMN IF NOT EXISTS inbound_handled_at TIMESTAMP(0) WITHOUT TIME ZONE NULL;
  */
 return new class extends Migration
 {
@@ -64,6 +68,7 @@ return new class extends Migration
             $table->boolean('seen')->default(false);
             $table->boolean('flagged')->default(false);
             $table->string('folder', 32)->default('inbox');
+            $table->timestamp('inbound_handled_at')->nullable();
             $table->timestamps();
 
             $table->unique(['mailbox_id', 'message_id']);

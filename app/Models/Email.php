@@ -24,6 +24,7 @@ class Email extends Model
         'seen',
         'flagged',
         'folder',
+        'inbound_handled_at',
     ];
 
     protected $casts = [
@@ -31,6 +32,7 @@ class Email extends Model
         'seen' => 'boolean',
         'flagged' => 'boolean',
         'folder' => EmailFolder::class,
+        'inbound_handled_at' => 'datetime',
     ];
 
     public function mailbox(): BelongsTo

@@ -422,6 +422,8 @@ class Contact extends Model implements HasMedia
             'account has been disabled',
             'recipient address rejected',
             '5.1.1',
+            '5.1.2',
+            '5.1.3',
             '5.1.6',
             '5.1.10',
             'not exist',
@@ -659,12 +661,34 @@ class Contact extends Model implements HasMedia
             return;
         }
 
-        if (trim((string) $this->email) === '')
+        $address = trim((string) $this->email);
+        if ($address === '')
         {
             return;
         }
 
         $this->clearStoredEmail();
+        $this->appendNote('Rebote duro: la casilla '.$address.' no existe. '.$reason);
+    }
+
+    public function appendNote(string $note): void
+    {
+        $note = trim($note);
+        if ($note === '')
+        {
+            return;
+        }
+
+        $data = $this->dataArray();
+        $existing = trim((string) ($data['notes'] ?? ''));
+        if ($existing !== '' && str_contains($existing, $note))
+        {
+            return;
+        }
+
+        $data['notes'] = $existing === '' ? $note : $existing."\n".$note;
+        $this->data = (object) $data;
+        $this->save();
     }
 
     public function applyEmailDomainCheck(?bool $domainExists): void

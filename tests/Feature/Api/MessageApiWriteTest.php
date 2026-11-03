@@ -1293,6 +1293,7 @@ class MessageApiWriteTest extends TestCase
         $contact->refresh();
         $this->assertNull($contact->email);
         $this->assertSame('gone@example.test', data_get($contact->data, 'removed_email'));
+        $this->assertStringContainsString('Rebote duro: la casilla gone@example.test no existe.', (string) data_get($contact->data, 'notes'));
         $this->assertNull(MessageDelivery::query()->find($pending->id));
         $this->assertNotNull(MessageDelivery::query()->find($bounced->id));
 
@@ -1318,7 +1319,9 @@ class MessageApiWriteTest extends TestCase
             'reason' => '452 4.2.2 Mailbox full',
         ])->assertOk();
 
-        $this->assertSame('full@example.test', $kept->fresh()->email);
+        $kept->refresh();
+        $this->assertSame('full@example.test', $kept->email);
+        $this->assertNull(data_get($kept->data, 'notes'));
     }
 
     public function test_resend_clears_the_failure_and_queues_a_manual_send(): void

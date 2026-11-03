@@ -104,6 +104,47 @@ class InboxList60SlashService
         ];
     }
 
+    public function enrollFromMailboxReply(Team $team, Contact $contact, string $note): bool
+    {
+        $note = trim($note);
+        if ($note === '' || ! $this->teamHasList60($team))
+        {
+            return false;
+        }
+
+        $responsible = $this->resolveResponsible($team, $contact, null);
+        if ($responsible === null)
+        {
+            return false;
+        }
+
+        $existing = List60::query()->where('contact_id', $contact->id)->first();
+        if ($existing !== null)
+        {
+            $this->appendNotes($contact, $existing, $note);
+
+            return true;
+        }
+
+        if ($this->responsibleListIsFull($team, $responsible))
+        {
+            return false;
+        }
+
+        $record = new List60;
+        $record->contact_id = $contact->id;
+        $record->date_next = List60NextContactDate::afterOutreach();
+        $record->responsible_id = $responsible->id;
+        $record->status_id = List60StatusAdvancer::initialStatusId();
+        $record->notes = $note;
+        $record->save();
+
+        $this->appendContactNotes($contact, $note);
+        $this->markContactInFollowUp($contact);
+
+        return true;
+    }
+
     /**
      * @return array{kind: string, key: string, label: string}|null
      */
