@@ -118,7 +118,7 @@ class AssistantPromptCatalog
             ];
         }
 
-        $order = ['agenda', 'ventas', 'cobranzas', 'equipo', 'marca'];
+        $order = ['agenda', 'ventas', 'cobranzas', 'hosting', 'equipo', 'marca'];
         uksort($grouped, function (string $left, string $right) use ($order): int
         {
             $leftRank = array_search($left, $order, true);
@@ -386,6 +386,7 @@ class AssistantPromptCatalog
         {
             'assistant_citas', 'citas_y_ventas' => 'agenda',
             'assistant_embudo', 'assistant_catalogo', 'assistant_presupuesto' => 'ventas',
+            'assistant_hosting' => 'hosting',
             'assistant_contactos', 'assistant_tareas', 'assistant_campanas' => 'equipo',
             default => null,
         };
@@ -398,6 +399,7 @@ class AssistantPromptCatalog
             'agenda' => 'Agenda',
             'ventas' => 'Ventas',
             'cobranzas' => 'Cobranzas',
+            'hosting' => 'Hosting',
             'equipo' => 'Equipo',
             'marca' => 'Nuestros productos',
             default => $group,

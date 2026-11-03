@@ -55,6 +55,11 @@ class AssistantPromptCatalogTest extends TestCase
             collect($catalog->items())->firstWhere('key', 'products:assistant_embudo')['section_label'] ?? null,
         );
         $this->assertTrue($keys->contains('invoices:collections'));
+        $this->assertTrue($keys->contains('hosting:assistant_hosting'));
+        $this->assertSame(
+            'Hosting cPanel',
+            collect($catalog->items())->firstWhere('key', 'hosting:assistant_hosting')['section_label'] ?? null,
+        );
         $this->assertTrue($keys->contains('communications:assistant_campanas'));
         $this->assertSame(
             'Tareas y equipo',
@@ -89,7 +94,7 @@ class AssistantPromptCatalogTest extends TestCase
         $this->assertFalse($visible->contains('products:pumpstall'));
         $this->assertFalse($visible->contains('contacts:landing'));
         $this->assertSame(
-            ['agenda', 'ventas', 'cobranzas', 'equipo'],
+            ['agenda', 'ventas', 'cobranzas', 'hosting', 'equipo'],
             collect($catalog->groupsFor($team))->pluck('group')->all(),
         );
     }
