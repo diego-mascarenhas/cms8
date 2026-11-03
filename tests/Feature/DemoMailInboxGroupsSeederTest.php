@@ -25,8 +25,11 @@ class DemoMailInboxGroupsSeederTest extends TestCase
 
         $this->assertGreaterThanOrEqual(4, $groups->count());
 
-        $idoneoGroup = $groups->firstWhere('sender_key', 'contabilidad@idoneo.es');
-        $this->assertNotNull($idoneoGroup);
-        $this->assertGreaterThanOrEqual(3, $idoneoGroup['count']);
+        $factura = $groups->first(fn (array $group): bool => str_contains((string) $group['subject'], 'Factura pendiente'));
+        $this->assertNotNull($factura);
+        $this->assertSame(2, $factura['count']);
+        $reminder = $groups->first(fn (array $group): bool => $group['subject'] === 'Recordatorio factura IDONEO');
+        $this->assertNotNull($reminder);
+        $this->assertSame(1, $reminder['count']);
     }
 }

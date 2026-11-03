@@ -74,6 +74,7 @@
             @endif
 
             var suggestUrl = @json(route('mail.compose-suggest'));
+            var sendUrl = @json(route('mail.compose-send'));
             var tokenEl = document.querySelector('meta[name="csrf-token"]');
             var csrf = tokenEl ? tokenEl.getAttribute('content') : '';
             var contactIdEl = document.getElementById('mailComposeContactId');
@@ -82,6 +83,13 @@
                 contactId = null;
             }
             var flowSel = document.getElementById('mailComposeFlowRoutingKey');
+            if (window.jQuery && window.jQuery.fn.select2 && flowSel) {
+                window.jQuery(flowSel).select2({
+                    width: '100%',
+                    dropdownParent: window.jQuery('#emailComposeSidebar'),
+                    minimumResultsForSearch: 8
+                });
+            }
             var suggestBtn = document.getElementById('mailComposeSuggestBtn');
             var busy = false;
 
@@ -97,13 +105,18 @@
                 return Array.isArray(vals) ? vals.join(', ') : String(vals);
             }
 
-            function getMailComposeBodyPlainHint() {
+            function quillEditor() {
                 var root = document.querySelector('.email-editor');
                 if (root && window.Quill && typeof window.Quill.find === 'function') {
-                    var q = window.Quill.find(root);
-                    if (q) {
-                        return (q.getText() || '').replace(/\u00a0/g, ' ').trim();
-                    }
+                    return window.Quill.find(root);
+                }
+                return null;
+            }
+
+            function getMailComposeBodyPlainHint() {
+                var q = quillEditor();
+                if (q) {
+                    return (q.getText() || '').replace(/\u00a0/g, ' ').trim();
                 }
                 var ed = document.querySelector('.email-editor .ql-editor');
                 return ed ? (ed.innerText || '').trim() : '';
@@ -111,18 +124,43 @@
 
             function setMailComposeBodyText(text) {
                 var plain = text || '';
-                var root = document.querySelector('.email-editor');
-                if (root && window.Quill && typeof window.Quill.find === 'function') {
-                    var q = window.Quill.find(root);
-                    if (q) {
-                        q.setText(plain);
-                        return;
-                    }
+                var q = quillEditor();
+                if (q) {
+                    q.setText(plain);
+                    return;
                 }
                 var ed = document.querySelector('.email-editor .ql-editor');
                 if (ed) {
                     ed.innerText = plain;
                 }
+            }
+
+            function showSuggestStatus(message, isError) {
+                var el = document.getElementById('mailComposeSuggestStatus');
+                if (!el) {
+                    if (message) {
+                        alert(message);
+                    }
+                    return;
+                }
+                el.textContent = message || '';
+                el.classList.toggle('d-none', !message);
+                el.classList.toggle('text-danger', !!isError);
+                el.classList.toggle('text-muted', !isError);
+            }
+
+            function quotedOriginal(text) {
+                var marker = text.indexOf('----------');
+                if (marker === -1) {
+                    return '';
+                }
+                return text.slice(marker).trim();
+            }
+
+            function splitEmails(value) {
+                return String(value || '').split(/[,;\s]+/).map(function (part) {
+                    return part.trim();
+                }).filter(Boolean);
             }
 
             function setMailComposeRecipients(recipients) {
@@ -156,6 +194,12 @@
                 if (elOpen && window.bootstrap && window.bootstrap.Modal) {
                     window.bootstrap.Modal.getOrCreateInstance(elOpen).show();
                 }
+                if (payload.suggest) {
+                    window.setTimeout(function () {
+                        var v = flowSel && flowSel.value ? String(flowSel.value).trim() : '';
+                        runMailComposeSuggest(v);
+                    }, 50);
+                }
             }
 
             function registerMailComposeListener() {
@@ -175,6 +219,7 @@
                     return;
                 }
                 busy = true;
+                showSuggestStatus(@json(__('Escribiendo la respuesta...')), false);
                 if (suggestBtn) {
                     suggestBtn.disabled = true;
                 }
@@ -198,16 +243,32 @@
                             subj.value = data.subject.trim();
                         }
                         var bodyText = typeof data.body === 'string' && data.body.trim() !== ''
-                            ? data.body
-                            : (data.response || '');
-                        if (bodyText) {
-                            setMailComposeBodyText(bodyText);
+                            ? data.body.trim()
+                            : String(data.response || '').trim();
+                        if (!bodyText) {
+                            showSuggestStatus(@json(__('El asistente no devolvió un texto.')), true);
+                            return;
                         }
+                        var quote = quotedOriginal(getMailComposeBodyPlainHint());
+                        if (quote && bodyText.indexOf(quote) !== -1) {
+                            bodyText = bodyText.slice(0, bodyText.indexOf(quote)).trim();
+                        }
+                        if (!bodyText) {
+                            showSuggestStatus(@json(__('El asistente no devolvió un texto.')), true);
+                            return;
+                        }
+                        if (quote) {
+                            bodyText = bodyText + '\n\n' + quote;
+                        }
+                        setMailComposeBodyText(bodyText);
+                        showSuggestStatus('', false);
                     } else if (data.message) {
-                        alert(data.message);
+                        showSuggestStatus(data.message, true);
+                    } else {
+                        showSuggestStatus(@json(__('No pude sugerir una respuesta.')), true);
                     }
                 }).catch(function () {
-                    alert(@json(__('Error de conexión')));
+                    showSuggestStatus(@json(__('Error de conexión')), true);
                 }).finally(function () {
                     busy = false;
                     if (suggestBtn) {
@@ -220,6 +281,69 @@
                 suggestBtn.addEventListener('click', function () {
                     var v = flowSel && flowSel.value ? String(flowSel.value).trim() : '';
                     runMailComposeSuggest(v);
+                });
+            }
+
+            var sendBtn = document.getElementById('mailComposeSendBtn');
+            if (sendBtn) {
+                sendBtn.addEventListener('click', function () {
+                    if (busy || !csrf) {
+                        return;
+                    }
+                    var to = [];
+                    if (window.jQuery && jQuery('#emailContacts').length) {
+                        to = jQuery('#emailContacts').val() || [];
+                    }
+                    var cc = splitEmails((document.getElementById('email-cc') || {}).value);
+                    var bcc = splitEmails((document.getElementById('email-bcc') || {}).value);
+                    var subject = (document.getElementById('email-subject') || {}).value || '';
+                    var body = getMailComposeBodyPlainHint();
+                    if (!to.length || !String(subject).trim() || !body) {
+                        showSuggestStatus(@json(__('Completá destinatario, asunto y mensaje.')), true);
+                        return;
+                    }
+                    busy = true;
+                    sendBtn.disabled = true;
+                    showSuggestStatus(@json(__('Enviando...')), false);
+                    fetch(sendUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': csrf,
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            to: to,
+                            cc: cc,
+                            bcc: bcc,
+                            subject: String(subject).trim(),
+                            body: body
+                        })
+                    }).then(function (r) {
+                        return r.json().then(function (data) {
+                            return { ok: r.ok, data: data };
+                        });
+                    }).then(function (result) {
+                        if (result.ok && result.data && result.data.success) {
+                            var elOpen = document.getElementById('emailComposeSidebar');
+                            if (elOpen && window.bootstrap && window.bootstrap.Modal) {
+                                var modal = window.bootstrap.Modal.getInstance(elOpen);
+                                if (modal) {
+                                    modal.hide();
+                                }
+                            }
+                            showSuggestStatus('', false);
+                            return;
+                        }
+                        var message = (result.data && result.data.message) ? result.data.message : @json(__('No pude enviar el mensaje.'));
+                        showSuggestStatus(message, true);
+                    }).catch(function () {
+                        showSuggestStatus(@json(__('Error de conexión')), true);
+                    }).finally(function () {
+                        busy = false;
+                        sendBtn.disabled = false;
+                    });
                 });
             }
         });
@@ -315,53 +439,30 @@
                             <div class="mb-3">
                                 <label class="form-label mb-1" for="mailComposeFlowRoutingKey">{{ __('Assistant flow prompt') }}</label>
                                 <div class="d-flex flex-nowrap align-items-stretch align-items-md-center gap-2 w-100">
-                                    <select class="form-select flex-grow-1" id="mailComposeFlowRoutingKey"
-                                        style="min-width: 0;">
-                                        <option value="">{{ __('Automatic (detect from message)') }}</option>
-                                        @foreach (($assistantFlowPrompts ?? collect()) as $flowPrompt)
-                                            <option value="{{ e($flowPrompt['routing_key']) }}">{{ e($flowPrompt['section_label']) }}
-                                                ({{ e($flowPrompt['routing_key']) }})</option>
-                                        @endforeach
-                                    </select>
+                                    <div class="flex-grow-1 min-w-0">
+                                        <select class="select2 form-select" id="mailComposeFlowRoutingKey">
+                                            <option value="">{{ __('Automatic (detect from message)') }}</option>
+                                            @foreach (($assistantFlowPrompts ?? collect()) as $flowPrompt)
+                                                <option value="{{ e($flowPrompt['routing_key']) }}">{{ e($flowPrompt['section_label']) }}
+                                                    ({{ e($flowPrompt['routing_key']) }})</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                     <button type="button" class="btn btn-outline-primary btn-sm flex-shrink-0 align-self-stretch align-self-md-center"
-                                        id="mailComposeSuggestBtn">{{ __('Suggest message') }}</button>
+                                        id="mailComposeSuggestBtn"><i class="ti ti-sparkles me-1"></i>{{ __('Suggest message') }}</button>
                                 </div>
+                                <p id="mailComposeSuggestStatus" class="small mb-0 mt-2 d-none"></p>
                             </div>
                             <hr class="container-m-nx mt-0 mb-2">
                             <div class="email-compose-actions d-flex justify-content-between align-items-center mt-3 mb-3">
                                 <div class="d-flex align-items-center">
-                                    <div class="btn-group">
-                                        <button type="reset" class="btn btn-primary" data-bs-dismiss="modal"
-                                            aria-label="{{ __('Close') }}"><i class="ti ti-send ti-xs me-1"></i>{{ __('Send') }}</button>
-                                        <button type="button"
-                                            class="btn btn-primary dropdown-toggle dropdown-toggle-split"
-                                            data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                            <span class="visually-hidden">{{ __('Send Options') }}</span>
-                                        </button>
-                                        <ul class="dropdown-menu">
-                                            <li><a class="dropdown-item" href="javascript:void(0);">{{ __('Schedule send') }}</a></li>
-                                            <li><a class="dropdown-item" href="javascript:void(0);">{{ __('Save draft') }}</a></li>
-                                        </ul>
-                                    </div>
+                                    <button type="button" class="btn btn-primary" id="mailComposeSendBtn">
+                                        <i class="ti ti-send ti-xs me-1"></i>{{ __('Send') }}
+                                    </button>
                                     <label for="attach-file"><i class="ti ti-paperclip cursor-pointer ms-2"></i></label>
                                     <input type="file" name="file-input" class="d-none" id="attach-file">
                                 </div>
                                 <div class="d-flex align-items-center">
-                                    <div class="dropdown">
-                                        <button class="btn p-0" type="button" id="dropdownMoreActions"
-                                            data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                            <i class="ti ti-dots-vertical"></i>
-                                        </button>
-                                        <ul class="dropdown-menu" aria-labelledby="dropdownMoreActions">
-                                            <li><button type="button" class="dropdown-item">{{ __('Add Label') }}</button></li>
-                                            <li><button type="button" class="dropdown-item">{{ __('Plain text mode') }}</button></li>
-                                            <li>
-                                                <hr class="dropdown-divider">
-                                            </li>
-                                            <li><button type="button" class="dropdown-item">{{ __('Print') }}</button></li>
-                                            <li><button type="button" class="dropdown-item">{{ __('Check Spelling') }}</button></li>
-                                        </ul>
-                                    </div>
                                     <button type="reset" class="btn" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"><i
                                             class="ti ti-trash"></i></button>
                                 </div>

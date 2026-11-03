@@ -72,6 +72,18 @@ class DefaultAssistantFlowPromptsServiceTest extends TestCase
         $this->assertNotNull($campanas);
         $this->assertSame('Campañas y News', $campanas->section_label);
 
+        $hosting = \App\Models\Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'assistant_hosting')
+            ->first();
+        $this->assertNotNull($hosting);
+        $this->assertSame('Hosting cPanel', $hosting->section_label);
+        $this->assertStringContainsString('reset_cpanel_password', (string) $hosting->prompt_instruction);
+        $this->assertStringContainsString('varios dominios', (string) $hosting->prompt_instruction);
+        $this->assertStringContainsString('hosting_google_mail', (string) $hosting->prompt_instruction);
+        $this->assertStringContainsString('include:spf.revisionalpha.com', (string) $hosting->prompt_instruction);
+        $this->assertStringContainsString('hosting_product_info', (string) $hosting->prompt_instruction);
+
         $this->assertNull(
             \App\Models\Prompt::withoutGlobalScope('team')
                 ->forTeam((int) $team->id)

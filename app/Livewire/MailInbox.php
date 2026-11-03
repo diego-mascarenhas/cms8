@@ -3,9 +3,14 @@
 namespace App\Livewire;
 
 use App\Enums\EmailFolder;
+use App\Enums\MailboxInboundKind;
 use App\Models\Email;
+use App\Models\Enterprise;
 use App\Models\Team;
 use App\Services\Imap\MailboxConnectionService;
+use App\Services\Mail\MailboxInboundActionService;
+use App\Services\Mail\MailboxInboundClassifier;
+use App\Services\Mail\MailboxInvoiceExpenseDraft;
 use App\Services\Mail\MailInboxService;
 use App\Support\MailComposeReplyForward;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -123,7 +128,7 @@ class MailInbox extends Component
         }
 
         $this->selectedEmailId = $emailId;
-        $this->expandedSenderKey = MailInboxService::senderKeyFromAddress((string) $email->from_address);
+        $this->expandedSenderKey = MailInboxService::threadKey($email);
         if (! $email->seen)
         {
             $team = $this->currentTeam();
@@ -330,6 +335,65 @@ class MailInbox extends Component
         }
 
         $payload = MailComposeReplyForward::replyPayload($email, $this->folder);
+        $this->dispatch('open-mail-compose', ...$payload);
+    }
+
+    public function assistEmail(int $emailId): void
+    {
+        $email = $this->findTeamEmail($emailId);
+        if ($email === null)
+        {
+            $this->flashStatus(__('No se encontró el mensaje.'), 'danger');
+
+            return;
+        }
+
+        $summary = app(MailboxInboundActionService::class)->handle($email);
+        $email->refresh();
+        $body = trim((string) ($email->body_text ?: strip_tags((string) $email->body_html)));
+        $kind = app(MailboxInboundClassifier::class)->classify(
+            (string) $email->from_address,
+            (string) $email->subject,
+            $body,
+        )['kind'];
+
+        $this->selectedEmailId = $email->id;
+        $this->expandedSenderKey = MailInboxService::threadKey($email);
+
+        if (in_array($kind, [MailboxInboundKind::HardBounce, MailboxInboundKind::SoftBounce, MailboxInboundKind::PolicyBounce], true))
+        {
+            $this->flashStatus(
+                $summary !== '' ? $summary : __('Este aviso ya estaba clasificado.'),
+                'success',
+            );
+
+            return;
+        }
+
+        $formatted = $this->inboxService->formatForList($email);
+        $plain = trim(html_entity_decode(strip_tags((string) ($formatted['body'] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        $draft = app(MailboxInvoiceExpenseDraft::class);
+        if ($draft->isInvoice((string) ($formatted['subject'] ?? ''), $plain))
+        {
+            $team = $this->currentTeam();
+            $enterpriseId = $team === null ? null : $this->enterpriseIdForSender($team, (string) ($formatted['from'] ?? ''));
+            $this->redirect(route('expense.create', $draft->toExpenseQuery(
+                (string) ($formatted['from'] ?? ''),
+                (string) ($formatted['subject'] ?? ''),
+                $plain,
+                $enterpriseId,
+            )));
+
+            return;
+        }
+
+        $payload = MailComposeReplyForward::replyPayload($formatted, $this->folder);
+        $payload['suggest'] = true;
+        if ($summary !== '')
+        {
+            $this->flashStatus($summary, 'success');
+        }
+
         $this->dispatch('open-mail-compose', ...$payload);
     }
 
@@ -644,6 +708,25 @@ class MailInbox extends Component
     {
         $this->statusMessage = $message;
         $this->statusType = $type;
+    }
+
+    private function enterpriseIdForSender(Team $team, string $from): ?int
+    {
+        $address = MailComposeReplyForward::extractEmailAddress($from);
+        if ($address === '' || ! str_contains($address, '@'))
+        {
+            return null;
+        }
+
+        $id = Enterprise::query()
+            ->where('team_id', $team->id)
+            ->whereHas('contacts', function ($query) use ($address): void
+            {
+                $query->withoutGlobalScopes()->whereRaw('LOWER(contacts.email) = ?', [$address]);
+            })
+            ->value('id');
+
+        return $id !== null ? (int) $id : null;
     }
 
     private function broadcastInboxCountChanged(): void

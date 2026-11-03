@@ -89,6 +89,15 @@ class AssistantToolAuthorizationService
         'list_contact_statuses',
         'get_contact_categories',
         'assign_contact_to_category',
+        'list_my_hosting',
+        'reset_cpanel_password',
+        'manage_hosting_mailbox',
+        'manage_hosting_ftp',
+        'hosting_product_info',
+        'hosting_dns',
+        'hosting_google_mail',
+        'hosting_unpaid_invoices',
+        'request_hosting_upgrade',
     ];
 
     /**

@@ -70,6 +70,11 @@ class AssistantToolExposureTest extends TestCase
         $this->assertContains('list_product_catalog', $names);
         $this->assertContains('create_calendar_event', $names);
         $this->assertContains('commit_assistant_flow', $names);
+        $this->assertContains('list_my_hosting', $names);
+        $this->assertContains('reset_cpanel_password', $names);
+        $this->assertContains('hosting_dns', $names);
+        $this->assertContains('hosting_product_info', $names);
+        $this->assertContains('hosting_google_mail', $names);
         $this->assertNotContains('get_account_report', $names);
         $this->assertNotContains('create_message', $names);
         $this->assertLessThan(count($this->definedNames()), count($names));

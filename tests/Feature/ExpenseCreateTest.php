@@ -67,6 +67,30 @@ class ExpenseCreateTest extends TestCase
             ->assertSee('document-number-duplicate-warning', false);
     }
 
+    public function test_create_page_prefills_fields_from_the_mailbox(): void
+    {
+        $user = $this->makeAdminUser();
+        $this->createAccountForTeam($user);
+        $this->createPaymentType();
+
+        $response = $this->actingAs($user)->get(route('expense.create', [
+            'date' => '2026-10-26',
+            'document_number' => 'A-8841',
+            'currency' => 'EUR',
+            'concept' => 'Hosting anual',
+            'base_amount' => '150.00',
+            'remarks' => 'Correo de proveedor@example.com',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('value="2026-10-26"', false);
+        $response->assertSee('value="A-8841"', false);
+        $response->assertSee('Hosting anual', false);
+        $response->assertSee('150,00', false);
+        $response->assertSee('Correo de proveedor@example.com', false);
+        $this->assertMatchesRegularExpression('/<option value="\d+" selected>\s*EUR -/', $response->getContent());
+    }
+
     public function test_create_page_disables_unavailable_document_types(): void
     {
         $user = $this->makeAdminUser();

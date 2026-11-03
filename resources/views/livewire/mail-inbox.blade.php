@@ -191,13 +191,13 @@
                                 $hasUnread = (int) ($group['unread_count'] ?? 0) > 0;
                                 $isStarred = (bool) ($group['has_starred'] ?? false);
                                 $messageCount = (int) ($group['count'] ?? 1);
-                                $isExpanded = $expandedSenderKey === ($group['sender_key'] ?? '');
+                                $isExpanded = $expandedSenderKey === ($group['thread_key'] ?? '');
                                 $groupEmailIds = $group['email_ids'] ?? [];
                                 $groupFullySelected = $groupEmailIds !== []
                                     && count(array_intersect($groupEmailIds, $selectedIds)) === count($groupEmailIds);
                             @endphp
                             <li class="email-list-item {{ $isExpanded ? 'border-start border-3 border-primary' : '' }}"
-                                wire:key="sender-group-{{ $group['sender_key'] }}"
+                                wire:key="sender-group-{{ $group['thread_key'] }}"
                                 data-starred="{{ $isStarred ? 'true' : 'false' }}">
                                 <div class="d-flex align-items-center"
                                     wire:click="selectEmail({{ $group['latest_email_id'] }})">
@@ -205,13 +205,13 @@
                                         <input class="email-list-item-input form-check-input" type="checkbox"
                                             @checked($groupFullySelected)
                                             wire:click="toggleGroupSelection(@js($groupEmailIds))"
-                                            id="sender-{{ md5($group['sender_key']) }}">
-                                        <label class="form-check-label" for="sender-{{ md5($group['sender_key']) }}"></label>
+                                            id="sender-{{ md5($group['thread_key']) }}">
+                                        <label class="form-check-label" for="sender-{{ md5($group['thread_key']) }}"></label>
                                     </div>
                                     @if ($messageCount > 1)
                                         <button type="button"
                                             class="email-sender-expand btn btn-link text-secondary p-0 me-1 border-0 shadow-none"
-                                            wire:click.stop="toggleSenderExpand('{{ $group['sender_key'] }}')"
+                                            wire:click.stop="toggleSenderExpand('{{ $group['thread_key'] }}')"
                                             title="{{ __('Expand conversation') }}">
                                             <i class="ti {{ $isExpanded ? 'ti-chevron-down' : 'ti-chevron-right' }} ti-sm"></i>
                                         </button>
@@ -242,6 +242,12 @@
                                             {{ $group['date_list'] ?? '—' }}
                                         </small>
                                         <ul class="list-inline email-list-item-actions text-nowrap">
+                                            <li class="list-inline-item email-assist cursor-pointer"
+                                                wire:click.stop="assistEmail({{ (int) $group['latest_email_id'] }})"
+                                                title="{{ __('Asistente') }}">
+                                                <i class="ti ti-sparkles ti-sm" wire:loading.remove wire:target="assistEmail({{ (int) $group['latest_email_id'] }})"></i>
+                                                <span class="spinner-border spinner-border-sm" wire:loading wire:target="assistEmail({{ (int) $group['latest_email_id'] }})" role="status"></span>
+                                            </li>
                                             @if ($hasUnread)
                                                 <li class="list-inline-item email-read" wire:click.stop="markGroupRead(@js($groupEmailIds))" title="{{ __('Mark as read') }}">
                                                     <i class="ti ti-mail-opened ti-sm"></i>

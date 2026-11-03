@@ -50,6 +50,12 @@ class MailInboxTest extends TestCase
 
         $response->assertOk();
         $response->assertSeeLivewire(MailInbox::class);
+        $response->assertSee('ti-sparkles', false);
+        $response->assertSee('mailComposeSuggestBtn', false);
+        $response->assertSee('mailComposeSendBtn', false);
+        $response->assertDontSee(__('Add Label'), false);
+        $response->assertDontSee(__('Check Spelling'), false);
+        $response->assertDontSee(__('Schedule send'), false);
     }
 
     public function test_inbox_filters_by_folder(): void
@@ -171,12 +177,12 @@ class MailInboxTest extends TestCase
         $team = $user->currentTeam;
 
         $this->createEmail($team, [
-            'subject' => 'First from IDONEO',
+            'subject' => 'Factura pendiente — IDONEO',
             'from_address' => 'IDONEO <contabilidad@idoneo.es>',
             'message_date' => now()->subHours(2),
         ]);
         $this->createEmail($team, [
-            'subject' => 'Second from IDONEO',
+            'subject' => 'Re: Factura pendiente — IDONEO',
             'from_address' => 'IDONEO Contabilidad <contabilidad@idoneo.es>',
             'message_date' => now()->subHour(),
         ]);
@@ -188,10 +194,9 @@ class MailInboxTest extends TestCase
         Livewire::actingAs($user)
             ->test(MailInbox::class)
             ->assertSee('IDONEO')
-            ->assertSee('Second from IDONEO')
+            ->assertSee('Re: Factura pendiente — IDONEO')
             ->assertSee('From another sender')
-            ->assertSee('badge rounded-pill bg-label-primary', false)
-            ->assertDontSee('First from IDONEO');
+            ->assertSee('badge rounded-pill bg-label-primary', false);
 
         $service = app(MailInboxService::class);
         $groups = $service->senderGroups($team, 'inbox', '');
@@ -200,7 +205,8 @@ class MailInboxTest extends TestCase
         $idoneoGroup = $groups->firstWhere('sender_key', 'contabilidad@idoneo.es');
         $this->assertNotNull($idoneoGroup);
         $this->assertSame(2, $idoneoGroup['count']);
-        $this->assertSame('Second from IDONEO', $idoneoGroup['subject']);
+        $this->assertSame('Re: Factura pendiente — IDONEO', $idoneoGroup['subject']);
+        $this->assertSame('contabilidad@idoneo.es|factura pendiente — idoneo', $idoneoGroup['thread_key']);
     }
 
     public function test_expand_sender_shows_thread_messages(): void
@@ -208,23 +214,23 @@ class MailInboxTest extends TestCase
         $user = $this->userWithTeam();
         $team = $user->currentTeam;
 
-        $first = $this->createEmail($team, [
-            'subject' => 'Older message',
+        $this->createEmail($team, [
+            'subject' => 'Pedido',
             'from_address' => 'Partner <partner@example.com>',
             'message_date' => now()->subDays(2),
         ]);
         $latest = $this->createEmail($team, [
-            'subject' => 'Latest message',
+            'subject' => 'Re: Pedido',
             'from_address' => 'Partner <partner@example.com>',
             'message_date' => now()->subHour(),
         ]);
 
         Livewire::actingAs($user)
             ->test(MailInbox::class)
-            ->call('toggleSenderExpand', 'partner@example.com')
-            ->assertSet('expandedSenderKey', 'partner@example.com')
-            ->assertSee('Older message')
-            ->assertSee('Latest message')
+            ->call('toggleSenderExpand', 'partner@example.com|pedido')
+            ->assertSet('expandedSenderKey', 'partner@example.com|pedido')
+            ->assertSee('Pedido')
+            ->assertSee('Re: Pedido')
             ->call('selectEmail', $latest->id)
             ->assertSet('selectedEmailId', $latest->id)
             ->assertSee('Conversación con Partner', false);

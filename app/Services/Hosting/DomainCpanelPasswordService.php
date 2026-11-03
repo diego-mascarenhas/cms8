@@ -302,6 +302,28 @@ class DomainCpanelPasswordService
             'Contraseña: '.$password,
             '',
             'También podés configurar la cuenta en tu cliente de correo (Outlook, Thunderbird, Mail, etc.).',
+            'Servidor de entrada (IMAP): mail.'.$domain->domain,
+            'Puerto IMAP: 993 (SSL)',
+            'Servidor de salida (SMTP): mail.'.$domain->domain,
+            'Puerto SMTP: 465 (SSL)',
+            'Usuario: '.$mailboxEmail,
+            'Te recomendamos guardar esta contraseña en un lugar seguro.',
+        ]);
+    }
+
+    public function buildFtpAccessMessage(Domain $domain, string $login, string $password, string $homedir = 'public_html'): string
+    {
+        $host = $domain->server?->hostname ?: $domain->server?->server_url ?: $domain->domain;
+
+        return implode("\n", [
+            'Hola, te enviamos los datos de acceso FTP:',
+            '',
+            'Host: '.$host,
+            'Puerto: 21',
+            'Usuario: '.$login,
+            'Contraseña: '.$password,
+            'Directorio: '.$homedir,
+            '',
             'Te recomendamos guardar esta contraseña en un lugar seguro.',
         ]);
     }

@@ -109,8 +109,8 @@ class MailInboxService
 
         return $query
             ->get()
-            ->groupBy(fn (Email $email) => self::senderKeyFromAddress((string) $email->from_address))
-            ->map(fn (Collection $items, string $senderKey) => $this->buildSenderGroup($senderKey, $items))
+            ->groupBy(fn (Email $email) => self::threadKey($email))
+            ->map(fn (Collection $items, string $threadKey) => $this->buildSenderGroup($threadKey, $items))
             ->sortByDesc(fn (array $group) => $group['latest_timestamp'])
             ->values();
     }
@@ -121,7 +121,7 @@ class MailInboxService
     public function threadForSender(Team $team, string $folder, string $search, string $senderKey, ?User $viewer = null, string $mailboxScope = 'all'): array
     {
         $group = $this->senderGroups($team, $folder, $search, $viewer, $mailboxScope)
-            ->firstWhere('sender_key', $senderKey);
+            ->firstWhere('thread_key', $senderKey);
 
         return $group['emails'] ?? [];
     }
@@ -136,6 +136,35 @@ class MailInboxService
         }
 
         return strtolower($from);
+    }
+
+    public static function threadKey(Email $email): string
+    {
+        $sender = self::senderKeyFromAddress((string) $email->from_address);
+        $subject = self::normalizedSubject((string) $email->subject);
+        if ($subject === '')
+        {
+            return $sender.'|id:'.$email->id;
+        }
+
+        return $sender.'|'.$subject;
+    }
+
+    public static function normalizedSubject(string $subject): string
+    {
+        $subject = trim($subject);
+        $previous = null;
+        while ($subject !== $previous)
+        {
+            $previous = $subject;
+            $subject = trim((string) preg_replace(
+                '/^(?:re|rv|aw|fw|fwd|res|respuesta|enc|ref|sv|vs)\s*:\s*/iu',
+                '',
+                $subject,
+            ));
+        }
+
+        return mb_strtolower($subject);
     }
 
     /**
@@ -156,7 +185,8 @@ class MailInboxService
             ->all();
 
         return [
-            'sender_key' => $senderKey,
+            'sender_key' => self::senderKeyFromAddress((string) $latest->from_address),
+            'thread_key' => $senderKey,
             'from' => $latest->from_address,
             'count' => $sorted->count(),
             'unread_count' => $sorted->filter(fn (Email $email) => ! $email->seen)->count(),
