@@ -698,6 +698,7 @@ Route::middleware(['auth'])->group(function ()
     // Mail
     Route::get('/mail/list', [MailController::class, 'index'])->name('mail-list');
     Route::post('/mail/compose/suggest', [MailController::class, 'suggestComposeBody'])->name('mail.compose-suggest');
+    Route::post('/mail/compose/send', [MailController::class, 'sendCompose'])->name('mail.compose-send');
     Route::get('/mail/sync', [MailController::class, 'sync'])->name('mail-sync');
 
     // Services

@@ -54,11 +54,20 @@
     $selectedEnterpriseId = (string) old('enterprise_id', request('enterprise_id'));
     $selectedTaxProfile = $clientTaxProfiles[$selectedEnterpriseId] ?? $clientTaxProfiles[(int) $selectedEnterpriseId] ?? null;
     $defaultVatPercent = $selectedTaxProfile['vat_percent'] ?? '0';
+    $selectedCurrencyId = old('currency_id');
+    if ($selectedCurrencyId === null && request()->filled('currency') && isset($currencies))
+    {
+        $matchedCurrency = $currencies->first(function ($currency)
+        {
+            return strcasecmp((string) $currency->code, (string) request('currency')) === 0;
+        });
+        $selectedCurrencyId = $matchedCurrency?->id;
+    }
     $oldLines = old('lines', [
         [
-            'concept' => '',
-            'base_amount' => '0.00',
-            'vat_percent' => $defaultVatPercent,
+            'concept' => (string) request('concept', ''),
+            'base_amount' => (string) request('base_amount', '0.00'),
+            'vat_percent' => (string) request('vat_percent', $defaultVatPercent),
             'retention_percent' => '0',
             'allocation_percent' => '100',
         ],
@@ -261,7 +270,7 @@
 
                     <div class="{{ $isSellDocumentFlow ? 'col-md-4' : 'col-md-6' }}">
                         <label for="date" class="form-label">Fecha (*)</label>
-                        <input type="text" id="date" name="date" class="form-control expense-date @error('date') is-invalid @enderror" value="{{ old('date', now()->toDateString()) }}">
+                        <input type="text" id="date" name="date" class="form-control expense-date @error('date') is-invalid @enderror" value="{{ old('date', request('date', now()->toDateString())) }}">
                         @error('date')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -278,7 +287,7 @@
                     @unless ($isSellDocumentFlow)
                         <div class="col-12">
                             <label for="document_number" class="form-label">Número de comprobante</label>
-                            <input type="text" id="document_number" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number') }}">
+                            <input type="text" id="document_number" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number', request('document_number')) }}">
                             <small id="document-number-duplicate-warning" class="d-none text-danger d-block mt-1"></small>
                             @error('document_number')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -291,7 +300,7 @@
                         <select id="currency_id" name="currency_id" class="form-select select2 @error('currency_id') is-invalid @enderror">
                             <option value="">Selecciona moneda</option>
                             @foreach ($currencies as $currency)
-                                <option value="{{ $currency->id }}" {{ (string) old('currency_id') === (string) $currency->id ? 'selected' : '' }}>
+                                <option value="{{ $currency->id }}" {{ (string) ($selectedCurrencyId ?? '') === (string) $currency->id ? 'selected' : '' }}>
                                     {{ $currency->code }} - {{ $currency->name }}
                                 </option>
                             @endforeach
@@ -623,7 +632,7 @@
         <div class="row g-3 mt-4">
             <div class="col-md-6">
                 <label for="remarks" class="form-label">{{ $documentFlow['remarks_label'] }}</label>
-                <input type="text" id="remarks" name="remarks" class="form-control @error('remarks') is-invalid @enderror" maxlength="1000" value="{{ old('remarks') }}">
+                <input type="text" id="remarks" name="remarks" class="form-control @error('remarks') is-invalid @enderror" maxlength="1000" value="{{ old('remarks', request('remarks')) }}">
                 @error('remarks')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror

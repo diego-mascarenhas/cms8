@@ -16,11 +16,11 @@ class MailboxInboundActionService
         private InboxList60SlashService $list60,
     ) {}
 
-    public function handle(Email $email): void
+    public function handle(Email $email): string
     {
         if ($email->inbound_handled_at !== null)
         {
-            return;
+            return '';
         }
 
         $email->loadMissing('mailbox');
@@ -28,7 +28,7 @@ class MailboxInboundActionService
         {
             $this->markHandled($email);
 
-            return;
+            return '';
         }
 
         $body = trim((string) ($email->body_text ?: strip_tags((string) $email->body_html)));
@@ -46,7 +46,7 @@ class MailboxInboundActionService
         {
             $this->markHandled($email);
 
-            return;
+            return '';
         }
 
         $contact = $this->contactForAddress((int) $email->team_id, $address);
@@ -54,68 +54,79 @@ class MailboxInboundActionService
         {
             $this->markHandled($email);
 
-            return;
+            return '';
         }
 
         if ($kind === MailboxInboundKind::Reply)
         {
-            $this->applyReply($email, $contact, $reason);
+            $summary = $this->applyReply($email, $contact, $reason);
             $this->markHandled($email);
 
-            return;
+            return $summary;
         }
 
         if ($this->deliveryAlreadyClassified($contact))
         {
             $this->markHandled($email);
 
-            return;
+            return '';
         }
 
-        match ($kind)
+        $summary = match ($kind)
         {
             MailboxInboundKind::HardBounce => $this->applyHard($contact, $reason),
             MailboxInboundKind::SoftBounce => $this->applySoft($contact, $address, $reason),
             MailboxInboundKind::PolicyBounce => $this->applyPolicy($contact, $address, $reason),
-            default => null,
+            default => '',
         };
 
         $this->markHandled($email);
+
+        return $summary;
     }
 
-    private function applyHard(Contact $contact, string $reason): void
+    private function applyHard(Contact $contact, string $reason): string
     {
         $address = trim((string) $contact->email);
         if ($address === '')
         {
-            return;
+            return '';
         }
 
+        $note = 'Rebote duro: la casilla '.$address.' no existe. '.$reason;
         if (Contact::emailFailureIsPermanent($reason))
         {
             $contact->dropPermanentlyRejectedEmail($reason);
         } else
         {
             $contact->clearStoredEmail();
-            $contact->appendNote('Rebote duro: la casilla '.$address.' no existe. '.$reason);
+            $contact->appendNote($note);
         }
 
         $this->rememberDelivery($contact, 'hard', $reason, true);
+
+        return $note;
     }
 
-    private function applySoft(Contact $contact, string $address, string $reason): void
+    private function applySoft(Contact $contact, string $address, string $reason): string
     {
-        $contact->appendNote('Rebote temporal de '.$address.': '.$reason);
+        $note = 'Rebote temporal de '.$address.': '.$reason;
+        $contact->appendNote($note);
         $this->rememberDelivery($contact, 'soft', $reason, false);
+
+        return $note;
     }
 
-    private function applyPolicy(Contact $contact, string $address, string $reason): void
+    private function applyPolicy(Contact $contact, string $address, string $reason): string
     {
-        $contact->appendNote('El servidor rechazó el mensaje a '.$address.': '.$reason);
+        $note = 'El servidor rechazó el mensaje a '.$address.': '.$reason;
+        $contact->appendNote($note);
         $this->rememberDelivery($contact, 'block', $reason, false);
+
+        return $note;
     }
 
-    private function applyReply(Email $email, Contact $contact, string $excerpt): void
+    private function applyReply(Email $email, Contact $contact, string $excerpt): string
     {
         $note = $excerpt === ''
             ? 'Respondió por email.'
@@ -124,10 +135,12 @@ class MailboxInboundActionService
         $team = Team::query()->find($email->team_id);
         if ($team instanceof Team && $this->list60->enrollFromMailboxReply($team, $contact, $note))
         {
-            return;
+            return 'Se guardó la respuesta y el contacto entró en la lista de seguimiento.';
         }
 
         $contact->appendNote($note);
+
+        return 'Se guardó la respuesta en el contacto.';
     }
 
     private function contactForAddress(int $teamId, string $address): ?Contact

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\SyncMailboxEmails;
+use App\Mail\ComposeMessage;
 use App\Models\Contact;
 use App\Models\Email;
 use App\Models\Mailbox;
@@ -11,17 +12,21 @@ use App\Services\AgentConversationContextService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\Imap\MailboxConnectionService;
 use App\Services\UserResolverService;
+use App\Traits\ConfiguresTeamMail;
 use BeyondCode\Mailbox\InboundEmail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
 use Webklex\PHPIMAP\Exceptions\ConnectionFailedException;
 
 class MailController extends Controller
 {
+    use ConfiguresTeamMail;
+
     public function index(): View
     {
         $emails = $this->getEmailsFromDatabase();
@@ -228,9 +233,10 @@ class MailController extends Controller
     private function buildMailComposeAssistantInstruction(string $hint, string $recipientSummary): string
     {
         $parts = [
-            'You are helping the operator draft an email in the CRM mail compose screen.',
-            'Reply with a single JSON object only (no markdown fences, no commentary). Keys: "subject" (short email subject line) and "body" (plain text for the email: greeting, paragraphs, closing/sign-off).',
-            'Use a clear professional tone. If the team flow prompt implies a language, follow it; otherwise match the operator draft in the compose body, or use Spanish.',
+            'You are helping the operator reply to an email already open in the composer.',
+            'Reply with a single JSON object only (no markdown fences, no commentary). Keys: "subject" (short reply subject) and "body" (the new reply only: greeting, paragraphs, closing).',
+            'The body must be a new message. Do not repeat the quoted original, the separator, or the headers From/Date/Subject.',
+            'If the message is in Spanish, write the reply in Argentine voseo. Otherwise answer in the language of the message.',
         ];
 
         if ($recipientSummary !== '')
@@ -240,13 +246,56 @@ class MailController extends Controller
 
         if ($hint !== '')
         {
-            $parts[] = 'Operator draft / instructions from the message body (may be rough notes): '.$hint;
+            $parts[] = 'Message to answer (write a reply, do not copy it): '.$hint;
         } else
         {
             $parts[] = 'The message body is empty; infer subject and body from the selected flow (if any) and conversation context.';
         }
 
         return implode("\n\n", $parts);
+    }
+
+    public function sendCompose(Request $request): JsonResponse
+    {
+        if (! auth()->check())
+        {
+            return response()->json(['success' => false, 'message' => 'Unauthenticated'], 401);
+        }
+
+        $team = auth()->user()->currentTeam;
+        if (! $team)
+        {
+            return response()->json(['success' => false, 'message' => __('No hay equipo seleccionado.')], 403);
+        }
+
+        $data = $request->validate([
+            'to' => 'required|array|min:1|max:20',
+            'to.*' => 'required|email',
+            'cc' => 'nullable|array|max:20',
+            'cc.*' => 'email',
+            'bcc' => 'nullable|array|max:20',
+            'bcc.*' => 'email',
+            'subject' => 'required|string|max:255',
+            'body' => 'required|string|max:20000',
+        ]);
+
+        $this->configureMailForTeam($team);
+
+        $body = trim($data['body']);
+        $pending = Mail::to($data['to']);
+        $cc = array_values(array_filter($data['cc'] ?? []));
+        $bcc = array_values(array_filter($data['bcc'] ?? []));
+        if ($cc !== [])
+        {
+            $pending->cc($cc);
+        }
+        if ($bcc !== [])
+        {
+            $pending->bcc($bcc);
+        }
+        $pending->send(new ComposeMessage($data['subject'], $body));
+
+        return response()->json(['success' => true]);
     }
 
     /**

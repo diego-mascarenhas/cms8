@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Mail\ComposeMessage;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Ai\AnonymousAgent;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -80,5 +82,34 @@ class MailComposeSuggestTest extends TestCase
             'body' => 'Plain body only.',
             'response' => 'Plain body only.',
         ]);
+    }
+
+    public function test_compose_send_delivers_cc_and_bcc(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        Mail::fake();
+
+        $response = $this->actingAs($user)->postJson(route('mail.compose-send'), [
+            'to' => ['ana@example.com'],
+            'cc' => ['copia@example.com'],
+            'bcc' => ['oculta@example.com'],
+            'subject' => 'Re: Consulta',
+            'body' => "Te lo mando hoy.\n\n---------- Mensaje original ----------",
+        ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+        Mail::assertSent(ComposeMessage::class, function (ComposeMessage $mail): bool
+        {
+            return $mail->hasTo('ana@example.com')
+                && $mail->hasCc('copia@example.com')
+                && $mail->hasBcc('oculta@example.com')
+                && $mail->envelope()->subject === 'Re: Consulta';
+        });
     }
 }
