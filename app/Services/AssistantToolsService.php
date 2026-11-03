@@ -994,7 +994,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'list_my_hosting',
-                'description' => 'List hosting domains for the WhatsApp contact from active hosting subscriptions (metadata domain). Ignore subscriptions that are not hosting, such as consulting. A contact may have several domains. Call this before any hosting change when the domain is not obvious.',
+                'description' => 'List the contact hosting domains and also deactivated subscriptions, with their status. Active consulting is not hosting. Deactivated subscriptions are visible and must not be changed. Call this before any hosting change when the domain is not obvious.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [],

@@ -24,48 +24,37 @@ class HostingCustomerAssistantService
 
     public function listForContact(int $teamId, ?int $contactId): string
     {
-        $domains = $this->domainsForContact($teamId, $contactId);
-        if (is_string($domains))
+        $subscriptions = $this->customerSubscriptions($teamId, $contactId);
+        if (is_string($subscriptions))
         {
-            return $domains;
+            return $subscriptions;
         }
 
-        $missing = $this->hostingNamesWithoutAccount($teamId, $contactId, $domains);
-        if ($domains->isEmpty())
-        {
-            if ($missing === [])
-            {
-                return 'Este contacto no tiene un hosting asociado.';
-            }
+        $inactive = $subscriptions
+            ->reject(fn (ServiceSync $sync): bool => $this->subscriptionGrantsHosting($sync))
+            ->values();
+        $grants = $subscriptions->contains(
+            fn (ServiceSync $sync): bool => $sync->isClientHosting() && $this->subscriptionGrantsHosting($sync),
+        );
 
-            return "Suscripciones de hosting sin cuenta en el servidor:\n".collect($missing)
-                ->map(fn (string $name) => '- '.$name)
-                ->implode("\n");
+        $lines = [];
+        if ($grants)
+        {
+            $domains = $this->domainsForContact($teamId, $contactId);
+            $lines[] = is_string($domains)
+                ? $domains
+                : $this->describeActiveHosting($teamId, $contactId, $domains);
+        } elseif ($inactive->isEmpty())
+        {
+            return 'Este contacto no tiene una suscripción de hosting. Una suscripción de asesoramiento u otro servicio no cuenta.';
         }
 
-        $lines = ['Hostings de este contacto (solo suscripciones de hosting):'];
-        foreach ($domains as $domain)
+        if ($inactive->isNotEmpty())
         {
-            $panel = (string) ($domain->server?->control_panel ?: 'sin panel');
-            $state = $domain->suspended ? 'suspendido' : 'activo';
-            $lines[] = '- '.$domain->domain.' · '.$panel.' · '.$state.($domain->plan ? ' · plan '.$domain->plan : '');
+            $lines[] = $this->describeInactiveSubscriptions($inactive);
         }
 
-        foreach ($missing as $name)
-        {
-            $lines[] = '- '.$name.' · suscripción de hosting sin cuenta en el servidor';
-        }
-
-        $cpanel = $this->cpanelDomains($domains);
-        if ($cpanel->isEmpty())
-        {
-            $lines[] = 'Ninguno es cPanel, así que no se puede restablecer la clave, el correo ni el FTP desde aquí.';
-        } elseif ($domains->count() > 1)
-        {
-            $lines[] = 'Hay varios dominios. Para cambiar una clave, crear una cuenta o pedir un upgrade, hay que indicar cuál.';
-        }
-
-        return implode("\n", $lines);
+        return implode("\n\n", $lines);
     }
 
     public function resetCpanelAccess(int $teamId, ?int $contactId, User $actor, ?string $domainName): string
@@ -629,7 +618,7 @@ class HostingCustomerAssistantService
     /**
      * @return Collection<int, ServiceSync>|string
      */
-    private function hostingSubscriptionsForContact(int $teamId, ?int $contactId): Collection|string
+    private function customerSubscriptions(int $teamId, ?int $contactId): Collection|string
     {
         if ($contactId === null || $contactId < 1)
         {
@@ -658,19 +647,127 @@ class HostingCustomerAssistantService
             return 'Este contacto no está vinculado a una empresa con hosting.';
         }
 
-        $subscriptions = ServiceSync::query()
+        return ServiceSync::query()
             ->where('team_id', $teamId)
             ->whereIn('customer_id', $codes->all())
-            ->get()
-            ->filter(fn (ServiceSync $sync) => $sync->isClientHosting() && $this->subscriptionGrantsHosting($sync))
+            ->orderBy('plan_name')
+            ->get();
+    }
+
+    /**
+     * @return Collection<int, ServiceSync>|string
+     */
+    private function hostingSubscriptionsForContact(int $teamId, ?int $contactId): Collection|string
+    {
+        $subscriptions = $this->customerSubscriptions($teamId, $contactId);
+        if (is_string($subscriptions))
+        {
+            return $subscriptions;
+        }
+
+        $hosting = $subscriptions
+            ->filter(fn (ServiceSync $sync): bool => $sync->isClientHosting())
+            ->values();
+        $granting = $hosting
+            ->filter(fn (ServiceSync $sync): bool => $this->subscriptionGrantsHosting($sync))
             ->values();
 
-        if ($subscriptions->isEmpty())
+        if ($granting->isEmpty())
         {
+            if ($hosting->isNotEmpty())
+            {
+                return 'Las suscripciones de hosting de este contacto están desactivadas. No cambié nada.';
+            }
+
             return 'Este contacto no tiene una suscripción de hosting. Una suscripción de asesoramiento u otro servicio no cuenta.';
         }
 
-        return $subscriptions;
+        return $granting;
+    }
+
+    /**
+     * @param  Collection<int, Domain>  $domains
+     */
+    private function describeActiveHosting(int $teamId, ?int $contactId, Collection $domains): string
+    {
+        $missing = $this->hostingNamesWithoutAccount($teamId, $contactId, $domains);
+        if ($domains->isEmpty())
+        {
+            if ($missing === [])
+            {
+                return 'Este contacto no tiene un hosting asociado.';
+            }
+
+            return "Suscripciones de hosting sin cuenta en el servidor:\n".collect($missing)
+                ->map(fn (string $name) => '- '.$name)
+                ->implode("\n");
+        }
+
+        $lines = ['Hostings de este contacto (solo suscripciones de hosting):'];
+        foreach ($domains as $domain)
+        {
+            $panel = (string) ($domain->server?->control_panel ?: 'sin panel');
+            $state = $domain->suspended ? 'suspendido' : 'activo';
+            $lines[] = '- '.$domain->domain.' · '.$panel.' · '.$state.($domain->plan ? ' · plan '.$domain->plan : '');
+        }
+
+        foreach ($missing as $name)
+        {
+            $lines[] = '- '.$name.' · suscripción de hosting sin cuenta en el servidor';
+        }
+
+        $cpanel = $this->cpanelDomains($domains);
+        if ($cpanel->isEmpty())
+        {
+            $lines[] = 'Ninguno es cPanel, así que no se puede restablecer la clave, el correo ni el FTP desde aquí.';
+        } elseif ($domains->count() > 1)
+        {
+            $lines[] = 'Hay varios dominios. Para cambiar una clave, crear una cuenta o pedir un upgrade, hay que indicar cuál.';
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  Collection<int, ServiceSync>  $subscriptions
+     */
+    private function describeInactiveSubscriptions(Collection $subscriptions): string
+    {
+        $lines = ['Suscripciones desactivadas:'];
+        foreach ($subscriptions as $subscription)
+        {
+            $kind = $subscription->isClientHosting() ? 'hosting' : 'no es hosting';
+            $lines[] = '- '.$this->subscriptionListLabel($subscription)
+                .' · '.$this->subscriptionStatusLabel($subscription)
+                .' · '.$kind;
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function subscriptionListLabel(ServiceSync $subscription): string
+    {
+        $domain = $subscription->hostingDomainCandidate();
+        if ($domain !== null && $domain !== '')
+        {
+            return $domain;
+        }
+
+        $name = trim($subscription->clientFacingName());
+
+        return $name !== '' ? $name : (string) $subscription->stripe_id;
+    }
+
+    private function subscriptionStatusLabel(ServiceSync $subscription): string
+    {
+        return match (strtolower(trim((string) $subscription->status)))
+        {
+            'canceled', 'cancelled' => 'cancelada',
+            'paused' => 'pausada',
+            'incomplete' => 'incompleta',
+            'incomplete_expired' => 'expirada',
+            default => 'desactivada',
+        };
     }
 
     /**

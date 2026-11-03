@@ -79,6 +79,62 @@ class HostingCustomerAssistantTest extends TestCase
         $this->assertStringNotContainsString('Asesoramiento', $text);
     }
 
+    public function test_deactivated_subscriptions_are_listed_and_cannot_be_changed(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+
+        ServiceSync::query()->create([
+            'team_id' => $user->current_team_id,
+            'stripe_id' => 'sub_canceled_hosting',
+            'customer_id' => 'cus_hosting_demo',
+            'status' => 'canceled',
+            'plan_name' => 'Hosting legacy.test',
+            'data' => [
+                'domain' => 'legacy.test',
+                'category' => 'hosting',
+            ],
+        ]);
+        ServiceSync::query()->create([
+            'team_id' => $user->current_team_id,
+            'stripe_id' => 'sub_canceled_consulting',
+            'customer_id' => 'cus_hosting_demo',
+            'status' => 'canceled',
+            'plan_name' => 'Asesoramiento viejo',
+            'data' => ['category' => 'asesoramiento'],
+        ]);
+
+        $text = app(HostingCustomerAssistantService::class)->listForContact(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+        );
+
+        $this->assertStringContainsString('example.test', $text);
+        $this->assertStringContainsString('legacy.test · cancelada · hosting', $text);
+        $this->assertStringContainsString('Asesoramiento viejo · cancelada · no es hosting', $text);
+    }
+
+    public function test_a_deactivated_hosting_subscription_is_listed_and_not_changed(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+        ServiceSync::query()->where('stripe_id', 'sub_example_test')->update(['status' => 'canceled']);
+
+        $text = app(HostingCustomerAssistantService::class)->listForContact(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+        );
+        $upgrade = app(HostingCustomerAssistantService::class)->requestUpgrade(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            $user,
+            'example.test',
+            'explorer',
+        );
+
+        $this->assertStringContainsString('example.test · cancelada · hosting', $text);
+        $this->assertStringContainsString('están desactivadas', $upgrade);
+        $this->assertSame('essential', $domain->fresh()->plan);
+    }
+
     public function test_email_address_selects_one_domain_when_the_contact_has_several(): void
     {
         Http::fake([
