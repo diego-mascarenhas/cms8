@@ -528,7 +528,7 @@
     }
     function hoursInputHtml(index, hours) {
         var value = (hours != null && hours !== '') ? escapeHtml(String(hours)) : '';
-        return '<input type="number" step="0.5" min="0" class="form-control form-control-sm text-end suggested-estimated-hours" data-index="' + index + '" value="' + value + '"' + (quoteValueLocked ? ' readonly' : '') + '>';
+        return '<input type="number" step="any" min="0" class="form-control form-control-sm text-end suggested-estimated-hours" data-index="' + index + '" value="' + value + '"' + (quoteValueLocked ? ' readonly' : '') + '>';
     }
     function levelSelectHtml(index, current) {
         var currentText = String(current || '').trim();
@@ -558,7 +558,7 @@
     }
     function buildSuggestedTasksTable(tasks) {
         var tokenCol = (!tokenInclude || !tokenDiscriminate) ? ' d-none' : '';
-        var h = '<p class="text-muted small mb-2">' + (tasks.length === 1 ? '{{ __("1 task suggested") }}' : '{{ __(":count tasks suggested") }}'.replace(':count', tasks.length)) + '</p><div class="table-responsive"><table class="table table-sm table-bordered" id="suggested-tasks-table"><thead><tr><th>{{ __("En el presupuesto") }}</th><th>{{ __("Task") }}</th><th class="text-center">{{ __("Category") }}</th><th class="text-end">{{ __("Hours") }}</th><th class="text-end suggested-token-col' + tokenCol + '">{{ __("Tokens") }}</th><th class="text-end">{{ __("Level") }}</th><th class="text-end">{{ __("Value") }}</th></tr></thead><tbody>';
+        var h = '<p class="text-muted small mb-2">' + (tasks.length === 1 ? '{{ __("1 task suggested") }}' : '{{ __(":count tasks suggested") }}'.replace(':count', tasks.length)) + '</p><div class="table-responsive"><table class="table table-sm table-bordered" id="suggested-tasks-table"><thead><tr><th class="text-center" style="width: 2.5rem;"></th><th>{{ __("Task") }}</th><th class="text-center">{{ __("Category") }}</th><th class="text-end">{{ __("Hours") }}</th><th class="text-end suggested-token-col' + tokenCol + '">{{ __("Tokens") }}</th><th class="text-end">{{ __("Level") }}</th><th class="text-end">{{ __("Value") }}</th></tr></thead><tbody>';
         tasks.forEach(function(t, i) {
             var included = t.included !== false;
             if (typeof t.included === 'undefined') t.included = true;
@@ -566,7 +566,7 @@
             var cat = escapeHtml(t.category_name || '—');
             var tokens = (t.estimated_tokens != null && t.estimated_tokens !== '') ? Number(t.estimated_tokens) : '';
             var unitPrice = (t.unit_price != null && t.unit_price !== '') ? escapeHtml(String(t.unit_price)) : '';
-            h += '<tr data-index="' + i + '"><td class="align-middle"><label class="form-check mb-0"><input type="checkbox" class="form-check-input suggested-task-included" data-index="' + i + '" ' + (included ? 'checked' : '') + '><span class="form-check-label small">En el presupuesto</span></label></td><td>' + title + '</td><td class="text-center">' + cat + '</td><td class="text-end">' + hoursInputHtml(i, t.estimated_hours) + '</td>';
+            h += '<tr data-index="' + i + '"><td class="text-center align-middle"><input type="checkbox" class="form-check-input suggested-task-included" data-index="' + i + '" ' + (included ? 'checked' : '') + '></td><td>' + title + '</td><td class="text-center">' + cat + '</td><td class="text-end">' + hoursInputHtml(i, t.estimated_hours) + '</td>';
             h += '<td class="text-end suggested-token-col' + tokenCol + '"><input type="number" step="1" min="0" class="form-control form-control-sm text-end suggested-estimated-tokens" data-index="' + i + '" value="' + tokens + '" placeholder="0"></td>';
             h += '<td class="text-end">' + levelSelectHtml(i, t.resource_level) + '</td>';
             h += '<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="' + i + '" value="' + unitPrice + '" placeholder="0"' + (quoteValueLocked ? ' readonly' : '') + '></td></tr>';
@@ -1572,7 +1572,7 @@
 					<p class="text-muted small mb-2">{{ count($savedSuggested) === 1 ? __('1 task suggested') : __(':count tasks suggested', ['count' => count($savedSuggested)]) }}</p>
 					<div class="table-responsive">
 						<table class="table table-sm table-bordered" id="suggested-tasks-table">
-							<thead><tr><th>En el presupuesto</th><th>{{ __('Task') }}</th><th class="text-center">{{ __('Category') }}</th><th class="text-end">{{ __('Hours') }}</th><th class="text-end suggested-token-col {{ ($tokenIncludeDefault && $tokenDiscriminateDefault) ? '' : 'd-none' }}">{{ __('Tokens') }}</th><th class="text-end">{{ __('Level') }}</th><th class="text-end">{{ __('Value') }}</th></tr></thead>
+							<thead><tr><th class="text-center" style="width: 2.5rem;"></th><th>{{ __('Task') }}</th><th class="text-center">{{ __('Category') }}</th><th class="text-end">{{ __('Hours') }}</th><th class="text-end suggested-token-col {{ ($tokenIncludeDefault && $tokenDiscriminateDefault) ? '' : 'd-none' }}">{{ __('Tokens') }}</th><th class="text-end">{{ __('Level') }}</th><th class="text-end">{{ __('Value') }}</th></tr></thead>
 							<tbody>
 								@foreach($savedSuggested as $i => $t)
 								@php
@@ -1590,15 +1590,10 @@
 									$quoteLocked = isset($data->id) && $data->quoteValueIsLocked();
 								@endphp
 								<tr data-index="{{ $i }}">
-									<td class="align-middle">
-										<label class="form-check mb-0">
-											<input type="checkbox" class="form-check-input suggested-task-included" data-index="{{ $i }}" {{ $included ? 'checked' : '' }}>
-											<span class="form-check-label small">En el presupuesto</span>
-										</label>
-									</td>
+									<td class="text-center align-middle"><input type="checkbox" class="form-check-input suggested-task-included" data-index="{{ $i }}" {{ $included ? 'checked' : '' }}></td>
 									<td>{{ $t['title'] ?? '—' }}</td>
 									<td class="text-center">{{ $t['category_name'] ?? '—' }}</td>
-									<td class="text-end"><input type="number" step="0.5" min="0" class="form-control form-control-sm text-end suggested-estimated-hours" data-index="{{ $i }}" value="{{ $hoursValue ?? '' }}" @if($quoteLocked) readonly @endif></td>
+									<td class="text-end"><input type="number" step="any" min="0" class="form-control form-control-sm text-end suggested-estimated-hours" data-index="{{ $i }}" value="{{ $hoursValue ?? '' }}" @if($quoteLocked) readonly @endif></td>
 									<td class="text-end suggested-token-col {{ ($tokenIncludeDefault && $tokenDiscriminateDefault) ? '' : 'd-none' }}"><input type="number" step="1" min="0" class="form-control form-control-sm text-end suggested-estimated-tokens" data-index="{{ $i }}" value="{{ $estimatedTokens }}" placeholder="0"></td>
 									<td class="text-end">
 										<select class="form-select form-select-sm suggested-resource-level" data-index="{{ $i }}" @disabled($quoteLocked)>

@@ -265,7 +265,7 @@ class CollaboratorProjectAccessTest extends TestCase
             'data' => [
                 'suggested_tasks' => [[
                     'title' => 'Labor',
-                    'estimated_hours' => 3,
+                    'estimated_hours' => 1.1,
                     'unit_price' => 375,
                     'resource_level' => 'Senior',
                     'included' => true,
@@ -277,7 +277,9 @@ class CollaboratorProjectAccessTest extends TestCase
             ->get(route('project.edit', $project->id))
             ->assertOk()
             ->assertSee('suggested-estimated-hours', false)
-            ->assertSee('value="3"', false)
+            ->assertSee('step="any"', false)
+            ->assertDontSee('step="0.5"', false)
+            ->assertSee('value="1.1"', false)
             ->assertSee('value="375"', false);
 
         $this->actingAs($admin)
