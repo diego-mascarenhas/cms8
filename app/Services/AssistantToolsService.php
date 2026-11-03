@@ -992,6 +992,142 @@ class AssistantToolsService
                     'required' => [],
                 ],
             ],
+            [
+                'name' => 'list_my_hosting',
+                'description' => 'List every hosting domain of the WhatsApp contact and whether each one is cPanel. A contact may have several. Call this before any hosting change when the domain is not obvious.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'reset_cpanel_password',
+                'description' => 'Reset the cPanel login password for the contact\'s hosting and send the new access details on this WhatsApp thread. Only for cPanel. If they have several domains, pass domain. Do not invent or repeat the password when the tool says it was already sent.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'domain' => [
+                            'type' => 'string',
+                            'description' => 'Hosting domain, required only when the contact has more than one',
+                        ],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'manage_hosting_mailbox',
+                'description' => 'cPanel email for the contact\'s hosting. list without domain returns every domain. create, reset_password and settings need one domain, or an account like name@domain. New passwords are sent on this WhatsApp thread. Do not invent mailboxes. If the tool says there are several domains, ask which one.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'action' => [
+                            'type' => 'string',
+                            'enum' => ['list', 'create', 'reset_password', 'settings'],
+                        ],
+                        'account' => [
+                            'type' => 'string',
+                            'description' => 'Mailbox local part or full address. Required except for list.',
+                        ],
+                        'domain' => [
+                            'type' => 'string',
+                            'description' => 'Hosting domain when the contact has more than one',
+                        ],
+                    ],
+                    'required' => ['action'],
+                ],
+            ],
+            [
+                'name' => 'manage_hosting_ftp',
+                'description' => 'cPanel FTP for the contact\'s hosting: list accounts, create one, reset its password, or show host, port and directory. New passwords are sent on this WhatsApp thread.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'action' => [
+                            'type' => 'string',
+                            'enum' => ['list', 'create', 'reset_password', 'settings'],
+                        ],
+                        'account' => [
+                            'type' => 'string',
+                            'description' => 'FTP user, without @domain. Required except for list.',
+                        ],
+                        'domain' => [
+                            'type' => 'string',
+                            'description' => 'Hosting domain when the contact has more than one',
+                        ],
+                    ],
+                    'required' => ['action'],
+                ],
+            ],
+            [
+                'name' => 'hosting_dns',
+                'description' => 'DNS of the WhatsApp contact\'s hosting: nameservers, A and MX. Read only, do not change records. If they have several domains and do not name one, return every domain. Call this when they ask about DNS, nameservers, or where the domain points.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'domain' => [
+                            'type' => 'string',
+                            'description' => 'One domain when they name it. Omit to list every domain they have.',
+                        ],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'hosting_product_info',
+                'description' => 'Public REVISION ALPHA pages for a product the customer asks about. Paste the returned links, including the stack page when present. Do not invent URLs or prices. Call this when they ask for information, a brochure, or the technical sheet of hosting, WordPress, cloud, dedicated servers, Emailer, or another listed product.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'product' => [
+                            'type' => 'string',
+                            'description' => 'The product they asked about, in their words. Omit to list every public page.',
+                        ],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'hosting_google_mail',
+                'description' => 'Explain how to use the domain email in Gmail / Google Workspace: verification TXT, MX smtp.google.com, SPF and DKIM. Include the current MX. Do not change DNS and do not invent the Google verification or DKIM token. Call this when they want to configure mail in Google.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'domain' => [
+                            'type' => 'string',
+                            'description' => 'One domain when they name it. Omit to include every domain they have.',
+                        ],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'hosting_unpaid_invoices',
+                'description' => 'Unpaid invoices and payment links for the contact in this WhatsApp thread. Call this for debt, unpaid bills, or a payment link. Paste the links the tool returns. Do not invent amounts or URLs.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'request_hosting_upgrade',
+                'description' => 'Register a hosting plan upgrade request. Does not change the plan or quote a price. Call this when they ask to upgrade, change, or enlarge the hosting plan.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'domain' => [
+                            'type' => 'string',
+                            'description' => 'Hosting domain when the contact has more than one',
+                        ],
+                        'note' => [
+                            'type' => 'string',
+                            'description' => 'What they asked for, in their words',
+                        ],
+                    ],
+                    'required' => [],
+                ],
+            ],
         ];
     }
 
@@ -1075,6 +1211,15 @@ class AssistantToolsService
                 'view_whatsapp_cart' => $this->viewWhatsAppCart($teamId),
                 'get_store_info' => $this->getStoreInfo($teamId),
                 'confirm_whatsapp_order' => $this->confirmWhatsAppOrder($teamId, $input),
+                'list_my_hosting' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->listForContact($teamId, $this->contextContactId),
+                'reset_cpanel_password' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->resetCpanelAccess($teamId, $this->contextContactId, $user, isset($input['domain']) ? (string) $input['domain'] : null),
+                'manage_hosting_mailbox' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->manageMailbox($teamId, $this->contextContactId, $user, (string) ($input['action'] ?? ''), isset($input['domain']) ? (string) $input['domain'] : null, isset($input['account']) ? (string) $input['account'] : null),
+                'manage_hosting_ftp' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->manageFtp($teamId, $this->contextContactId, $user, (string) ($input['action'] ?? ''), isset($input['domain']) ? (string) $input['domain'] : null, isset($input['account']) ? (string) $input['account'] : null),
+                'hosting_dns' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->dnsInfo($teamId, $this->contextContactId, isset($input['domain']) ? (string) $input['domain'] : null),
+                'hosting_product_info' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->productLinks(isset($input['product']) ? (string) $input['product'] : null),
+                'hosting_google_mail' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->googleMailSetup($teamId, $this->contextContactId, isset($input['domain']) ? (string) $input['domain'] : null),
+                'hosting_unpaid_invoices' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->unpaidInvoices($teamId, $this->contextContactId),
+                'request_hosting_upgrade' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->requestUpgrade($teamId, $this->contextContactId, $user, isset($input['domain']) ? (string) $input['domain'] : null, isset($input['note']) ? (string) $input['note'] : null),
                 'list_cms_content' => $this->listCmsContent($teamId, $user, $input),
                 'get_cms_content' => $this->getCmsContent($teamId, $user, $input),
                 'create_cms_content' => $this->createCmsContent($teamId, $user, $input),

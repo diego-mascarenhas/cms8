@@ -878,6 +878,86 @@ class CpanelConnector implements ControlPanelConnector
     }
 
     /**
+     * @return array{success: bool, error?: string, accounts?: list<array{user: string, homedir: string, type: string}>}
+     */
+    public function listFtpAccounts(Server $server, Domain $domain): array
+    {
+        $result = $this->uapiRequest($server, $domain, 'Ftp', 'list_ftp');
+
+        if (! $result['success'])
+        {
+            return $result;
+        }
+
+        $accounts = collect($result['data'] ?? [])
+            ->map(function (mixed $row): ?array
+            {
+                if (! is_array($row))
+                {
+                    return null;
+                }
+
+                $user = trim((string) ($row['user'] ?? $row['login'] ?? ''));
+                if ($user === '')
+                {
+                    return null;
+                }
+
+                return [
+                    'user' => $user,
+                    'homedir' => trim((string) ($row['homedir'] ?? $row['dir'] ?? '')),
+                    'type' => trim((string) ($row['type'] ?? '')),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'success' => true,
+            'accounts' => $accounts,
+        ];
+    }
+
+    /**
+     * @return array{success: bool, error?: string}
+     */
+    public function createFtpAccount(
+        Server $server,
+        Domain $domain,
+        string $user,
+        string $password,
+        ?int $quotaMb = null,
+        string $homedir = 'public_html',
+    ): array {
+        return $this->uapiRequest($server, $domain, 'Ftp', 'add_ftp', [
+            'user' => $user,
+            'pass' => $password,
+            'domain' => $domain->domain,
+            'quota' => $quotaMb ?? 0,
+            'homedir' => $homedir,
+        ], expectData: false);
+    }
+
+    /**
+     * @return array{success: bool, error?: string}
+     */
+    public function changeFtpPassword(
+        Server $server,
+        Domain $domain,
+        string $user,
+        string $password,
+    ): array {
+        $login = str_contains($user, '@') ? explode('@', $user, 2)[0] : $user;
+
+        return $this->uapiRequest($server, $domain, 'Ftp', 'passwd', [
+            'user' => $login,
+            'pass' => $password,
+            'domain' => $domain->domain,
+        ], expectData: false);
+    }
+
+    /**
      * @param  array<string, mixed>  $row
      * @return array<string, mixed>
      */
