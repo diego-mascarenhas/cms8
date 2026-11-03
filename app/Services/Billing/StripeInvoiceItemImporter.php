@@ -5,12 +5,15 @@ namespace App\Services\Billing;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceSync;
+use App\Models\ServiceSync;
+use App\Services\Finance\SubscriptionInvoiceCategoryResolver;
 use Illuminate\Support\Arr;
 
 class StripeInvoiceItemImporter
 {
     public function __construct(
         private readonly ServiceSyncImporter $serviceSyncImporter,
+        private readonly SubscriptionInvoiceCategoryResolver $categoryResolver,
     ) {}
 
     public function syncForInvoice(Invoice $invoice, InvoiceSync $row): void
@@ -23,10 +26,19 @@ class StripeInvoiceItemImporter
             return;
         }
 
-        $categoryId = $this->serviceSyncImporter->resolveCategoryIdForInvoiceItem(
+        $subscription = $row->stripe_subscription_id
+            ? ServiceSync::query()
+                ->where('team_id', $invoice->team_id)
+                ->where('stripe_id', (string) $row->stripe_subscription_id)
+                ->first()
+            : null;
+
+        $serviceCategoryId = $this->serviceSyncImporter->resolveCategoryIdForInvoiceItem(
             (int) $invoice->team_id,
             $row->stripe_subscription_id ? (string) $row->stripe_subscription_id : null,
         );
+        $serviceCategoryIsSpecific = $serviceCategoryId !== null
+            && ! $this->categoryResolver->isGenericParent($serviceCategoryId);
 
         $invoice->items()->delete();
 
@@ -42,6 +54,14 @@ class StripeInvoiceItemImporter
             {
                 continue;
             }
+
+            $categoryId = $serviceCategoryIsSpecific
+                ? $serviceCategoryId
+                : ($this->categoryResolver->matchCategoryId(
+                    (int) $invoice->team_id,
+                    $subscription,
+                    (string) $attributes['description'],
+                ) ?? $serviceCategoryId);
 
             InvoiceItem::query()->create(array_merge($attributes, [
                 'invoice_id' => $invoice->id,

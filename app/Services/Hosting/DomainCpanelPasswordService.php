@@ -5,6 +5,8 @@ namespace App\Services\Hosting;
 use App\Mail\CpanelAccessCredentialsMail;
 use App\Models\Contact;
 use App\Models\Domain;
+use App\Models\Enterprise;
+use App\Models\ServiceSync;
 use App\Models\User;
 use App\Services\ContactOutreachService;
 use App\Services\ControlPanel\ControlPanelManager;
@@ -47,9 +49,39 @@ class DomainCpanelPasswordService
      */
     public function notifiableContactsForDomain(Domain $domain): Collection
     {
-        $domain->loadMissing('service.enterprise.contacts');
+        $domain->loadMissing('server');
+        $name = strtolower(trim((string) $domain->domain));
+        $teamId = $domain->server?->team_id;
+        $contacts = collect();
 
-        $contacts = $domain->service?->enterprise?->contacts ?? collect();
+        if ($name !== '' && $teamId)
+        {
+            $codes = ServiceSync::query()
+                ->where('team_id', $teamId)
+                ->where(function ($query) use ($name): void
+                {
+                    $query->where('data->domain', $name)
+                        ->orWhereRaw('LOWER(plan_name) LIKE ?', ['%'.$name.'%']);
+                })
+                ->get()
+                ->filter(fn (ServiceSync $sync) => $sync->isClientHosting() && $sync->hostingDomainCandidate() === $name)
+                ->pluck('customer_id')
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($codes->isNotEmpty())
+            {
+                $contacts = Enterprise::query()
+                    ->where('team_id', $teamId)
+                    ->whereIn('code', $codes->all())
+                    ->with('contacts')
+                    ->get()
+                    ->flatMap(fn (Enterprise $enterprise) => $enterprise->contacts)
+                    ->unique('id')
+                    ->values();
+            }
+        }
 
         return $contacts
             ->map(function (Contact $contact): ?array
@@ -181,8 +213,6 @@ class DomainCpanelPasswordService
         ?string $notifyTo,
         string $notifyChannel,
     ): array {
-        $domain->loadMissing('service.enterprise.contacts');
-
         $notifyChannel = in_array($notifyChannel, [self::NOTIFY_NONE, self::NOTIFY_WHATSAPP, self::NOTIFY_EMAIL], true)
             ? $notifyChannel
             : self::NOTIFY_NONE;
@@ -376,8 +406,7 @@ class DomainCpanelPasswordService
                 return null;
             }
 
-            return ($domain->service?->enterprise?->contacts ?? collect())
-                ->firstWhere('id', $contactId);
+            return Contact::withoutGlobalScopes()->find($contactId);
         }
 
         $first = $notifiable->first();
@@ -386,7 +415,6 @@ class DomainCpanelPasswordService
             return null;
         }
 
-        return ($domain->service?->enterprise?->contacts ?? collect())
-            ->firstWhere('id', $first['id']);
+        return Contact::withoutGlobalScopes()->find($first['id']);
     }
 }

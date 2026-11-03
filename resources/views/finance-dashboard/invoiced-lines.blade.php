@@ -71,6 +71,51 @@ $(function () {
     var $modal = $('#lineCategoryModal');
     var $select = $('#line_category_modal_select');
     var $activeRow = null;
+    var $selectTemplate = null;
+
+    function typeFilterNote() {
+        var $note = $('#line-category-type-filter');
+        if (! $note.length && $modal.length) {
+            $note = $('<div id="line-category-type-filter" class="alert alert-secondary d-none mb-3" role="status"></div>');
+            $modal.find('.modal-body').prepend($note);
+        }
+
+        return $note;
+    }
+
+    function rememberSelectOptions() {
+        if (! $selectTemplate && $select.length) {
+            $selectTemplate = $select.clone();
+        }
+    }
+
+    function applyTypeFilter(group, type) {
+        rememberSelectOptions();
+        var $note = typeFilterNote();
+        if (! $selectTemplate) {
+            return;
+        }
+
+        var current = $select.val();
+        $select.empty();
+        $selectTemplate.children().each(function () {
+            var $node = $(this).clone();
+            if (! group || $node.is('option') || $node.attr('label') === group) {
+                $select.append($node);
+            }
+        });
+        $select.val(current);
+
+        if (group && type) {
+            $note.removeClass('d-none').html(
+                'Tipo de la suscripción: <strong>' + $('<span>').text(type).html() + '</strong>. ' +
+                'Se muestran las categorías de ' + $('<span>').text(group).html() + '. ' +
+                '<button type="button" class="btn btn-link btn-sm p-0 align-baseline" id="line-category-show-all">Ver todas</button>'
+            );
+        } else {
+            $note.addClass('d-none').empty();
+        }
+    }
 
     function updateUrl(itemId) {
         return updateUrlTemplate.replace('__ID__', String(itemId));
@@ -156,12 +201,23 @@ $(function () {
     $(document).on('click', '.line-category-badge', function () {
         $activeRow = $(this).closest('.invoiced-line-item');
         var currentId = $.trim(String($activeRow.find('.line-category-id').val() || ''));
+        var group = $.trim(String($activeRow.data('category-group') || ''));
+        var type = $.trim(String($activeRow.data('subscription-type') || ''));
+        applyTypeFilter(group, type);
         initSelect();
         $select.val(currentId).trigger('change');
         bootstrap.Modal.getOrCreateInstance($modal.get(0)).show();
     });
 
+    $(document).on('click', '#line-category-show-all', function () {
+        var currentId = $.trim(String($select.val() || ''));
+        applyTypeFilter('', '');
+        initSelect();
+        $select.val(currentId).trigger('change');
+    });
+
     if ($modal.length) {
+        rememberSelectOptions();
         initSelect();
         $modal.on('shown.bs.modal', function () {
             initSelect();

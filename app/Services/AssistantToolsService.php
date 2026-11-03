@@ -994,7 +994,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'list_my_hosting',
-                'description' => 'List every hosting domain of the WhatsApp contact and whether each one is cPanel. A contact may have several. Call this before any hosting change when the domain is not obvious.',
+                'description' => 'List hosting domains for the WhatsApp contact from active hosting subscriptions (metadata domain). Ignore subscriptions that are not hosting, such as consulting. A contact may have several domains. Call this before any hosting change when the domain is not obvious.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [],
@@ -1112,7 +1112,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'request_hosting_upgrade',
-                'description' => 'Register a hosting plan upgrade request. Does not change the plan or quote a price. Call this when they ask to upgrade, change, or enlarge the hosting plan.',
+                'description' => 'Change the contact hosting plan on both the cPanel server and the Stripe subscription. Without plan, list the real Stripe prices and server packages and change nothing. With plan, apply that named plan. Do not invent a price.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -1120,9 +1120,9 @@ class AssistantToolsService
                             'type' => 'string',
                             'description' => 'Hosting domain when the contact has more than one',
                         ],
-                        'note' => [
+                        'plan' => [
                             'type' => 'string',
-                            'description' => 'What they asked for, in their words',
+                            'description' => 'Plan the customer chose, using a name returned by a previous call. Omit to list options without changing anything.',
                         ],
                     ],
                     'required' => [],
@@ -1219,7 +1219,7 @@ class AssistantToolsService
                 'hosting_product_info' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->productLinks(isset($input['product']) ? (string) $input['product'] : null),
                 'hosting_google_mail' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->googleMailSetup($teamId, $this->contextContactId, isset($input['domain']) ? (string) $input['domain'] : null),
                 'hosting_unpaid_invoices' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->unpaidInvoices($teamId, $this->contextContactId),
-                'request_hosting_upgrade' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->requestUpgrade($teamId, $this->contextContactId, $user, isset($input['domain']) ? (string) $input['domain'] : null, isset($input['note']) ? (string) $input['note'] : null),
+                'request_hosting_upgrade' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->requestUpgrade($teamId, $this->contextContactId, $user, isset($input['domain']) ? (string) $input['domain'] : null, isset($input['plan']) ? (string) $input['plan'] : (isset($input['note']) ? (string) $input['note'] : null)),
                 'list_cms_content' => $this->listCmsContent($teamId, $user, $input),
                 'get_cms_content' => $this->getCmsContent($teamId, $user, $input),
                 'create_cms_content' => $this->createCmsContent($teamId, $user, $input),

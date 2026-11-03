@@ -20,6 +20,7 @@ class InvoiceAnalyticsService
     public function __construct(
         private readonly PaymentReportingCurrencyService $reportingCurrencyService,
         private readonly VatHaciendaCsvExportService $vatHaciendaCsvExportService,
+        private readonly SubscriptionInvoiceCategoryResolver $subscriptionInvoiceCategoryResolver,
     ) {}
 
     /**
@@ -292,9 +293,11 @@ class InvoiceAnalyticsService
      */
     private function aggregateCategoryBreakdown(int $teamId, Carbon $from, Carbon $to, string $operation, string $reportingCurrency): array
     {
+        $items = $this->loadItemsInRange($teamId, $from, $to);
+        $hints = $this->subscriptionInvoiceCategoryResolver->hintsFor($items);
         $totalsByCategory = [];
 
-        foreach ($this->loadItemsInRange($teamId, $from, $to) as $item)
+        foreach ($items as $item)
         {
             $invoice = $item->invoice;
 
@@ -303,7 +306,8 @@ class InvoiceAnalyticsService
                 continue;
             }
 
-            $key = $item->category_id !== null ? (int) $item->category_id : 0;
+            $hintId = $hints[(int) $item->id]['category_id'] ?? null;
+            $key = $hintId ?? ($item->category_id !== null ? (int) $item->category_id : 0);
             $converted = $this->convertedLineAmount($item, $reportingCurrency);
 
             if ($converted === null)

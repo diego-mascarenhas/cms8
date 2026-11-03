@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UpdateInvoiceItemCategoryRequest;
 use App\Models\InvoiceItem;
 use App\Services\Billing\ServiceCategoryAssignmentService;
+use App\Services\Finance\SubscriptionInvoiceCategoryResolver;
 use Illuminate\Http\JsonResponse;
 
 class InvoiceItemCategoryController extends Controller
@@ -13,6 +14,7 @@ class InvoiceItemCategoryController extends Controller
         UpdateInvoiceItemCategoryRequest $request,
         InvoiceItem $invoiceItem,
         ServiceCategoryAssignmentService $assignmentService,
+        SubscriptionInvoiceCategoryResolver $categoryResolver,
     ): JsonResponse {
         $invoiceItem->loadMissing(['invoice', 'category']);
 
@@ -27,7 +29,7 @@ class InvoiceItemCategoryController extends Controller
         $categoryId = $categoryId === null || $categoryId === '' ? null : (int) $categoryId;
         $fromService = $assignmentService->categoryIdForInvoice($invoiceItem->invoice);
 
-        if ($fromService !== null)
+        if ($fromService !== null && ! $categoryResolver->isGenericParent($fromService))
         {
             $categoryId = $fromService;
         }

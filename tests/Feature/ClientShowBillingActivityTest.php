@@ -181,7 +181,7 @@ class ClientShowBillingActivityTest extends TestCase
             'Dominio CLEANUPBUENOSAIRES.COM',
             'Consumos',
             'Tokens IA · Agosto 2026',
-            'Servicios',
+            'Servicios (Legacy)',
             'Renovación de dominio local',
         ]);
     }

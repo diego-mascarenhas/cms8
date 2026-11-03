@@ -8,7 +8,7 @@ use App\Models\Contact;
 use App\Models\Domain;
 use App\Models\Enterprise;
 use App\Models\Server;
-use App\Models\Service;
+use App\Models\ServiceSync;
 use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
@@ -285,23 +285,22 @@ class DomainMailboxPasswordTest extends TestCase
         $enterprise = Enterprise::withoutGlobalScopes()->create([
             'team_id' => $team->id,
             'name' => 'Cliente Demo',
+            'code' => 'cus_cliente_demo',
             'type_id' => 1,
             'status_id' => 1,
         ]);
 
-        $service = Service::withoutGlobalScopes()->create([
-            'enterprise_id' => $enterprise->id,
-            'operation' => 'sell',
-            'description' => 'Hosting',
-            'currency_id' => 1,
-            'price' => 10,
-            'discount' => 0,
-            'frequency' => 12,
-            'responsible_id' => $user->id,
-            'status' => 4,
+        ServiceSync::query()->create([
+            'team_id' => $team->id,
+            'stripe_id' => 'sub_example_test',
+            'customer_id' => 'cus_cliente_demo',
+            'status' => 'active',
+            'plan_name' => 'Hosting example.test',
+            'data' => [
+                'domain' => 'example.test',
+                'category' => 'hosting',
+            ],
         ]);
-
-        $domain->forceFill(['service_id' => $service->id])->save();
 
         $contact = Contact::factory()->create([
             'team_id' => $team->id,
