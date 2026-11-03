@@ -45,6 +45,8 @@
                         class="invoiced-line-item"
                         data-item-id="{{ $line['id'] ?? '' }}"
                         data-category-id="{{ $line['category_id'] ?? '' }}"
+                        data-subscription-type="{{ $line['subscription_type'] ?? '' }}"
+                        data-category-group="{{ $line['category_group'] ?? '' }}"
                     >
                         <td>
                             @if($line['enterprise_id'])

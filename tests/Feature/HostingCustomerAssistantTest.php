@@ -6,13 +6,13 @@ use App\Contracts\WhatsAppGateway;
 use App\Models\Contact;
 use App\Models\Domain;
 use App\Models\Enterprise;
-use App\Models\Module;
 use App\Models\Server;
-use App\Models\Service;
-use App\Models\Ticket;
+use App\Models\ServiceSync;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\AssistantToolsService;
 use App\Services\Hosting\HostingCustomerAssistantService;
+use App\Services\Hosting\StripeHostingPlanGateway;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -55,6 +55,28 @@ class HostingCustomerAssistantTest extends TestCase
 
         $this->assertStringContainsString('example.test', $text);
         $this->assertStringContainsString('cpanel', $text);
+    }
+
+    public function test_a_consulting_subscription_is_not_treated_as_hosting(): void
+    {
+        [$user, , $contact] = $this->createHosting();
+
+        ServiceSync::query()->create([
+            'team_id' => $user->current_team_id,
+            'stripe_id' => 'sub_consulting',
+            'customer_id' => 'cus_hosting_demo',
+            'status' => 'active',
+            'plan_name' => 'Asesoramiento telefónico',
+            'data' => ['category' => 'asesoramiento'],
+        ]);
+
+        $text = app(HostingCustomerAssistantService::class)->listForContact(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+        );
+
+        $this->assertStringContainsString('example.test', $text);
+        $this->assertStringNotContainsString('Asesoramiento', $text);
     }
 
     public function test_email_address_selects_one_domain_when_the_contact_has_several(): void
@@ -350,13 +372,7 @@ class HostingCustomerAssistantTest extends TestCase
     public function test_asks_which_domain_before_changing_several_accounts(): void
     {
         [$user, $domain, $contact] = $this->createHosting();
-        Domain::factory()->create([
-            'domain' => 'otro.test',
-            'server_id' => $domain->server_id,
-            'service_id' => $domain->service_id,
-            'username' => 'otrousuario',
-            'suspended' => false,
-        ]);
+        $this->addDomain($domain, 'otro.test', 'otrousuario');
 
         $text = app(HostingCustomerAssistantService::class)->resetCpanelAccess(
             (int) $user->current_team_id,
@@ -370,14 +386,11 @@ class HostingCustomerAssistantTest extends TestCase
         $this->assertStringContainsString('otro.test', $text);
     }
 
-    public function test_upgrade_request_opens_a_ticket_without_changing_the_plan(): void
+    public function test_upgrade_without_a_plan_lists_stripe_prices_and_changes_nothing(): void
     {
         [$user, $domain, $contact] = $this->createHosting();
-        Module::query()->firstOrCreate(
-            ['key' => 'tickets'],
-            ['name' => 'Tickets', 'icon' => 'ticket', 'description' => 'Tickets', 'status' => 1],
-        );
-        $user->currentTeam->enableModule('tickets');
+        $this->preparePlanChange($domain);
+        $gateway = $this->bindPlanGateway();
 
         $text = app(HostingCustomerAssistantService::class)->requestUpgrade(
             (int) $user->current_team_id,
@@ -387,11 +400,128 @@ class HostingCustomerAssistantTest extends TestCase
             'Necesito más espacio',
         );
 
-        $this->assertStringContainsString('No se cambió el plan', $text);
-        $ticket = Ticket::withoutGlobalScopes()->first();
-        $this->assertNotNull($ticket);
-        $this->assertStringContainsString('example.test', (string) $ticket->subject);
-        $this->assertSame($domain->plan, $domain->fresh()->plan);
+        $this->assertStringContainsString('No cambié el plan', $text);
+        $this->assertStringContainsString('Hosting Explorer', $text);
+        $this->assertStringContainsString('7,99 EUR al mes', $text);
+        $this->assertSame('revision_beginner', $domain->fresh()->plan);
+        $this->assertSame([], $gateway->swaps);
+        Http::assertNothingSent();
+    }
+
+    public function test_named_plan_changes_the_stripe_price_and_the_server_package(): void
+    {
+        Http::fake([
+            '*changepackage*' => Http::response(['metadata' => ['result' => 1]]),
+        ]);
+
+        [$user, $domain, $contact] = $this->createHosting();
+        $this->preparePlanChange($domain);
+        $gateway = $this->bindPlanGateway();
+
+        $text = app(HostingCustomerAssistantService::class)->requestUpgrade(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            $user,
+            'example.test',
+            'explorer',
+        );
+
+        $this->assertStringContainsString('Listo', $text);
+        $this->assertStringContainsString('revision_explorer', $text);
+        $this->assertStringContainsString('7,99 EUR al mes', $text);
+        $this->assertSame('revision_explorer', $domain->fresh()->plan);
+        $this->assertSame([['sub_example_test', 'si_current', 'price_explorer']], $gateway->swaps);
+        $this->assertSame('Hosting Explorer', ServiceSync::query()->where('stripe_id', 'sub_example_test')->value('plan_name'));
+    }
+
+    public function test_server_rejection_reverts_the_stripe_price(): void
+    {
+        Http::fake([
+            '*changepackage*' => Http::response(['metadata' => ['result' => 0, 'reason' => 'Permission Denied']]),
+            '*modifyacct*' => Http::response(['metadata' => ['result' => 0, 'reason' => 'Permission Denied']]),
+        ]);
+
+        [$user, $domain, $contact] = $this->createHosting();
+        $this->preparePlanChange($domain);
+        $gateway = $this->bindPlanGateway();
+
+        $text = app(HostingCustomerAssistantService::class)->requestUpgrade(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            $user,
+            'example.test',
+            'explorer',
+        );
+
+        $this->assertStringContainsString('volvió al precio anterior', $text);
+        $this->assertSame('revision_beginner', $domain->fresh()->plan);
+        $this->assertSame([
+            ['sub_example_test', 'si_current', 'price_explorer'],
+            ['sub_example_test', 'si_current', 'price_beginner'],
+        ], $gateway->swaps);
+    }
+
+    private function preparePlanChange(Domain $domain): void
+    {
+        $domain->forceFill([
+            'plan' => 'revision_beginner',
+            'data' => ['available_plans' => ['revision_beginner', 'revision_explorer']],
+        ])->save();
+    }
+
+    private function bindPlanGateway(): object
+    {
+        $gateway = new class extends StripeHostingPlanGateway
+        {
+            /** @var list<array{0: string, 1: string, 2: string}> */
+            public array $swaps = [];
+
+            public function catalog(Team $team): array
+            {
+                return [
+                    [
+                        'price_id' => 'price_beginner',
+                        'product_name' => 'Hosting Beginner',
+                        'plan' => 'hosting-beginner',
+                        'currency' => 'eur',
+                        'interval' => 'month',
+                        'interval_count' => 1,
+                        'unit_amount' => 499,
+                        'whm_package' => null,
+                    ],
+                    [
+                        'price_id' => 'price_explorer',
+                        'product_name' => 'Hosting Explorer',
+                        'plan' => 'hosting-explorer',
+                        'currency' => 'eur',
+                        'interval' => 'month',
+                        'interval_count' => 1,
+                        'unit_amount' => 799,
+                        'whm_package' => null,
+                    ],
+                ];
+            }
+
+            public function currentItem(Team $team, string $subscriptionId): ?array
+            {
+                return [
+                    'item_id' => 'si_current',
+                    'price_id' => 'price_beginner',
+                    'currency' => 'eur',
+                    'interval' => 'month',
+                    'interval_count' => 1,
+                ];
+            }
+
+            public function swap(Team $team, string $subscriptionId, string $itemId, string $priceId): void
+            {
+                $this->swaps[] = [$subscriptionId, $itemId, $priceId];
+            }
+        };
+
+        $this->app->instance(StripeHostingPlanGateway::class, $gateway);
+
+        return $gateway;
     }
 
     /**
@@ -434,13 +564,46 @@ class HostingCustomerAssistantTest extends TestCase
 
     private function addDomain(Domain $domain, string $name, string $username): Domain
     {
-        return Domain::factory()->create([
+        $created = Domain::factory()->create([
             'domain' => $name,
             'server_id' => $domain->server_id,
-            'service_id' => $domain->service_id,
+            'service_id' => null,
             'username' => $username,
             'plan' => 'essential',
             'suspended' => false,
+        ]);
+
+        $this->addHostingSubscription($created, $domain);
+
+        return $created;
+    }
+
+    private function addHostingSubscription(Domain $domain, ?Domain $sibling = null): void
+    {
+        $server = $domain->server ?? Server::withoutGlobalScopes()->find($domain->server_id);
+        $customerId = 'cus_hosting_demo';
+        if ($sibling)
+        {
+            $match = ServiceSync::query()
+                ->where('team_id', $server->team_id)
+                ->get()
+                ->first(fn (ServiceSync $sync) => $sync->hostingDomainCandidate() === strtolower((string) $sibling->domain));
+            if ($match)
+            {
+                $customerId = (string) $match->customer_id;
+            }
+        }
+
+        ServiceSync::query()->create([
+            'team_id' => $server->team_id,
+            'stripe_id' => 'sub_'.str_replace('.', '_', (string) $domain->domain),
+            'customer_id' => $customerId,
+            'status' => 'active',
+            'plan_name' => 'Hosting '.$domain->domain,
+            'data' => [
+                'domain' => strtolower((string) $domain->domain),
+                'category' => 'hosting',
+            ],
         ]);
     }
 
@@ -470,30 +633,20 @@ class HostingCustomerAssistantTest extends TestCase
         $enterprise = Enterprise::withoutGlobalScopes()->create([
             'team_id' => $team->id,
             'name' => 'Cliente Demo',
+            'code' => 'cus_hosting_demo',
             'type_id' => 1,
             'status_id' => 1,
-        ]);
-
-        $service = Service::withoutGlobalScopes()->create([
-            'enterprise_id' => $enterprise->id,
-            'operation' => 'sell',
-            'description' => 'Hosting',
-            'currency_id' => 1,
-            'price' => 10,
-            'discount' => 0,
-            'frequency' => 12,
-            'responsible_id' => $user->id,
-            'status' => 4,
         ]);
 
         $domain = Domain::factory()->create([
             'domain' => 'example.test',
             'server_id' => $server->id,
-            'service_id' => $service->id,
+            'service_id' => null,
             'username' => 'siteuser',
             'plan' => 'essential',
             'suspended' => false,
         ]);
+        $this->addHostingSubscription($domain);
 
         $contact = Contact::factory()->create([
             'team_id' => $team->id,

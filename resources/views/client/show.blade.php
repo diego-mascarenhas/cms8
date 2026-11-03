@@ -487,7 +487,7 @@
             <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2 py-3">
                 <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none flex-shrink-0" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientServicesBlock" aria-expanded="{{ $hasServices ? 'true' : 'false' }}" aria-controls="clientServicesBlock" style="cursor: pointer;">
                     <i class="ti {{ $hasServices ? 'ti-chevron-up' : 'ti-chevron-down' }} collapse-chevron"></i>
-                    <span>Servicios</span>
+                    <span>Servicios (Legacy)</span>
                 </span>
                 <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
                     @if($services->count() > 0)

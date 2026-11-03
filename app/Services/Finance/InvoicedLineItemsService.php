@@ -13,6 +13,7 @@ class InvoicedLineItemsService
 {
     public function __construct(
         private readonly PaymentReportingCurrencyService $reportingCurrencyService,
+        private readonly SubscriptionInvoiceCategoryResolver $subscriptionInvoiceCategoryResolver,
     ) {}
 
     /**
@@ -95,6 +96,8 @@ class InvoicedLineItemsService
      *         description: string|null,
      *         category_id: int|null,
      *         category_name: string|null,
+     *         subscription_type: string|null,
+     *         category_group: string|null,
      *         amount: float,
      *         has_discount: bool,
      *         discount_amount: float|null,
@@ -107,6 +110,7 @@ class InvoicedLineItemsService
     public function buildDisplayPayload(Collection $items, int $teamId, bool $showDescription, bool $showCategory): array
     {
         $reportingCurrency = $this->reportingCurrencyService->reportingCurrencyForTeam($teamId);
+        $hints = $showCategory ? $this->subscriptionInvoiceCategoryResolver->hintsFor($items) : [];
         $lines = [];
         $total = 0.0;
         $conversionComplete = true;
@@ -130,6 +134,15 @@ class InvoicedLineItemsService
                 ? $this->convertedAmount($item, $discount, $reportingCurrency)
                 : null;
 
+            $hint = $hints[(int) $item->id] ?? null;
+            $categoryId = $item->category_id ? (int) $item->category_id : null;
+            $categoryName = $item->category?->name;
+            if (is_array($hint) && ! empty($hint['category_id']))
+            {
+                $categoryId = (int) $hint['category_id'];
+                $categoryName = $hint['category_name'] ?: $categoryName;
+            }
+
             $lines[] = [
                 'id' => (int) $item->id,
                 'invoice_id' => $invoice?->id ? (int) $invoice->id : null,
@@ -137,10 +150,12 @@ class InvoicedLineItemsService
                 'enterprise_id' => $invoice?->enterprise_id ? (int) $invoice->enterprise_id : null,
                 'enterprise_name' => (string) ($invoice?->enterprise?->name ?? __('Unknown')),
                 'description' => $showDescription ? (string) $item->description : null,
-                'category_id' => $item->category_id ? (int) $item->category_id : null,
+                'category_id' => $categoryId,
                 'category_name' => $showCategory
-                    ? (string) ($item->category?->name ?? __('Uncategorized'))
+                    ? (string) ($categoryName ?: __('Uncategorized'))
                     : null,
+                'subscription_type' => is_array($hint) ? $hint['type'] : null,
+                'category_group' => is_array($hint) ? $hint['group'] : null,
                 'amount' => $converted,
                 'has_discount' => $hasDiscount,
                 'discount_amount' => $convertedDiscount,

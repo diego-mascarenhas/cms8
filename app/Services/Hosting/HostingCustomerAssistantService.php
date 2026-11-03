@@ -5,9 +5,8 @@ namespace App\Services\Hosting;
 use App\Helpers\DnsHelper;
 use App\Models\Contact;
 use App\Models\Domain;
-use App\Models\Service;
+use App\Models\ServiceSync;
 use App\Models\Team;
-use App\Models\Ticket;
 use App\Models\User;
 use App\Services\CollectionAssistantContextService;
 use App\Services\ControlPanel\CpanelConnector;
@@ -20,6 +19,7 @@ class HostingCustomerAssistantService
         private readonly DomainCpanelPasswordService $domainCpanelPasswordService,
         private readonly DomainMailboxPasswordService $domainMailboxPasswordService,
         private readonly CollectionAssistantContextService $collectionAssistantContext,
+        private readonly HostingPlanSwitchService $planSwitch,
     ) {}
 
     public function listForContact(int $teamId, ?int $contactId): string
@@ -30,17 +30,30 @@ class HostingCustomerAssistantService
             return $domains;
         }
 
+        $missing = $this->hostingNamesWithoutAccount($teamId, $contactId, $domains);
         if ($domains->isEmpty())
         {
-            return 'Este contacto no tiene un hosting asociado.';
+            if ($missing === [])
+            {
+                return 'Este contacto no tiene un hosting asociado.';
+            }
+
+            return "Suscripciones de hosting sin cuenta en el servidor:\n".collect($missing)
+                ->map(fn (string $name) => '- '.$name)
+                ->implode("\n");
         }
 
-        $lines = ['Hostings de este contacto:'];
+        $lines = ['Hostings de este contacto (solo suscripciones de hosting):'];
         foreach ($domains as $domain)
         {
             $panel = (string) ($domain->server?->control_panel ?: 'sin panel');
             $state = $domain->suspended ? 'suspendido' : 'activo';
             $lines[] = '- '.$domain->domain.' · '.$panel.' · '.$state.($domain->plan ? ' · plan '.$domain->plan : '');
+        }
+
+        foreach ($missing as $name)
+        {
+            $lines[] = '- '.$name.' · suscripción de hosting sin cuenta en el servidor';
         }
 
         $cpanel = $this->cpanelDomains($domains);
@@ -333,7 +346,7 @@ class HostingCustomerAssistantService
         return implode("\n\n", $lines);
     }
 
-    public function requestUpgrade(int $teamId, ?int $contactId, User $actor, ?string $domainName, ?string $note): string
+    public function requestUpgrade(int $teamId, ?int $contactId, User $actor, ?string $domainName, ?string $plan): string
     {
         $domains = $this->domainsForContact($teamId, $contactId);
         if (is_string($domains))
@@ -347,31 +360,29 @@ class HostingCustomerAssistantService
             return $domain;
         }
 
-        $contact = Contact::withoutGlobalScopes()->find($contactId);
-        $subject = 'Upgrade de hosting '.$domain->domain;
-        $description = trim(implode("\n", array_filter([
-            'El contacto '.trim(($contact->name ?? '').' '.($contact->surname ?? '')).' pidió un upgrade de plan.',
-            'Dominio: '.$domain->domain,
-            $domain->plan ? 'Plan actual: '.$domain->plan : null,
-            filled($note) ? 'Pedido: '.trim((string) $note) : null,
-        ])));
-
-        $team = Team::withoutGlobalScopes()->find($teamId);
-        if ($team && $team->hasModule('tickets'))
+        $subscriptions = $this->hostingSubscriptionsForContact($teamId, $contactId);
+        if (is_string($subscriptions))
         {
-            $ticket = Ticket::withoutGlobalScopes()->create([
-                'team_id' => $teamId,
-                'user_id' => $actor->id,
-                'subject' => $subject,
-                'description' => $description,
-                'priority' => 'medium',
-                'status' => 'open',
-            ]);
-
-            return 'Pedido de upgrade registrado. Ticket '.$ticket->id.' para '.$domain->domain.'. No se cambió el plan: el equipo lo confirma. No inventes un precio.';
+            return $subscriptions;
         }
 
-        return 'Pedido de upgrade anotado para '.$domain->domain.'. No se cambió el plan. Decile al cliente que el equipo lo confirma. No inventes un precio.';
+        $domainKey = strtolower((string) $domain->domain);
+        $subscription = $subscriptions->first(
+            fn (ServiceSync $sync): bool => $sync->hostingDomainCandidate() === $domainKey,
+        );
+
+        if (! $subscription instanceof ServiceSync)
+        {
+            return 'Este dominio no tiene una suscripción de hosting activa. No cambié el plan del servidor.';
+        }
+
+        $team = Team::withoutGlobalScopes()->find($teamId);
+        if (! $team instanceof Team)
+        {
+            return 'No encontré el equipo. No cambié el plan.';
+        }
+
+        return $this->planSwitch->apply($team, $domain, $subscription, $plan);
     }
 
     /**
@@ -587,9 +598,9 @@ class HostingCustomerAssistantService
     }
 
     /**
-     * @return Collection<int, Domain>|string
+     * @return Collection<int, ServiceSync>|string
      */
-    private function domainsForContact(int $teamId, ?int $contactId): Collection|string
+    private function hostingSubscriptionsForContact(int $teamId, ?int $contactId): Collection|string
     {
         if ($contactId === null || $contactId < 1)
         {
@@ -606,21 +617,100 @@ class HostingCustomerAssistantService
             return 'El contacto de este hilo no está en el equipo.';
         }
 
-        $enterpriseIds = $contact->enterprises->pluck('id')->filter()->all();
-        if ($enterpriseIds === [])
+        $codes = $contact->enterprises
+            ->filter(fn ($enterprise) => (int) $enterprise->team_id === $teamId)
+            ->map(fn ($enterprise) => trim((string) $enterprise->code))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($codes->isEmpty())
         {
             return 'Este contacto no está vinculado a una empresa con hosting.';
         }
 
-        $serviceIds = Service::withoutGlobalScopes()
-            ->whereIn('enterprise_id', $enterpriseIds)
-            ->pluck('id');
+        $subscriptions = ServiceSync::query()
+            ->where('team_id', $teamId)
+            ->whereIn('customer_id', $codes->all())
+            ->get()
+            ->filter(fn (ServiceSync $sync) => $sync->isClientHosting() && $this->subscriptionGrantsHosting($sync))
+            ->values();
+
+        if ($subscriptions->isEmpty())
+        {
+            return 'Este contacto no tiene una suscripción de hosting. Una suscripción de asesoramiento u otro servicio no cuenta.';
+        }
+
+        return $subscriptions;
+    }
+
+    /**
+     * @return Collection<int, Domain>|string
+     */
+    private function domainsForContact(int $teamId, ?int $contactId): Collection|string
+    {
+        $subscriptions = $this->hostingSubscriptionsForContact($teamId, $contactId);
+        if (is_string($subscriptions))
+        {
+            return $subscriptions;
+        }
+
+        $names = $subscriptions
+            ->map(fn (ServiceSync $sync) => $sync->hostingDomainCandidate())
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($names->isEmpty())
+        {
+            return 'La suscripción de hosting no tiene el dominio en la metadata.';
+        }
 
         return Domain::query()
-            ->whereIn('service_id', $serviceIds)
-            ->with(['server', 'service'])
+            ->with('server')
+            ->where(function ($query) use ($names): void
+            {
+                foreach ($names as $name)
+                {
+                    $query->orWhereRaw('LOWER(domain) = ?', [$name]);
+                }
+            })
             ->orderBy('domain')
             ->get();
+    }
+
+    /**
+     * @param  Collection<int, Domain>  $domains
+     * @return list<string>
+     */
+    private function hostingNamesWithoutAccount(int $teamId, ?int $contactId, Collection $domains): array
+    {
+        $subscriptions = $this->hostingSubscriptionsForContact($teamId, $contactId);
+        if (is_string($subscriptions))
+        {
+            return [];
+        }
+
+        $present = $domains
+            ->map(fn (Domain $domain) => strtolower((string) $domain->domain))
+            ->all();
+
+        return $subscriptions
+            ->map(fn (ServiceSync $sync) => $sync->hostingDomainCandidate())
+            ->filter(fn (?string $name) => $name !== null && ! in_array($name, $present, true))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function subscriptionGrantsHosting(ServiceSync $sync): bool
+    {
+        return in_array(strtolower(trim((string) $sync->status)), [
+            'active',
+            'past_due',
+            'trialing',
+            'unpaid',
+        ], true);
     }
 
     /**

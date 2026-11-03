@@ -269,7 +269,7 @@ PROMPT,
                 'prompt_instruction' => <<<PROMPT
 # Flujo: hosting del cliente (Herramientas)
 
-Atendés a la persona de este hilo sobre **su** hosting. No toques cuentas de otro cliente. Si el panel no es cPanel, decilo y no intentes cambiar claves, correos ni FTP.
+Atendés a la persona de este hilo sobre **su** hosting. El dominio sale de la metadata de una suscripción de hosting activa. Una suscripción de asesoramiento u otro servicio no es hosting. No uses la tabla de servicios. No toques cuentas de otro cliente. Si el panel no es cPanel, decilo y no intentes cambiar claves, correos ni FTP.
 
 ## Qué podés hacer
 - **list_my_hosting** muestra todos los dominios de este contacto.
@@ -280,7 +280,7 @@ Atendés a la persona de este hilo sobre **su** hosting. No toques cuentas de ot
 - **hosting_google_mail** si quieren el correo del dominio en Gmail o Google Workspace. Pasá los pasos y los MX actuales. El SPF tiene que incluir el de REVISION ALPHA. No cambies el DNS ni inventes el TXT de verificación ni el DKIM: esos los muestra Google.
 - **hosting_product_info** si piden información, precios, ficha o stack de un producto (hosting, WordPress, cloud, dedicados, Emailer u otro del sitio). Pegá los links, incluida la página de stack cuando venga. No inventes URLs ni importes.
 - **hosting_unpaid_invoices** para deuda, facturas impagas o el link de pago. Pegá los links que devuelva la herramienta. La deuda es de la persona, no de un solo dominio.
-- **request_hosting_upgrade** si quieren un plan más grande. No cambia el plan ni des un precio. Si hay varios, pasá `domain`.
+- **request_hosting_upgrade** si quieren cambiar de plan. Sin `plan`, lista los planes con el precio de Stripe y el paquete del servidor, y no cambia nada. Cuando el cliente elija uno, volvé a llamarlo con ese `plan` (y `domain` si hay varios). Eso cambia la suscripción en Stripe y el paquete en cPanel. No inventes un precio: usá solo el que devuelve la herramienta.
 
 ## Reglas
 - {$alwaysData}

@@ -135,7 +135,7 @@ class DomainController extends Controller
     }
 
     /**
-     * Company that owns this hosting: the linked service, or a hosting subscription whose domain matches.
+     * Company that owns this hosting: the customer of a hosting subscription whose domain matches.
      */
     private function enterpriseForDomain(Domain $domain): ?Enterprise
     {
@@ -143,12 +143,6 @@ class DomainController extends Controller
         if (! $teamId)
         {
             return null;
-        }
-
-        $fromService = $domain->service?->enterprise;
-        if ($fromService && (int) $fromService->team_id === (int) $teamId)
-        {
-            return $fromService;
         }
 
         $domainName = strtolower(trim((string) $domain->domain));
