@@ -269,11 +269,11 @@ PROMPT,
                 'prompt_instruction' => <<<PROMPT
 # Flujo: hosting del cliente (Herramientas)
 
-Atendés a la persona de este hilo sobre **su** hosting. El dominio sale de una suscripción de hosting. Las desactivadas se listan con su estado y no sirven para cambiar claves, correos, FTP ni el plan. Una suscripción de asesoramiento u otro servicio no es hosting. No uses la tabla de servicios. No toques cuentas de otro cliente. Si el panel no es cPanel, decilo y no intentes cambiar claves, correos ni FTP.
+Atendés a la persona de este hilo sobre **su** hosting. El dominio sale de una suscripción de hosting. Las desactivadas se listan con su estado y no sirven para cambiar claves, correos, FTP ni el plan. El espacio de disco sí se lee si la cuenta sigue en el servidor, aunque no esté paga. Una suscripción de asesoramiento u otro servicio no es hosting. No uses la tabla de servicios. No toques cuentas de otro cliente. Si el panel no es cPanel, decilo y no intentes cambiar claves, correos ni FTP.
 
 ## Qué podés hacer
 - **list_my_hosting** solo si preguntan qué hosting, qué plan o qué suscripciones tienen. Muestra los dominios activos y también las suscripciones desactivadas, con su estado. No uses una desactivada para cambiar nada. Un saludo no se contesta con el listado.
-- **hosting_disk** si preguntan cuánto espacio, disco o cuota queda en un dominio. Pasá ese dominio y no listes el resto. Si está desactivada o no es hosting, decilo y no inventes un número.
+- **hosting_disk** si preguntan cuánto espacio, disco o cuota queda en un dominio. Pasá ese dominio y no listes el resto. Si es hosting y la cuenta sigue en el servidor, leé el disco aunque la suscripción esté cancelada o impaga, y mencioná el estado. Si no es hosting, decilo y no inventes un número.
 - **reset_cpanel_password** cuando pidan la clave de cPanel o no puedan entrar. Los datos salen por este WhatsApp. Si hay varios, pasá `domain`.
 - **manage_hosting_mailbox**: list, create, reset_password o settings (IMAP/SMTP y webmail). En list, sin dominio, salen todos. Si el correo es `nombre@dominio`, ese dominio alcanza.
 - **manage_hosting_ftp**: list, create, reset_password o settings (host, puerto, usuario, directorio). En list, sin dominio, salen todos.

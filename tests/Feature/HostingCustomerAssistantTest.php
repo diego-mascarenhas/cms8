@@ -659,6 +659,26 @@ class HostingCustomerAssistantTest extends TestCase
         $this->assertStringNotContainsString('Suscripciones desactivadas', $text);
     }
 
+    public function test_disk_space_of_a_cancelled_hosting_still_reads_the_server(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+        ServiceSync::query()->where('stripe_id', 'sub_example_test')->update(['status' => 'canceled']);
+        $domain->forceFill([
+            'data' => ['disk_used' => 800, 'disk_limit' => 5000],
+        ])->save();
+
+        $text = app(HostingCustomerAssistantService::class)->diskSpace(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            'example.test',
+        );
+
+        $this->assertStringContainsString('example.test usa 800 MB de 5.000 MB', $text);
+        $this->assertStringContainsString('La suscripción está cancelada.', $text);
+        $this->assertStringNotContainsString('No consulto el espacio', $text);
+        $this->assertStringNotContainsString('Suscripciones desactivadas', $text);
+    }
+
     public function test_rehearse_command_refuses_to_run_in_production(): void
     {
         $this->app['env'] = 'production';

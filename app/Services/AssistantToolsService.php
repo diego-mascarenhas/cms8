@@ -1068,7 +1068,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'hosting_disk',
-                'description' => 'Disk space used and the quota for one hosting domain of this contact. Pass the domain they named. Do not invent a number. A deactivated subscription or a non-hosting subscription has no server disk to report. Do not list the other subscriptions.',
+                'description' => 'Disk space used and the quota for one hosting domain of this contact. Pass the domain they named. Read the server account even when the hosting subscription is cancelled or unpaid, and mention that status. A non-hosting subscription has no server disk. Do not invent a number. Do not list the other subscriptions.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [

@@ -104,24 +104,23 @@ class HostingCustomerAssistantService
         $label = $this->subscriptionListLabel($subscription);
         $status = $this->subscriptionStatusLabel($subscription);
 
-        if (! $this->subscriptionGrantsHosting($subscription))
-        {
-            $kind = $subscription->isClientHosting()
-                ? 'es hosting, pero está '.$status
-                : 'está '.$status.' y no es hosting';
-
-            return $label.' '.$kind.'. No consulto el espacio de una suscripción que no está activa.';
-        }
-
         if (! $subscription->isClientHosting())
         {
-            return $label.' no es hosting. No tiene espacio de disco en el servidor.';
+            $state = $this->subscriptionGrantsHosting($subscription)
+                ? 'no es hosting'
+                : 'está '.$status.' y no es hosting';
+
+            return $label.' '.$state.'. No tiene espacio de disco en el servidor.';
         }
 
         $domain = $this->domainForSubscription($subscription);
         if (! $domain instanceof Domain || $domain->server === null)
         {
-            return $label.' está activa, pero no tiene cuenta en el servidor. No hay espacio para consultar.';
+            $state = $this->subscriptionGrantsHosting($subscription)
+                ? 'está activa'
+                : 'está '.$status;
+
+            return $label.' '.$state.', pero no tiene cuenta en el servidor. No hay espacio para consultar.';
         }
 
         $usage = $this->cpanelConnector->getAccountDiskUsage($domain->server, $domain);
@@ -130,7 +129,13 @@ class HostingCustomerAssistantService
             return 'No pude leer el espacio de '.$domain->domain.'.';
         }
 
-        return $this->formatDiskUsage((string) $domain->domain, $usage);
+        $text = $this->formatDiskUsage((string) $domain->domain, $usage);
+        if (! $this->subscriptionGrantsHosting($subscription))
+        {
+            $text .= ' La suscripción está '.$status.'.';
+        }
+
+        return $text;
     }
 
     public function resetCpanelAccess(int $teamId, ?int $contactId, User $actor, ?string $domainName): string
