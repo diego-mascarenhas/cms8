@@ -250,7 +250,7 @@ class SystemOnboardingWhatsAppService
             ];
         }
 
-        if ($this->containsAny($normalized, ['cancelar', 'stop', 'detener', 'salir']))
+        if ($this->containsAny($normalized, ['cancelar', 'stop', 'detener', 'salir', 'chau', 'chao']))
         {
             $flow['active'] = false;
             $flow['last_message_at'] = now()->toIso8601String();

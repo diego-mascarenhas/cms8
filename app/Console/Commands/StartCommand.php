@@ -20,7 +20,8 @@ class StartCommand extends Command
                             {--exchange-rates-backfill : Backfill monthly exchange rates (BCRA USD/ARS + Frankfurter USD/EUR)}
                             {--reclassify-roles : Reclassify stored contact and person roles from their titles}
                             {--hosting-rehearse : Rehearse a customer hosting WhatsApp message without sending it}
-                            {--message=Que hosting tengo? : Message for --hosting-rehearse}
+                            {--chat : Keep the hosting rehearsal open. "chau" leaves the flow}
+                            {--message= : Message for --hosting-rehearse. Empty opens a WhatsApp chat}
                             {--team= : Team id for --hosting-rehearse}
                             {--phone= : Customer phone for --hosting-rehearse}
                             {--contact= : Contact id for --hosting-rehearse}
@@ -57,7 +58,7 @@ class StartCommand extends Command
 
     private const OPT_RECLASSIFY_ROLES = 'Contacts: reclassify stored roles (CEO, CFO, …)';
 
-    private const OPT_HOSTING_REHEARSE = 'Hosting (ensayar un WhatsApp del cliente, sin enviarlo)';
+    private const OPT_HOSTING_REHEARSE = 'Hosting (ensayar el WhatsApp del cliente; "chau" sale del flujo)';
 
     private const OPT_EXIT = 'Exit';
 
@@ -439,26 +440,41 @@ class StartCommand extends Command
 
     private function runHostingRehearse(bool $prompt): int
     {
-        $message = trim((string) ($this->option('message') ?: 'Que hosting tengo?'));
+        $message = trim((string) $this->option('message'));
         $team = trim((string) $this->option('team'));
         $phone = trim((string) $this->option('phone'));
         $contact = trim((string) $this->option('contact'));
         $domain = trim((string) $this->option('domain'));
         $plan = trim((string) $this->option('plan'));
         $apply = (bool) $this->option('apply');
+        $chat = (bool) $this->option('chat') || $message === '';
 
         if ($prompt)
         {
-            $message = trim((string) $this->ask('Mensaje del cliente', $message !== '' ? $message : 'Que hosting tengo?'));
+            $this->line('Vas a escribir como el cliente. "chau" sale del flujo.');
             $team = trim((string) $this->ask('Team ID', $team));
             $phone = trim((string) $this->ask('Teléfono (vacío si indicás un contact id)', $phone));
             $contact = trim((string) $this->ask('Contact ID (vacío si indicás teléfono)', $contact));
             $domain = trim((string) $this->ask('Dominio (vacío si tiene uno solo)', $domain));
-            $plan = trim((string) $this->ask('Plan a ensayar (vacío = solo listar el hosting)', $plan));
-            $apply = $plan !== '' && $this->confirm('¿Aplicar el cambio en Stripe y cPanel?', false);
+            $chat = true;
+            $message = '';
+            $plan = '';
+            $apply = false;
         }
 
-        $arguments = ['message' => $message !== '' ? $message : 'Que hosting tengo?'];
+        $arguments = [];
+        if (! $chat && $message !== '')
+        {
+            $arguments['message'] = $message;
+        }
+        if ($chat)
+        {
+            $arguments['--chat'] = true;
+            if ($message !== '')
+            {
+                $arguments['message'] = $message;
+            }
+        }
         if ($team !== '')
         {
             $arguments['--team'] = $team;

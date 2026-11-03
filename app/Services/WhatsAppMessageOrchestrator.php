@@ -1316,6 +1316,18 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         $flowAppendix = null;
                         $flowSession = null;
                     }
+                    if (app(\App\Services\AssistantToolIntentPromptService::class)->matchesFlowReset((string) $body))
+                    {
+                        $forcedFlowRoutingKey = null;
+                        $flowAppendix = null;
+                        $flowSession = null;
+                        if ($contextContactId !== null)
+                        {
+                            Contact::withoutGlobalScopes()
+                                ->find((int) $contextContactId)
+                                ?->pinInboundChatAssistantPrompt(null);
+                        }
+                    }
                     $replyResponse = $replyService->getReply(
                         $body,
                         $history,

@@ -572,6 +572,29 @@ class HostingCustomerAssistantTest extends TestCase
         $this->assertSame([], $gateway->swaps);
     }
 
+    public function test_rehearse_chat_lists_hosting_and_chau_leaves_the_flow(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+        $plan = $domain->plan;
+        app(\App\Services\InboxProductOnboardingService::class)->start($contact);
+        $contact->pinInboundChatAssistantPrompt('hosting:assistant_hosting');
+
+        $this->artisan('hosting:rehearse', [
+            '--chat' => true,
+            '--contact' => $contact->id,
+            '--team' => $user->current_team_id,
+        ])->expectsQuestion('Cliente', 'Que hosting tengo?')
+            ->expectsQuestion('Cliente', 'chau')
+            ->expectsOutputToContain('example.test')
+            ->expectsOutputToContain('lo dejamos acá')
+            ->assertSuccessful();
+
+        $fresh = $contact->fresh();
+        $this->assertFalse((bool) data_get($fresh->data, 'idoneo_product_onboarding.active'));
+        $this->assertNull($fresh->inboundChatAssistantPromptKey());
+        $this->assertSame($plan, $domain->fresh()->plan);
+    }
+
     public function test_rehearse_command_refuses_to_run_in_production(): void
     {
         $this->app['env'] = 'production';

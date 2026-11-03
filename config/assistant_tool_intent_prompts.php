@@ -40,6 +40,8 @@ return [
         'cancelar el embudo',
         'salir del flujo',
         'abandonar el flujo',
+        'chau',
+        'chao',
     ],
 
     /**

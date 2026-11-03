@@ -86,15 +86,9 @@ class InboxProductOnboardingService
         }
 
         $normalized = $this->normalize($body);
-        if ($this->containsAny($normalized, ['cancelar', 'salir', 'stop', 'detener', 'basta']))
+        if ($this->containsAny($normalized, ['cancelar', 'salir', 'stop', 'detener', 'basta', 'chau', 'chao']))
         {
-            $this->saveFlow($contact, [
-                ...$flow,
-                'active' => false,
-                'step' => self::STEP_DONE,
-            ]);
-
-            return ['message' => 'Sin problema, lo dejamos acá. Cuando quieras retomar, escribime o pedime /recomendar.'];
+            return ['message' => $this->leave($contact)];
         }
 
         $message = match ($step)
@@ -110,6 +104,25 @@ class InboxProductOnboardingService
         };
 
         return $message !== null ? ['message' => $message] : null;
+    }
+
+    /**
+     * Leave the recommendation funnel and the pinned assistant prompt.
+     */
+    public function leave(Contact $contact): string
+    {
+        $active = (bool) ($this->flow($contact)['active'] ?? false);
+        $flow = $this->flow($contact);
+        $this->saveFlow($contact, [
+            ...$flow,
+            'active' => false,
+            'step' => self::STEP_DONE,
+        ]);
+        $contact->pinInboundChatAssistantPrompt(null);
+
+        return $active
+            ? 'Sin problema, lo dejamos acá. Cuando quieras retomar, escribime o pedime /recomendar.'
+            : 'Dale, salimos del flujo de hosting. Cuando quieras, escribime.';
     }
 
     /**

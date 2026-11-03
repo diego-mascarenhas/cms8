@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Contact;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\AssistantToolIntentPromptService;
 use App\Services\Hosting\HostingCustomerAssistantService;
 use App\Services\InboxProductOnboardingService;
 use App\Services\UserResolverService;
@@ -13,7 +14,8 @@ use Illuminate\Console\Command;
 class RehearseHostingAssistantCommand extends Command
 {
     protected $signature = 'hosting:rehearse
-        {message : WhatsApp message to rehearse}
+        {message? : Optional first WhatsApp message. Omit it to open a chat}
+        {--chat : Keep the conversation open. "chau" leaves the flow}
         {--team= : Team id}
         {--phone= : Customer phone}
         {--contact= : Contact id}
@@ -35,14 +37,6 @@ class RehearseHostingAssistantCommand extends Command
             return self::FAILURE;
         }
 
-        $message = trim((string) $this->argument('message'));
-        if ($message === '')
-        {
-            $this->error('El mensaje está vacío.');
-
-            return self::FAILURE;
-        }
-
         $contact = $this->contact($users);
         if (! $contact instanceof Contact)
         {
@@ -55,6 +49,12 @@ class RehearseHostingAssistantCommand extends Command
             $this->error('No encontré el equipo del contacto.');
 
             return self::FAILURE;
+        }
+
+        $message = trim((string) ($this->argument('message') ?? ''));
+        if ($this->option('chat') || $message === '')
+        {
+            return $this->chat($contact, $team, $onboarding, $hosting, $message);
         }
 
         $flow = data_get($contact->data, InboxProductOnboardingService::DATA_KEY);
@@ -124,6 +124,91 @@ class RehearseHostingAssistantCommand extends Command
         ));
 
         return self::SUCCESS;
+    }
+
+    private function chat(
+        Contact $contact,
+        Team $team,
+        InboxProductOnboardingService $onboarding,
+        HostingCustomerAssistantService $hosting,
+        string $firstMessage,
+    ): int {
+        $who = trim($contact->name.' '.$contact->surname) ?: 'Cliente';
+        $this->line('WhatsApp · '.$who.' · '.$team->name);
+        $this->line('Escribí como el cliente. "chau" sale del flujo.');
+        $this->newLine();
+
+        $pending = $firstMessage;
+        while (true)
+        {
+            $message = $pending !== '' ? $pending : trim((string) $this->ask('Cliente'));
+            $pending = '';
+            if ($message === '')
+            {
+                continue;
+            }
+
+            $this->line($who.': '.$message);
+            if ($this->leavesFlow($message))
+            {
+                $contact->refresh();
+                $this->line($team->name.': '.$onboarding->leave($contact));
+                $this->newLine();
+                $this->comment('No se envió WhatsApp ni se cambió Stripe ni el servidor.');
+
+                return self::SUCCESS;
+            }
+
+            $reply = $this->reply($contact, $team, $onboarding, $hosting, $message);
+            $this->line($team->name.': '.$reply);
+            $this->newLine();
+        }
+    }
+
+    private function reply(
+        Contact $contact,
+        Team $team,
+        InboxProductOnboardingService $onboarding,
+        HostingCustomerAssistantService $hosting,
+        string $message,
+    ): string {
+        $phone = trim((string) ($contact->phone ?? $contact->mobile ?? ''));
+        if (! $onboarding->asksAboutOwnAccount($message) && $phone !== '')
+        {
+            $handled = $onboarding->tryHandleInbound($team, $phone, $message);
+            $text = trim((string) data_get($handled, 'message', ''));
+            if ($text !== '')
+            {
+                return $text;
+            }
+        }
+
+        $lines = [$hosting->listForContact((int) $team->id, (int) $contact->id)];
+        $plan = trim((string) $this->option('plan'));
+        if ($plan !== '')
+        {
+            $lines[] = $hosting->rehearseUpgrade(
+                (int) $team->id,
+                (int) $contact->id,
+                $this->option('domain') ? (string) $this->option('domain') : null,
+                $plan,
+            );
+        }
+
+        return implode("\n\n", $lines);
+    }
+
+    private function leavesFlow(string $message): bool
+    {
+        if (app(AssistantToolIntentPromptService::class)->matchesFlowReset($message))
+        {
+            return true;
+        }
+
+        $normalized = mb_strtolower(trim($message));
+        $normalized = trim($normalized, " \t\n\r\0\x0B!?.¡¿");
+
+        return in_array($normalized, ['salir', 'exit', 'quit'], true);
     }
 
     private function blockedByEnvironment(): bool
