@@ -125,6 +125,8 @@ class ChatTeamSettingsSidebarTest extends TestCase
         $this->assertStringContainsString(__('team_settings.site_assistant.select_off'), $html);
         $this->assertStringContainsString(__('team_settings.site_assistant.select_off_all'), $html);
         $this->assertStringContainsString('catalog:calendar:assistant_citas', $html);
+        $this->assertStringContainsString('catalog:hosting:assistant_hosting', $html);
+        $this->assertStringContainsString('Hosting cPanel', $html);
         $this->assertStringNotContainsString('id="sidebar-ai-replies-toggle"', $html);
         $this->assertStringNotContainsString('id="sidebar-default-assistant-flow-toggle"', $html);
         $this->assertStringNotContainsString('id="sidebar-assistant-keyword-routing-toggle"', $html);

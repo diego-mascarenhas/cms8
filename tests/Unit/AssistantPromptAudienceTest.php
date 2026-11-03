@@ -15,6 +15,7 @@ class AssistantPromptAudienceTest extends TestCase
         $this->assertSame('customer', $catalog->audienceFor('products:assistant_catalogo', 'assistant_catalogo'));
         $this->assertSame('customer', $catalog->audienceFor('products:assistant_embudo', 'assistant_embudo'));
         $this->assertSame('customer', $catalog->audienceFor('invoices:collections', 'collections'));
+        $this->assertSame('customer', $catalog->audienceFor('hosting:assistant_hosting', 'assistant_hosting'));
         $this->assertSame('customer', $catalog->audienceFor('chat:bienvenida', 'bienvenida'));
         $this->assertSame('customer', $catalog->audienceFor('chat:citas_y_ventas', 'citas_y_ventas'));
         $this->assertSame('customer', $catalog->audienceFor('chat:assistant_presupuesto', 'assistant_presupuesto'));
