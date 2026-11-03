@@ -1203,10 +1203,13 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         }
                     }
 
+                    $asksAboutOwnAccount = false;
                     if ($assistantTeamId !== null && trim((string) $body) !== '')
                     {
                         $assistantTeam = Team::withoutGlobalScopes()->find((int) $assistantTeamId);
-                        if ($assistantTeam !== null)
+                        $asksAboutOwnAccount = $assistantTeam !== null
+                            && app(InboxProductOnboardingService::class)->asksAboutOwnAccount((string) $body);
+                        if ($assistantTeam !== null && ! $asksAboutOwnAccount)
                         {
                             $onboardingReply = app(SystemOnboardingWhatsAppService::class)->tryHandleInbound(
                                 $assistantTeam,
@@ -1267,7 +1270,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         }
                     }
 
-                    $forcedFlowRoutingKey = $this->resolveForcedFlowRoutingKeyForWhatsApp($history, (string) $body);
+                    $forcedFlowRoutingKey = $asksAboutOwnAccount
+                        ? 'hosting:assistant_hosting'
+                        : $this->resolveForcedFlowRoutingKeyForWhatsApp($history, (string) $body);
                     if ($forcedFlowRoutingKey === null && $contextContactId !== null)
                     {
                         $forcedFlowRoutingKey = Contact::withoutGlobalScopes()
@@ -1304,6 +1309,12 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                             $flowAppendix = $flowContext['appendix'] ?? null;
                             $flowSession = $flowContext['session'] ?? null;
                         }
+                    }
+                    if ($asksAboutOwnAccount)
+                    {
+                        $forcedFlowRoutingKey = 'hosting:assistant_hosting';
+                        $flowAppendix = null;
+                        $flowSession = null;
                     }
                     $replyResponse = $replyService->getReply(
                         $body,

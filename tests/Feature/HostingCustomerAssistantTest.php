@@ -461,6 +461,73 @@ class HostingCustomerAssistantTest extends TestCase
         ], $gateway->swaps);
     }
 
+    public function test_rehearse_command_lists_hosting_and_previews_a_plan_without_changing_it(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+        $this->preparePlanChange($domain);
+        $gateway = $this->bindPlanGateway();
+        app(\App\Services\InboxProductOnboardingService::class)->start($contact);
+
+        $this->withoutMockingConsoleOutput();
+
+        $this->assertSame(0, $this->artisan('hosting:rehearse', [
+            'message' => 'Que hosting tengo?',
+            '--team' => $user->current_team_id,
+            '--phone' => '34611223344',
+        ]));
+        $listed = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringContainsString('no lo contesta el embudo', $listed);
+        $this->assertStringContainsString('example.test', $listed);
+
+        $this->assertSame(0, $this->artisan('hosting:rehearse', [
+            'message' => 'Pasame a explorer',
+            '--contact' => $contact->id,
+            '--plan' => 'explorer',
+        ]));
+        $preview = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringContainsString('Ensayo. No cambié Stripe ni el servidor.', $preview);
+        $this->assertStringContainsString('revision_explorer', $preview);
+
+        $this->assertSame('revision_beginner', $domain->fresh()->plan);
+        $this->assertSame([], $gateway->swaps);
+        $this->assertTrue((bool) data_get($contact->fresh()->data, 'idoneo_product_onboarding.active'));
+    }
+
+    public function test_start_command_rehearses_hosting_without_changing_the_plan(): void
+    {
+        [$user, $domain] = $this->createHosting();
+        $this->preparePlanChange($domain);
+        $gateway = $this->bindPlanGateway();
+        $this->withoutMockingConsoleOutput();
+
+        $this->assertSame(0, $this->artisan('start', [
+            '--hosting-rehearse' => true,
+            '--message' => 'Que hosting tengo?',
+            '--team' => $user->current_team_id,
+            '--phone' => '34611223344',
+            '--plan' => 'explorer',
+        ]));
+
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringContainsString('example.test', $output);
+        $this->assertStringContainsString('Ensayo. No cambié Stripe ni el servidor.', $output);
+        $this->assertStringContainsString('revision_explorer', $output);
+        $this->assertSame('revision_beginner', $domain->fresh()->plan);
+        $this->assertSame([], $gateway->swaps);
+    }
+
+    public function test_rehearse_command_refuses_to_run_in_production(): void
+    {
+        $this->app['env'] = 'production';
+
+        $this->artisan('hosting:rehearse', [
+            'message' => 'Que hosting tengo?',
+            '--contact' => 1,
+            '--apply' => true,
+        ])->assertFailed()
+            ->expectsOutputToContain('no corre en producción');
+    }
+
     private function preparePlanChange(Domain $domain): void
     {
         $domain->forceFill([

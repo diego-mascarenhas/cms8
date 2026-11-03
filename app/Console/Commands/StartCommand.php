@@ -19,6 +19,16 @@ class StartCommand extends Command
                             {--google-inspect : Inspect Google sync status (all teams or --team_id)}
                             {--exchange-rates-backfill : Backfill monthly exchange rates (BCRA USD/ARS + Frankfurter USD/EUR)}
                             {--reclassify-roles : Reclassify stored contact and person roles from their titles}
+                            {--hosting-rehearse : Rehearse a customer hosting WhatsApp message without sending it}
+                            {--message=Que hosting tengo? : Message for --hosting-rehearse}
+                            {--team= : Team id for --hosting-rehearse}
+                            {--phone= : Customer phone for --hosting-rehearse}
+                            {--contact= : Contact id for --hosting-rehearse}
+                            {--domain= : Domain for --hosting-rehearse when the contact has several}
+                            {--plan= : Plan name to rehearse for --hosting-rehearse}
+                            {--apply : With --hosting-rehearse, change Stripe and cPanel. Refused in production}
+                            {--yes : With --apply, skip the confirmation}
+                            {--allow-production : With --hosting-rehearse, allow a dry run in production}
                             {--exchange-rates-from=2000-01 : Start month (YYYY-MM) for --exchange-rates-backfill}
                             {--exchange-rates-to= : End month (YYYY-MM) for --exchange-rates-backfill; default current month}
                             {--account_id= : Account ID for --google-sync}
@@ -47,6 +57,8 @@ class StartCommand extends Command
 
     private const OPT_RECLASSIFY_ROLES = 'Contacts: reclassify stored roles (CEO, CFO, …)';
 
+    private const OPT_HOSTING_REHEARSE = 'Hosting (ensayar un WhatsApp del cliente, sin enviarlo)';
+
     private const OPT_EXIT = 'Exit';
 
     public function handle(): int
@@ -59,6 +71,7 @@ class StartCommand extends Command
         $googleInspect = $this->option('google-inspect');
         $exchangeRatesBackfill = $this->option('exchange-rates-backfill');
         $reclassifyRoles = $this->option('reclassify-roles');
+        $hostingRehearse = $this->option('hosting-rehearse');
 
         if ($fresh)
         {
@@ -128,6 +141,17 @@ class StartCommand extends Command
             return self::SUCCESS;
         }
 
+        if ($hostingRehearse)
+        {
+            $result = $this->runHostingRehearse(prompt: false);
+            if ($result === self::SUCCESS)
+            {
+                $this->info('Done.');
+            }
+
+            return $result;
+        }
+
         $this->info('Humano — Setup');
         $this->newLine();
 
@@ -145,6 +169,7 @@ class StartCommand extends Command
                     self::OPT_GOOGLE_INSPECT,
                     self::OPT_EXCHANGE_RATES_BACKFILL,
                     self::OPT_RECLASSIFY_ROLES,
+                    self::OPT_HOSTING_REHEARSE,
                     self::OPT_EXIT,
                 ],
                 self::OPT_EXIT,
@@ -187,6 +212,9 @@ class StartCommand extends Command
             } elseif ($choice === self::OPT_RECLASSIFY_ROLES)
             {
                 $this->runReclassifyRoles(prompt: true);
+            } elseif ($choice === self::OPT_HOSTING_REHEARSE)
+            {
+                $this->runHostingRehearse(prompt: true);
             }
 
             $this->newLine();
@@ -407,5 +435,60 @@ class StartCommand extends Command
         }
 
         $this->call('contacts:reclassify-roles');
+    }
+
+    private function runHostingRehearse(bool $prompt): int
+    {
+        $message = trim((string) ($this->option('message') ?: 'Que hosting tengo?'));
+        $team = trim((string) $this->option('team'));
+        $phone = trim((string) $this->option('phone'));
+        $contact = trim((string) $this->option('contact'));
+        $domain = trim((string) $this->option('domain'));
+        $plan = trim((string) $this->option('plan'));
+        $apply = (bool) $this->option('apply');
+
+        if ($prompt)
+        {
+            $message = trim((string) $this->ask('Mensaje del cliente', $message !== '' ? $message : 'Que hosting tengo?'));
+            $team = trim((string) $this->ask('Team ID', $team));
+            $phone = trim((string) $this->ask('Teléfono (vacío si indicás un contact id)', $phone));
+            $contact = trim((string) $this->ask('Contact ID (vacío si indicás teléfono)', $contact));
+            $domain = trim((string) $this->ask('Dominio (vacío si tiene uno solo)', $domain));
+            $plan = trim((string) $this->ask('Plan a ensayar (vacío = solo listar el hosting)', $plan));
+            $apply = $plan !== '' && $this->confirm('¿Aplicar el cambio en Stripe y cPanel?', false);
+        }
+
+        $arguments = ['message' => $message !== '' ? $message : 'Que hosting tengo?'];
+        if ($team !== '')
+        {
+            $arguments['--team'] = $team;
+        }
+        if ($phone !== '')
+        {
+            $arguments['--phone'] = $phone;
+        }
+        if ($contact !== '')
+        {
+            $arguments['--contact'] = $contact;
+        }
+        if ($domain !== '')
+        {
+            $arguments['--domain'] = $domain;
+        }
+        if ($plan !== '')
+        {
+            $arguments['--plan'] = $plan;
+        }
+        if ($apply)
+        {
+            $arguments['--apply'] = true;
+            $arguments['--yes'] = true;
+        }
+        if ($this->option('allow-production'))
+        {
+            $arguments['--allow-production'] = true;
+        }
+
+        return $this->call('hosting:rehearse', $arguments);
     }
 }

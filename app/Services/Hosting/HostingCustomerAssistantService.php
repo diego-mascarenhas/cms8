@@ -348,6 +348,20 @@ class HostingCustomerAssistantService
 
     public function requestUpgrade(int $teamId, ?int $contactId, User $actor, ?string $domainName, ?string $plan): string
     {
+        $resolved = $this->resolveUpgrade($teamId, $contactId, $domainName);
+        if (is_string($resolved))
+        {
+            return $resolved;
+        }
+
+        return $this->planSwitch->apply($resolved['team'], $resolved['domain'], $resolved['subscription'], $plan);
+    }
+
+    /**
+     * @return array{team: Team, domain: Domain, subscription: ServiceSync}|string
+     */
+    private function resolveUpgrade(int $teamId, ?int $contactId, ?string $domainName): array|string
+    {
         $domains = $this->domainsForContact($teamId, $contactId);
         if (is_string($domains))
         {
@@ -382,7 +396,22 @@ class HostingCustomerAssistantService
             return 'No encontré el equipo. No cambié el plan.';
         }
 
-        return $this->planSwitch->apply($team, $domain, $subscription, $plan);
+        return [
+            'team' => $team,
+            'domain' => $domain,
+            'subscription' => $subscription,
+        ];
+    }
+
+    public function rehearseUpgrade(int $teamId, ?int $contactId, ?string $domainName, ?string $plan): string
+    {
+        $resolved = $this->resolveUpgrade($teamId, $contactId, $domainName);
+        if (is_string($resolved))
+        {
+            return $resolved;
+        }
+
+        return $this->planSwitch->preview($resolved['team'], $resolved['domain'], $resolved['subscription'], $plan);
     }
 
     /**

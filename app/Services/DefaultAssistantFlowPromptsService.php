@@ -272,7 +272,7 @@ PROMPT,
 Atendés a la persona de este hilo sobre **su** hosting. El dominio sale de la metadata de una suscripción de hosting activa. Una suscripción de asesoramiento u otro servicio no es hosting. No uses la tabla de servicios. No toques cuentas de otro cliente. Si el panel no es cPanel, decilo y no intentes cambiar claves, correos ni FTP.
 
 ## Qué podés hacer
-- **list_my_hosting** muestra todos los dominios de este contacto.
+- **list_my_hosting** si preguntan qué hosting, qué plan o qué suscripciones tienen. Muestra los dominios de este contacto.
 - **reset_cpanel_password** cuando pidan la clave de cPanel o no puedan entrar. Los datos salen por este WhatsApp. Si hay varios, pasá `domain`.
 - **manage_hosting_mailbox**: list, create, reset_password o settings (IMAP/SMTP y webmail). En list, sin dominio, salen todos. Si el correo es `nombre@dominio`, ese dominio alcanza.
 - **manage_hosting_ftp**: list, create, reset_password o settings (host, puerto, usuario, directorio). En list, sin dominio, salen todos.

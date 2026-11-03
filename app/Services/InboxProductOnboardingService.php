@@ -66,6 +66,11 @@ class InboxProductOnboardingService
             return null;
         }
 
+        if ($this->asksAboutOwnAccount($body))
+        {
+            return null;
+        }
+
         $flow = $this->flow($contact);
         $step = (string) ($flow['step'] ?? self::STEP_CHOOSE);
         if (! ($flow['active'] ?? false) || $step === self::STEP_DONE)
@@ -608,6 +613,16 @@ class InboxProductOnboardingService
         return $this->personFirstName((string) ($contact->name ?? ''));
     }
 
+    public function asksAboutOwnAccount(string $body): bool
+    {
+        $normalized = $this->normalize($body);
+
+        return (bool) preg_match(
+            '/\b(?:subscripciones|suscripciones|subscripcion|suscripcion|planes|plan|hosting|dominios|dominio)\b.{0,24}\b(?:tengo|tenemos)\b|\b(?:tengo|tenemos)\b.{0,24}\b(?:subscripciones|suscripciones|subscripcion|suscripcion|planes|plan|hosting|dominios|dominio)\b|\b(?:mis suscripciones|mis subscripciones|mis planes|mi hosting|mis dominios|mi dominio)\b/u',
+            $normalized,
+        );
+    }
+
     private function isStartCommand(string $body): bool
     {
         $normalized = $this->normalize($body);
@@ -723,6 +738,11 @@ class InboxProductOnboardingService
         if ($this->containsAny($normalized, ['despues', 'luego', 'ahora no', 'otro dia', 'otro dia']))
         {
             return true;
+        }
+
+        if (preg_match('/\bno se\b/u', $normalized))
+        {
+            return false;
         }
 
         return $this->hasToken($normalized, ['no']) && ! $this->isAffirmative($normalized);
