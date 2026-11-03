@@ -679,6 +679,56 @@ class HostingCustomerAssistantTest extends TestCase
         $this->assertStringNotContainsString('Suscripciones desactivadas', $text);
     }
 
+    public function test_a_cancelled_hosting_still_creates_a_mailbox_when_the_account_is_open(): void
+    {
+        Http::fake([
+            'https://cpanel.test:2087/json-api/cpanel*' => Http::response([
+                'result' => ['status' => 1, 'data' => null],
+            ]),
+        ]);
+        $sent = [];
+        $this->bindGateway($sent);
+
+        [$user, $domain, $contact] = $this->createHosting();
+        ServiceSync::query()->where('stripe_id', 'sub_example_test')->update(['status' => 'canceled']);
+        $user->currentTeam->setSetting('whatsapp_driver', 'twilio', ['group' => 'chat']);
+
+        $text = app(HostingCustomerAssistantService::class)->manageMailbox(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            $user,
+            'create',
+            'example.test',
+            'info',
+        );
+
+        $this->assertStringContainsString('info@example.test', $text);
+        $this->assertStringNotContainsString('desactivadas', $text);
+        $this->assertStringNotContainsString('suspendida', $text);
+        Http::assertSent(fn ($request) => ($request['cpanel_jsonapi_func'] ?? null) === 'add_pop');
+        $this->assertFalse((bool) $domain->fresh()->suspended);
+    }
+
+    public function test_a_suspended_account_cannot_be_changed_even_when_the_subscription_is_active(): void
+    {
+        Http::fake();
+        [$user, $domain, $contact] = $this->createHosting();
+        $domain->forceFill(['suspended' => true])->save();
+
+        $text = app(HostingCustomerAssistantService::class)->manageMailbox(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            $user,
+            'create',
+            'example.test',
+            'info',
+        );
+
+        $this->assertStringContainsString('suspendida', $text);
+        $this->assertStringContainsString('example.test', $text);
+        Http::assertNothingSent();
+    }
+
     public function test_rehearse_command_refuses_to_run_in_production(): void
     {
         $this->app['env'] = 'production';

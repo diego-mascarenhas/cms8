@@ -1082,7 +1082,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'reset_cpanel_password',
-                'description' => 'Reset the cPanel login password for the contact\'s hosting and send the new access details on this WhatsApp thread. Only for cPanel. If they have several domains, pass domain. Do not invent or repeat the password when the tool says it was already sent.',
+                'description' => 'Reset the cPanel login password for the contact\'s hosting and send the new access details on this WhatsApp thread. Only for cPanel. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. If they have several domains, pass domain. Do not invent or repeat the password when the tool says it was already sent. Do not invent a contact email or phone.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -1096,7 +1096,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'manage_hosting_mailbox',
-                'description' => 'cPanel email for the contact\'s hosting. list without domain returns every domain. create, reset_password and settings need one domain, or an account like name@domain. New passwords are sent on this WhatsApp thread. Do not invent mailboxes. If the tool says there are several domains, ask which one.',
+                'description' => 'cPanel email for the contact\'s hosting. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. list without domain returns every open domain. create, reset_password and settings need one domain, or an account like name@domain. New passwords are sent on this WhatsApp thread. Do not invent mailboxes or a contact email or phone. If the tool says there are several domains, ask which one.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -1118,7 +1118,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'manage_hosting_ftp',
-                'description' => 'cPanel FTP for the contact\'s hosting: list accounts, create one, reset its password, or show host, port and directory. New passwords are sent on this WhatsApp thread.',
+                'description' => 'cPanel FTP for the contact\'s hosting. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. list, create, reset_password or settings (host, port, user, directory). New passwords are sent on this WhatsApp thread.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [

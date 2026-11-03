@@ -253,7 +253,7 @@ class RehearseHostingAssistantCommand extends Command
             true,
             AssistantActorContextService::CHANNEL_WHATSAPP,
             false,
-            'Ensayo de WhatsApp del flujo Hosting cPanel. Respondé solo a este mensaje. No listes todas las suscripciones salvo que pregunte cuáles tiene. Si pregunta el espacio de un dominio, usá hosting_disk con ese dominio. No digas que enviaste un WhatsApp.',
+            'Ensayo de WhatsApp del flujo Hosting cPanel. Respondé solo a este mensaje. No listes todas las suscripciones salvo que pregunte cuáles tiene. Si pregunta el espacio de un dominio, usá hosting_disk. Una suscripción cancelada no impide la clave, el correo, el FTP, el DNS ni la ficha de un producto si la cuenta no está suspendida: llamá la herramienta. Si la cuenta está suspendida, decilo y no cambies nada. No reactives Stripe. No inventes un email ni un teléfono. No digas que enviaste un WhatsApp.',
         );
 
         $text = trim((string) ($reply['text'] ?? ''));

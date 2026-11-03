@@ -489,7 +489,7 @@ class HostingCustomerAssistantService
      */
     private function selectedDomains(int $teamId, ?int $contactId, ?string $domainName): Collection|string
     {
-        $domains = $this->domainsForContact($teamId, $contactId);
+        $domains = $this->serverDomainsForContact($teamId, $contactId);
         if (is_string($domains))
         {
             return $domains;
@@ -964,6 +964,51 @@ class HostingCustomerAssistantService
     }
 
     /**
+     * Server accounts of every hosting subscription, paid or not.
+     * A cancelled subscription still points at the account. A suspended account is included so the caller can refuse it.
+     *
+     * @return Collection<int, Domain>|string
+     */
+    private function serverDomainsForContact(int $teamId, ?int $contactId): Collection|string
+    {
+        $subscriptions = $this->customerSubscriptions($teamId, $contactId);
+        if (is_string($subscriptions))
+        {
+            return $subscriptions;
+        }
+
+        $hosting = $subscriptions
+            ->filter(fn (ServiceSync $sync): bool => $sync->isClientHosting())
+            ->values();
+        if ($hosting->isEmpty())
+        {
+            return 'Este contacto no tiene una suscripción de hosting. Una suscripción de asesoramiento u otro servicio no cuenta.';
+        }
+
+        $names = $hosting
+            ->map(fn (ServiceSync $sync) => $sync->hostingDomainCandidate())
+            ->filter()
+            ->unique()
+            ->values();
+        if ($names->isEmpty())
+        {
+            return 'La suscripción de hosting no tiene el dominio en la metadata.';
+        }
+
+        return Domain::query()
+            ->with('server')
+            ->where(function ($query) use ($names): void
+            {
+                foreach ($names as $name)
+                {
+                    $query->orWhereRaw('LOWER(domain) = ?', [$name]);
+                }
+            })
+            ->orderBy('domain')
+            ->get();
+    }
+
+    /**
      * @param  Collection<int, Domain>  $domains
      * @return list<string>
      */
@@ -1072,13 +1117,13 @@ class HostingCustomerAssistantService
      */
     private function cpanelDomainsForContact(int $teamId, ?int $contactId): Collection|string
     {
-        $domains = $this->domainsForContact($teamId, $contactId);
+        $domains = $this->serverDomainsForContact($teamId, $contactId);
         if (is_string($domains))
         {
             return $domains;
         }
 
-        $cpanel = $this->cpanelDomains($domains);
+        $cpanel = $this->cpanelAccounts($domains);
         if ($cpanel->isEmpty())
         {
             return $domains->isEmpty()
@@ -1086,21 +1131,43 @@ class HostingCustomerAssistantService
                 : 'El hosting no es cPanel, así que no se puede gestionar la clave, el correo ni el FTP desde aquí.';
         }
 
-        return $cpanel;
+        $open = $cpanel->reject(fn (Domain $domain): bool => (bool) $domain->suspended)->values();
+        if ($open->isEmpty())
+        {
+            return 'La cuenta está suspendida en el servidor. No puedo cambiar la clave, el correo ni el FTP.';
+        }
+
+        return $open;
     }
 
-    /**
-     * @param  Collection<int, Domain>  $domains
-     */
     private function resolveCpanelDomain(int $teamId, ?int $contactId, ?string $domainName): Domain|string
     {
-        $domains = $this->cpanelDomainsForContact($teamId, $contactId);
+        $domains = $this->serverDomainsForContact($teamId, $contactId);
         if (is_string($domains))
         {
             return $domains;
         }
 
-        return $this->matchDomain($domains, $domainName);
+        $cpanel = $this->cpanelAccounts($domains);
+        if ($cpanel->isEmpty())
+        {
+            return $domains->isEmpty()
+                ? 'Este contacto no tiene un hosting asociado.'
+                : 'El hosting no es cPanel, así que no se puede gestionar la clave, el correo ni el FTP desde aquí.';
+        }
+
+        $domain = $this->matchDomain($cpanel, $domainName);
+        if (is_string($domain))
+        {
+            return $domain;
+        }
+
+        if ($domain->suspended)
+        {
+            return 'La cuenta de '.$domain->domain.' está suspendida en el servidor. No puedo cambiar la clave, el correo ni el FTP hasta que deje de estarlo.';
+        }
+
+        return $domain;
     }
 
     /**
@@ -1184,19 +1251,25 @@ class HostingCustomerAssistantService
         return $domain !== '' ? $domain : null;
     }
 
+    private function cpanelAccounts(Collection $domains): Collection
+    {
+        return $domains
+            ->filter(function (Domain $domain): bool
+            {
+                return $domain->server?->control_panel === 'cpanel'
+                    && $domain->server->hasToken();
+            })
+            ->values();
+    }
+
     /**
      * @param  Collection<int, Domain>  $domains
      * @return Collection<int, Domain>
      */
     private function cpanelDomains(Collection $domains): Collection
     {
-        return $domains
-            ->filter(function (Domain $domain): bool
-            {
-                return $domain->server?->control_panel === 'cpanel'
-                    && $domain->server->hasToken()
-                    && ! $domain->suspended;
-            })
+        return $this->cpanelAccounts($domains)
+            ->reject(fn (Domain $domain): bool => (bool) $domain->suspended)
             ->values();
     }
 
