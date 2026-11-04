@@ -49,6 +49,8 @@ trait FormatsShopResources
             'oem' => $product->oem,
             'description' => $product->description,
             'short_description' => $product->short_description,
+            'cost' => $product->cost !== null ? (float) $product->cost : null,
+            'markup_percent' => $product->markup_percent !== null ? (float) $product->markup_percent : null,
             'price' => (float) $product->price,
             'sale_price' => $product->sale_price !== null ? (float) $product->sale_price : null,
             'selling_price' => $product->currentSellingPrice(),
@@ -227,7 +229,7 @@ trait FormatsShopResources
     {
         $manageStock = (bool) (int) $validated['manage_stock'];
 
-        return [
+        $payload = [
             'name' => $validated['name'],
             'code' => $validated['code'],
             'barcode' => $validated['barcode'] ?? null,
@@ -251,6 +253,18 @@ trait FormatsShopResources
             'is_featured' => (bool) (int) ($validated['is_featured'] ?? 0),
             'image' => $validated['image'] ?? null,
         ];
+
+        if (array_key_exists('cost', $validated))
+        {
+            $payload['cost'] = $validated['cost'];
+        }
+
+        if (array_key_exists('markup_percent', $validated))
+        {
+            $payload['markup_percent'] = $validated['markup_percent'];
+        }
+
+        return $payload;
     }
 
     /**

@@ -41,6 +41,14 @@ class StoreLocalProductRequest extends FormRequest
             $data['image'] = trim($image);
         }
 
+        foreach (['cost', 'markup_percent'] as $moneyKey)
+        {
+            if ($this->exists($moneyKey) && ($this->input($moneyKey) === '' || $this->input($moneyKey) === null))
+            {
+                $data[$moneyKey] = null;
+            }
+        }
+
         $data['code'] = strtoupper(trim((string) ($this->input('code') ?? '')));
         $data['barcode'] = Product::normalizeOptionalIdentifier($this->input('barcode'));
         $data['oem'] = Product::normalizeOptionalIdentifier($this->input('oem'));
@@ -67,6 +75,8 @@ class StoreLocalProductRequest extends FormRequest
             'oem' => ['nullable', 'string', 'max:80'],
             'description' => ['nullable', 'string'],
             'short_description' => ['nullable', 'string'],
+            'cost' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'markup_percent' => ['nullable', 'numeric', 'min:0', 'max:1000'],
             'price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'sale_price' => ['nullable', 'numeric', 'min:0', 'max:99999999.99', 'lte:price'],
             'currency_id' => [

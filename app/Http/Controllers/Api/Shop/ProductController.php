@@ -10,6 +10,7 @@ use App\Http\Requests\Api\UpdateShopProductRequest;
 use App\Http\Requests\ImportProductCsvRequest;
 use App\Models\Product;
 use App\Models\Store;
+use App\Models\Team;
 use App\Services\ProductCsvImportService;
 use App\Services\ProductVariantCatalogService;
 use App\Support\SearchNormalizer;
@@ -127,7 +128,7 @@ class ProductController extends Controller
 
         $validated = $request->validated();
         $product = Product::query()->create(array_merge(
-            $this->productPayload($validated),
+            $this->withDefaultMarkup($this->productPayload($validated), $team),
             ['team_id' => $team->id],
         ));
         $product->syncStoreAvailabilityFromValidated($validated, true);
@@ -163,7 +164,7 @@ class ProductController extends Controller
         }
 
         $validated = $request->validated();
-        $product->update($this->productPayload($validated));
+        $product->update($this->withDefaultMarkup($this->productPayload($validated), $team, $product));
         $product->syncStoreAvailabilityFromValidated($validated);
         app(ProductVariantCatalogService::class)->sync(
             $product->fresh(),
@@ -248,5 +249,24 @@ class ProductController extends Controller
                 'products_count' => Product::query()->count(),
             ]),
         ], $imported > 0 ? 200 : 422);
+    }
+
+    /**
+     * A cost without its own markup uses the product's percent, or the team default.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function withDefaultMarkup(array $payload, Team $team, ?Product $existing = null): array
+    {
+        $hasCost = array_key_exists('cost', $payload) && $payload['cost'] !== null && $payload['cost'] !== '';
+        $hasMarkup = array_key_exists('markup_percent', $payload) && $payload['markup_percent'] !== null && $payload['markup_percent'] !== '';
+
+        if ($hasCost && ! $hasMarkup)
+        {
+            $payload['markup_percent'] = $existing?->markup_percent ?? $team->shopDefaultMarkupPercent();
+        }
+
+        return $payload;
     }
 }

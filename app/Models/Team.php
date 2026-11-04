@@ -154,6 +154,18 @@ class Team extends JetstreamTeam
         return $this->hasMany(Mailbox::class)->whereNull('user_id');
     }
 
+    public function shopDefaultMarkupPercent(): float
+    {
+        $value = $this->getSetting('shop_default_markup_percent', 0);
+
+        if (! is_numeric($value))
+        {
+            return 0.0;
+        }
+
+        return max(0.0, min(1000.0, (float) $value));
+    }
+
     public function getSetting($key, $default = null)
     {
         // If settings are already loaded, use them to avoid N+1 queries

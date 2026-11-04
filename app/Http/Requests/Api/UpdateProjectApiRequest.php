@@ -58,6 +58,13 @@ class UpdateProjectApiRequest extends FormRequest
             'data.budget_preview_html' => ['nullable', 'string'],
             'data.suggested_tasks' => ['nullable'],
             'data.ai_suggested_tasks' => ['nullable', 'array'],
+            'data.quote_products' => ['nullable', 'array'],
+            'data.quote_products.*.product_id' => ['nullable', 'integer'],
+            'data.quote_products.*.name' => ['required', 'string', 'max:255'],
+            'data.quote_products.*.code' => ['nullable', 'string', 'max:64'],
+            'data.quote_products.*.quantity' => ['required', 'numeric', 'min:0.001'],
+            'data.quote_products.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'data.quote_products.*.currency' => ['nullable', 'string', 'max:8'],
             'data.quote_finalized' => ['nullable', 'boolean'],
         ];
     }

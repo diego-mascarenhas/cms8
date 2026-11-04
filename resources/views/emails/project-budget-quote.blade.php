@@ -25,6 +25,14 @@
             @if ($requestSummary !== '')
                 <p>{{ $requestSummary }}</p>
             @endif
+            @if (! empty($productLines))
+                <div class="section">
+                    <h2>{{ __('Products') }}</h2>
+                    @foreach ($productLines as $line)
+                        <p>{{ $line['label'] }} — {{ $line['amount'] }}</p>
+                    @endforeach
+                </div>
+            @endif
             @foreach ($sections as $section)
                 <div class="section">
                     <h2>{{ $section['title'] }}</h2>
