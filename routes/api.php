@@ -811,7 +811,10 @@ Route::middleware('auth.api')->group(function ()
         Route::get('products/import', [ShopProductController::class, 'importSchema']);
         Route::post('products/import', [ShopProductController::class, 'import']);
         Route::get('products/quote-search', [ShopSupplierPriceListController::class, 'quoteProducts']);
+        Route::post('products/quote-document', [ShopSupplierPriceListController::class, 'quoteDocument']);
         Route::get('supplier-price-lists/import', [ShopSupplierPriceListController::class, 'importSchema']);
+        Route::post('supplier-price-lists/preview', [ShopSupplierPriceListController::class, 'preview']);
+        Route::post('supplier-price-lists/confirm', [ShopSupplierPriceListController::class, 'confirm']);
         Route::post('supplier-price-lists/import', [ShopSupplierPriceListController::class, 'import']);
         Route::get('supplier-price-lists', [ShopSupplierPriceListController::class, 'index']);
         Route::get('suppliers', [ShopSupplierPriceListController::class, 'suppliers']);

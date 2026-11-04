@@ -5,6 +5,7 @@ namespace App\Http\Requests\Api;
 use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class ImportSupplierPriceListRequest extends FormRequest
 {
@@ -21,9 +22,9 @@ class ImportSupplierPriceListRequest extends FormRequest
         $teamId = (int) ($this->user()?->current_team_id ?? 0);
 
         return [
-            'file' => ['required', 'file', 'mimetypes:text/csv,text/plain,application/csv,application/vnd.ms-excel', 'max:5120'],
+            'file' => ['required', 'file', 'max:15360'],
             'enterprise_id' => [
-                'required',
+                'nullable',
                 'integer',
                 Rule::exists('enterprises', 'id')->where(function ($query) use ($teamId)
                 {
@@ -38,14 +39,31 @@ class ImportSupplierPriceListRequest extends FormRequest
         ];
     }
 
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void
+        {
+            $file = $this->file('file');
+            if ($file === null)
+            {
+                return;
+            }
+
+            $extension = strtolower($file->getClientOriginalExtension());
+            if (! in_array($extension, ['csv', 'txt', 'xlsx', 'pdf', 'png', 'jpg', 'jpeg', 'webp'], true))
+            {
+                $validator->errors()->add('file', __('The file must be a CSV, spreadsheet, PDF, or image.'));
+            }
+        });
+    }
+
     /**
      * @return array<string, string>
      */
     public function messages(): array
     {
         return [
-            'file.required' => __('Select a CSV file to import.'),
-            'file.mimetypes' => __('The file must be a CSV.'),
+            'file.required' => __('Select a file to import.'),
             'enterprise_id.exists' => __('The selected supplier is invalid.'),
             'currency_id.required' => __('Please select a currency.'),
         ];

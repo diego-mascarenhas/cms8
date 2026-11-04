@@ -7,6 +7,7 @@ use App\Models\Enterprise;
 use App\Models\Module;
 use App\Models\Product;
 use App\Models\User;
+use App\Services\CommercialDocumentInterpreter;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
@@ -194,5 +195,138 @@ class SupplierPriceListTest extends TestCase
         $created->assertJsonPath('data.cost', 80)
             ->assertJsonPath('data.markup_percent', 25)
             ->assertJsonPath('data.price', 100);
+    }
+
+    public function test_a_dropped_file_is_previewed_and_confirmed_with_the_edited_cost(): void
+    {
+        [, $team, $token] = $this->adminWithShop();
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $supplier = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 2,
+            'status_id' => 2,
+            'name' => 'Textil Norte',
+        ]);
+        $csv = "code,name,cost\nREM-9,Remera,1000\n";
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/shop/supplier-price-lists/preview', [
+                'file' => UploadedFile::fake()->createWithContent('lista.csv', $csv),
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.kind', 'price_list')
+            ->assertJsonPath('data.lines.0.name', 'Remera')
+            ->assertJsonPath('data.lines.0.cost', 1000);
+
+        $this->assertDatabaseCount('products', 0);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/supplier-price-lists/confirm', [
+                'enterprise_id' => $supplier->id,
+                'currency_id' => $currencyId,
+                'markup_percent' => 50,
+                'lines' => [[
+                    'code' => 'REM-9',
+                    'name' => 'Remera blanca',
+                    'cost' => 800,
+                ]],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.created', 1);
+
+        $product = Product::query()->where('code', 'REM-9')->first();
+        $this->assertNotNull($product);
+        $this->assertSame('Remera blanca', $product->name);
+        $this->assertEquals(800, (float) $product->cost);
+        $this->assertEquals(1200, (float) $product->price);
+    }
+
+    public function test_a_read_price_list_creates_the_supplier_and_the_selling_price(): void
+    {
+        [, $team, $token] = $this->adminWithShop();
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+
+        $this->mock(CommercialDocumentInterpreter::class, function ($mock): void
+        {
+            $mock->shouldReceive('interpret')->once()->andReturn([
+                'kind' => 'price_list',
+                'supplier_name' => 'Maxikol',
+                'currency' => 'ARS',
+                'lines' => [[
+                    'code' => 'A1',
+                    'name' => 'Aceite',
+                    'cost' => 1000.0,
+                    'quantity' => null,
+                    'unit' => null,
+                    'barcode' => null,
+                    'oem' => null,
+                ]],
+            ]);
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/shop/supplier-price-lists/import', [
+                'file' => UploadedFile::fake()->create('maxikol.pdf', 20, 'application/pdf'),
+                'currency_id' => $currencyId,
+                'markup_percent' => 50,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.created', 1);
+
+        $this->assertDatabaseHas('enterprises', [
+            'team_id' => $team->id,
+            'name' => 'Maxikol',
+            'type_id' => 2,
+        ]);
+
+        $product = Product::query()->where('name', 'Aceite')->first();
+        $this->assertNotNull($product);
+        $this->assertEquals(1000, (float) $product->cost);
+        $this->assertEquals(1500, (float) $product->price);
+    }
+
+    public function test_a_requisition_uses_the_catalog_selling_price(): void
+    {
+        [, $team, $token] = $this->adminWithShop();
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Contenedor',
+            'code' => '17 08 58',
+            'price' => 1,
+            'cost' => 100,
+            'markup_percent' => 100,
+            'currency_id' => $currencyId,
+        ]);
+
+        $this->mock(CommercialDocumentInterpreter::class, function ($mock): void
+        {
+            $mock->shouldReceive('interpret')->once()->andReturn([
+                'kind' => 'requisition',
+                'supplier_name' => null,
+                'currency' => null,
+                'lines' => [[
+                    'code' => '170858',
+                    'name' => 'STAINLESS STEEL CONTAINERS',
+                    'cost' => null,
+                    'quantity' => 6,
+                    'unit' => 'PC',
+                    'barcode' => null,
+                    'oem' => null,
+                ]],
+            ]);
+        });
+
+        $line = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/shop/products/quote-document', [
+                'file' => UploadedFile::fake()->create('galley.xlsx', 20, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
+            ])
+            ->assertOk()
+            ->json('data.lines.0');
+
+        $this->assertTrue($line['matched']);
+        $this->assertSame(6, (int) $line['quantity']);
+        $this->assertEquals(200, $line['unit_price']);
+        $this->assertArrayNotHasKey('cost', $line);
     }
 }

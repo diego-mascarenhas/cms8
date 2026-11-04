@@ -194,11 +194,57 @@ class ServiceSync extends Model
     }
 
     /**
+     * Group label for a client list: metadata category, then the plan name.
+     */
+    public function clientCategoryLabel(): string
+    {
+        $raw = strtolower(trim((string) data_get($this->data, 'category', data_get($this->data, 'type', ''))));
+        if ($raw === '')
+        {
+            $raw = strtolower(trim((string) data_get($this->raw_payload, 'metadata.category', data_get($this->raw_payload, 'metadata.type', ''))));
+        }
+
+        $fromSlug = $this->categoryLabelFromSlug($raw);
+        if ($fromSlug !== null)
+        {
+            return $fromSlug;
+        }
+
+        $name = mb_strtolower($this->clientFacingName());
+        if (preg_match('/\b(dominio|dominios|domain)\b/u', $name) === 1)
+        {
+            return 'Dominios';
+        }
+        if (preg_match('/\b(ssl|certificado)\b/u', $name) === 1)
+        {
+            return 'Certificados';
+        }
+        if (preg_match('/\b(email|mail|smtp)\b/u', $name) === 1)
+        {
+            return 'Email';
+        }
+        if (preg_match('/\basesor/u', $name) === 1)
+        {
+            return 'Asesoramiento';
+        }
+        if (preg_match('/\b(hosting|vps|cloud|servidor|cpanel)\b/u', $name) === 1)
+        {
+            return 'Hosting';
+        }
+
+        return 'Otros';
+    }
+
+    /**
      * Domain used to find the hosting account. Metadata is preferred; the name is the fallback when metadata is empty.
      */
     public function hostingDomainCandidate(): ?string
     {
         $fromData = strtolower(trim((string) data_get($this->data, 'domain')));
+        if ($fromData === '')
+        {
+            $fromData = strtolower(trim((string) data_get($this->raw_payload, 'metadata.domain')));
+        }
         if ($fromData !== '')
         {
             return $fromData;
@@ -290,6 +336,20 @@ class ServiceSync extends Model
         }
 
         return '<span class="badge rounded-pill bg-label-'.$color.'">'.e($label).'</span>';
+    }
+
+    private function categoryLabelFromSlug(string $raw): ?string
+    {
+        return match ($raw)
+        {
+            '' => null,
+            'hosting', 'cpanel', 'vps', 'cloud' => 'Hosting',
+            'dominio', 'dominios', 'domain' => 'Dominios',
+            'ssl' => 'Certificados',
+            'emailer', 'mail', 'smtp', 'email' => 'Email',
+            'asesoramiento', 'consulting' => 'Asesoramiento',
+            default => mb_convert_case($raw, MB_CASE_TITLE, 'UTF-8'),
+        };
     }
 
     private function stripeDiscountLabel(): string

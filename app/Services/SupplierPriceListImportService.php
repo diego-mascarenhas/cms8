@@ -57,7 +57,16 @@ class SupplierPriceListImportService
      */
     public function import(string $path, Team $team, Enterprise $supplier, array $meta): array
     {
-        $rows = $this->readRows($path);
+        return $this->importRows($this->readRows($path), $team, $supplier, $meta);
+    }
+
+    /**
+     * @param  list<array<string, string>>  $rows
+     * @param  array{name?: string|null, markup_percent: float, currency_id: int, valid_from?: string|null, valid_until?: string|null}  $meta
+     * @return array{list: SupplierPriceList, created: int, updated: int, skipped: int, errors: list<string>}
+     */
+    public function importRows(array $rows, Team $team, Enterprise $supplier, array $meta): array
+    {
         $currencyId = (int) $meta['currency_id'];
         $listMarkup = (float) $meta['markup_percent'];
 
@@ -191,9 +200,14 @@ class SupplierPriceListImportService
     {
         $base = Product::query()->where('team_id', $teamId);
 
-        if ($row['code'] !== '')
+        $compactCode = preg_replace('/\s+/', '', $row['code']) ?? '';
+        if ($compactCode !== '')
         {
-            $byCode = (clone $base)->where('code', $row['code'])->first();
+            $byCode = (clone $base)->where(function ($query) use ($row, $compactCode)
+            {
+                $query->where('code', $row['code'])
+                    ->orWhereRaw("REPLACE(UPPER(code), ' ', '') = ?", [$compactCode]);
+            })->first();
             if ($byCode)
             {
                 return $byCode;
@@ -325,6 +339,34 @@ class SupplierPriceListImportService
         }
 
         return Str::limit($supplier->name.' '.now()->toDateString(), 255, '');
+    }
+
+    /**
+     * @return array{kind: string, supplier_name: null, currency: null, lines: list<array{code: string, name: string, cost: float, quantity: ?float, unit: ?string, barcode: ?string, oem: ?string}>}
+     */
+    public function previewCsv(string $path): array
+    {
+        $lines = [];
+        foreach ($this->readRows($path) as $row)
+        {
+            $prepared = $this->prepareRow($row, count($lines) + 2);
+            $lines[] = [
+                'code' => $prepared['code'],
+                'name' => $prepared['name'],
+                'cost' => $prepared['cost'],
+                'quantity' => $prepared['min_qty'],
+                'unit' => $prepared['unit'],
+                'barcode' => $prepared['barcode'],
+                'oem' => $prepared['oem'],
+            ];
+        }
+
+        return [
+            'kind' => 'price_list',
+            'supplier_name' => null,
+            'currency' => null,
+            'lines' => $lines,
+        ];
     }
 
     /**

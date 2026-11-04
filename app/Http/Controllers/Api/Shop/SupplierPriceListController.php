@@ -4,16 +4,22 @@ namespace App\Http\Controllers\Api\Shop;
 
 use App\Http\Controllers\Api\Shop\Concerns\ResolvesShopTeam;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\ConfirmSupplierPriceListRequest;
 use App\Http\Requests\Api\ImportSupplierPriceListRequest;
+use App\Http\Requests\Api\InterpretQuoteDocumentRequest;
 use App\Http\Requests\Api\StoreShopSupplierRequest;
 use App\Http\Requests\Api\UpdateShopPricingRequest;
 use App\Models\Enterprise;
 use App\Models\Product;
 use App\Models\SupplierPriceList;
+use App\Models\Team;
+use App\Services\CommercialDocumentInterpreter;
+use App\Services\QuoteDocumentService;
 use App\Services\SupplierPriceListImportService;
 use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class SupplierPriceListController extends Controller
 {
@@ -67,8 +73,42 @@ class SupplierPriceListController extends Controller
         ]);
     }
 
-    public function import(
-        ImportSupplierPriceListRequest $request,
+    public function preview(
+        InterpretQuoteDocumentRequest $request,
+        SupplierPriceListImportService $importer,
+        CommercialDocumentInterpreter $documents,
+    ): JsonResponse {
+        $team = $this->shopTeam($request, 'products');
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $this->authorize('create', Product::class);
+        $file = $request->file('file');
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        try
+        {
+            $document = in_array($extension, ['csv', 'txt'], true)
+                ? $importer->previewCsv($file->getRealPath())
+                : $documents->interpret($file->getRealPath(), $file->getClientOriginalName(), (int) $team->id);
+        } catch (\RuntimeException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $document,
+        ]);
+    }
+
+    public function confirm(
+        ConfirmSupplierPriceListRequest $request,
         SupplierPriceListImportService $importer,
     ): JsonResponse {
         $team = $this->shopTeam($request, 'products');
@@ -78,20 +118,152 @@ class SupplierPriceListController extends Controller
         }
 
         $validated = $request->validated();
-        $supplier = Enterprise::query()->where('type_id', 2)->findOrFail($validated['enterprise_id']);
+        $supplier = ! empty($validated['enterprise_id'])
+            ? Enterprise::query()->where('type_id', 2)->findOrFail($validated['enterprise_id'])
+            : $this->supplierFromName($team, $validated['supplier_name'] ?? null);
+        if ($supplier === null)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Choose or create the supplier.'),
+            ], 422);
+        }
+
         $markup = array_key_exists('markup_percent', $validated) && $validated['markup_percent'] !== null
             ? (float) $validated['markup_percent']
             : $team->shopDefaultMarkupPercent();
+        $rows = [];
+        foreach ($validated['lines'] as $line)
+        {
+            $rows[] = [
+                'code' => (string) ($line['code'] ?? ''),
+                'name' => (string) $line['name'],
+                'cost' => (string) $line['cost'],
+                'barcode' => (string) ($line['barcode'] ?? ''),
+                'oem' => (string) ($line['oem'] ?? ''),
+                'min_qty' => isset($line['quantity']) ? (string) $line['quantity'] : '',
+                'unit' => (string) ($line['unit'] ?? ''),
+            ];
+        }
 
         try
         {
-            $result = $importer->import($request->file('file')->getRealPath(), $team, $supplier, [
+            $result = $importer->importRows($rows, $team, $supplier, [
                 'name' => $validated['name'] ?? null,
                 'markup_percent' => $markup,
                 'currency_id' => (int) $validated['currency_id'],
-                'valid_from' => $validated['valid_from'] ?? null,
-                'valid_until' => $validated['valid_until'] ?? null,
             ]);
+        } catch (\RuntimeException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        $imported = $result['created'] + $result['updated'];
+
+        return response()->json([
+            'success' => $imported > 0,
+            'message' => $imported > 0
+                ? __(':created created, :updated updated, :skipped skipped.', [
+                    'created' => $result['created'],
+                    'updated' => $result['updated'],
+                    'skipped' => $result['skipped'],
+                ])
+                : __('No products were imported.'),
+            'data' => [
+                'list' => $this->formatList($result['list']),
+                'created' => $result['created'],
+                'updated' => $result['updated'],
+                'skipped' => $result['skipped'],
+                'errors' => $result['errors'],
+            ],
+        ], $imported > 0 ? 200 : 422);
+    }
+
+    public function import(
+        ImportSupplierPriceListRequest $request,
+        SupplierPriceListImportService $importer,
+        CommercialDocumentInterpreter $documents,
+    ): JsonResponse {
+        $team = $this->shopTeam($request, 'products');
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $validated = $request->validated();
+        $supplier = ! empty($validated['enterprise_id'])
+            ? Enterprise::query()->where('type_id', 2)->findOrFail($validated['enterprise_id'])
+            : null;
+        $markup = array_key_exists('markup_percent', $validated) && $validated['markup_percent'] !== null
+            ? (float) $validated['markup_percent']
+            : $team->shopDefaultMarkupPercent();
+        $meta = [
+            'name' => $validated['name'] ?? null,
+            'markup_percent' => $markup,
+            'currency_id' => (int) $validated['currency_id'],
+            'valid_from' => $validated['valid_from'] ?? null,
+            'valid_until' => $validated['valid_until'] ?? null,
+        ];
+        $file = $request->file('file');
+        $extension = strtolower($file->getClientOriginalExtension());
+
+        try
+        {
+            if (in_array($extension, ['csv', 'txt'], true))
+            {
+                if ($supplier === null)
+                {
+                    return response()->json([
+                        'success' => false,
+                        'message' => __('Choose or create the supplier.'),
+                    ], 422);
+                }
+
+                $result = $importer->import($file->getRealPath(), $team, $supplier, $meta);
+            } else
+            {
+                $document = $documents->interpret($file->getRealPath(), $file->getClientOriginalName(), (int) $team->id);
+                $supplier ??= $this->supplierFromName($team, $document['supplier_name']);
+                if ($supplier === null)
+                {
+                    return response()->json([
+                        'success' => false,
+                        'message' => __('Choose or create the supplier.'),
+                    ], 422);
+                }
+
+                $rows = [];
+                foreach ($document['lines'] as $line)
+                {
+                    if ($line['cost'] === null)
+                    {
+                        continue;
+                    }
+
+                    $rows[] = [
+                        'code' => $line['code'],
+                        'name' => $line['name'],
+                        'cost' => (string) $line['cost'],
+                        'barcode' => (string) ($line['barcode'] ?? ''),
+                        'oem' => (string) ($line['oem'] ?? ''),
+                        'min_qty' => $line['quantity'] !== null ? (string) $line['quantity'] : '',
+                        'unit' => (string) ($line['unit'] ?? ''),
+                    ];
+                }
+
+                if ($rows === [])
+                {
+                    return response()->json([
+                        'success' => false,
+                        'message' => __('This file is an order without costs. Use it in the quote.'),
+                    ], 422);
+                }
+
+                $result = $importer->importRows($rows, $team, $supplier, $meta);
+            }
         } catch (\RuntimeException $e)
         {
             return response()->json([
@@ -212,6 +384,35 @@ class SupplierPriceListController extends Controller
         ]);
     }
 
+    public function quoteDocument(
+        InterpretQuoteDocumentRequest $request,
+        QuoteDocumentService $quotes,
+    ): JsonResponse {
+        $team = $this->shopTeam($request, 'products');
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $file = $request->file('file');
+
+        try
+        {
+            $document = $quotes->quoteLines($file->getRealPath(), $file->getClientOriginalName(), $team);
+        } catch (\RuntimeException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $document,
+        ]);
+    }
+
     public function quoteProducts(Request $request): JsonResponse
     {
         $team = $this->shopTeam($request, 'products');
@@ -253,6 +454,31 @@ class SupplierPriceListController extends Controller
         return response()->json([
             'success' => true,
             'data' => $items,
+        ]);
+    }
+
+    private function supplierFromName(Team $team, ?string $name): ?Enterprise
+    {
+        $name = trim((string) $name);
+        if ($name === '')
+        {
+            return null;
+        }
+
+        $existing = Enterprise::query()
+            ->suppliers()
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+            ->first();
+        if ($existing)
+        {
+            return $existing;
+        }
+
+        return Enterprise::query()->create([
+            'team_id' => $team->id,
+            'type_id' => 2,
+            'status_id' => 2,
+            'name' => Str::limit($name, 75, ''),
         ]);
     }
 

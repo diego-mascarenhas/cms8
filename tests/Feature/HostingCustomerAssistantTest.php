@@ -58,8 +58,39 @@ class HostingCustomerAssistantTest extends TestCase
             (int) $contact->id,
         );
 
-        $this->assertStringContainsString('example.test', $text);
-        $this->assertStringContainsString('cpanel', $text);
+        $this->assertStringContainsString("Hosting\n- Hosting example.test · activa · cpanel · activo · plan essential", $text);
+    }
+
+    public function test_lists_domain_renewals_with_the_metadata_domain(): void
+    {
+        [$user, , $contact] = $this->createHosting();
+
+        ServiceSync::query()->create([
+            'team_id' => $user->current_team_id,
+            'stripe_id' => 'sub_domain_renewal',
+            'customer_id' => 'cus_hosting_demo',
+            'status' => 'active',
+            'plan_name' => 'Renovación anual',
+            'price_currency' => 'EUR',
+            'amount_total' => 24,
+            'plan_interval' => 'year',
+            'current_period_end' => '2027-11-02 01:09:21',
+            'data' => [
+                'domain' => 'grupogremond.com',
+                'category' => 'dominio',
+            ],
+        ]);
+
+        $text = app(HostingCustomerAssistantService::class)->listForContact(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+        );
+
+        $this->assertStringContainsString(
+            "Dominios\n- Renovación anual · grupogremond.com · activa · 24,00 EUR · Anual · próxima 02/11/2027",
+            $text,
+        );
+        $this->assertStringContainsString('Hosting example.test', $text);
     }
 
     public function test_a_consulting_subscription_is_not_treated_as_hosting(): void
@@ -81,7 +112,8 @@ class HostingCustomerAssistantTest extends TestCase
         );
 
         $this->assertStringContainsString('example.test', $text);
-        $this->assertStringNotContainsString('Asesoramiento', $text);
+        $this->assertStringContainsString("Asesoramiento\n- Asesoramiento telefónico · activa", $text);
+        $this->assertStringNotContainsString('Asesoramiento telefónico · activa · cpanel', $text);
     }
 
     public function test_deactivated_subscriptions_are_listed_and_cannot_be_changed(): void
@@ -113,9 +145,9 @@ class HostingCustomerAssistantTest extends TestCase
             (int) $contact->id,
         );
 
-        $this->assertStringContainsString('example.test', $text);
-        $this->assertStringContainsString('legacy.test · cancelada · hosting', $text);
-        $this->assertStringContainsString('Asesoramiento viejo · cancelada · no es hosting', $text);
+        $this->assertStringContainsString('Hosting example.test · activa · cpanel · activo', $text);
+        $this->assertStringContainsString('Hosting legacy.test · cancelada', $text);
+        $this->assertStringContainsString("Asesoramiento\n- Asesoramiento viejo · cancelada", $text);
     }
 
     public function test_a_deactivated_hosting_subscription_is_listed_and_not_changed(): void
