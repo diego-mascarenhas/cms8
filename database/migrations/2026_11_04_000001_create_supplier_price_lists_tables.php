@@ -14,7 +14,8 @@ return new class extends Migration
             $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete();
             $table->foreignId('enterprise_id')->constrained('enterprises')->cascadeOnDelete();
             $table->string('name');
-            $table->foreignId('currency_id')->constrained('currencies')->cascadeOnDelete();
+            $table->unsignedInteger('currency_id');
+            $table->foreign('currency_id')->references('id')->on('currencies')->cascadeOnDelete();
             $table->decimal('markup_percent', 8, 2)->default(0);
             $table->date('valid_from')->nullable();
             $table->date('valid_until')->nullable();
