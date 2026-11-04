@@ -19,12 +19,14 @@ use App\Models\DocumentIngestion;
 use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\Service;
+use App\Models\ServiceSync;
 use App\Models\ShoppingCart;
 use App\Models\Store;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Billing\SubscriptionCatalogText;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
@@ -1874,64 +1876,32 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             } else
             {
                 $responseMessage = "📋 *Información de tus servicios:*\n\n";
+                $catalog = app(SubscriptionCatalogText::class);
 
                 foreach ($enterprises as $enterprise)
                 {
+                    $responseMessage .= "🏢 *{$enterprise->name}*\n";
+                    $code = trim((string) $enterprise->code);
+                    $subscriptions = $code === ''
+                        ? collect()
+                        : ServiceSync::query()
+                            ->where('team_id', $enterprise->team_id)
+                            ->where('customer_id', $code)
+                            ->get();
+
+                    if ($subscriptions->isNotEmpty())
+                    {
+                        $responseMessage .= $catalog->grouped($subscriptions)."\n\n";
+
+                        continue;
+                    }
+
                     $services = Service::where('enterprise_id', $enterprise->id)
                         ->with(['category', 'currency'])
-                        ->orderBy('status', 'desc')
                         ->orderBy('next_billing', 'asc')
                         ->get();
 
-                    $responseMessage .= "🏢 *{$enterprise->name}*\n";
-
-                    if ($services->isEmpty())
-                    {
-                        $responseMessage .= "• No hay servicios registrados actualmente\n\n";
-                    } else
-                    {
-                        foreach ($services as $service)
-                        {
-                            $statusEmoji = $service->status == 1 ? '✅' : '⚠️';
-                            $responseMessage .= "{$statusEmoji} *{$service->description}*\n";
-
-                            if ($service->category)
-                            {
-                                $responseMessage .= "   Categoría: {$service->category->name}\n";
-                            }
-
-                            if ($service->price)
-                            {
-                                $currency = $service->currency ? $service->currency->symbol : '$';
-                                $responseMessage .= "   Precio: {$currency}".number_format($service->price, 2)."\n";
-                            }
-
-                            if ($service->next_billing)
-                            {
-                                $nextBilling = \Carbon\Carbon::parse($service->next_billing)->format('d/m/Y');
-                                $responseMessage .= "   Próxima facturación: {$nextBilling}\n";
-                            }
-
-                            if ($service->expires_at)
-                            {
-                                $expiresAt = \Carbon\Carbon::parse($service->expires_at)->format('d/m/Y');
-                                $daysUntilExpiry = \Carbon\Carbon::now()->diffInDays(\Carbon\Carbon::parse($service->expires_at), false);
-
-                                if ($daysUntilExpiry <= 30 && $daysUntilExpiry >= 0)
-                                {
-                                    $responseMessage .= "   ⚠️ Expira: {$expiresAt} (en {$daysUntilExpiry} días)\n";
-                                } elseif ($daysUntilExpiry < 0)
-                                {
-                                    $responseMessage .= "   🔴 Expiró: {$expiresAt}\n";
-                                } else
-                                {
-                                    $responseMessage .= "   Expira: {$expiresAt}\n";
-                                }
-                            }
-
-                            $responseMessage .= "\n";
-                        }
-                    }
+                    $responseMessage .= $catalog->groupedServices($services)."\n\n";
                 }
 
                 // Add helpful information

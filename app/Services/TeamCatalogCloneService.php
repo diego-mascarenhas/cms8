@@ -170,6 +170,8 @@ class TeamCatalogCloneService
                     'oem' => $product->oem,
                     'description' => $product->description,
                     'short_description' => $product->short_description,
+                    'cost' => $product->cost,
+                    'markup_percent' => $product->markup_percent,
                     'price' => $product->price,
                     'sale_price' => $product->sale_price,
                     'currency_id' => $product->currency_id,

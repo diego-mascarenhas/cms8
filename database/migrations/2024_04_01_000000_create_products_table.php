@@ -21,6 +21,8 @@ return new class extends Migration
             $table->string('oem', 80)->nullable();
             $table->text('description');
             $table->text('short_description')->nullable();
+            $table->decimal('cost', 10, 2)->nullable();
+            $table->decimal('markup_percent', 8, 2)->nullable();
             $table->decimal('price', 10, 2);
             $table->decimal('sale_price', 10, 2)->nullable();
             $table->unsignedInteger('currency_id');

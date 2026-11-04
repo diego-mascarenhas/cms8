@@ -610,4 +610,41 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         $this->assertSame(5.0, $tasks[0]['estimated_hours']);
         $this->assertSame(2.5, $tasks[1]['estimated_hours']);
     }
+
+    #[Test]
+    public function product_lines_keep_the_selling_price_and_hide_cost(): void
+    {
+        $service = new ProjectBudgetSpecService;
+        $project = new \App\Models\Project([
+            'discount' => 0,
+            'price' => null,
+            'name' => 'Pedido',
+            'data' => [
+                'quote_finalized' => true,
+                'token_include' => false,
+                'suggested_tasks' => [],
+                'quote_products' => [[
+                    'product_id' => 4,
+                    'name' => 'Remera blanca',
+                    'code' => 'REM-001',
+                    'quantity' => 2,
+                    'unit_price' => 150,
+                    'cost' => 100,
+                    'markup_percent' => 50,
+                ]],
+            ],
+        ]);
+
+        $preview = $service->publicPreview($project);
+
+        $this->assertSame('Remera blanca', $preview['product_rows'][0]['name']);
+        $this->assertSame(2.0, $preview['product_rows'][0]['quantity']);
+        $this->assertArrayNotHasKey('cost', $preview['product_rows'][0]);
+        $this->assertStringContainsString('300,00', $preview['totals']['total']);
+        $this->assertStringContainsString('300,00', $preview['totals']['products']);
+
+        $stored = $service->normalizeQuoteProducts($project->data['quote_products']);
+        $this->assertArrayNotHasKey('cost', $stored[0]);
+        $this->assertSame(150.0, $stored[0]['unit_price']);
+    }
 }

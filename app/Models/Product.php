@@ -27,6 +27,8 @@ class Product extends Model implements HasMedia
         'oem',
         'description',
         'short_description',
+        'cost',
+        'markup_percent',
         'price',
         'sale_price',
         'currency_id',
@@ -48,6 +50,8 @@ class Product extends Model implements HasMedia
     ];
 
     protected $casts = [
+        'cost' => 'decimal:2',
+        'markup_percent' => 'decimal:2',
         'price' => 'decimal:2',
         'sale_price' => 'decimal:2',
         'status' => 'boolean',
@@ -77,6 +81,8 @@ class Product extends Model implements HasMedia
 
         static::saving(function (Product $product): void
         {
+            $product->syncSellingPriceFromCost();
+
             if ($product->catalog_status === null)
             {
                 $product->catalog_status = $product->status
@@ -109,6 +115,34 @@ class Product extends Model implements HasMedia
         $this
             ->addMediaCollection('image')
             ->useDisk('public');
+    }
+
+    /**
+     * Selling price from supplier cost plus the product markup.
+     */
+    public static function sellingPriceFromCost(float $cost, float $markupPercent): float
+    {
+        $markup = max(0, $markupPercent);
+
+        return round(max(0, $cost) * (1 + ($markup / 100)), 2);
+    }
+
+    /**
+     * When cost and markup are both set, the server owns the selling price.
+     */
+    public function syncSellingPriceFromCost(): void
+    {
+        if ($this->cost === null || $this->markup_percent === null)
+        {
+            return;
+        }
+
+        $this->price = self::sellingPriceFromCost((float) $this->cost, (float) $this->markup_percent);
+
+        if ($this->sale_price !== null && (float) $this->sale_price >= (float) $this->price)
+        {
+            $this->sale_price = null;
+        }
     }
 
     /**

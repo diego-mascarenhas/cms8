@@ -665,6 +665,69 @@ class ProjectBudgetSpecService
     }
 
     /**
+     * Product lines keep the selling price from the moment they were added.
+     * Cost and markup are not part of the quote.
+     *
+     * @return list<array{product_id: int|null, name: string, code: string, quantity: float, unit_price: float, currency: string}>
+     */
+    public function normalizeQuoteProducts(mixed $raw): array
+    {
+        if (! is_array($raw))
+        {
+            return [];
+        }
+
+        $lines = [];
+        foreach ($raw as $line)
+        {
+            if (! is_array($line))
+            {
+                continue;
+            }
+
+            $name = trim((string) ($line['name'] ?? ''));
+            $quantity = is_numeric($line['quantity'] ?? null) ? (float) $line['quantity'] : 0.0;
+            $unitPrice = is_numeric($line['unit_price'] ?? null) ? round((float) $line['unit_price'], 2) : 0.0;
+            if ($name === '' || $quantity <= 0)
+            {
+                continue;
+            }
+
+            $currency = strtoupper(trim((string) ($line['currency'] ?? '')));
+            $lines[] = [
+                'product_id' => isset($line['product_id']) && is_numeric($line['product_id']) ? (int) $line['product_id'] : null,
+                'name' => $name,
+                'code' => trim((string) ($line['code'] ?? '')),
+                'quantity' => $quantity,
+                'unit_price' => max(0, $unitPrice),
+                'currency' => in_array($currency, ['EUR', 'USD', 'ARS'], true) ? $currency : '',
+            ];
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function quoteProductsTotal(array $data): float
+    {
+        $quoteCurrency = $this->normalizeQuoteCurrency(data_get($data, 'quote_currency', 'EUR'));
+        $total = 0.0;
+        foreach ($this->normalizeQuoteProducts($data['quote_products'] ?? null) as $line)
+        {
+            $lineCurrency = $line['currency'] !== '' ? $line['currency'] : $quoteCurrency;
+            if ($lineCurrency !== $quoteCurrency)
+            {
+                continue;
+            }
+            $total += round($line['quantity'] * $line['unit_price'], 2);
+        }
+
+        return round($total, 2);
+    }
+
+    /**
      * Normalize budget JSON the same way the web project form does.
      *
      * @param  array<string, mixed>|null  $data
@@ -677,8 +740,18 @@ class ProjectBudgetSpecService
             return null;
         }
 
+        if (array_key_exists('quote_products', $data))
+        {
+            $data['quote_products'] = $this->normalizeQuoteProducts($data['quote_products']);
+        }
+
         if (! isset($data['suggested_tasks']))
         {
+            if (($data['quote_products'] ?? []) !== [] && empty($data['budget_preview_token']))
+            {
+                $data['budget_preview_token'] = Str::random(48);
+            }
+
             return $data;
         }
 
@@ -700,7 +773,8 @@ class ProjectBudgetSpecService
             $data['ai_suggested_tasks'] = $data['suggested_tasks'];
         }
 
-        if ($data['suggested_tasks'] !== [] && empty($data['budget_preview_token']))
+        $hasQuoteProducts = ($data['quote_products'] ?? []) !== [];
+        if (($data['suggested_tasks'] !== [] || $hasQuoteProducts) && empty($data['budget_preview_token']))
         {
             $data['budget_preview_token'] = Str::random(48);
         }
@@ -1201,7 +1275,8 @@ class ProjectBudgetSpecService
             $totalTokenBillable += $this->chargedTokenAmount($line['token_billable']);
         }
 
-        $grandTotal = (int) round($totalLabor + $totalTokenBillable);
+        $productsTotal = $this->quoteProductsTotal($data);
+        $grandTotal = (int) round($totalLabor + $totalTokenBillable + $productsTotal);
         $usedPriceFallback = false;
 
         if ($grandTotal <= 0 && is_numeric($project->price) && (float) $project->price > 0)
@@ -1221,7 +1296,7 @@ class ProjectBudgetSpecService
         {
             // Commercial discount applies to labor only; tokens stay full price.
             $discountedLabor = round($totalLabor * (1 - ($discountPercent / 100)), 2);
-            $discountedTotal = (int) round($discountedLabor + $totalTokenBillable);
+            $discountedTotal = (int) round($discountedLabor + $totalTokenBillable + $productsTotal);
         }
 
         $payableTotal = $discountPercent > 0 ? $discountedTotal : $grandTotal;
@@ -1864,6 +1939,27 @@ class ProjectBudgetSpecService
         $responseStatus = is_array($clientResponse) ? ($clientResponse['status'] ?? null) : null;
         $quoteAccepted = $project->isBudgetApproved() || $responseStatus === 'accepted';
         $quoteClosed = $quoteAccepted || $responseStatus === 'reformulation_requested';
+        $productLines = $this->normalizeQuoteProducts(data_get($project->data, 'quote_products'));
+        $productRows = [];
+        $productsTotal = 0.0;
+        foreach ($productLines as $line)
+        {
+            $lineTotal = round($line['quantity'] * $line['unit_price'], 2);
+            $lineCurrency = $line['currency'] !== '' ? $line['currency'] : $quoteCurrency;
+            $formatLine = fn (float|int $amount): string => $this->formatQuoteMoney($amount, $lineCurrency);
+            if ($lineCurrency === $quoteCurrency)
+            {
+                $productsTotal += $lineTotal;
+            }
+            $productRows[] = [
+                'name' => $line['name'],
+                'code' => $line['code'],
+                'quantity' => $line['quantity'],
+                'unit_price' => $formatLine($line['unit_price']),
+                'line_total' => $formatLine($lineTotal),
+            ];
+        }
+        $payableWithProducts = round((float) $clientTotal + $productsTotal, 2);
 
         return [
             'token' => $token,
@@ -1877,16 +1973,18 @@ class ProjectBudgetSpecService
             'discriminate_tokens' => $discriminateTokens,
             'include_tokens' => $includeTokens,
             'rows' => $rows,
+            'product_rows' => $productRows,
             'totals' => [
                 'labor' => $formatMoney($discriminateTokens || ! $includeTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)),
                 'tokens' => $totalDisplayTokens > 0 ? $this->formatTokenCount($totalDisplayTokens) : '—',
                 'token_cost' => $formatMoney($totalTokenBillable),
+                'products' => $formatMoney($productsTotal),
                 'subtotal' => $formatMoney($grandTotal),
                 'discount_percent' => $discountPercent,
                 'discount_amount' => $formatMoney($laborDiscountAmount),
-                'total' => $formatMoney($clientTotal),
-                'deposit' => $formatMoney((int) round($clientTotal * 0.30)),
-                'remaining' => $formatMoney(max(0, $clientTotal - (int) round($clientTotal * 0.30))),
+                'total' => $formatMoney($payableWithProducts),
+                'deposit' => $formatMoney((int) round($payableWithProducts * 0.30)),
+                'remaining' => $formatMoney(max(0, $payableWithProducts - (int) round($payableWithProducts * 0.30))),
                 'weeks' => $totalHours > 0 ? (int) ceil($totalHours / 40) : 0,
             ],
             'client_response' => $clientResponse,

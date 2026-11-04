@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Project;
+use App\Services\ProjectBudgetSpecService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -29,6 +30,7 @@ class ProjectBudgetQuoteMail extends Mailable
                 'projectName' => $projectName,
                 'requestSummary' => $this->requestSummary(),
                 'sections' => $this->quoteSections(),
+                'productLines' => $this->productLines(),
                 'previewUrl' => $this->previewUrl,
                 'trackingPixelUrl' => $trackingPixelUrl,
             ]);
@@ -168,5 +170,34 @@ class ProjectBudgetQuoteMail extends Mailable
         }
 
         return $sections;
+    }
+
+    /**
+     * Selling prices only. Supplier cost stays off the email.
+     *
+     * @return list<array{label: string, amount: string}>
+     */
+    private function productLines(): array
+    {
+        $data = is_array($this->project->data) ? $this->project->data : [];
+        $quoteCurrency = strtoupper(trim((string) data_get($data, 'quote_currency', 'EUR')));
+        if (! in_array($quoteCurrency, ['EUR', 'USD', 'ARS'], true))
+        {
+            $quoteCurrency = 'EUR';
+        }
+
+        $lines = [];
+        foreach (app(ProjectBudgetSpecService::class)->normalizeQuoteProducts($data['quote_products'] ?? null) as $line)
+        {
+            $currency = $line['currency'] !== '' ? $line['currency'] : $quoteCurrency;
+            $total = round($line['quantity'] * $line['unit_price'], 2);
+            $quantity = rtrim(rtrim(number_format($line['quantity'], 3, '.', ''), '0'), '.');
+            $lines[] = [
+                'label' => trim($line['name'].($line['code'] !== '' ? ' ('.$line['code'].')' : '').' × '.$quantity),
+                'amount' => number_format($total, 2, ',', '.').' '.$currency,
+            ];
+        }
+
+        return $lines;
     }
 }

@@ -101,6 +101,7 @@ class LookupController extends Controller
                 'cart_channels' => $this->enumOptions(ShoppingCartChannel::cases()),
                 'catalog_slug' => $team->publicCatalogPathSlug(),
                 'catalog_url' => $team->publicCatalogShopUrl(),
+                'default_markup_percent' => $team->shopDefaultMarkupPercent(),
                 'shop_name' => (static function () use ($team): ?string
                 {
                     $config = $team->getDecodedBusinessConfig();

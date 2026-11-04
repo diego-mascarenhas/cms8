@@ -1096,7 +1096,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'list_my_hosting',
-                'description' => 'List the contact hosting domains and also deactivated subscriptions, with their status. Active consulting is not hosting. Deactivated subscriptions are visible and must not be changed. Call this only when they ask which hosting, plans, or subscriptions they have. Do not call it for a greeting or for one domain\'s disk space.',
+                'description' => 'List every subscription of this contact, grouped by category (hosting, domains, certificates, email, and the rest), with the domain from metadata, status, price and next date. A hosting line also includes the server account. Other categories are not hosting accounts. Deactivated subscriptions are visible and must not be changed. Call this only when they ask which hosting, plans, domains, or subscriptions they have. Do not call it for a greeting or for one domain\'s disk space.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [],

@@ -63,6 +63,7 @@ use App\Http\Controllers\Api\Shop\OrderController as ShopOrderController;
 use App\Http\Controllers\Api\Shop\ProductController as ShopProductController;
 use App\Http\Controllers\Api\Shop\ProductImageController as ShopProductImageController;
 use App\Http\Controllers\Api\Shop\StoreController as ShopStoreController;
+use App\Http\Controllers\Api\Shop\SupplierPriceListController as ShopSupplierPriceListController;
 use App\Http\Controllers\Api\SiteAssistantInboxController;
 use App\Http\Controllers\Api\SiteAssistantPromptController;
 use App\Http\Controllers\Api\SoftwareController;
@@ -809,6 +810,17 @@ Route::middleware('auth.api')->group(function ()
 
         Route::get('products/import', [ShopProductController::class, 'importSchema']);
         Route::post('products/import', [ShopProductController::class, 'import']);
+        Route::get('products/quote-search', [ShopSupplierPriceListController::class, 'quoteProducts']);
+        Route::post('products/quote-document', [ShopSupplierPriceListController::class, 'quoteDocument']);
+        Route::get('supplier-price-lists/import', [ShopSupplierPriceListController::class, 'importSchema']);
+        Route::post('supplier-price-lists/preview', [ShopSupplierPriceListController::class, 'preview']);
+        Route::post('supplier-price-lists/confirm', [ShopSupplierPriceListController::class, 'confirm']);
+        Route::post('supplier-price-lists/import', [ShopSupplierPriceListController::class, 'import']);
+        Route::get('supplier-price-lists', [ShopSupplierPriceListController::class, 'index']);
+        Route::get('suppliers', [ShopSupplierPriceListController::class, 'suppliers']);
+        Route::post('suppliers', [ShopSupplierPriceListController::class, 'storeSupplier']);
+        Route::get('pricing', [ShopSupplierPriceListController::class, 'pricing']);
+        Route::put('pricing', [ShopSupplierPriceListController::class, 'updatePricing']);
         Route::post('products/images', [ShopProductImageController::class, 'store']);
         Route::get('products', [ShopProductController::class, 'index']);
         Route::post('products', [ShopProductController::class, 'store']);
