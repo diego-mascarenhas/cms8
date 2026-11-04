@@ -33,6 +33,25 @@ JSON);
         $this->assertNull($document['lines'][0]['cost']);
     }
 
+    public function test_a_price_sheet_names_the_supplier_and_the_first_price(): void
+    {
+        $documents = new CommercialDocumentInterpreter(new \App\Services\DocumentAiOcrService);
+        $document = $documents->priceListFromText(<<<'TEXT'
+MAXIKOL Av. eva peron 3453
+COD REF	PRODUCTO	PV 1	PV 2
+7792180001665	ACEITE CAÑUELAS X 1,5 L - UNIDAD	5,488.00	5,390.00
+7792180001641	ACEITE CAÑUELAS X 900 ML - UNIDAD	3,353.28	3,293.40
+7790060234868	ACEITE COCINERO X MEZCLA 900 ML - UNIDAD	3,143.19	3,061.20
+TEXT, '2026-10-28-Maxikol-Listado-productos.pdf');
+
+        $this->assertNotNull($document);
+        $this->assertSame('MAXIKOL', $document['supplier_name']);
+        $this->assertSame('7792180001665', $document['lines'][0]['code']);
+        $this->assertSame('ACEITE CAÑUELAS X 1,5 L - UNIDAD', $document['lines'][0]['name']);
+        $this->assertEquals(5488, $document['lines'][0]['cost']);
+        $this->assertCount(3, $document['lines']);
+    }
+
     public function test_spreadsheet_text_keeps_the_item_and_the_quantity(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'list');

@@ -11,22 +11,26 @@ use function Laravel\Ai\agent;
 
 class CommercialDocumentInterpreter
 {
-    public function __construct(private DocumentAiOcrService $ocr) {}
+    public function __construct(
+        private DocumentAiOcrService $ocr,
+        private DocumentOcrService $localText = new DocumentOcrService,
+    ) {}
 
     /**
      * @return array{kind: string, supplier_name: ?string, currency: ?string, lines: list<array{code: string, name: string, cost: ?float, quantity: ?float, unit: ?string, barcode: ?string, oem: ?string}>}
      */
     public function interpret(string $path, string $originalName, ?int $teamId = null): array
     {
-        $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-        $text = in_array($extension, ['xlsx', 'csv', 'txt'], true)
-            ? ($extension === 'xlsx' ? $this->spreadsheetText($path) : (string) file_get_contents($path))
-            : (string) $this->ocr->extractTextFromLocalFile($path, $teamId);
-
-        $text = trim($text);
+        $text = trim($this->sourceText($path, $originalName, $teamId));
         if ($text === '')
         {
             throw new RuntimeException(__('The file could not be read.'));
+        }
+
+        $parsed = $this->priceListFromText($text, $originalName);
+        if ($parsed !== null)
+        {
+            return $parsed;
         }
 
         $prompt = $this->prompt(Str::limit($text, 120000, ''));
@@ -38,6 +42,28 @@ class CommercialDocumentInterpreter
         $response = AiTasks::prompt($documentAgent, $prompt, 120, 'shop');
 
         return $this->documentFromModelText((string) ($response->text ?? ''));
+    }
+
+    public function sourceText(string $path, string $originalName, ?int $teamId = null): string
+    {
+        $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        if ($extension === 'xlsx')
+        {
+            return $this->spreadsheetText($path);
+        }
+
+        if (in_array($extension, ['csv', 'txt'], true))
+        {
+            return (string) file_get_contents($path);
+        }
+
+        $local = trim((string) $this->localText->extractTextFromLocalFile($path));
+        if ($local !== '')
+        {
+            return $local;
+        }
+
+        return trim((string) $this->ocr->extractTextFromLocalFile($path, $teamId));
     }
 
     public function spreadsheetText(string $path): string
@@ -191,6 +217,146 @@ class CommercialDocumentInterpreter
             'supplier_name' => $this->nullableString($decoded['supplier_name'] ?? null, 75),
             'currency' => in_array($currency, ['ARS', 'USD', 'EUR'], true) ? $currency : null,
             'lines' => $lines,
+        ];
+    }
+
+    /**
+     * @return array{kind: string, supplier_name: ?string, currency: ?string, lines: list<array{code: string, name: string, cost: ?float, quantity: ?float, unit: ?string, barcode: ?string, oem: ?string}>}|null
+     */
+    public function priceListFromText(string $text, string $originalName = ''): ?array
+    {
+        $rows = [];
+        $preface = [];
+        $pending = [];
+        foreach (preg_split('/\r\n|\n|\r/', $text) ?: [] as $rawLine)
+        {
+            $line = trim($rawLine);
+            if ($line === '')
+            {
+                continue;
+            }
+
+            if ($pending !== [] && preg_match('/^\d{5,14}\s/', $line) !== 1)
+            {
+                $pending[] = $line;
+                $row = $this->pricedRow(implode(' ', $pending));
+                if ($row !== null)
+                {
+                    $rows[] = $row;
+                    $pending = [];
+                    if (count($rows) >= 2000)
+                    {
+                        break;
+                    }
+                }
+
+                continue;
+            }
+
+            if ($pending !== [])
+            {
+                $preface[] = implode(' ', $pending);
+                $pending = [];
+            }
+
+            $row = $this->pricedRow($line);
+            if ($row !== null)
+            {
+                $rows[] = $row;
+                if (count($rows) >= 2000)
+                {
+                    break;
+                }
+
+                continue;
+            }
+
+            if (preg_match('/^\d{5,14}\s/', $line) === 1)
+            {
+                $pending = [$line];
+
+                continue;
+            }
+
+            if ($rows === [] && $pending === [] && preg_match('/\b(COD(?:\s*REF)?|PRODUCTO|PV\s*\d)\b/i', $line) !== 1)
+            {
+                $preface[] = $line;
+            }
+        }
+
+        if ($pending !== [])
+        {
+            $row = $this->pricedRow(implode(' ', $pending));
+            if ($row !== null && count($rows) < 2000)
+            {
+                $rows[] = $row;
+            }
+        }
+
+        if (count($rows) < 3)
+        {
+            return null;
+        }
+
+        return [
+            'kind' => 'price_list',
+            'supplier_name' => $this->supplierFromPreface($preface, $originalName),
+            'currency' => null,
+            'lines' => $rows,
+        ];
+    }
+
+    /**
+     * @param  list<string>  $lines
+     */
+    private function supplierFromPreface(array $lines, string $originalName): ?string
+    {
+        foreach ($lines as $line)
+        {
+            $line = trim(preg_replace('/\s+/', ' ', $line) ?? $line);
+            if (preg_match('/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ0-9&.\'\-]{2,})(?:\s|$)/u', $line, $match) === 1)
+            {
+                return $this->nullableString($match[1], 75);
+            }
+        }
+
+        $base = pathinfo($originalName, PATHINFO_FILENAME);
+        $base = preg_replace('/^\d{4}[-_.]\d{2}[-_.]\d{2}[-_.]/', '', $base) ?? $base;
+        $base = preg_replace('/[-_.]+(listado|lista|productos|precios|price).*/i', '', $base) ?? $base;
+        $base = trim(str_replace(['-', '_', '.'], ' ', $base));
+
+        return $this->nullableString($base, 75);
+    }
+
+    /**
+     * @return array{code: string, name: string, cost: ?float, quantity: null, unit: null, barcode: ?string, oem: null}|null
+     */
+    private function pricedRow(string $line): ?array
+    {
+        $line = trim(preg_replace('/[ \t]+/', ' ', $line) ?? $line);
+        $price = '(?:\d{1,3}(?:\.\d{3})+,\d{2}|\d{1,3}(?:,\d{3})+\.\d{2}|\d+[.,]\d{2})';
+        if (preg_match('/^(\d{5,14})\s+(.+?)\s+('.$price.')(?:\s+('.$price.'))?$/', $line, $match) !== 1)
+        {
+            return null;
+        }
+
+        $name = trim($match[2]);
+        $cost = $this->number($match[3]);
+        if ($name === '' || $cost === null)
+        {
+            return null;
+        }
+
+        $code = $match[1];
+
+        return [
+            'code' => $code,
+            'name' => $name,
+            'cost' => $cost,
+            'quantity' => null,
+            'unit' => null,
+            'barcode' => strlen($code) >= 8 ? $code : null,
+            'oem' => null,
         ];
     }
 
