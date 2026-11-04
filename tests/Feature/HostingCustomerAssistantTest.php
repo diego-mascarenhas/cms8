@@ -4,8 +4,12 @@ namespace Tests\Feature;
 
 use App\Contracts\WhatsAppGateway;
 use App\Models\Contact;
+use App\Models\Currency;
 use App\Models\Domain;
 use App\Models\Enterprise;
+use App\Models\Invoice;
+use App\Models\InvoiceSync;
+use App\Models\InvoiceType;
 use App\Models\Server;
 use App\Models\ServiceSync;
 use App\Models\Team;
@@ -164,6 +168,130 @@ class HostingCustomerAssistantTest extends TestCase
         Http::assertSent(fn ($request) => ($request['cpanel_jsonapi_func'] ?? null) === 'add_pop'
             && ($request['domain'] ?? null) === 'otro.test'
             && ($request['cpanel_jsonapi_user'] ?? null) === 'otrousuario');
+    }
+
+    public function test_mailbox_disk_reads_that_mailbox_and_not_the_hosting_plan(): void
+    {
+        Http::fake([
+            'https://cpanel.test:2087/json-api/cpanel*' => Http::response([
+                'result' => [
+                    'status' => 1,
+                    'data' => [
+                        [
+                            'email' => 'noreply@example.test',
+                            'diskused' => '12M',
+                            'diskquota' => '1024M',
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        [$user, $domain, $contact] = $this->createHosting();
+        $domain->forceFill([
+            'data' => ['disk_used' => 204, 'disk_limit' => 1024000],
+        ])->save();
+
+        $text = app(HostingCustomerAssistantService::class)->mailboxDisk(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            'noreply@example.test',
+        );
+
+        $this->assertStringContainsString('noreply@example.test usa 12 MB de 1.024 MB', $text);
+        $this->assertStringNotContainsString('204 MB', $text);
+        $this->assertStringNotContainsString('suscripción', $text);
+    }
+
+    public function test_rehearse_chat_reads_the_mailbox_from_the_thread_when_they_say_esta_casilla(): void
+    {
+        Http::fake([
+            'https://cpanel.test:2087/json-api/cpanel*' => Http::response([
+                'result' => [
+                    'status' => 1,
+                    'data' => [
+                        [
+                            'email' => 'info@example.test',
+                            'diskused' => '3M',
+                            'diskquota' => '512M',
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        [$user, , $contact] = $this->createHosting();
+
+        $this->artisan('hosting:rehearse', [
+            '--chat' => true,
+            '--contact' => $contact->id,
+            '--team' => $user->current_team_id,
+        ])->expectsQuestion('Cliente', 'la cuenta es info@example.test')
+            ->expectsQuestion('Cliente', 'cuando espacio ocupa esta casilla?')
+            ->expectsQuestion('Cliente', 'chau')
+            ->expectsOutputToContain('info@example.test usa 3 MB de 512 MB')
+            ->expectsOutputToContain('salimos del flujo')
+            ->assertSuccessful();
+
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringNotContainsString('De qué dominio', $output);
+    }
+
+    public function test_recent_invoices_lists_the_latest_balance_and_payment_link(): void
+    {
+        [$user, , $contact] = $this->createHosting();
+        $enterprise = $contact->enterprises()->first();
+        $currency = Currency::query()->create([
+            'code' => 'EUR',
+            'name' => 'Euro',
+            'symbol' => '€',
+            'status' => true,
+        ]);
+        $this->makeInvoice($user, $enterprise, $currency, 'FAC-OLD', '2026-01-01', 7, 7, 'in_old');
+        $this->makeInvoice($user, $enterprise, $currency, 'FAC-1', '2026-02-01', 20, 0, 'in_1');
+        $this->makeInvoice($user, $enterprise, $currency, 'FAC-2', '2026-03-01', 15, 0, 'in_2');
+        $this->makeInvoice($user, $enterprise, $currency, 'FAC-3', '2026-04-01', 10, 10, 'in_3', 'https://pay.test/fac-3');
+
+        $text = app(HostingCustomerAssistantService::class)->recentInvoices(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            3,
+        );
+
+        $this->assertStringContainsString('Últimas 3 facturas:', $text);
+        $this->assertStringContainsString('FAC-3', $text);
+        $this->assertStringContainsString('FAC-1', $text);
+        $this->assertStringContainsString('https://pay.test/fac-3', $text);
+        $this->assertStringContainsString('Saldo pendiente: 17,00 EUR', $text);
+        $this->assertStringNotContainsString('FAC-OLD', $text);
+        $this->assertStringNotContainsString('No tengo acceso', $text);
+    }
+
+    public function test_rehearse_chat_lists_the_last_invoices_instead_of_refusing(): void
+    {
+        [$user, , $contact] = $this->createHosting();
+        $enterprise = $contact->enterprises()->first();
+        $currency = Currency::query()->create([
+            'code' => 'EUR',
+            'name' => 'Euro',
+            'symbol' => '€',
+            'status' => true,
+        ]);
+        $this->makeInvoice($user, $enterprise, $currency, 'FAC-9', '2026-04-01', 10, 10, 'in_9', 'https://pay.test/fac-9');
+
+        $this->artisan('hosting:rehearse', [
+            '--chat' => true,
+            '--contact' => $contact->id,
+            '--team' => $user->current_team_id,
+        ])->expectsQuestion('Cliente', 'Cuales son mis últimas 3 facturas?')
+            ->expectsQuestion('Cliente', 'chau')
+            ->expectsOutputToContain('FAC-9')
+            ->expectsOutputToContain('Saldo pendiente: 10,00 EUR')
+            ->assertSuccessful();
+
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringContainsString('https://pay.test/fac-9', $output, $output);
+        $this->assertStringNotContainsString('No tengo acceso', $output);
     }
 
     public function test_listing_mailboxes_includes_every_domain(): void
@@ -883,6 +1011,56 @@ class HostingCustomerAssistantTest extends TestCase
     /**
      * @param  list<array<string, mixed>>  $sent
      */
+    private function makeInvoice(
+        User $user,
+        Enterprise $enterprise,
+        Currency $currency,
+        string $number,
+        string $date,
+        float $total,
+        float $balance,
+        string $stripeId,
+        ?string $paymentUrl = null,
+    ): void {
+        $typeId = InvoiceType::query()->firstOrCreate(['name' => 'Factura'])->id;
+
+        Invoice::query()->create([
+            'team_id' => $user->current_team_id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => $typeId,
+            'operation' => 'sell',
+            'number' => $number,
+            'date' => $date,
+            'due_date' => '2026-12-01',
+            'gross_amount' => $total,
+            'discount' => 0,
+            'total_amount' => $total,
+            'balance' => $balance,
+            'status' => 1,
+            'currency_id' => $currency->id,
+            'source_provider' => 'stripe',
+            'source_reference_id' => $stripeId,
+        ]);
+
+        if ($paymentUrl === null)
+        {
+            return;
+        }
+
+        InvoiceSync::query()->create([
+            'team_id' => $user->current_team_id,
+            'provider' => 'stripe',
+            'external_id' => $stripeId,
+            'customer_id' => $enterprise->code,
+            'number' => $number,
+            'status' => 'open',
+            'currency' => 'eur',
+            'total' => $total,
+            'amount_remaining' => $balance,
+            'hosted_invoice_url' => $paymentUrl,
+        ]);
+    }
+
     private function bindGateway(array &$sent): void
     {
         $this->app->instance(WhatsAppGateway::class, new class($sent) implements WhatsAppGateway

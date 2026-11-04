@@ -5,11 +5,13 @@ namespace App\Services\Hosting;
 use App\Helpers\DnsHelper;
 use App\Models\Contact;
 use App\Models\Domain;
+use App\Models\Invoice;
 use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\CollectionAssistantContextService;
 use App\Services\ControlPanel\CpanelConnector;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class HostingCustomerAssistantService
@@ -138,6 +140,43 @@ class HostingCustomerAssistantService
         return $text;
     }
 
+    public function mailboxDisk(int $teamId, ?int $contactId, ?string $account): string
+    {
+        $localPart = $this->localPart($account);
+        if ($localPart === null)
+        {
+            return '¿De qué casilla querés el espacio?';
+        }
+
+        $domain = $this->resolveCpanelDomain($teamId, $contactId, $this->preferredDomainName(null, $account));
+        if (is_string($domain))
+        {
+            return $domain;
+        }
+
+        $mailbox = $localPart.'@'.$domain->domain;
+        $listed = $this->cpanelConnector->listEmailAccounts($domain->server, $domain);
+        if (! ($listed['success'] ?? false))
+        {
+            return 'No pude leer el espacio de '.$mailbox.'.';
+        }
+
+        $row = collect($listed['emails'] ?? [])->first(
+            fn (mixed $email): bool => is_array($email) && strtolower((string) ($email['email'] ?? '')) === $mailbox,
+        );
+        if (! is_array($row))
+        {
+            return 'No encuentro la casilla '.$mailbox.'.';
+        }
+
+        return $this->formatDiskUsage($mailbox, [
+            'used_mb' => $row['diskused_mb'] ?? 0,
+            'limit_mb' => $row['diskquota_mb'] ?? null,
+            'unlimited' => (bool) ($row['unlimited'] ?? true),
+            'usage_percent' => (int) ($row['usage_percent'] ?? 0),
+        ]);
+    }
+
     public function resetCpanelAccess(int $teamId, ?int $contactId, User $actor, ?string $domainName): string
     {
         $domain = $this->resolveCpanelDomain($teamId, $contactId, $domainName);
@@ -159,6 +198,11 @@ class HostingCustomerAssistantService
     public function manageMailbox(int $teamId, ?int $contactId, User $actor, string $action, ?string $domainName, ?string $account): string
     {
         $action = strtolower(trim($action));
+        if ($action === 'disk')
+        {
+            return $this->mailboxDisk($teamId, $contactId, $account);
+        }
+
         $domainName = $this->preferredDomainName($domainName, $account);
 
         if ($action === 'list' && $domainName === null)
@@ -233,7 +277,7 @@ class HostingCustomerAssistantService
             return $this->notifyResult($result, 'La clave de '.$mailbox.' se actualizó.');
         }
 
-        return 'Acción de correo no válida. Usá list, create, reset_password o settings.';
+        return 'Acción de correo no válida. Usá list, create, reset_password, settings o disk.';
     }
 
     public function manageFtp(int $teamId, ?int $contactId, User $actor, string $action, ?string $domainName, ?string $account): string
@@ -388,32 +432,69 @@ class HostingCustomerAssistantService
         return $steps."\n\nMX y DNS actuales:\n\n".$current;
     }
 
-    public function unpaidInvoices(int $teamId, ?int $contactId): string
+    public function unpaidInvoices(int $teamId, ?int $contactId, int $limit = 5): string
+    {
+        return $this->recentInvoices($teamId, $contactId, $limit);
+    }
+
+    public function recentInvoices(int $teamId, ?int $contactId, int $limit = 5): string
     {
         if ($contactId === null || $contactId < 1)
         {
-            return 'No hay un contacto en este hilo para consultar la deuda.';
+            return 'No hay un contacto en este hilo para consultar las facturas.';
         }
 
-        $links = $this->collectionAssistantContext->paymentLinksMessageForContact($contactId, $teamId);
-        $total = $this->collectionAssistantContext->unpaidTotalLabelForContact($contactId, $teamId);
-
-        if ($links === null && $total === null)
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->with('enterprises')
+            ->find($contactId);
+        if (! $contact instanceof Contact)
         {
-            return 'No hay facturas impagas con link de pago para este contacto.';
+            return 'El contacto de este hilo no está en el equipo.';
         }
 
-        $lines = [];
-        if ($total !== null)
+        $enterpriseIds = $contact->enterprises
+            ->pluck('id')
+            ->push($contact->current_enterprise_id)
+            ->filter()
+            ->map(fn (mixed $id): int => (int) $id)
+            ->unique()
+            ->values();
+        if ($enterpriseIds->isEmpty())
         {
-            $lines[] = 'Deuda pendiente: '.$total;
-        }
-        if ($links !== null)
-        {
-            $lines[] = $links;
+            return 'Este contacto no tiene una empresa, así que no hay facturas para mostrar.';
         }
 
-        return implode("\n\n", $lines);
+        $limit = max(1, min(20, $limit));
+        $invoices = Invoice::withoutGlobalScope('team')
+            ->whereIn('enterprise_id', $enterpriseIds->all())
+            ->with(['currency', 'stripeInvoiceSync'])
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
+        if ($invoices->isEmpty())
+        {
+            return 'No hay facturas para este contacto.';
+        }
+
+        $lines = ['Últimas '.$invoices->count().' facturas:'];
+        foreach ($invoices as $invoice)
+        {
+            $date = $invoice->date !== null ? Carbon::parse($invoice->date)->format('d/m/Y') : 'sin fecha';
+            $number = trim((string) $invoice->number) !== '' ? (string) $invoice->number : '#'.$invoice->id;
+            $lines[] = '- '.$date.' · '.$number.' · '.$this->moneyLabel((float) $invoice->total_amount, $invoice->currency_code).' · '.$invoice->status_label;
+            $url = (float) $invoice->balance > 0 ? $invoice->stripeHostedInvoiceUrl() : null;
+            if (is_string($url) && $url !== '')
+            {
+                $lines[] = '  Pago: '.$url;
+            }
+        }
+
+        $lines[] = '';
+        $lines[] = 'Saldo pendiente: '.$this->pendingBalanceLabel($enterpriseIds->all());
+
+        return implode("\n", $lines);
     }
 
     public function requestUpgrade(int $teamId, ?int $contactId, User $actor, ?string $domainName, ?string $plan): string
@@ -912,6 +993,41 @@ class HostingCustomerAssistantService
         $percent = (int) ($usage['usage_percent'] ?? 0);
 
         return $domain.' usa '.$used.' de '.$limit.' ('.$percent.'%).';
+    }
+
+    /**
+     * @param  list<int>  $enterpriseIds
+     */
+    private function pendingBalanceLabel(array $enterpriseIds): string
+    {
+        $open = Invoice::withoutGlobalScope('team')
+            ->whereIn('enterprise_id', $enterpriseIds)
+            ->where('balance', '>', 0)
+            ->with('currency')
+            ->get();
+        if ($open->isEmpty())
+        {
+            return '0,00';
+        }
+
+        $totals = [];
+        foreach ($open as $invoice)
+        {
+            $code = $invoice->currency_code !== '' ? $invoice->currency_code : '';
+            $totals[$code] = ($totals[$code] ?? 0) + (float) $invoice->balance;
+        }
+
+        return collect($totals)
+            ->map(fn (float $amount, string $code): string => $this->moneyLabel($amount, $code))
+            ->implode(' · ');
+    }
+
+    private function moneyLabel(float $amount, string $currency): string
+    {
+        $label = number_format($amount, 2, ',', '.');
+        $currency = strtoupper(trim($currency));
+
+        return $currency !== '' ? $label.' '.$currency : $label;
     }
 
     private function formatMegabytes(float $megabytes): string

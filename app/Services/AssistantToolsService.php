@@ -274,7 +274,7 @@ class AssistantToolsService
         if ($name === 'manage_hosting_mailbox' || $name === 'manage_hosting_ftp')
         {
             $action = strtolower(trim((string) ($input['action'] ?? '')));
-            if (in_array($action, ['', 'list', 'settings'], true))
+            if (in_array($action, ['', 'list', 'settings', 'disk'], true))
             {
                 return null;
             }
@@ -1105,7 +1105,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'hosting_disk',
-                'description' => 'Disk space used and the quota for one hosting domain of this contact. Pass the domain they named. Read the server account even when the hosting subscription is cancelled or unpaid, and mention that status. A non-hosting subscription has no server disk. Do not invent a number. Do not list the other subscriptions.',
+                'description' => 'Disk space of the hosting account for one domain, not of one email mailbox. Pass the domain they named. For a mailbox (casilla, noreply@domain) use manage_hosting_mailbox action disk. Read the server account even when the hosting subscription is cancelled or unpaid, and mention that status. A non-hosting subscription has no server disk. Do not invent a number. Do not list the other subscriptions.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -1133,17 +1133,17 @@ class AssistantToolsService
             ],
             [
                 'name' => 'manage_hosting_mailbox',
-                'description' => 'cPanel email for the contact\'s hosting. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. list without domain returns every open domain. create, reset_password and settings need one domain, or an account like name@domain. New passwords are sent to the person writing in this chat. Do not invent mailboxes or a contact email or phone. If the tool says there are several domains, ask which one.',
+                'description' => 'cPanel email for the contact\'s hosting. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. list without domain returns every open domain. create, reset_password and settings need one domain, or an account like name@domain. disk reports that mailbox quota, not the hosting plan; pass the address, and if they say "esta casilla" use the mailbox from the conversation. New passwords are sent to the person writing in this chat. Do not invent mailboxes or a contact email or phone. If the tool says there are several domains, ask which one.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
                         'action' => [
                             'type' => 'string',
-                            'enum' => ['list', 'create', 'reset_password', 'settings'],
+                            'enum' => ['list', 'create', 'reset_password', 'settings', 'disk'],
                         ],
                         'account' => [
                             'type' => 'string',
-                            'description' => 'Mailbox local part or full address. Required except for list.',
+                            'description' => 'Mailbox local part or full address. Required except for list. For disk, the mailbox they mean, including "esta casilla" from the thread.',
                         ],
                         'domain' => [
                             'type' => 'string',
@@ -1219,10 +1219,15 @@ class AssistantToolsService
             ],
             [
                 'name' => 'hosting_unpaid_invoices',
-                'description' => 'Unpaid invoices and payment links for the contact in this WhatsApp thread. Call this for debt, unpaid bills, or a payment link. Paste the links the tool returns. Do not invent amounts or URLs.',
+                'description' => 'Invoices of the contact in this chat: the latest ones (paid and unpaid), the pending balance, and a payment link for each open invoice. Call this for facturas, últimas facturas, saldo, deuda, or a payment link. Never say you cannot list invoices and never send them to a website. Paste the lines and links the tool returns. Do not invent amounts or URLs. Pass limit when they ask for a number, such as the last 3.',
                 'input_schema' => [
                     'type' => 'object',
-                    'properties' => [],
+                    'properties' => [
+                        'limit' => [
+                            'type' => 'integer',
+                            'description' => 'How many recent invoices to list. Default 5. Use the number they asked for.',
+                        ],
+                    ],
                     'required' => [],
                 ],
             ],
@@ -1341,7 +1346,7 @@ class AssistantToolsService
                 'hosting_dns' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->dnsInfo($teamId, $this->contextContactId, isset($input['domain']) ? (string) $input['domain'] : null),
                 'hosting_product_info' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->productLinks(isset($input['product']) ? (string) $input['product'] : null),
                 'hosting_google_mail' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->googleMailSetup($teamId, $this->contextContactId, isset($input['domain']) ? (string) $input['domain'] : null),
-                'hosting_unpaid_invoices' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->unpaidInvoices($teamId, $this->contextContactId),
+                'hosting_unpaid_invoices' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->unpaidInvoices($teamId, $this->contextContactId, isset($input['limit']) ? (int) $input['limit'] : 5),
                 'request_hosting_upgrade' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->requestUpgrade($teamId, $this->contextContactId, $user, isset($input['domain']) ? (string) $input['domain'] : null, isset($input['plan']) ? (string) $input['plan'] : (isset($input['note']) ? (string) $input['note'] : null)),
                 'list_cms_content' => $this->listCmsContent($teamId, $user, $input),
                 'get_cms_content' => $this->getCmsContent($teamId, $user, $input),

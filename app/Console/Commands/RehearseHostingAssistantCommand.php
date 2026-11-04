@@ -220,6 +220,15 @@ class RehearseHostingAssistantCommand extends Command
         HostingCustomerAssistantService $hosting,
         string $message,
     ): ?string {
+        if ($this->asksMailboxDisk($message))
+        {
+            return $hosting->mailboxDisk(
+                (int) $team->id,
+                (int) $contact->id,
+                $this->mailboxAddress($message) ?? $this->mailboxFromHistory(),
+            );
+        }
+
         if ($this->asksDisk($message))
         {
             return $hosting->diskSpace(
@@ -229,9 +238,19 @@ class RehearseHostingAssistantCommand extends Command
             );
         }
 
+        $lines = [];
+        if ($this->asksBilling($message))
+        {
+            $lines[] = $hosting->unpaidInvoices(
+                (int) $team->id,
+                (int) $contact->id,
+                $this->invoiceLimit($message),
+            );
+        }
+
         if ($onboarding->asksAboutOwnAccount($message))
         {
-            $lines = [$hosting->listForContact((int) $team->id, (int) $contact->id)];
+            $lines[] = $hosting->listForContact((int) $team->id, (int) $contact->id);
             $plan = trim((string) $this->option('plan'));
             if ($plan !== '')
             {
@@ -242,7 +261,10 @@ class RehearseHostingAssistantCommand extends Command
                     $plan,
                 );
             }
+        }
 
+        if ($lines !== [])
+        {
             return implode("\n\n", $lines);
         }
 
@@ -270,7 +292,7 @@ class RehearseHostingAssistantCommand extends Command
             false,
             AssistantActorContextService::CHANNEL_WHATSAPP,
             false,
-            'Ensayo del flujo Hosting cPanel, con las mismas acciones que en producción. La clave se envía a la persona que escribe en este chat, no a otro contacto. El mensaje con la contraseña se publica aquí: no digas que salió por otro WhatsApp. Si la herramienta dice que los datos quedaron en este chat, confirmá en una frase y no repitas la contraseña. Respondé solo a este mensaje. No listes todas las suscripciones salvo que pregunte cuáles tiene. Si pregunta el espacio de un dominio, usá hosting_disk. Una suscripción cancelada no impide la clave, el correo, el FTP, el DNS ni la ficha de un producto si la cuenta no está suspendida: llamá la herramienta. Si la cuenta está suspendida, decilo y no cambies nada. No reactives Stripe. No inventes un email ni un teléfono.',
+            'Ensayo del flujo Hosting cPanel, con las mismas acciones que en producción. La clave se envía a la persona que escribe en este chat, no a otro contacto. El mensaje con la contraseña se publica aquí: no digas que salió por otro WhatsApp. Si la herramienta dice que los datos quedaron en este chat, confirmá en una frase y no repitas la contraseña. Respondé solo a este mensaje. No listes todas las suscripciones salvo que pregunte cuáles tiene. Si pregunta el espacio de un dominio o del plan, usá hosting_disk. Si pregunta el espacio de una casilla o de un correo, usá manage_hosting_mailbox con action disk y esa cuenta; «esta casilla» es la del mensaje anterior, no el disco del plan. Si pregunta el plan, usá list_my_hosting. Si pregunta facturas, saldo o un link de pago, usá hosting_unpaid_invoices y pegá el listado. No digas que no tenés acceso a las facturas ni los mandes a una web. Una suscripción cancelada no impide la clave, el correo, el FTP, el DNS ni la ficha de un producto si la cuenta no está suspendida: llamá la herramienta. Si la cuenta está suspendida, decilo y no cambies nada. No reactives Stripe. No inventes un email ni un teléfono.',
         );
 
         $text = trim((string) ($reply['text'] ?? ''));
@@ -278,11 +300,66 @@ class RehearseHostingAssistantCommand extends Command
         return $text !== '' ? $text : 'No pude armar la respuesta. Probá de nuevo con el dominio o la pregunta.';
     }
 
+    private function asksBilling(string $message): bool
+    {
+        $normalized = mb_strtolower(Str::ascii($message));
+
+        return preg_match('/\b(facturas?|saldo|deuda|debo|adeud|impag|link de pago|enlace de pago)\b/u', $normalized) === 1;
+    }
+
+    private function invoiceLimit(string $message): int
+    {
+        $normalized = mb_strtolower(Str::ascii($message));
+        if (preg_match('/\b(?:ultimas?|ultimos?)\s+(\d{1,2})\b/u', $normalized, $matches) === 1)
+        {
+            return max(1, min(20, (int) $matches[1]));
+        }
+
+        return 5;
+    }
+
     private function asksDisk(string $message): bool
     {
         $normalized = mb_strtolower(Str::ascii($message));
 
         return preg_match('/\b(espacio|disco|cuota|quota|capacidad|gigas?|megas?)\b/u', $normalized) === 1;
+    }
+
+    private function asksMailboxDisk(string $message): bool
+    {
+        if (! $this->asksDisk($message))
+        {
+            return false;
+        }
+
+        $normalized = mb_strtolower(Str::ascii($message));
+
+        return $this->mailboxAddress($message) !== null
+            || preg_match('/\b(casilla|buzon|correo|email|mailbox)\b/u', $normalized) === 1;
+    }
+
+    private function mailboxAddress(string $message): ?string
+    {
+        if (preg_match('/\b([a-z0-9][a-z0-9._-]{0,31}@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z]{2,})+)\b/i', $message, $matches) === 1)
+        {
+            return strtolower($matches[1]);
+        }
+
+        return null;
+    }
+
+    private function mailboxFromHistory(): ?string
+    {
+        for ($index = count($this->history) - 1; $index >= 0; $index--)
+        {
+            $found = $this->mailboxAddress((string) ($this->history[$index]['body'] ?? ''));
+            if ($found !== null)
+            {
+                return $found;
+            }
+        }
+
+        return null;
     }
 
     private function diskDomain(string $message): ?string
