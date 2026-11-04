@@ -12,6 +12,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\AssistantToolsService;
 use App\Services\Hosting\HostingCustomerAssistantService;
+use App\Services\Hosting\RehearsalChatOutbox;
 use App\Services\Hosting\StripeHostingPlanGateway;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
@@ -248,8 +249,83 @@ class HostingCustomerAssistantTest extends TestCase
         $this->assertStringContainsString('ya se enviaron por WhatsApp', $text);
         $this->assertStringNotContainsString('Contraseña:', $text);
         $this->assertCount(1, $sent);
+        $this->assertStringContainsString('611223344', (string) $sent[0]['to']);
         $this->assertStringContainsString('Usuario: siteuser', $sent[0]['message']);
         $this->assertStringContainsString('Contraseña:', $sent[0]['message']);
+    }
+
+    public function test_a_password_is_not_sent_to_another_contact_when_the_writer_has_no_whatsapp(): void
+    {
+        Http::fake([
+            'https://cpanel.test:2087/json-api/passwd*' => Http::response([
+                'metadata' => ['result' => 1],
+            ]),
+        ]);
+        $sent = [];
+        $this->bindGateway($sent);
+
+        [$user, , $contact] = $this->createHosting();
+        $contact->forceFill(['phone' => null])->save();
+        $enterprise = $contact->enterprises()->first();
+        $other = Contact::factory()->create([
+            'team_id' => $user->current_team_id,
+            'name' => 'Otro',
+            'email' => 'otro@example.test',
+            'phone' => '699887766',
+            'country' => 724,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+        $enterprise->contacts()->attach($other->id);
+        $user->currentTeam->setSetting('whatsapp_driver', 'twilio', ['group' => 'chat']);
+
+        $text = app(HostingCustomerAssistantService::class)->resetCpanelAccess(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            $user,
+            'example.test',
+        );
+
+        $this->assertSame([], $sent);
+        $this->assertStringContainsString('Pegá este mensaje tal cual', $text);
+        $this->assertStringContainsString('Contraseña:', $text);
+        $this->assertStringNotContainsString('699887766', $text);
+    }
+
+    public function test_rehearsal_prints_the_mailbox_password_in_the_chat_and_does_not_send_whatsapp(): void
+    {
+        Http::fake([
+            'https://cpanel.test:2087/json-api/cpanel*' => Http::response([
+                'result' => ['status' => 1, 'data' => null],
+            ]),
+        ]);
+        $sent = [];
+        $this->bindGateway($sent);
+
+        [$user, , $contact] = $this->createHosting();
+        $contact->forceFill(['phone' => null])->save();
+        $outbox = app(RehearsalChatOutbox::class);
+        $outbox->capture(true);
+        $tools = app(AssistantToolsService::class);
+        $tools->setRehearsalDryRun(true);
+        $tools->setRehearsalChatDelivery(true);
+        $tools->setRequestContext($user->id, (int) $user->current_team_id, null, (int) $contact->id);
+
+        $text = $tools->execute('manage_hosting_mailbox', [
+            'action' => 'reset_password',
+            'account' => 'info@example.test',
+        ]);
+
+        $this->assertStringContainsString('quedaron en este chat', $text);
+        $this->assertStringNotContainsString('Contraseña:', $text);
+        $this->assertStringNotContainsString('Ensayo. No cambié', $text);
+        $this->assertSame([], $sent);
+        $messages = $outbox->pull();
+        $this->assertCount(1, $messages);
+        $this->assertStringContainsString('info@example.test', $messages[0]);
+        $this->assertStringContainsString('Contraseña:', $messages[0]);
+        Http::assertSent(fn ($request) => ($request['cpanel_jsonapi_func'] ?? null) === 'passwd_pop'
+            && ($request['email'] ?? null) === 'info');
     }
 
     public function test_create_mailbox_sends_imap_and_smtp_settings(): void

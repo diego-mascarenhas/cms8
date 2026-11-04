@@ -28,6 +28,7 @@ class DomainCpanelPasswordService
     public function __construct(
         private readonly ControlPanelManager $controlPanelManager,
         private readonly ContactOutreachService $contactOutreachService,
+        private readonly RehearsalChatOutbox $rehearsalChatOutbox,
     ) {}
 
     public function hostingPlanEmail(Domain $domain): ?string
@@ -202,6 +203,7 @@ class DomainCpanelPasswordService
      *     channel: string|null,
      *     recipient: string|null,
      *     recipient_source: string|null,
+     *     delivered_to_chat?: bool,
      *     warning?: string,
      * }
      */
@@ -227,6 +229,19 @@ class DomainCpanelPasswordService
         if ($notifyChannel === self::NOTIFY_NONE)
         {
             return $empty;
+        }
+
+        if ($this->rehearsalChatOutbox->isCapturing())
+        {
+            $this->rehearsalChatOutbox->push($accessMessage);
+
+            return [
+                'notified' => true,
+                'delivered_to_chat' => true,
+                'channel' => 'chat',
+                'recipient' => null,
+                'recipient_source' => 'chat',
+            ];
         }
 
         $notifyTo = $notifyTo !== null ? trim($notifyTo) : null;
@@ -400,13 +415,20 @@ class DomainCpanelPasswordService
 
         if ($contactId !== null)
         {
-            $match = $notifiable->firstWhere('id', $contactId);
-            if ($match === null)
+            $contact = Contact::withoutGlobalScopes()->find($contactId);
+            if (! $contact instanceof Contact)
             {
                 return null;
             }
 
-            return Contact::withoutGlobalScopes()->find($contactId);
+            if ($notifyChannel === self::NOTIFY_EMAIL)
+            {
+                return is_string($contact->email) && filter_var($contact->email, FILTER_VALIDATE_EMAIL)
+                    ? $contact
+                    : null;
+            }
+
+            return filled($contact->getWhatsAppNumber()) ? $contact : null;
         }
 
         $first = $notifiable->first();

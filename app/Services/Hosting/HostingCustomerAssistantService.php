@@ -685,6 +685,11 @@ class HostingCustomerAssistantService
             return (string) ($result['error'] ?? 'No se pudo completar la operación.');
         }
 
+        if (($result['delivered_to_chat'] ?? false) === true)
+        {
+            return $done.' Los datos de acceso quedaron en este chat. No repitas la contraseña.';
+        }
+
         if (($result['notified'] ?? false) === true)
         {
             return $done.' Los datos de acceso ya se enviaron por WhatsApp. No repitas la contraseña.';

@@ -23,6 +23,7 @@ use App\Services\AssistantToolsService;
 use App\Services\Fiscal\Cuentica\CuenticaFiscalExportAdapter;
 use App\Services\Fiscal\FiscalExportRouter;
 use App\Services\Fiscal\NullFiscalExportAdapter;
+use App\Services\Hosting\RehearsalChatOutbox;
 use App\Services\Stripe\StripeCheckoutSessionRetriever;
 use App\Services\Stripe\StripeProductService;
 use App\Services\WhatsApp\CloudWhatsAppGateway;
@@ -47,6 +48,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CheckoutSessionRetriever::class, StripeCheckoutSessionRetriever::class);
 
         $this->app->scoped(AssistantToolsService::class);
+        $this->app->scoped(RehearsalChatOutbox::class);
 
         // Register StripeProductService
         $this->app->singleton(StripeProductService::class, function ($app)

@@ -10,6 +10,7 @@ use App\Services\AssistantToolIntentPromptService;
 use App\Services\AssistantToolsService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\Hosting\HostingCustomerAssistantService;
+use App\Services\Hosting\RehearsalChatOutbox;
 use App\Services\InboxProductOnboardingService;
 use App\Services\UserResolverService;
 use Illuminate\Console\Command;
@@ -32,7 +33,7 @@ class RehearseHostingAssistantCommand extends Command
         {--yes : Skip the confirmation for --apply}
         {--allow-production : Allow a dry run when APP_ENV is production}';
 
-    protected $description = 'Rehearse a customer hosting WhatsApp message without sending it';
+    protected $description = 'Rehearse a customer hosting WhatsApp chat. Outside production, passwords change and the access message is printed here';
 
     public function handle(
         UserResolverService $users,
@@ -141,10 +142,18 @@ class RehearseHostingAssistantCommand extends Command
         string $firstMessage,
     ): int {
         $who = trim($contact->name.' '.$contact->surname) ?: 'Cliente';
+        $deliverToChat = ! app()->environment('production');
+        $outbox = app(RehearsalChatOutbox::class);
+        $tools = app(AssistantToolsService::class);
+        $outbox->capture($deliverToChat);
+        $tools->setRehearsalChatDelivery($deliverToChat);
+        $tools->setRehearsalDryRun(! $this->option('apply'));
+
         $this->line('WhatsApp · '.$who.' · '.$team->name);
-        $this->line('Escribí como el cliente. "chau" sale del flujo.');
+        $this->line($deliverToChat
+            ? 'Escribí como el cliente. La clave sale en este chat. "chau" sale del flujo.'
+            : 'Escribí como el cliente. "chau" sale del flujo.');
         $this->newLine();
-        app(AssistantToolsService::class)->setRehearsalDryRun(! $this->option('apply'));
 
         $pending = $firstMessage;
         while (true)
@@ -162,13 +171,21 @@ class RehearseHostingAssistantCommand extends Command
                 $contact->refresh();
                 $this->line($team->name.': '.$onboarding->leave($contact));
                 $this->newLine();
-                $this->comment('No se envió WhatsApp ni se cambió Stripe ni el servidor.');
+                $this->comment($deliverToChat
+                    ? 'No salió un WhatsApp. Lo enviado quedó en este chat.'
+                    : 'No se envió WhatsApp ni se cambió Stripe ni el servidor.');
 
                 return self::SUCCESS;
             }
 
             $reply = $this->reply($contact, $team, $onboarding, $hosting, $message);
             $this->line($team->name.': '.$reply);
+            foreach ($outbox->pull() as $sent)
+            {
+                $this->newLine();
+                $this->line($team->name.': '.$sent);
+                $this->history[] = ['direction' => 'outbound', 'body' => $sent];
+            }
             $this->newLine();
         }
     }
@@ -250,10 +267,10 @@ class RehearseHostingAssistantCommand extends Command
             is_string($phone) && $phone !== '' ? $phone : null,
             'hosting:assistant_hosting',
             (int) $contact->id,
-            true,
+            false,
             AssistantActorContextService::CHANNEL_WHATSAPP,
             false,
-            'Ensayo de WhatsApp del flujo Hosting cPanel. Respondé solo a este mensaje. No listes todas las suscripciones salvo que pregunte cuáles tiene. Si pregunta el espacio de un dominio, usá hosting_disk. Una suscripción cancelada no impide la clave, el correo, el FTP, el DNS ni la ficha de un producto si la cuenta no está suspendida: llamá la herramienta. Si la cuenta está suspendida, decilo y no cambies nada. No reactives Stripe. No inventes un email ni un teléfono. No digas que enviaste un WhatsApp.',
+            'Ensayo del flujo Hosting cPanel, con las mismas acciones que en producción. La clave se envía a la persona que escribe en este chat, no a otro contacto. El mensaje con la contraseña se publica aquí: no digas que salió por otro WhatsApp. Si la herramienta dice que los datos quedaron en este chat, confirmá en una frase y no repitas la contraseña. Respondé solo a este mensaje. No listes todas las suscripciones salvo que pregunte cuáles tiene. Si pregunta el espacio de un dominio, usá hosting_disk. Una suscripción cancelada no impide la clave, el correo, el FTP, el DNS ni la ficha de un producto si la cuenta no está suspendida: llamá la herramienta. Si la cuenta está suspendida, decilo y no cambies nada. No reactives Stripe. No inventes un email ni un teléfono.',
         );
 
         $text = trim((string) ($reply['text'] ?? ''));

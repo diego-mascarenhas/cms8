@@ -33,6 +33,7 @@ use App\Models\TicketResponse;
 use App\Models\User;
 use App\Services\Contacts\TeamContactMatcher;
 use App\Services\Finance\InvoiceAnalyticsService;
+use App\Services\Hosting\RehearsalChatOutbox;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use App\Support\AssistantCreatedMessageRedirect;
@@ -67,6 +68,11 @@ class AssistantToolsService
 
     /** Hosting rehearsal: mutating tools preview instead of changing Stripe or the server. */
     protected bool $rehearsalDryRun = false;
+
+    /**
+     * Hosting rehearsal: password, mailbox and FTP changes run, and their WhatsApp is kept in this chat.
+     */
+    protected bool $rehearsalChatDelivery = false;
 
     /**
      * When true, only the first {@see sendWhatsAppMessage()} in this request actually sends; further calls are no-ops
@@ -125,6 +131,7 @@ class AssistantToolsService
 
     public function __construct(
         protected AssistantToolAuthorizationService $toolAuthorization,
+        protected RehearsalChatOutbox $rehearsalChatOutbox,
     ) {}
 
     /**
@@ -227,11 +234,21 @@ class AssistantToolsService
         $this->rehearsalDryRun = $dryRun;
     }
 
+    public function setRehearsalChatDelivery(bool $deliverToChat): void
+    {
+        $this->rehearsalChatDelivery = $deliverToChat;
+    }
+
     /**
      * @param  array<string, mixed>  $input
      */
     private function rehearsalReply(string $name, array $input, int $teamId): ?string
     {
+        if ($this->rehearsalChatDelivery && $this->deliversToRehearsalChat($name, $input))
+        {
+            return null;
+        }
+
         if (! $this->rehearsalDryRun)
         {
             return null;
@@ -282,6 +299,26 @@ class AssistantToolsService
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function deliversToRehearsalChat(string $name, array $input): bool
+    {
+        if ($name === 'reset_cpanel_password' || $name === 'send_whatsapp_message')
+        {
+            return true;
+        }
+
+        if ($name !== 'manage_hosting_mailbox' && $name !== 'manage_hosting_ftp')
+        {
+            return false;
+        }
+
+        $action = strtolower(trim((string) ($input['action'] ?? '')));
+
+        return in_array($action, ['create', 'reset_password'], true);
     }
 
     /**
@@ -1082,7 +1119,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'reset_cpanel_password',
-                'description' => 'Reset the cPanel login password for the contact\'s hosting and send the new access details on this WhatsApp thread. Only for cPanel. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. If they have several domains, pass domain. Do not invent or repeat the password when the tool says it was already sent. Do not invent a contact email or phone.',
+                'description' => 'Reset the cPanel login password for the contact\'s hosting and send the new access details to the person writing in this chat. Only for cPanel. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. If they have several domains, pass domain. Do not invent or repeat the password when the tool says it was already sent. Do not invent a contact email or phone.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -1096,7 +1133,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'manage_hosting_mailbox',
-                'description' => 'cPanel email for the contact\'s hosting. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. list without domain returns every open domain. create, reset_password and settings need one domain, or an account like name@domain. New passwords are sent on this WhatsApp thread. Do not invent mailboxes or a contact email or phone. If the tool says there are several domains, ask which one.',
+                'description' => 'cPanel email for the contact\'s hosting. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. list without domain returns every open domain. create, reset_password and settings need one domain, or an account like name@domain. New passwords are sent to the person writing in this chat. Do not invent mailboxes or a contact email or phone. If the tool says there are several domains, ask which one.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -1118,7 +1155,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'manage_hosting_ftp',
-                'description' => 'cPanel FTP for the contact\'s hosting. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. list, create, reset_password or settings (host, port, user, directory). New passwords are sent on this WhatsApp thread.',
+                'description' => 'cPanel FTP for the contact\'s hosting. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. list, create, reset_password or settings (host, port, user, directory). New passwords are sent to the person writing in this chat.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -2124,6 +2161,13 @@ class AssistantToolsService
         if ($message === '')
         {
             return 'Message text is required.';
+        }
+
+        if ($this->rehearsalChatOutbox->isCapturing())
+        {
+            $this->rehearsalChatOutbox->push($message);
+
+            return 'El mensaje quedó en este chat. No digas que salió por otro WhatsApp.';
         }
 
         if ($contactId !== null)
