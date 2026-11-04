@@ -70,6 +70,17 @@ class AssistantToolFlowStickyTest extends TestCase
         $this->assertSame('clear', $resolution['persist_assistant_flow_key']);
     }
 
+    public function test_chau_clears_sticky_when_no_new_intent(): void
+    {
+        [$team, $routingKey] = $this->createTeamWithCommercePrompt();
+        $service = app(AssistantToolIntentPromptService::class);
+
+        $resolution = $service->resolveFlowForToolAssistant((int) $team->id, 'Chau', $routingKey);
+
+        $this->assertNull($resolution['prompt']);
+        $this->assertSame('clear', $resolution['persist_assistant_flow_key']);
+    }
+
     public function test_invalid_sticky_key_triggers_clear_when_no_intent_match(): void
     {
         [$team] = $this->createTeamWithCommercePrompt();

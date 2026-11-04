@@ -234,6 +234,45 @@ class InboxProductOnboardingServiceTest extends TestCase
         $this->assertStringNotContainsString('assistant.idoneo.dev/register', $reply['message']);
     }
 
+    public function test_asking_which_hosting_or_subscriptions_they_have_leaves_the_funnel(): void
+    {
+        $contact = $this->makeContact();
+        $team = Team::withoutGlobalScopes()->find($contact->team_id);
+        $service = app(InboxProductOnboardingService::class);
+        $service->start($contact);
+
+        foreach ([
+            'Que subscripciones tengo?',
+            'No se que planes tengo',
+            'Que hosting tengo?',
+        ] as $message)
+        {
+            $this->assertNull($service->tryHandleInbound($team, '34600111001', $message));
+        }
+
+        $contact->refresh();
+        $this->assertTrue((bool) data_get($contact->data, 'idoneo_product_onboarding.active'));
+        $this->assertSame(InboxProductOnboardingService::STEP_CHOOSE, data_get($contact->data, 'idoneo_product_onboarding.step'));
+    }
+
+    public function test_chau_leaves_the_recommendation_funnel(): void
+    {
+        $contact = $this->makeContact();
+        $team = Team::withoutGlobalScopes()->find($contact->team_id);
+        $service = app(InboxProductOnboardingService::class);
+        $service->start($contact);
+        $contact->pinInboundChatAssistantPrompt('hosting:assistant_hosting');
+
+        $reply = $service->tryHandleInbound($team, '34600111001', 'Chau');
+
+        $this->assertNotNull($reply);
+        $this->assertStringContainsString('lo dejamos acá', $reply['message']);
+        $contact->refresh();
+        $this->assertFalse((bool) data_get($contact->data, 'idoneo_product_onboarding.active'));
+        $this->assertSame(InboxProductOnboardingService::STEP_DONE, data_get($contact->data, 'idoneo_product_onboarding.step'));
+        $this->assertNull($contact->inboundChatAssistantPromptKey());
+    }
+
     public function test_inbound_onboarding_slash_starts_the_funnel(): void
     {
         $contact = $this->makeContact();

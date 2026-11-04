@@ -236,7 +236,7 @@ class AssistantAutomationRunner
             }
 
             return [
-                'prompt_key' => ($existingForcedKey !== null && trim($existingForcedKey) !== '') ? trim($existingForcedKey) : null,
+                'prompt_key' => null,
                 'appendix' => null,
                 'step' => null,
                 'completed' => false,

@@ -17,6 +17,100 @@ class HostingPlanSwitchService
 
     public function apply(Team $team, Domain $domain, ServiceSync $subscription, ?string $requestedPlan): string
     {
+        $decision = $this->decide($team, $domain, $subscription, $requestedPlan);
+        if (is_string($decision))
+        {
+            return $decision;
+        }
+
+        $target = $decision['target'];
+        $current = $decision['current'];
+        $server = $domain->server;
+
+        if (! $decision['stripe_already'])
+        {
+            try
+            {
+                $this->stripePlans->swap($team, (string) $subscription->stripe_id, $current['item_id'], $target['price_id']);
+            } catch (RuntimeException $exception)
+            {
+                return 'Stripe no cambió la suscripción de '.$domain->domain.'. No toqué el servidor. '.$exception->getMessage();
+            }
+        }
+
+        if (! $decision['whm_already'])
+        {
+            $result = $this->controlPanelManager
+                ->forServer($server)
+                ->changePlan($server, $domain, $target['whm_package']);
+
+            if (! ($result['success'] ?? false))
+            {
+                $error = (string) ($result['error'] ?? 'El servidor rechazó el plan.');
+
+                if ($decision['stripe_already'])
+                {
+                    return 'No cambié el plan del servidor de '.$domain->domain.'. '.$error;
+                }
+
+                try
+                {
+                    $this->stripePlans->swap($team, (string) $subscription->stripe_id, $current['item_id'], $current['price_id']);
+                } catch (RuntimeException $exception)
+                {
+                    return 'La suscripción de Stripe de '.$domain->domain.' pasó a '.$target['product_name']
+                        .', pero el servidor sigue en '.($domain->plan ?: 'el plan anterior').'. '.$error
+                        .' Tampoco pude volver el precio atrás: '.$exception->getMessage();
+                }
+
+                return 'No cambié el plan. El servidor rechazó '.$target['whm_package'].' y la suscripción volvió al precio anterior. '.$error;
+            }
+        }
+
+        $subscription->forceFill([
+            'plan_name' => $target['product_name'],
+            'unit_amount' => round($target['unit_amount'] / 100, 2),
+            'price_currency' => strtoupper($target['currency']),
+            'plan_interval' => $target['interval'],
+            'plan_interval_count' => $target['interval_count'],
+        ])->save();
+
+        return 'Listo. '.$domain->domain.' ahora está en '.$target['product_name']
+            .' ('.$this->money($target).'). El servidor quedó en el paquete '.$target['whm_package'].'.';
+    }
+
+    public function preview(Team $team, Domain $domain, ServiceSync $subscription, ?string $requestedPlan): string
+    {
+        $decision = $this->decide($team, $domain, $subscription, $requestedPlan);
+        if (is_string($decision))
+        {
+            return $decision;
+        }
+
+        $target = $decision['target'];
+        $lines = ['Ensayo. No cambié Stripe ni el servidor.'];
+        if (! $decision['stripe_already'])
+        {
+            $lines[] = 'La suscripción de '.$domain->domain.' pasaría a '.$target['product_name'].' ('.$this->money($target).').';
+        }
+        if (! $decision['whm_already'])
+        {
+            $lines[] = 'El servidor pasaría al paquete '.$target['whm_package'].'.';
+        }
+
+        return implode(' ', $lines);
+    }
+
+    /**
+     * @return string|array{
+     *     target: array{price_id: string, product_name: string, plan: string, currency: string, interval: string, interval_count: int, unit_amount: int, whm_package: string},
+     *     current: array{item_id: string, price_id: string, currency: string, interval: string, interval_count: int},
+     *     stripe_already: bool,
+     *     whm_already: bool
+     * }
+     */
+    private function decide(Team $team, Domain $domain, ServiceSync $subscription, ?string $requestedPlan): string|array
+    {
         $domain->loadMissing('server');
         $server = $domain->server;
 
@@ -63,56 +157,12 @@ class HostingPlanSwitchService
             return $domain->domain.' ya está en '.$target['product_name'].' ('.$target['whm_package'].'). No cambié nada.';
         }
 
-        if (! $stripeAlready)
-        {
-            try
-            {
-                $this->stripePlans->swap($team, (string) $subscription->stripe_id, $current['item_id'], $target['price_id']);
-            } catch (RuntimeException $exception)
-            {
-                return 'Stripe no cambió la suscripción de '.$domain->domain.'. No toqué el servidor. '.$exception->getMessage();
-            }
-        }
-
-        if (! $whmAlready)
-        {
-            $result = $this->controlPanelManager
-                ->forServer($server)
-                ->changePlan($server, $domain, $target['whm_package']);
-
-            if (! ($result['success'] ?? false))
-            {
-                $error = (string) ($result['error'] ?? 'El servidor rechazó el plan.');
-
-                if ($stripeAlready)
-                {
-                    return 'No cambié el plan del servidor de '.$domain->domain.'. '.$error;
-                }
-
-                try
-                {
-                    $this->stripePlans->swap($team, (string) $subscription->stripe_id, $current['item_id'], $current['price_id']);
-                } catch (RuntimeException $exception)
-                {
-                    return 'La suscripción de Stripe de '.$domain->domain.' pasó a '.$target['product_name']
-                        .', pero el servidor sigue en '.($domain->plan ?: 'el plan anterior').'. '.$error
-                        .' Tampoco pude volver el precio atrás: '.$exception->getMessage();
-                }
-
-                return 'No cambié el plan. El servidor rechazó '.$target['whm_package'].' y la suscripción volvió al precio anterior. '.$error;
-            }
-        }
-
-        $subscription->forceFill([
-            'plan_name' => $target['product_name'],
-            'unit_amount' => round($target['unit_amount'] / 100, 2),
-            'price_currency' => strtoupper($target['currency']),
-            'plan_interval' => $target['interval'],
-            'plan_interval_count' => $target['interval_count'],
-        ])->save();
-
-        return 'Listo. '.$domain->domain.' ahora está en '.$target['product_name']
-            .' ('.$this->money($target).'). El servidor quedó en el paquete '.$target['whm_package'].'.';
+        return [
+            'target' => $target,
+            'current' => $current,
+            'stripe_already' => $stripeAlready,
+            'whm_already' => $whmAlready,
+        ];
     }
 
     /**

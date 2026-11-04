@@ -33,6 +33,7 @@ use App\Models\TicketResponse;
 use App\Models\User;
 use App\Services\Contacts\TeamContactMatcher;
 use App\Services\Finance\InvoiceAnalyticsService;
+use App\Services\Hosting\RehearsalChatOutbox;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use App\Support\AssistantCreatedMessageRedirect;
@@ -64,6 +65,14 @@ class AssistantToolsService
 
     /** CRM contact of the current WhatsApp/web thread, when already resolved. */
     protected ?int $contextContactId = null;
+
+    /** Hosting rehearsal: mutating tools preview instead of changing Stripe or the server. */
+    protected bool $rehearsalDryRun = false;
+
+    /**
+     * Hosting rehearsal: password, mailbox and FTP changes run, and their WhatsApp is kept in this chat.
+     */
+    protected bool $rehearsalChatDelivery = false;
 
     /**
      * When true, only the first {@see sendWhatsAppMessage()} in this request actually sends; further calls are no-ops
@@ -122,6 +131,7 @@ class AssistantToolsService
 
     public function __construct(
         protected AssistantToolAuthorizationService $toolAuthorization,
+        protected RehearsalChatOutbox $rehearsalChatOutbox,
     ) {}
 
     /**
@@ -217,6 +227,98 @@ class AssistantToolsService
             ? WhatsAppCartSessionKey::fromPhone($customerPhoneDigits)
             : null;
         $this->contextContactId = $contactId !== null && $contactId > 0 ? $contactId : null;
+    }
+
+    public function setRehearsalDryRun(bool $dryRun): void
+    {
+        $this->rehearsalDryRun = $dryRun;
+    }
+
+    public function setRehearsalChatDelivery(bool $deliverToChat): void
+    {
+        $this->rehearsalChatDelivery = $deliverToChat;
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function rehearsalReply(string $name, array $input, int $teamId): ?string
+    {
+        if ($this->rehearsalChatDelivery && $this->deliversToRehearsalChat($name, $input))
+        {
+            return null;
+        }
+
+        if (! $this->rehearsalDryRun)
+        {
+            return null;
+        }
+
+        $hosting = app(\App\Services\Hosting\HostingCustomerAssistantService::class);
+        if ($name === 'request_hosting_upgrade')
+        {
+            $plan = trim((string) ($input['plan'] ?? $input['note'] ?? ''));
+            if ($plan === '')
+            {
+                return null;
+            }
+
+            return $hosting->rehearseUpgrade(
+                $teamId,
+                $this->contextContactId,
+                isset($input['domain']) ? (string) $input['domain'] : null,
+                $plan,
+            );
+        }
+
+        if ($name === 'manage_hosting_mailbox' || $name === 'manage_hosting_ftp')
+        {
+            $action = strtolower(trim((string) ($input['action'] ?? '')));
+            if (in_array($action, ['', 'list', 'settings', 'disk'], true))
+            {
+                return null;
+            }
+
+            return 'Ensayo. No cambié Stripe ni el servidor.';
+        }
+
+        if (in_array($name, [
+            'reset_cpanel_password',
+            'create_contact',
+            'update_contact',
+            'assign_contact_to_category',
+            'create_calendar_event',
+            'update_calendar_event',
+            'confirm_whatsapp_order',
+            'add_to_whatsapp_cart',
+            'send_whatsapp_message',
+            'send_product_image',
+        ], true))
+        {
+            return 'Ensayo. No cambié Stripe ni el servidor.';
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function deliversToRehearsalChat(string $name, array $input): bool
+    {
+        if ($name === 'reset_cpanel_password' || $name === 'send_whatsapp_message')
+        {
+            return true;
+        }
+
+        if ($name !== 'manage_hosting_mailbox' && $name !== 'manage_hosting_ftp')
+        {
+            return false;
+        }
+
+        $action = strtolower(trim((string) ($input['action'] ?? '')));
+
+        return in_array($action, ['create', 'reset_password'], true);
     }
 
     /**
@@ -994,7 +1096,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'list_my_hosting',
-                'description' => 'List hosting domains for the WhatsApp contact from active hosting subscriptions (metadata domain). Ignore subscriptions that are not hosting, such as consulting. A contact may have several domains. Call this before any hosting change when the domain is not obvious.',
+                'description' => 'List the contact hosting domains and also deactivated subscriptions, with their status. Active consulting is not hosting. Deactivated subscriptions are visible and must not be changed. Call this only when they ask which hosting, plans, or subscriptions they have. Do not call it for a greeting or for one domain\'s disk space.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [],
@@ -1002,8 +1104,22 @@ class AssistantToolsService
                 ],
             ],
             [
+                'name' => 'hosting_disk',
+                'description' => 'Disk space of the hosting account for one domain, not of one email mailbox. Pass the domain they named. For a mailbox (casilla, noreply@domain) use manage_hosting_mailbox action disk. Read the server account even when the hosting subscription is cancelled or unpaid, and mention that status. A non-hosting subscription has no server disk. Do not invent a number. Do not list the other subscriptions.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'domain' => [
+                            'type' => 'string',
+                            'description' => 'The domain they asked about, such as masbcr.com.ar',
+                        ],
+                    ],
+                    'required' => ['domain'],
+                ],
+            ],
+            [
                 'name' => 'reset_cpanel_password',
-                'description' => 'Reset the cPanel login password for the contact\'s hosting and send the new access details on this WhatsApp thread. Only for cPanel. If they have several domains, pass domain. Do not invent or repeat the password when the tool says it was already sent.',
+                'description' => 'Reset the cPanel login password for the contact\'s hosting and send the new access details to the person writing in this chat. Only for cPanel. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. If they have several domains, pass domain. Do not invent or repeat the password when the tool says it was already sent. Do not invent a contact email or phone.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -1017,17 +1133,17 @@ class AssistantToolsService
             ],
             [
                 'name' => 'manage_hosting_mailbox',
-                'description' => 'cPanel email for the contact\'s hosting. list without domain returns every domain. create, reset_password and settings need one domain, or an account like name@domain. New passwords are sent on this WhatsApp thread. Do not invent mailboxes. If the tool says there are several domains, ask which one.',
+                'description' => 'cPanel email for the contact\'s hosting. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. list without domain returns every open domain. create, reset_password and settings need one domain, or an account like name@domain. disk reports that mailbox quota, not the hosting plan; pass the address, and if they say "esta casilla" use the mailbox from the conversation. New passwords are sent to the person writing in this chat. Do not invent mailboxes or a contact email or phone. If the tool says there are several domains, ask which one.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
                         'action' => [
                             'type' => 'string',
-                            'enum' => ['list', 'create', 'reset_password', 'settings'],
+                            'enum' => ['list', 'create', 'reset_password', 'settings', 'disk'],
                         ],
                         'account' => [
                             'type' => 'string',
-                            'description' => 'Mailbox local part or full address. Required except for list.',
+                            'description' => 'Mailbox local part or full address. Required except for list. For disk, the mailbox they mean, including "esta casilla" from the thread.',
                         ],
                         'domain' => [
                             'type' => 'string',
@@ -1039,7 +1155,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'manage_hosting_ftp',
-                'description' => 'cPanel FTP for the contact\'s hosting: list accounts, create one, reset its password, or show host, port and directory. New passwords are sent on this WhatsApp thread.',
+                'description' => 'cPanel FTP for the contact\'s hosting. A cancelled subscription still allows this when the server account is not suspended. If the account is suspended, say so and change nothing. list, create, reset_password or settings (host, port, user, directory). New passwords are sent to the person writing in this chat.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -1103,10 +1219,15 @@ class AssistantToolsService
             ],
             [
                 'name' => 'hosting_unpaid_invoices',
-                'description' => 'Unpaid invoices and payment links for the contact in this WhatsApp thread. Call this for debt, unpaid bills, or a payment link. Paste the links the tool returns. Do not invent amounts or URLs.',
+                'description' => 'Invoices of the contact in this chat: the latest ones (paid and unpaid), the pending balance, and a payment link for each open invoice. Call this for facturas, últimas facturas, saldo, deuda, or a payment link. Never say you cannot list invoices and never send them to a website. Paste the lines and links the tool returns. Do not invent amounts or URLs. Pass limit when they ask for a number, such as the last 3.',
                 'input_schema' => [
                     'type' => 'object',
-                    'properties' => [],
+                    'properties' => [
+                        'limit' => [
+                            'type' => 'integer',
+                            'description' => 'How many recent invoices to list. Default 5. Use the number they asked for.',
+                        ],
+                    ],
                     'required' => [],
                 ],
             ],
@@ -1161,6 +1282,12 @@ class AssistantToolsService
             return $denied;
         }
 
+        $rehearsal = $this->rehearsalReply($name, $input, $teamId);
+        if ($rehearsal !== null)
+        {
+            return $rehearsal;
+        }
+
         $this->recordExecutedTool($name);
 
         try
@@ -1212,13 +1339,14 @@ class AssistantToolsService
                 'get_store_info' => $this->getStoreInfo($teamId),
                 'confirm_whatsapp_order' => $this->confirmWhatsAppOrder($teamId, $input),
                 'list_my_hosting' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->listForContact($teamId, $this->contextContactId),
+                'hosting_disk' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->diskSpace($teamId, $this->contextContactId, isset($input['domain']) ? (string) $input['domain'] : null),
                 'reset_cpanel_password' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->resetCpanelAccess($teamId, $this->contextContactId, $user, isset($input['domain']) ? (string) $input['domain'] : null),
                 'manage_hosting_mailbox' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->manageMailbox($teamId, $this->contextContactId, $user, (string) ($input['action'] ?? ''), isset($input['domain']) ? (string) $input['domain'] : null, isset($input['account']) ? (string) $input['account'] : null),
                 'manage_hosting_ftp' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->manageFtp($teamId, $this->contextContactId, $user, (string) ($input['action'] ?? ''), isset($input['domain']) ? (string) $input['domain'] : null, isset($input['account']) ? (string) $input['account'] : null),
                 'hosting_dns' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->dnsInfo($teamId, $this->contextContactId, isset($input['domain']) ? (string) $input['domain'] : null),
                 'hosting_product_info' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->productLinks(isset($input['product']) ? (string) $input['product'] : null),
                 'hosting_google_mail' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->googleMailSetup($teamId, $this->contextContactId, isset($input['domain']) ? (string) $input['domain'] : null),
-                'hosting_unpaid_invoices' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->unpaidInvoices($teamId, $this->contextContactId),
+                'hosting_unpaid_invoices' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->unpaidInvoices($teamId, $this->contextContactId, isset($input['limit']) ? (int) $input['limit'] : 5),
                 'request_hosting_upgrade' => app(\App\Services\Hosting\HostingCustomerAssistantService::class)->requestUpgrade($teamId, $this->contextContactId, $user, isset($input['domain']) ? (string) $input['domain'] : null, isset($input['plan']) ? (string) $input['plan'] : (isset($input['note']) ? (string) $input['note'] : null)),
                 'list_cms_content' => $this->listCmsContent($teamId, $user, $input),
                 'get_cms_content' => $this->getCmsContent($teamId, $user, $input),
@@ -2038,6 +2166,13 @@ class AssistantToolsService
         if ($message === '')
         {
             return 'Message text is required.';
+        }
+
+        if ($this->rehearsalChatOutbox->isCapturing())
+        {
+            $this->rehearsalChatOutbox->push($message);
+
+            return 'El mensaje quedó en este chat. No digas que salió por otro WhatsApp.';
         }
 
         if ($contactId !== null)

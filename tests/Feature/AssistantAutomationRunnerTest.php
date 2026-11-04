@@ -307,4 +307,22 @@ class AssistantAutomationRunnerTest extends TestCase
             'awaiting_reply',
         ));
     }
+
+    public function test_chau_drops_a_forced_prompt(): void
+    {
+        $team = Team::factory()->create();
+
+        $context = app(AssistantAutomationRunner::class)->resolveFlowContext(
+            (int) $team->id,
+            Automation::CHANNEL_WHATSAPP,
+            'chau',
+            'wa:549111',
+            null,
+            null,
+            'hosting:assistant_hosting',
+        );
+
+        $this->assertNull($context['prompt_key']);
+        $this->assertNull($context['automation']);
+    }
 }

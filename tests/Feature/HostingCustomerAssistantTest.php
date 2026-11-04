@@ -4,14 +4,19 @@ namespace Tests\Feature;
 
 use App\Contracts\WhatsAppGateway;
 use App\Models\Contact;
+use App\Models\Currency;
 use App\Models\Domain;
 use App\Models\Enterprise;
+use App\Models\Invoice;
+use App\Models\InvoiceSync;
+use App\Models\InvoiceType;
 use App\Models\Server;
 use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AssistantToolsService;
 use App\Services\Hosting\HostingCustomerAssistantService;
+use App\Services\Hosting\RehearsalChatOutbox;
 use App\Services\Hosting\StripeHostingPlanGateway;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
@@ -79,6 +84,62 @@ class HostingCustomerAssistantTest extends TestCase
         $this->assertStringNotContainsString('Asesoramiento', $text);
     }
 
+    public function test_deactivated_subscriptions_are_listed_and_cannot_be_changed(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+
+        ServiceSync::query()->create([
+            'team_id' => $user->current_team_id,
+            'stripe_id' => 'sub_canceled_hosting',
+            'customer_id' => 'cus_hosting_demo',
+            'status' => 'canceled',
+            'plan_name' => 'Hosting legacy.test',
+            'data' => [
+                'domain' => 'legacy.test',
+                'category' => 'hosting',
+            ],
+        ]);
+        ServiceSync::query()->create([
+            'team_id' => $user->current_team_id,
+            'stripe_id' => 'sub_canceled_consulting',
+            'customer_id' => 'cus_hosting_demo',
+            'status' => 'canceled',
+            'plan_name' => 'Asesoramiento viejo',
+            'data' => ['category' => 'asesoramiento'],
+        ]);
+
+        $text = app(HostingCustomerAssistantService::class)->listForContact(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+        );
+
+        $this->assertStringContainsString('example.test', $text);
+        $this->assertStringContainsString('legacy.test · cancelada · hosting', $text);
+        $this->assertStringContainsString('Asesoramiento viejo · cancelada · no es hosting', $text);
+    }
+
+    public function test_a_deactivated_hosting_subscription_is_listed_and_not_changed(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+        ServiceSync::query()->where('stripe_id', 'sub_example_test')->update(['status' => 'canceled']);
+
+        $text = app(HostingCustomerAssistantService::class)->listForContact(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+        );
+        $upgrade = app(HostingCustomerAssistantService::class)->requestUpgrade(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            $user,
+            'example.test',
+            'explorer',
+        );
+
+        $this->assertStringContainsString('example.test · cancelada · hosting', $text);
+        $this->assertStringContainsString('están desactivadas', $upgrade);
+        $this->assertSame('essential', $domain->fresh()->plan);
+    }
+
     public function test_email_address_selects_one_domain_when_the_contact_has_several(): void
     {
         Http::fake([
@@ -107,6 +168,150 @@ class HostingCustomerAssistantTest extends TestCase
         Http::assertSent(fn ($request) => ($request['cpanel_jsonapi_func'] ?? null) === 'add_pop'
             && ($request['domain'] ?? null) === 'otro.test'
             && ($request['cpanel_jsonapi_user'] ?? null) === 'otrousuario');
+    }
+
+    public function test_mailbox_disk_reads_that_mailbox_and_not_the_hosting_plan(): void
+    {
+        Http::fake([
+            'https://cpanel.test:2087/json-api/cpanel*' => Http::response([
+                'result' => [
+                    'status' => 1,
+                    'data' => [
+                        [
+                            'email' => 'noreply@example.test',
+                            'diskused' => '12M',
+                            'diskquota' => '1024M',
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        [$user, $domain, $contact] = $this->createHosting();
+        $domain->forceFill([
+            'data' => ['disk_used' => 204, 'disk_limit' => 1024000],
+        ])->save();
+
+        $text = app(HostingCustomerAssistantService::class)->mailboxDisk(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            'noreply@example.test',
+        );
+
+        $this->assertStringContainsString('noreply@example.test usa 12 MB de 1.024 MB', $text);
+        $this->assertStringNotContainsString('204 MB', $text);
+        $this->assertStringNotContainsString('suscripción', $text);
+    }
+
+    public function test_rehearse_chat_reads_the_mailbox_from_the_thread_when_they_say_esta_casilla(): void
+    {
+        Http::fake([
+            'https://cpanel.test:2087/json-api/cpanel*' => Http::response([
+                'result' => [
+                    'status' => 1,
+                    'data' => [
+                        [
+                            'email' => 'info@example.test',
+                            'diskused' => '3M',
+                            'diskquota' => '512M',
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        [$user, , $contact] = $this->createHosting();
+
+        $this->artisan('hosting:rehearse', [
+            '--chat' => true,
+            '--contact' => $contact->id,
+            '--team' => $user->current_team_id,
+        ])->expectsQuestion('Cliente', 'la cuenta es info@example.test')
+            ->expectsQuestion('Cliente', 'cuando espacio ocupa esta casilla?')
+            ->expectsQuestion('Cliente', 'chau')
+            ->expectsOutputToContain('info@example.test usa 3 MB de 512 MB')
+            ->expectsOutputToContain('salimos del flujo')
+            ->assertSuccessful();
+
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringNotContainsString('De qué dominio', $output);
+    }
+
+    public function test_recent_invoices_lists_the_latest_balance_and_payment_link(): void
+    {
+        [$user, , $contact] = $this->createHosting();
+        $enterprise = $contact->enterprises()->first();
+        $currency = Currency::query()->create([
+            'code' => 'EUR',
+            'name' => 'Euro',
+            'symbol' => '€',
+            'status' => true,
+        ]);
+        $this->makeInvoice($user, $enterprise, $currency, 'FAC-OLD', '2026-01-01', 7, 7, 'in_old');
+        $this->makeInvoice($user, $enterprise, $currency, 'FAC-1', '2026-02-01', 20, 0, 'in_1');
+        $this->makeInvoice($user, $enterprise, $currency, 'FAC-2', '2026-03-01', 15, 0, 'in_2');
+        $this->makeInvoice($user, $enterprise, $currency, 'FAC-3', '2026-04-01', 10, 10, 'in_3', 'https://pay.test/fac-3');
+
+        $text = app(HostingCustomerAssistantService::class)->recentInvoices(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            3,
+        );
+
+        $this->assertStringContainsString('Últimas 3 facturas:', $text);
+        $this->assertStringContainsString('FAC-3', $text);
+        $this->assertStringContainsString('FAC-1', $text);
+        $this->assertStringContainsString('https://pay.test/fac-3', $text);
+        $this->assertStringContainsString('Saldo pendiente: 17,00 EUR', $text);
+        $this->assertStringNotContainsString('FAC-OLD', $text);
+        $this->assertStringNotContainsString('No tengo acceso', $text);
+    }
+
+    public function test_rehearse_chat_lists_the_last_invoices_instead_of_refusing(): void
+    {
+        [$user, , $contact] = $this->createHosting();
+        $enterprise = $contact->enterprises()->first();
+        $currency = Currency::query()->create([
+            'code' => 'EUR',
+            'name' => 'Euro',
+            'symbol' => '€',
+            'status' => true,
+        ]);
+        $this->makeInvoice($user, $enterprise, $currency, 'FAC-9', '2026-04-01', 10, 10, 'in_9', 'https://pay.test/fac-9');
+
+        $this->artisan('hosting:rehearse', [
+            '--chat' => true,
+            '--contact' => $contact->id,
+            '--team' => $user->current_team_id,
+        ])->expectsQuestion('Cliente', 'Cuales son mis últimas 3 facturas?')
+            ->expectsQuestion('Cliente', 'chau')
+            ->expectsOutputToContain("Pago: https://pay.test/fac-9\n\nSaldo pendiente: 10,00 EUR")
+            ->doesntExpectOutputToContain('No tengo acceso')
+            ->assertSuccessful();
+    }
+
+    public function test_rehearse_chat_lists_paid_invoices_when_they_ask_for_them(): void
+    {
+        [$user, , $contact] = $this->createHosting();
+        $enterprise = $contact->enterprises()->first();
+        $currency = Currency::query()->create([
+            'code' => 'EUR',
+            'name' => 'Euro',
+            'symbol' => '€',
+            'status' => true,
+        ]);
+        $this->makeInvoice($user, $enterprise, $currency, 'FAC-PAID', '2026-05-01', 40, 0, 'in_paid');
+
+        $this->artisan('hosting:rehearse', [
+            '--chat' => true,
+            '--contact' => $contact->id,
+            '--team' => $user->current_team_id,
+        ])->expectsQuestion('Cliente', 'Quiero ver las facturas aunque estén pagas')
+            ->expectsQuestion('Cliente', 'chau')
+            ->expectsOutputToContain("FAC-PAID · 40,00 EUR · Cobrada\n\nSaldo pendiente: 0,00")
+            ->doesntExpectOutputToContain('solo puedo mostrar')
+            ->doesntExpectOutputToContain('info@revisionalpha.es')
+            ->assertSuccessful();
     }
 
     public function test_listing_mailboxes_includes_every_domain(): void
@@ -192,8 +397,83 @@ class HostingCustomerAssistantTest extends TestCase
         $this->assertStringContainsString('ya se enviaron por WhatsApp', $text);
         $this->assertStringNotContainsString('Contraseña:', $text);
         $this->assertCount(1, $sent);
+        $this->assertStringContainsString('611223344', (string) $sent[0]['to']);
         $this->assertStringContainsString('Usuario: siteuser', $sent[0]['message']);
         $this->assertStringContainsString('Contraseña:', $sent[0]['message']);
+    }
+
+    public function test_a_password_is_not_sent_to_another_contact_when_the_writer_has_no_whatsapp(): void
+    {
+        Http::fake([
+            'https://cpanel.test:2087/json-api/passwd*' => Http::response([
+                'metadata' => ['result' => 1],
+            ]),
+        ]);
+        $sent = [];
+        $this->bindGateway($sent);
+
+        [$user, , $contact] = $this->createHosting();
+        $contact->forceFill(['phone' => null])->save();
+        $enterprise = $contact->enterprises()->first();
+        $other = Contact::factory()->create([
+            'team_id' => $user->current_team_id,
+            'name' => 'Otro',
+            'email' => 'otro@example.test',
+            'phone' => '699887766',
+            'country' => 724,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+        $enterprise->contacts()->attach($other->id);
+        $user->currentTeam->setSetting('whatsapp_driver', 'twilio', ['group' => 'chat']);
+
+        $text = app(HostingCustomerAssistantService::class)->resetCpanelAccess(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            $user,
+            'example.test',
+        );
+
+        $this->assertSame([], $sent);
+        $this->assertStringContainsString('Pegá este mensaje tal cual', $text);
+        $this->assertStringContainsString('Contraseña:', $text);
+        $this->assertStringNotContainsString('699887766', $text);
+    }
+
+    public function test_rehearsal_prints_the_mailbox_password_in_the_chat_and_does_not_send_whatsapp(): void
+    {
+        Http::fake([
+            'https://cpanel.test:2087/json-api/cpanel*' => Http::response([
+                'result' => ['status' => 1, 'data' => null],
+            ]),
+        ]);
+        $sent = [];
+        $this->bindGateway($sent);
+
+        [$user, , $contact] = $this->createHosting();
+        $contact->forceFill(['phone' => null])->save();
+        $outbox = app(RehearsalChatOutbox::class);
+        $outbox->capture(true);
+        $tools = app(AssistantToolsService::class);
+        $tools->setRehearsalDryRun(true);
+        $tools->setRehearsalChatDelivery(true);
+        $tools->setRequestContext($user->id, (int) $user->current_team_id, null, (int) $contact->id);
+
+        $text = $tools->execute('manage_hosting_mailbox', [
+            'action' => 'reset_password',
+            'account' => 'info@example.test',
+        ]);
+
+        $this->assertStringContainsString('quedaron en este chat', $text);
+        $this->assertStringNotContainsString('Contraseña:', $text);
+        $this->assertStringNotContainsString('Ensayo. No cambié', $text);
+        $this->assertSame([], $sent);
+        $messages = $outbox->pull();
+        $this->assertCount(1, $messages);
+        $this->assertStringContainsString('info@example.test', $messages[0]);
+        $this->assertStringContainsString('Contraseña:', $messages[0]);
+        Http::assertSent(fn ($request) => ($request['cpanel_jsonapi_func'] ?? null) === 'passwd_pop'
+            && ($request['email'] ?? null) === 'info');
     }
 
     public function test_create_mailbox_sends_imap_and_smtp_settings(): void
@@ -461,6 +741,230 @@ class HostingCustomerAssistantTest extends TestCase
         ], $gateway->swaps);
     }
 
+    public function test_rehearse_command_lists_hosting_and_previews_a_plan_without_changing_it(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+        $this->preparePlanChange($domain);
+        $gateway = $this->bindPlanGateway();
+        app(\App\Services\InboxProductOnboardingService::class)->start($contact);
+
+        $this->withoutMockingConsoleOutput();
+
+        $this->assertSame(0, $this->artisan('hosting:rehearse', [
+            'message' => 'Que hosting tengo?',
+            '--team' => $user->current_team_id,
+            '--phone' => '34611223344',
+        ]));
+        $listed = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringContainsString('no lo contesta el embudo', $listed);
+        $this->assertStringContainsString('example.test', $listed);
+
+        $this->assertSame(0, $this->artisan('hosting:rehearse', [
+            'message' => 'Pasame a explorer',
+            '--contact' => $contact->id,
+            '--plan' => 'explorer',
+        ]));
+        $preview = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringContainsString('Ensayo. No cambié Stripe ni el servidor.', $preview);
+        $this->assertStringContainsString('revision_explorer', $preview);
+
+        $this->assertSame('revision_beginner', $domain->fresh()->plan);
+        $this->assertSame([], $gateway->swaps);
+        $this->assertTrue((bool) data_get($contact->fresh()->data, 'idoneo_product_onboarding.active'));
+    }
+
+    public function test_start_command_rehearses_hosting_without_changing_the_plan(): void
+    {
+        [$user, $domain] = $this->createHosting();
+        $this->preparePlanChange($domain);
+        $gateway = $this->bindPlanGateway();
+        $this->withoutMockingConsoleOutput();
+
+        $this->assertSame(0, $this->artisan('start', [
+            '--hosting-rehearse' => true,
+            '--message' => 'Que hosting tengo?',
+            '--team' => $user->current_team_id,
+            '--phone' => '34611223344',
+            '--plan' => 'explorer',
+        ]));
+
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringContainsString('example.test', $output);
+        $this->assertStringContainsString('Ensayo. No cambié Stripe ni el servidor.', $output);
+        $this->assertStringContainsString('revision_explorer', $output);
+        $this->assertSame('revision_beginner', $domain->fresh()->plan);
+        $this->assertSame([], $gateway->swaps);
+    }
+
+    public function test_rehearse_chat_lists_hosting_and_chau_leaves_the_flow(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+        $plan = $domain->plan;
+        app(\App\Services\InboxProductOnboardingService::class)->start($contact);
+        $contact->pinInboundChatAssistantPrompt('hosting:assistant_hosting');
+
+        $this->artisan('hosting:rehearse', [
+            '--chat' => true,
+            '--contact' => $contact->id,
+            '--team' => $user->current_team_id,
+        ])->expectsQuestion('Cliente', 'Que hosting tengo?')
+            ->expectsQuestion('Cliente', 'chau')
+            ->expectsOutputToContain('example.test')
+            ->expectsOutputToContain('lo dejamos acá')
+            ->assertSuccessful();
+
+        $fresh = $contact->fresh();
+        $this->assertFalse((bool) data_get($fresh->data, 'idoneo_product_onboarding.active'));
+        $this->assertNull($fresh->inboundChatAssistantPromptKey());
+        $this->assertSame($plan, $domain->fresh()->plan);
+    }
+
+    public function test_rehearse_chat_greets_without_listing_subscriptions(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+
+        $this->artisan('hosting:rehearse', [
+            '--chat' => true,
+            '--contact' => $contact->id,
+            '--team' => $user->current_team_id,
+        ])->expectsQuestion('Cliente', 'Hola')
+            ->expectsQuestion('Cliente', 'chau')
+            ->expectsOutputToContain('Qué necesitás')
+            ->assertSuccessful();
+
+        $output = \Illuminate\Support\Facades\Artisan::output();
+        $this->assertStringNotContainsString('example.test', $output);
+        $this->assertStringNotContainsString('Suscripciones desactivadas', $output);
+        $this->assertSame('essential', $domain->fresh()->plan);
+    }
+
+    public function test_disk_space_of_a_cancelled_subscription_does_not_list_the_rest(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+        ServiceSync::query()->create([
+            'team_id' => $user->current_team_id,
+            'stripe_id' => 'sub_masbcr',
+            'customer_id' => 'cus_hosting_demo',
+            'status' => 'canceled',
+            'plan_name' => 'masbcr.com.ar',
+            'data' => ['category' => 'asesoramiento'],
+        ]);
+
+        $text = app(HostingCustomerAssistantService::class)->diskSpace(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            'masbcr.com.ar',
+        );
+
+        $this->assertStringContainsString('masbcr.com.ar', $text);
+        $this->assertStringContainsString('cancelada', $text);
+        $this->assertStringContainsString('no es hosting', $text);
+        $this->assertStringNotContainsString('example.test', $text);
+        $this->assertStringNotContainsString('Suscripciones desactivadas', $text);
+        $this->assertSame('essential', $domain->fresh()->plan);
+    }
+
+    public function test_disk_space_reads_the_quota_of_the_named_domain(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+        $domain->forceFill([
+            'data' => ['disk_used' => 1500, 'disk_limit' => 10000],
+        ])->save();
+
+        $text = app(HostingCustomerAssistantService::class)->diskSpace(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            'example.test',
+        );
+
+        $this->assertStringContainsString('example.test', $text);
+        $this->assertStringContainsString('1.500 MB', $text);
+        $this->assertStringContainsString('10.000 MB', $text);
+        $this->assertStringNotContainsString('Suscripciones desactivadas', $text);
+    }
+
+    public function test_disk_space_of_a_cancelled_hosting_still_reads_the_server(): void
+    {
+        [$user, $domain, $contact] = $this->createHosting();
+        ServiceSync::query()->where('stripe_id', 'sub_example_test')->update(['status' => 'canceled']);
+        $domain->forceFill([
+            'data' => ['disk_used' => 800, 'disk_limit' => 5000],
+        ])->save();
+
+        $text = app(HostingCustomerAssistantService::class)->diskSpace(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            'example.test',
+        );
+
+        $this->assertStringContainsString('example.test usa 800 MB de 5.000 MB', $text);
+        $this->assertStringContainsString('La suscripción está cancelada.', $text);
+        $this->assertStringNotContainsString('No consulto el espacio', $text);
+        $this->assertStringNotContainsString('Suscripciones desactivadas', $text);
+    }
+
+    public function test_a_cancelled_hosting_still_creates_a_mailbox_when_the_account_is_open(): void
+    {
+        Http::fake([
+            'https://cpanel.test:2087/json-api/cpanel*' => Http::response([
+                'result' => ['status' => 1, 'data' => null],
+            ]),
+        ]);
+        $sent = [];
+        $this->bindGateway($sent);
+
+        [$user, $domain, $contact] = $this->createHosting();
+        ServiceSync::query()->where('stripe_id', 'sub_example_test')->update(['status' => 'canceled']);
+        $user->currentTeam->setSetting('whatsapp_driver', 'twilio', ['group' => 'chat']);
+
+        $text = app(HostingCustomerAssistantService::class)->manageMailbox(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            $user,
+            'create',
+            'example.test',
+            'info',
+        );
+
+        $this->assertStringContainsString('info@example.test', $text);
+        $this->assertStringNotContainsString('desactivadas', $text);
+        $this->assertStringNotContainsString('suspendida', $text);
+        Http::assertSent(fn ($request) => ($request['cpanel_jsonapi_func'] ?? null) === 'add_pop');
+        $this->assertFalse((bool) $domain->fresh()->suspended);
+    }
+
+    public function test_a_suspended_account_cannot_be_changed_even_when_the_subscription_is_active(): void
+    {
+        Http::fake();
+        [$user, $domain, $contact] = $this->createHosting();
+        $domain->forceFill(['suspended' => true])->save();
+
+        $text = app(HostingCustomerAssistantService::class)->manageMailbox(
+            (int) $user->current_team_id,
+            (int) $contact->id,
+            $user,
+            'create',
+            'example.test',
+            'info',
+        );
+
+        $this->assertStringContainsString('suspendida', $text);
+        $this->assertStringContainsString('example.test', $text);
+        Http::assertNothingSent();
+    }
+
+    public function test_rehearse_command_refuses_to_run_in_production(): void
+    {
+        $this->app['env'] = 'production';
+
+        $this->artisan('hosting:rehearse', [
+            'message' => 'Que hosting tengo?',
+            '--contact' => 1,
+            '--apply' => true,
+        ])->assertFailed()
+            ->expectsOutputToContain('no corre en producción');
+    }
+
     private function preparePlanChange(Domain $domain): void
     {
         $domain->forceFill([
@@ -527,6 +1031,56 @@ class HostingCustomerAssistantTest extends TestCase
     /**
      * @param  list<array<string, mixed>>  $sent
      */
+    private function makeInvoice(
+        User $user,
+        Enterprise $enterprise,
+        Currency $currency,
+        string $number,
+        string $date,
+        float $total,
+        float $balance,
+        string $stripeId,
+        ?string $paymentUrl = null,
+    ): void {
+        $typeId = InvoiceType::query()->firstOrCreate(['name' => 'Factura'])->id;
+
+        Invoice::query()->create([
+            'team_id' => $user->current_team_id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => $typeId,
+            'operation' => 'sell',
+            'number' => $number,
+            'date' => $date,
+            'due_date' => '2026-12-01',
+            'gross_amount' => $total,
+            'discount' => 0,
+            'total_amount' => $total,
+            'balance' => $balance,
+            'status' => 1,
+            'currency_id' => $currency->id,
+            'source_provider' => 'stripe',
+            'source_reference_id' => $stripeId,
+        ]);
+
+        if ($paymentUrl === null)
+        {
+            return;
+        }
+
+        InvoiceSync::query()->create([
+            'team_id' => $user->current_team_id,
+            'provider' => 'stripe',
+            'external_id' => $stripeId,
+            'customer_id' => $enterprise->code,
+            'number' => $number,
+            'status' => 'open',
+            'currency' => 'eur',
+            'total' => $total,
+            'amount_remaining' => $balance,
+            'hosted_invoice_url' => $paymentUrl,
+        ]);
+    }
+
     private function bindGateway(array &$sent): void
     {
         $this->app->instance(WhatsAppGateway::class, new class($sent) implements WhatsAppGateway
