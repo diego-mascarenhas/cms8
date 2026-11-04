@@ -163,6 +163,7 @@ Route::prefix('projects/funnel')->group(function ()
         Route::get('requirements', [ProjectFunnelController::class, 'requirements'])->name('api.projects.funnel.requirements');
         Route::get('strategy-tips', [ProjectFunnelController::class, 'strategyTips'])->name('api.projects.funnel.strategy-tips');
         Route::get('quote/status', [ProjectFunnelController::class, 'quoteStatus'])->name('api.projects.funnel.quote.status');
+        Route::get('demo/status', [ProjectFunnelController::class, 'demoStatus'])->name('api.projects.funnel.demo.status');
         Route::get('budget/{token}', [ProjectFunnelController::class, 'showPublicBudget'])->name('api.projects.funnel.budget.show');
     });
 
@@ -172,6 +173,7 @@ Route::prefix('projects/funnel')->group(function ()
         Route::post('chat', [ProjectFunnelController::class, 'chat'])->name('api.projects.funnel.chat');
         Route::post('guide', [ProjectFunnelController::class, 'guide'])->name('api.projects.funnel.guide');
         Route::post('quote', [ProjectFunnelController::class, 'quote'])->name('api.projects.funnel.quote');
+        Route::post('demo', [ProjectFunnelController::class, 'demo'])->name('api.projects.funnel.demo');
         Route::post('submit', [ProjectFunnelController::class, 'submit'])->name('api.projects.funnel.submit');
         Route::post('budget/{token}/accept', [ProjectFunnelController::class, 'acceptPublicBudget'])->name('api.projects.funnel.budget.accept');
         Route::post('budget/{token}/reformulate', [ProjectFunnelController::class, 'reformulatePublicBudget'])->name('api.projects.funnel.budget.reformulate');

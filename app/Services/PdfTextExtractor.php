@@ -40,7 +40,7 @@ class PdfTextExtractor
         foreach ($this->pageIds($objects) as $pageId)
         {
             $page = $objects[$pageId] ?? '';
-            $fonts = $this->pageFonts($page, $fontMaps);
+            $fonts = $this->pageFonts($page, $objects, $fontMaps);
             $glyphs = [];
             $state = ['font' => [], 'x' => 0.0, 'y' => 0.0];
             foreach ($this->contentIds($page) as $contentId)
@@ -199,18 +199,29 @@ class PdfTextExtractor
     }
 
     /**
+     * @param  array<int, string>  $objects
      * @param  array<int, array<string, string>>  $fontMaps
      * @return array<string, array<string, string>>
      */
-    private function pageFonts(string $page, array $fontMaps): array
+    private function pageFonts(string $page, array $objects, array $fontMaps): array
     {
-        $fonts = [];
-        if (preg_match('/\/Font\s*<<(.*?)>>/s', $page, $block) !== 1)
+        $resources = $page;
+        if (preg_match('/\/Resources\s+(\d+)\s+0\s+R/', $page, $reference) === 1)
         {
-            return $fonts;
+            $resources = $objects[(int) $reference[1]] ?? '';
         }
 
-        preg_match_all('/\/(F\d+)\s+(\d+)\s+0\s+R/', $block[1], $matches, PREG_SET_ORDER);
+        $fontBlock = '';
+        if (preg_match('/\/Font\s*<<(.*?)>>/s', $resources, $block) === 1)
+        {
+            $fontBlock = $block[1];
+        } elseif (preg_match('/\/Font\s+(\d+)\s+0\s+R/', $resources, $reference) === 1)
+        {
+            $fontBlock = $objects[(int) $reference[1]] ?? '';
+        }
+
+        $fonts = [];
+        preg_match_all('/\/(F\d+)\s+(\d+)\s+0\s+R/', $fontBlock, $matches, PREG_SET_ORDER);
         foreach ($matches as $match)
         {
             $fonts[$match[1]] = $fontMaps[(int) $match[2]] ?? [];
@@ -284,7 +295,7 @@ class PdfTextExtractor
 
             $text = ($match[10] ?? '') !== ''
                 ? $this->mapped($match[10], $font)
-                : $this->literal($match[11] ?? '');
+                : $this->literal($match[11] ?? '', $font);
             if ($text === '')
             {
                 continue;
@@ -370,7 +381,10 @@ class PdfTextExtractor
         return $text;
     }
 
-    private function literal(string $value): string
+    /**
+     * @param  array<string, string>  $font
+     */
+    private function literal(string $value, array $font): string
     {
         $decoded = preg_replace_callback(
             '/\\\\([nrtbf()\\\\]|[0-7]{1,3})/',
@@ -388,9 +402,62 @@ class PdfTextExtractor
                 };
             },
             $value,
-        );
+        ) ?? $value;
 
-        return $decoded ?? $value;
+        return $this->mapLiteral($decoded, $font);
+    }
+
+    /**
+     * Identity-H fonts store each glyph as a UTF-16 code that still needs ToUnicode.
+     *
+     * @param  array<string, string>  $font
+     */
+    private function mapLiteral(string $decoded, array $font): string
+    {
+        if ($font === [] || $decoded === '')
+        {
+            return $decoded;
+        }
+
+        $units = $decoded;
+        if (str_starts_with($units, "\xFE\xFF"))
+        {
+            $units = substr($units, 2);
+        } elseif (! $this->isUtf16Be($units))
+        {
+            return $decoded;
+        }
+
+        $text = '';
+        foreach (str_split($units, 2) as $pair)
+        {
+            if (strlen($pair) < 2)
+            {
+                continue;
+            }
+            $text .= $font[strtoupper(bin2hex($pair))] ?? '';
+        }
+
+        return $text;
+    }
+
+    private function isUtf16Be(string $value): bool
+    {
+        $length = strlen($value);
+        if ($length < 2 || $length % 2 !== 0)
+        {
+            return false;
+        }
+
+        for ($index = 0; $index < $length; $index += 2)
+        {
+            if ($value[$index] !== "\x00")
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

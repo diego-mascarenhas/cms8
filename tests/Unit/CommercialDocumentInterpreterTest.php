@@ -52,6 +52,36 @@ TEXT, '2026-10-28-Maxikol-Listado-productos.pdf');
         $this->assertCount(3, $document['lines']);
     }
 
+    public function test_a_ship_quotation_keeps_code_name_quantity_and_net_cost(): void
+    {
+        $documents = new CommercialDocumentInterpreter(new \App\Services\DocumentAiOcrService);
+        $document = $documents->quotationFromText(<<<'TEXT'
+Page 	2 of 5
+2BAMBOO 	000103	-	-	10.0	KG	-	-NA
+SHOOT FRESH
+3BEANS STRING 	000107	-	-	15.0	KG	15.0	3.02	10.00%	40.77	2-
+FRESH
+4BROCCOLI 	000109	-	-	30.0	KG	30.0	5.02	10.00%	135.54	2-
+FRESH
+Subtotal:	USD 7,922.29
+TEXT, 'qt_9020-FRS265012A_Seven_Seas_Ship_Suppliers_Argentina.pdf');
+
+        $this->assertNotNull($document);
+        $this->assertSame('price_list', $document['kind']);
+        $this->assertSame('Seven Seas Ship Suppliers Argentina', $document['supplier_name']);
+        $this->assertSame('USD', $document['currency']);
+        $this->assertSame('000103', $document['lines'][0]['code']);
+        $this->assertSame('BAMBOO SHOOT FRESH', $document['lines'][0]['name']);
+        $this->assertNull($document['lines'][0]['cost']);
+        $this->assertEquals(10, $document['lines'][0]['quantity']);
+        $this->assertSame('KG', $document['lines'][0]['unit']);
+        $this->assertSame('BEANS STRING FRESH', $document['lines'][1]['name']);
+        $this->assertEquals(2.72, $document['lines'][1]['cost']);
+        $this->assertEquals(15, $document['lines'][1]['quantity']);
+        $this->assertSame('BROCCOLI FRESH', $document['lines'][2]['name']);
+        $this->assertEquals(4.52, $document['lines'][2]['cost']);
+    }
+
     public function test_spreadsheet_text_keeps_the_item_and_the_quantity(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'list');

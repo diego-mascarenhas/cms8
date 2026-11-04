@@ -109,12 +109,11 @@ class ProjectBudgetSpecService
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt(
+            $response = AiTasks::prompt(
+                $agent,
                 $userMessage,
-                [],
-                AiTasks::provider('assistant'),
-                AiTasks::model('assistant'),
                 $this->budgetSpecTimeout(),
+                'assistant',
             );
             $text = $response->text ?: '';
             $this->logAiUsage(
@@ -1807,6 +1806,53 @@ class ProjectBudgetSpecService
             inputSize: $inputSize,
             outputSize: $outputSize,
         );
+    }
+
+    /**
+     * Priced preview for a brief that is not stored as a project.
+     *
+     * @param  array<string, mixed>  $spec
+     * @return array<string, mixed>
+     */
+    public function previewDraft(Team $team, array $spec): array
+    {
+        $summary = trim((string) ($spec['client_summary'] ?? ''));
+        $title = trim((string) ($spec['project_name'] ?? ''));
+        if ($title === '' && $summary !== '')
+        {
+            $title = trim(strtok($summary, "\n") ?: $summary);
+        }
+        if ($title === '')
+        {
+            $title = 'Presupuesto';
+        }
+
+        $project = new Project([
+            'team_id' => $team->id,
+            'name' => Str::limit($title, 120, ''),
+            'description' => (string) ($spec['ai_interpretation'] ?? ''),
+            'discount' => 0,
+            'data' => [
+                'client_summary' => $summary,
+                'ai_interpretation' => (string) ($spec['ai_interpretation'] ?? ''),
+                'dimension' => (string) ($spec['dimension'] ?? ''),
+                'estimated_times' => (string) ($spec['estimated_times'] ?? ''),
+                'resources' => (string) ($spec['resources'] ?? ''),
+                'suggested_tasks' => is_array($spec['suggested_tasks'] ?? null) ? $spec['suggested_tasks'] : [],
+                'token_consumption' => is_array($spec['token_consumption'] ?? null) ? $spec['token_consumption'] : [],
+                'quote_currency' => 'EUR',
+            ],
+        ]);
+        $project->setRelation('team', $team);
+        $project->setRelation('enterprise', null);
+
+        $preview = $this->publicPreview($project);
+        $preview['client_name'] = '';
+        $preview['client_response'] = null;
+        $preview['quote_closed'] = false;
+        $preview['quote_accepted'] = false;
+
+        return $preview;
     }
 
     /**

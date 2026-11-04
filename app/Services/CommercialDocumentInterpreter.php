@@ -27,7 +27,7 @@ class CommercialDocumentInterpreter
             throw new RuntimeException(__('The file could not be read.'));
         }
 
-        $parsed = $this->priceListFromText($text, $originalName);
+        $parsed = $this->priceListFromText($text, $originalName) ?? $this->quotationFromText($text, $originalName);
         if ($parsed !== null)
         {
             return $parsed;
@@ -307,6 +307,87 @@ class CommercialDocumentInterpreter
     }
 
     /**
+     * Ship-chandler quotations: item, description, code, quantity, unit, unit price, discount and amount.
+     *
+     * @return array{kind: string, supplier_name: ?string, currency: ?string, lines: list<array{code: string, name: string, cost: ?float, quantity: ?float, unit: ?string, barcode: ?string, oem: null}>}|null
+     */
+    public function quotationFromText(string $text, string $originalName = ''): ?array
+    {
+        $pending = null;
+        $rawRows = [];
+        foreach (preg_split('/\r\n|\n|\r/', $text) ?: [] as $rawLine)
+        {
+            $line = trim($rawLine);
+            if ($line === '' || preg_match('/^Page\s+\d+\s+of\s+\d+$/i', $line) === 1)
+            {
+                continue;
+            }
+
+            if (preg_match('/^\d{1,4}[A-Za-z].*\t\d{4,14}\t/', $line) === 1)
+            {
+                if ($pending !== null)
+                {
+                    $rawRows[] = $pending;
+                }
+                $pending = $line;
+
+                continue;
+            }
+
+            if ($pending !== null && ! str_contains($line, "\t") && preg_match('/^(Subtotal|Grand Total|Total)\b/i', $line) !== 1)
+            {
+                $columns = explode("\t", $pending, 2);
+                $columns[0] = trim($columns[0].' '.$line);
+                $pending = implode("\t", $columns);
+            }
+        }
+
+        if ($pending !== null)
+        {
+            $rawRows[] = $pending;
+        }
+
+        $lines = [];
+        foreach ($rawRows as $row)
+        {
+            $parsed = $this->quotationRow($row);
+            if ($parsed !== null && count($lines) < 2000)
+            {
+                $lines[] = $parsed;
+            }
+        }
+
+        if (count($lines) < 3)
+        {
+            return null;
+        }
+
+        $currency = null;
+        if (preg_match('/\b(USD|EUR|ARS)\b/', $text, $match) === 1)
+        {
+            $currency = $match[1];
+        }
+
+        $priced = false;
+        foreach ($lines as $line)
+        {
+            if ($line['cost'] !== null)
+            {
+                $priced = true;
+
+                break;
+            }
+        }
+
+        return [
+            'kind' => $priced ? 'price_list' : 'requisition',
+            'supplier_name' => $this->supplierFromQuotation($text, $originalName),
+            'currency' => $currency,
+            'lines' => $lines,
+        ];
+    }
+
+    /**
      * @param  list<string>  $lines
      */
     private function supplierFromPreface(array $lines, string $originalName): ?string
@@ -326,6 +407,87 @@ class CommercialDocumentInterpreter
         $base = trim(str_replace(['-', '_', '.'], ' ', $base));
 
         return $this->nullableString($base, 75);
+    }
+
+    private function supplierFromQuotation(string $text, string $originalName): ?string
+    {
+        $haystack = $originalName.' '.$text;
+        if (preg_match('/seven[\s_.-]*seas/i', $haystack) === 1)
+        {
+            $name = 'Seven Seas Ship Suppliers';
+            if (preg_match('/argentina/i', $haystack) === 1)
+            {
+                $name .= ' Argentina';
+            }
+
+            return $name;
+        }
+
+        return $this->supplierFromPreface([], $originalName);
+    }
+
+    /**
+     * @return array{code: string, name: string, cost: ?float, quantity: ?float, unit: ?string, barcode: null, oem: null}|null
+     */
+    private function quotationRow(string $line): ?array
+    {
+        $parts = array_values(array_filter(array_map('trim', explode("\t", $line)), fn (string $part): bool => $part !== ''));
+        if (count($parts) < 4)
+        {
+            return null;
+        }
+
+        $name = trim((string) preg_replace('/^\d{1,4}/', '', $parts[0]));
+        $name = trim((string) preg_replace('/\s+/', ' ', $name));
+        $code = strtoupper($parts[1]);
+        if ($name === '' || preg_match('/^\d{4,14}$/', $code) !== 1)
+        {
+            return null;
+        }
+
+        $unitIndex = null;
+        $unit = null;
+        foreach ($parts as $index => $part)
+        {
+            if (preg_match('/^(KG|KGS|PC|PCS|LT|LTR|ML|GR|BOX|CTN|TIN|BTL|SET|EA|DOZ)$/i', $part) === 1)
+            {
+                $unitIndex = $index;
+                $unit = strtoupper($part === 'KGS' ? 'KG' : $part);
+
+                break;
+            }
+        }
+
+        $requested = $unitIndex !== null ? $this->number($parts[$unitIndex - 1] ?? null) : null;
+        $supplied = $unitIndex !== null ? $this->number($parts[$unitIndex + 1] ?? null) : null;
+        $price = $unitIndex !== null ? $this->number($parts[$unitIndex + 2] ?? null) : null;
+        $discount = null;
+        if ($unitIndex !== null && preg_match('/^([\d.]+)\s*%$/', $parts[$unitIndex + 3] ?? '', $match) === 1)
+        {
+            $discount = (float) $match[1];
+        }
+        $amount = $unitIndex !== null ? $this->number($parts[$unitIndex + 4] ?? null) : null;
+        $quantity = $supplied ?? $requested;
+        $cost = null;
+        if ($amount !== null && $quantity !== null && $quantity > 0)
+        {
+            $cost = round($amount / $quantity, 2);
+        } elseif ($price !== null)
+        {
+            $cost = $discount !== null && $discount > 0 && $discount < 100
+                ? round($price * (1 - ($discount / 100)), 2)
+                : $price;
+        }
+
+        return [
+            'code' => $code,
+            'name' => $name,
+            'cost' => $cost,
+            'quantity' => $quantity,
+            'unit' => $unit,
+            'barcode' => null,
+            'oem' => null,
+        ];
     }
 
     /**
@@ -367,6 +529,7 @@ Extract the commercial lines from this document. It is either a supplier price l
 
 Price list examples: Maxikol product lists, "LISTA REVENTA", LBP price sheets, and supplier quotations. Each product has a name and a unit cost.
 Requisition examples: "STORES REQUISITION FORM", RFQ, and galley or bond store sheets. Each item has an ISSA/IMPA code, a description, and a requested quantity. Those rows usually have no unit cost.
+Quotation examples: Seven Seas qt sheets. A row has the item number, description, supplier code, requested quantity, unit, supplied quantity, unit price, discount percent and line amount. cost is the net unit price, the line amount divided by the supplied quantity. Rows marked NA have no cost. currency is the code printed beside the grand total.
 
 Return only JSON with this shape:
 {"kind":"price_list","supplier_name":null,"currency":"ARS","lines":[{"code":"","name":"","cost":12900,"quantity":3,"unit":"PC","barcode":null,"oem":null}]}
