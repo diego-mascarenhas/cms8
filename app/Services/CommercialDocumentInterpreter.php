@@ -118,8 +118,17 @@ class CommercialDocumentInterpreter
             return null;
         }
 
-        $contents = preg_replace('/\sxmlns(:\w+)?="[^"]*"/', '', $contents) ?? $contents;
-        $xml = simplexml_load_string($contents);
+        // Excel declares compatibility prefixes (mc, x14ac, xr) and then uses
+        // them on the worksheet. Drop the declarations, the prefixed attributes
+        // (mc:Ignorable), and prefixes on tags so local names stay readable.
+        $contents = preg_replace('/\sxmlns(:[\w.-]+)?="[^"]*"/', '', $contents) ?? $contents;
+        $contents = preg_replace('/\s[\w.-]+:[\w.-]+="[^"]*"/', '', $contents) ?? $contents;
+        $contents = preg_replace('/(<\/?)[\w.-]+:/', '$1', $contents) ?? $contents;
+
+        $previous = libxml_use_internal_errors(true);
+        $xml = simplexml_load_string($contents, \SimpleXMLElement::class, LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
 
         return $xml === false ? null : $xml;
     }

@@ -49,4 +49,44 @@ JSON);
         $this->assertStringContainsString('3', $text);
         unlink($path);
     }
+
+    public function test_excel_markup_compatibility_prefixes_do_not_break_the_sheet(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'list');
+        $zip = new ZipArchive;
+        $zip->open($path, ZipArchive::OVERWRITE);
+        $zip->addFromString(
+            'xl/sharedStrings.xml',
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1">'
+            .'<si><t>STAINLESS STEEL CONTAINERS</t></si></sst>',
+        );
+        $zip->addFromString(
+            'xl/worksheets/sheet1.xml',
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+            .' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+            .' xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"'
+            .' mc:Ignorable="x14ac xr xr2 xr3"'
+            .' xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac"'
+            .' xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision"'
+            .' xr:uid="{00000000-0001-0000-0000-000000000000}">'
+            .'<sheetFormatPr defaultRowHeight="15" x14ac:dyDescent="0.25"/>'
+            .'<sheetData>'
+            .'<row r="1" spans="1:2" x14ac:dyDescent="0.25">'
+            .'<c r="A1" t="s"><v>0</v></c>'
+            .'<c r="B1"><v>3</v></c>'
+            .'</row>'
+            .'</sheetData>'
+            .'<mc:AlternateContent><mc:Choice Requires="x14ac"><x14ac:note/></mc:Choice></mc:AlternateContent>'
+            .'</worksheet>',
+        );
+        $zip->close();
+
+        $documents = new CommercialDocumentInterpreter(new \App\Services\DocumentAiOcrService);
+        $text = $documents->spreadsheetText($path);
+
+        $this->assertSame("STAINLESS STEEL CONTAINERS\t3", $text);
+        unlink($path);
+    }
 }
