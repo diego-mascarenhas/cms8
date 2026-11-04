@@ -292,7 +292,7 @@ class RehearseHostingAssistantCommand extends Command
             false,
             AssistantActorContextService::CHANNEL_WHATSAPP,
             false,
-            'Ensayo del flujo Hosting cPanel, con las mismas acciones que en producción. La clave se envía a la persona que escribe en este chat, no a otro contacto. El mensaje con la contraseña se publica aquí: no digas que salió por otro WhatsApp. Si la herramienta dice que los datos quedaron en este chat, confirmá en una frase y no repitas la contraseña. Respondé solo a este mensaje. No listes todas las suscripciones salvo que pregunte cuáles tiene. Si pregunta el espacio de un dominio o del plan, usá hosting_disk. Si pregunta el espacio de una casilla o de un correo, usá manage_hosting_mailbox con action disk y esa cuenta; «esta casilla» es la del mensaje anterior, no el disco del plan. Si pregunta el plan, usá list_my_hosting. Si pregunta facturas, saldo o un link de pago, usá hosting_unpaid_invoices y pegá el listado. No digas que no tenés acceso a las facturas ni los mandes a una web. Una suscripción cancelada no impide la clave, el correo, el FTP, el DNS ni la ficha de un producto si la cuenta no está suspendida: llamá la herramienta. Si la cuenta está suspendida, decilo y no cambies nada. No reactives Stripe. No inventes un email ni un teléfono.',
+            'Ensayo del flujo Hosting cPanel, con las mismas acciones que en producción. La clave se envía a la persona que escribe en este chat, no a otro contacto. El mensaje con la contraseña se publica aquí: no digas que salió por otro WhatsApp. Si la herramienta dice que los datos quedaron en este chat, confirmá en una frase y no repitas la contraseña. Respondé solo a este mensaje. No listes todas las suscripciones salvo que pregunte cuáles tiene. Si pregunta el espacio de un dominio o del plan, usá hosting_disk. Si pregunta el espacio de una casilla o de un correo, usá manage_hosting_mailbox con action disk y esa cuenta; «esta casilla» es la del mensaje anterior, no el disco del plan. Si pregunta el plan, usá list_my_hosting. Si pregunta facturas, saldo, un link de pago, o las facturas aunque estén pagas, usá hosting_unpaid_invoices y pegá el listado, incluidas las cobradas. No digas que solo podés mostrar las impagas, ni que no tenés acceso, ni los mandes a una web. Una suscripción cancelada no impide la clave, el correo, el FTP, el DNS ni la ficha de un producto si la cuenta no está suspendida: llamá la herramienta. Si la cuenta está suspendida, decilo y no cambies nada. No reactives Stripe. No inventes un email ni un teléfono.',
         );
 
         $text = trim((string) ($reply['text'] ?? ''));
@@ -313,6 +313,11 @@ class RehearseHostingAssistantCommand extends Command
         if (preg_match('/\b(?:ultimas?|ultimos?)\s+(\d{1,2})\b/u', $normalized, $matches) === 1)
         {
             return max(1, min(20, (int) $matches[1]));
+        }
+
+        if (preg_match('/\b(pagas?|pagadas?|cobradas?|todas)\b/u', $normalized) === 1)
+        {
+            return 20;
         }
 
         return 5;

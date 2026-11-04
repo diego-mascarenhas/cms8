@@ -285,13 +285,33 @@ class HostingCustomerAssistantTest extends TestCase
             '--team' => $user->current_team_id,
         ])->expectsQuestion('Cliente', 'Cuales son mis últimas 3 facturas?')
             ->expectsQuestion('Cliente', 'chau')
-            ->expectsOutputToContain('FAC-9')
-            ->expectsOutputToContain('Saldo pendiente: 10,00 EUR')
+            ->expectsOutputToContain("Pago: https://pay.test/fac-9\n\nSaldo pendiente: 10,00 EUR")
+            ->doesntExpectOutputToContain('No tengo acceso')
             ->assertSuccessful();
+    }
 
-        $output = \Illuminate\Support\Facades\Artisan::output();
-        $this->assertStringContainsString('https://pay.test/fac-9', $output, $output);
-        $this->assertStringNotContainsString('No tengo acceso', $output);
+    public function test_rehearse_chat_lists_paid_invoices_when_they_ask_for_them(): void
+    {
+        [$user, , $contact] = $this->createHosting();
+        $enterprise = $contact->enterprises()->first();
+        $currency = Currency::query()->create([
+            'code' => 'EUR',
+            'name' => 'Euro',
+            'symbol' => '€',
+            'status' => true,
+        ]);
+        $this->makeInvoice($user, $enterprise, $currency, 'FAC-PAID', '2026-05-01', 40, 0, 'in_paid');
+
+        $this->artisan('hosting:rehearse', [
+            '--chat' => true,
+            '--contact' => $contact->id,
+            '--team' => $user->current_team_id,
+        ])->expectsQuestion('Cliente', 'Quiero ver las facturas aunque estén pagas')
+            ->expectsQuestion('Cliente', 'chau')
+            ->expectsOutputToContain("FAC-PAID · 40,00 EUR · Cobrada\n\nSaldo pendiente: 0,00")
+            ->doesntExpectOutputToContain('solo puedo mostrar')
+            ->doesntExpectOutputToContain('info@revisionalpha.es')
+            ->assertSuccessful();
     }
 
     public function test_listing_mailboxes_includes_every_domain(): void
