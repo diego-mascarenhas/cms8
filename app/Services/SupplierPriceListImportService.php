@@ -151,7 +151,7 @@ class SupplierPriceListImportService
 
     /**
      * @param  array<string, string>  $row
-     * @return array{code: string, name: string, cost: float, barcode: ?string, oem: ?string, min_qty: ?float, unit: ?string, line: int}
+     * @return array{code: string, name: string, cost: float, barcode: ?string, oem: ?string, min_qty: ?float, unit: ?string, price: ?float, line: int}
      */
     private function prepareRow(array $row, int $lineNumber): array
     {
@@ -180,6 +180,21 @@ class SupplierPriceListImportService
             ? round((float) str_replace(',', '.', $minRaw), 2)
             : null;
         $unit = trim($row['unit'] ?? '');
+        $priceRaw = trim($row['price'] ?? '');
+        $price = null;
+        if ($priceRaw !== '')
+        {
+            if (! is_numeric(str_replace(',', '.', $priceRaw)))
+            {
+                throw new \RuntimeException(__('Row :row has an invalid selling price.', ['row' => $lineNumber]));
+            }
+
+            $price = round((float) str_replace(',', '.', $priceRaw), 2);
+            if ($price < 0)
+            {
+                throw new \RuntimeException(__('Row :row has a negative selling price.', ['row' => $lineNumber]));
+            }
+        }
 
         return [
             'code' => $code,
@@ -189,6 +204,7 @@ class SupplierPriceListImportService
             'oem' => $oem,
             'min_qty' => $minQty,
             'unit' => $unit !== '' ? Str::limit($unit, 32, '') : null,
+            'price' => $price,
             'line' => $lineNumber,
         ];
     }
@@ -236,7 +252,7 @@ class SupplierPriceListImportService
     }
 
     /**
-     * @param  array{cost: float, line: int}  $row
+     * @param  array{cost: float, price: ?float, line: int}  $row
      */
     private function applyCost(Product $product, array $row, int $currencyId, float $listMarkup): void
     {
@@ -245,17 +261,22 @@ class SupplierPriceListImportService
             throw new \RuntimeException(__('Row :row uses a different currency than the product.', ['row' => $row['line']]));
         }
 
-        $markup = $product->markup_percent !== null
-            ? (float) $product->markup_percent
-            : $listMarkup;
-
         $product->cost = $row['cost'];
-        $product->markup_percent = $markup;
+        if ($row['price'] !== null)
+        {
+            $product->markup_percent = null;
+            $product->price = $row['price'];
+        } else
+        {
+            $product->markup_percent = $product->markup_percent !== null
+                ? (float) $product->markup_percent
+                : $listMarkup;
+        }
         $product->save();
     }
 
     /**
-     * @param  array{code: string, name: string, cost: float, barcode: ?string, oem: ?string}  $row
+     * @param  array{code: string, name: string, cost: float, barcode: ?string, oem: ?string, price: ?float, line: int}  $row
      */
     private function createDraftProduct(int $teamId, array $row, int $currencyId, float $listMarkup): Product
     {
@@ -277,15 +298,15 @@ class SupplierPriceListImportService
             'oem' => $row['oem'],
             'description' => '',
             'cost' => $row['cost'],
-            'markup_percent' => $listMarkup,
-            'price' => Product::sellingPriceFromCost($row['cost'], $listMarkup),
+            'markup_percent' => $row['price'] !== null ? null : $listMarkup,
+            'price' => $row['price'] ?? Product::sellingPriceFromCost($row['cost'], $listMarkup),
             'currency_id' => $currencyId,
             'category_id' => $this->draftCategoryId($teamId),
             'available_in_all_stores' => true,
             'catalog_status' => ProductCatalogStatus::Draft,
             'stock_status' => ProductStockStatus::InStock,
             'manage_stock' => false,
-            'whatsapp_enabled' => false,
+            'whatsapp_enabled' => true,
             'status' => false,
         ]);
     }

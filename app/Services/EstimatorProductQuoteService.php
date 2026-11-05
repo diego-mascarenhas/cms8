@@ -34,8 +34,8 @@ class EstimatorProductQuoteService
      */
     public function present(Team $team, array $spec, string $brief = ''): array
     {
-        $summary = trim((string) ($spec['summary'] ?? ''));
-        $title = trim((string) ($spec['title'] ?? ''));
+        $summary = $this->plainText($spec['summary'] ?? '');
+        $title = $this->plainText($spec['title'] ?? '');
         if ($title === '' && $summary !== '')
         {
             $title = trim(strtok($summary, "\n") ?: $summary);
@@ -67,6 +67,10 @@ class EstimatorProductQuoteService
                 'unit' => $line['unit'],
                 'detail' => $line['detail'],
                 'matched' => $product !== null,
+                'product_id' => $product?->id,
+                'currency_id' => $product?->currency_id,
+                'unit_price_amount' => $unitPrice,
+                'line_total_amount' => $lineTotal,
                 'unit_price' => $unitPrice !== null && $currency !== '' ? $this->formatMoney($unitPrice, $currency) : null,
                 'line_total' => $lineTotal !== null && $currency !== '' ? $this->formatMoney($lineTotal, $currency) : null,
             ];
@@ -118,8 +122,8 @@ Use exactly these keys:
 - "lines": array of products.
 
 Each line uses exactly these keys:
-- "name": the product, specific enough to sell.
-- "code": a code written in the request. Empty string if none was written. Never invent a code.
+- "name": the product name exactly as written in the request. Do not translate it and do not replace it with a generic description.
+- "code": a code written in the request. Empty string if none was written. Never invent a code. If the request only gives a product name, leave this empty.
 - "quantity": JSON number greater than 0. Use 1 when the request does not say how many.
 - "unit": short Spanish unit such as "u", "kg", "l", or "caja".
 - "detail": one short Spanish sentence only when the request left the size, variant, or presentation ambiguous. Empty string when the name is already specific.
@@ -166,8 +170,8 @@ PROMPT;
         }
 
         return [
-            'title' => (string) ($decoded['title'] ?? ''),
-            'summary' => (string) ($decoded['summary'] ?? ''),
+            'title' => $this->plainText($decoded['title'] ?? ''),
+            'summary' => $this->plainText($decoded['summary'] ?? ''),
             'lines' => is_array($decoded['lines'] ?? null) ? $decoded['lines'] : [],
         ];
     }
@@ -186,7 +190,7 @@ PROMPT;
             {
                 continue;
             }
-            $name = trim((string) ($row['name'] ?? ''));
+            $name = $this->plainText($row['name'] ?? '');
             $quantity = is_numeric($row['quantity'] ?? null) ? (float) $row['quantity'] : 0.0;
             if ($name === '' || $quantity <= 0)
             {
@@ -194,10 +198,10 @@ PROMPT;
             }
             $lines[] = [
                 'name' => $name,
-                'code' => trim((string) ($row['code'] ?? '')),
+                'code' => $this->plainText($row['code'] ?? ''),
                 'quantity' => $quantity,
-                'unit' => trim((string) ($row['unit'] ?? '')) ?: 'u',
-                'detail' => trim((string) ($row['detail'] ?? '')),
+                'unit' => $this->plainText($row['unit'] ?? '') ?: 'u',
+                'detail' => $this->plainText($row['detail'] ?? ''),
             ];
             if (count($lines) >= 80)
             {
@@ -206,6 +210,31 @@ PROMPT;
         }
 
         return $lines;
+    }
+
+    private function plainText(mixed $value): string
+    {
+        if (is_string($value) || is_numeric($value))
+        {
+            return trim((string) $value);
+        }
+
+        if (! is_array($value))
+        {
+            return '';
+        }
+
+        $parts = [];
+        foreach ($value as $item)
+        {
+            $text = $this->plainText($item);
+            if ($text !== '')
+            {
+                $parts[] = $text;
+            }
+        }
+
+        return trim(implode(' ', $parts));
     }
 
     /**
@@ -230,7 +259,40 @@ PROMPT;
             }
         }
 
-        return (clone $base)->whereRaw('LOWER(name) = ?', [mb_strtolower($line['name'])])->first();
+        foreach ($this->nameCandidates($line) as $name)
+        {
+            $byName = (clone $base)->whereRaw('LOWER(name) = LOWER(?)', [$name])->first();
+            if ($byName)
+            {
+                return $byName;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array{name: string, code: string}  $line
+     * @return list<string>
+     */
+    private function nameCandidates(array $line): array
+    {
+        $names = [];
+        foreach ([$line['name'], $line['code']] as $value)
+        {
+            $value = trim($value);
+            if ($value === '')
+            {
+                continue;
+            }
+            $key = mb_strtolower($value);
+            if (! in_array($key, array_map(mb_strtolower(...), $names), true))
+            {
+                $names[] = $value;
+            }
+        }
+
+        return $names;
     }
 
     private function codeWrittenInBrief(string $code, string $brief): string

@@ -172,6 +172,80 @@ class EstimatorDemoQuoteTest extends TestCase
         $this->assertNull($quote['totals']['total']);
     }
 
+    public function test_price_shop_products_says_when_the_name_is_not_in_the_shop(): void
+    {
+        $this->seed(\Database\Seeders\ModuleSeeder::class);
+        $team = $this->createFunnelTeam();
+        $team->enableModule('products');
+        $tools = app(\App\Services\AssistantToolsService::class);
+        $tools->setRequestContext((int) $team->user_id, (int) $team->id, null);
+
+        $out = $tools->execute('price_shop_products', [
+            'products' => [
+                ['name' => 'ASPARAGUS GREEN FRESH', 'quantity' => 3],
+            ],
+        ]);
+
+        $this->assertStringContainsString('not in the shop', $out);
+    }
+
+    public function test_the_written_product_name_prices_a_draft_in_the_shop(): void
+    {
+        $team = $this->createFunnelTeam();
+        Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'ASPARAGUS GREEN FRESH',
+            'code' => '000107',
+            'price' => 272,
+            'cost' => null,
+            'markup_percent' => null,
+            'status' => false,
+            'catalog_status' => \App\Enums\ProductCatalogStatus::Draft,
+        ]);
+
+        $quote = app(EstimatorProductQuoteService::class)->present($team, [
+            'title' => 'Pedido',
+            'summary' => 'Espárragos.',
+            'lines' => [
+                [
+                    'name' => 'Espárragos verdes frescos',
+                    'code' => 'ASPARAGUS GREEN FRESH',
+                    'quantity' => 3,
+                    'unit' => 'u',
+                    'detail' => '',
+                ],
+            ],
+        ], '3 ASPARAGUS GREEN FRESH');
+
+        $this->assertTrue($quote['lines'][0]['matched']);
+        $this->assertSame('ASPARAGUS GREEN FRESH', $quote['lines'][0]['name']);
+        $this->assertSame('272,00 ARS', $quote['lines'][0]['unit_price']);
+        $this->assertSame('816,00 ARS', $quote['lines'][0]['line_total']);
+    }
+
+    public function test_a_summary_returned_as_a_list_still_becomes_a_quote(): void
+    {
+        $team = $this->createFunnelTeam();
+
+        $quote = app(EstimatorProductQuoteService::class)->present($team, [
+            'title' => ['Pedido de prueba'],
+            'summary' => ['Tres espárragos verdes.'],
+            'lines' => [
+                [
+                    'name' => ['ASPARAGUS GREEN FRESH'],
+                    'code' => [],
+                    'quantity' => 2,
+                    'unit' => 'u',
+                    'detail' => '',
+                ],
+            ],
+        ], '2 ASPARAGUS GREEN FRESH');
+
+        $this->assertSame('Pedido de prueba', $quote['name']);
+        $this->assertSame('Tres espárragos verdes.', $quote['summary']);
+        $this->assertSame('ASPARAGUS GREEN FRESH', $quote['lines'][0]['name']);
+    }
+
     public function test_the_product_prompt_does_not_ask_for_a_project_plan(): void
     {
         $prompt = app(EstimatorProductQuoteService::class)->defaultPrompt();

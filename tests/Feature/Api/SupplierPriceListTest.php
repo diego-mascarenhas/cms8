@@ -118,7 +118,7 @@ class SupplierPriceListTest extends TestCase
         $this->assertEquals(500, (float) $draft->cost);
         $this->assertEquals(50, (float) $draft->markup_percent);
         $this->assertEquals(750, (float) $draft->price);
-        $this->assertFalse($draft->whatsapp_enabled);
+        $this->assertTrue($draft->whatsapp_enabled);
 
         $quote = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/shop/products/quote-search?search=Empanada')
@@ -239,6 +239,38 @@ class SupplierPriceListTest extends TestCase
         $this->assertSame('Remera blanca', $product->name);
         $this->assertEquals(800, (float) $product->cost);
         $this->assertEquals(1200, (float) $product->price);
+    }
+
+    public function test_a_typed_selling_price_is_kept(): void
+    {
+        [, $team, $token] = $this->adminWithShop();
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $supplier = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 2,
+            'status_id' => 2,
+            'name' => 'Textil Sur',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/supplier-price-lists/confirm', [
+                'enterprise_id' => $supplier->id,
+                'currency_id' => $currencyId,
+                'markup_percent' => 50,
+                'lines' => [[
+                    'code' => 'REM-11',
+                    'name' => 'Remera',
+                    'cost' => 7,
+                    'price' => 8.11,
+                ]],
+            ])
+            ->assertOk();
+
+        $product = Product::query()->where('code', 'REM-11')->first();
+        $this->assertNotNull($product);
+        $this->assertEquals(7, (float) $product->cost);
+        $this->assertEquals(8.11, (float) $product->price);
+        $this->assertNull($product->markup_percent);
     }
 
     public function test_a_read_price_list_creates_the_supplier_and_the_selling_price(): void

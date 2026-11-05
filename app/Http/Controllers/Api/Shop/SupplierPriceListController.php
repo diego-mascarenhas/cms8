@@ -143,6 +143,9 @@ class SupplierPriceListController extends Controller
                 'oem' => (string) ($line['oem'] ?? ''),
                 'min_qty' => isset($line['quantity']) ? (string) $line['quantity'] : '',
                 'unit' => (string) ($line['unit'] ?? ''),
+                'price' => isset($line['price']) && $line['price'] !== null && $line['price'] !== ''
+                    ? (string) $line['price']
+                    : '',
             ];
         }
 
