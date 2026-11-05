@@ -1019,6 +1019,50 @@ class AssistantToolsService
                 ],
             ],
             [
+                'name' => 'create_shop_order',
+                'description' => 'Create a shop order from the products the customer asked to quote. Pass each product name exactly as the customer wrote it, plus quantity. Prices come from the shop catalog, including drafts. Tell the customer the order number and the priced lines. If a line says it is not in the shop, say so. Do not ask the customer for a unit price.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'products' => [
+                            'type' => 'array',
+                            'description' => 'Products to put on the order.',
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'name' => ['type' => 'string', 'description' => 'Product name exactly as the customer wrote it.'],
+                                    'quantity' => ['type' => 'number', 'description' => 'Quantity. Defaults to 1.'],
+                                ],
+                                'required' => ['name'],
+                            ],
+                        ],
+                    ],
+                    'required' => ['products'],
+                ],
+            ],
+            [
+                'name' => 'price_shop_products',
+                'description' => 'Look up shop catalog prices for products the customer wants quoted. Pass each product name exactly as the customer wrote it, plus quantity. Includes draft and published products. Use the returned price. If a line says it is not in the shop, tell the customer that. Do not ask the customer for a unit price.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'products' => [
+                            'type' => 'array',
+                            'description' => 'Products to price.',
+                            'items' => [
+                                'type' => 'object',
+                                'properties' => [
+                                    'name' => ['type' => 'string', 'description' => 'Product name exactly as the customer wrote it.'],
+                                    'quantity' => ['type' => 'number', 'description' => 'Quantity. Defaults to 1.'],
+                                ],
+                                'required' => ['name'],
+                            ],
+                        ],
+                    ],
+                    'required' => ['products'],
+                ],
+            ],
+            [
                 'name' => 'search_products',
                 'description' => 'Search sellable products by natural language, name fragments or internal code (SKU). Pass the customer request as-is (e.g. "bujía para un gol", "abrazadera 12 x 22"). Returns id, name, code, category, and price only when the store shows prices.',
                 'input_schema' => [
@@ -1333,6 +1377,8 @@ class AssistantToolsService
                 'update_message' => $this->updateMessage($teamId, $user, $input),
                 'list_product_catalog' => $this->listProductCatalog($teamId, $input),
                 'search_products' => $this->searchProducts($teamId, $input),
+                'price_shop_products' => $this->priceShopProducts($teamId, $input),
+                'create_shop_order' => $this->createShopOrder($teamId, $input),
                 'send_product_image' => $this->sendProductImage($teamId, $input),
                 'add_to_whatsapp_cart' => $this->addToWhatsAppCart($teamId, $input),
                 'view_whatsapp_cart' => $this->viewWhatsAppCart($teamId),
@@ -4104,6 +4150,193 @@ class AssistantToolsService
             .'Ask what they need, then search_products or list_product_catalog with category_name.',
             ['categories' => $categories],
         );
+    }
+
+    private function createShopOrder(int $teamId, array $input): string
+    {
+        if (! $this->teamHasProductsModule($teamId))
+        {
+            return 'The products module is not enabled for this team.';
+        }
+
+        $team = Team::withoutGlobalScopes()->find($teamId);
+        if (! $team)
+        {
+            return 'Team not found.';
+        }
+
+        $lines = $this->shopQuoteLines($input);
+        if ($lines === [])
+        {
+            return 'Each product needs a name.';
+        }
+
+        try
+        {
+            $quote = app(EstimatorProductQuoteService::class)->present($team, [
+                'title' => 'Pedido',
+                'summary' => '',
+                'lines' => $lines,
+            ], implode("\n", array_column($lines, 'name')));
+            $order = app(ShopBriefOrderService::class)->create(
+                $team,
+                $quote,
+                'whatsapp',
+                $this->contextCustomerPhone,
+            );
+        } catch (\Throwable $exception)
+        {
+            report($exception);
+
+            return 'Could not create the shop order. Do not say the order exists.';
+        }
+
+        $chunks = [
+            'Shop order created. Tell the customer the order number and the prices below.',
+            'Order number: '.$order->order_number,
+        ];
+        foreach ($quote['lines'] as $line)
+        {
+            $label = (string) ($line['name'] ?? '');
+            if (($line['matched'] ?? false) && filled($line['unit_price'] ?? null))
+            {
+                $chunks[] = $label.': '.$line['quantity'].' x '.$line['unit_price'];
+
+                continue;
+            }
+
+            $chunks[] = $label.': not in the shop.';
+        }
+        if (filled($quote['totals']['total'] ?? null))
+        {
+            $chunks[] = 'Total: '.$quote['totals']['total'];
+        }
+
+        return implode("\n", $chunks);
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return list<array{name: string, code: string, quantity: float, unit: string, detail: string}>
+     */
+    private function shopQuoteLines(array $input): array
+    {
+        $rows = $input['products'] ?? [];
+        if (! is_array($rows))
+        {
+            return [];
+        }
+
+        $lines = [];
+        foreach ($rows as $row)
+        {
+            if (! is_array($row))
+            {
+                continue;
+            }
+            $name = trim((string) ($row['name'] ?? ''));
+            $quantity = is_numeric($row['quantity'] ?? null) ? (float) $row['quantity'] : 1.0;
+            if ($name === '' || $quantity <= 0)
+            {
+                continue;
+            }
+            $lines[] = [
+                'name' => $name,
+                'code' => '',
+                'quantity' => $quantity,
+                'unit' => 'u',
+                'detail' => '',
+            ];
+        }
+
+        return $lines;
+    }
+
+    private function priceShopProducts(int $teamId, array $input): string
+    {
+        if (! $this->teamHasProductsModule($teamId))
+        {
+            return 'The products module is not enabled for this team.';
+        }
+
+        $team = Team::withoutGlobalScopes()->find($teamId);
+        if (! $team)
+        {
+            return 'Team not found.';
+        }
+
+        $rows = $input['products'] ?? [];
+        if (! is_array($rows) || $rows === [])
+        {
+            return 'products is required.';
+        }
+
+        $lines = [];
+        foreach ($rows as $row)
+        {
+            if (! is_array($row))
+            {
+                continue;
+            }
+            $name = trim((string) ($row['name'] ?? ''));
+            $quantity = is_numeric($row['quantity'] ?? null) ? (float) $row['quantity'] : 1.0;
+            if ($name === '' || $quantity <= 0)
+            {
+                continue;
+            }
+            $lines[] = [
+                'name' => $name,
+                'code' => '',
+                'quantity' => $quantity,
+                'unit' => 'u',
+                'detail' => '',
+            ];
+        }
+
+        if ($lines === [])
+        {
+            return 'Each product needs a name.';
+        }
+
+        try
+        {
+            $quote = app(EstimatorProductQuoteService::class)->present($team, [
+                'title' => 'Presupuesto',
+                'summary' => '',
+                'lines' => $lines,
+            ], implode("\n", array_column($lines, 'name')));
+        } catch (\Throwable $exception)
+        {
+            report($exception);
+
+            return 'Could not look up shop prices.';
+        }
+
+        $chunks = [];
+        foreach ($quote['lines'] as $line)
+        {
+            $label = (string) ($line['name'] ?? '');
+            if (($line['matched'] ?? false) && filled($line['unit_price'] ?? null))
+            {
+                $piece = $label.': '.$line['quantity'].' x '.$line['unit_price'];
+                if (filled($line['line_total'] ?? null))
+                {
+                    $piece .= ' = '.$line['line_total'];
+                }
+                $chunks[] = $piece;
+
+                continue;
+            }
+
+            $chunks[] = $label.': not in the shop.';
+        }
+
+        if (filled($quote['totals']['total'] ?? null))
+        {
+            $chunks[] = 'Total: '.$quote['totals']['total'];
+        }
+
+        return implode("\n", $chunks);
     }
 
     private function searchProducts(int $teamId, array $input): string

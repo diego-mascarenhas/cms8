@@ -39,6 +39,8 @@ class AssistantToolAuthorizationService
     private const WHATSAPP_CART_TOOLS = [
         'list_product_catalog',
         'search_products',
+        'price_shop_products',
+        'create_shop_order',
         'send_product_image',
         'add_to_whatsapp_cart',
         'view_whatsapp_cart',

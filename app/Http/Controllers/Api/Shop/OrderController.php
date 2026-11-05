@@ -6,12 +6,16 @@ use App\Http\Controllers\Api\Shop\Concerns\FormatsShopResources;
 use App\Http\Controllers\Api\Shop\Concerns\ResolvesShopTeam;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\SendShopOrderWhatsAppQuoteRequest;
+use App\Http\Requests\Api\StoreShopBriefOrderRequest;
 use App\Http\Requests\Api\UpdateShopOrderRequest;
+use App\Jobs\GenerateShopBriefOrderJob;
 use App\Models\Order;
 use App\Services\ShopOrderItemsService;
 use App\Services\ShopOrderWhatsAppQuoteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 class OrderController extends Controller
 {
@@ -72,6 +76,73 @@ class OrderController extends Controller
             'success' => true,
             'data' => $items,
             'pagination' => $this->pagination($paginator),
+        ]);
+    }
+
+    public function storeFromBrief(StoreShopBriefOrderRequest $request): JsonResponse
+    {
+        $team = $this->shopTeam($request, 'orders');
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $this->authorize('create', Order::class);
+
+        $token = Str::random(48);
+        Cache::put(GenerateShopBriefOrderJob::cacheKey($token), [
+            'status' => 'processing',
+            'team_id' => $team->id,
+        ], now()->addHour());
+
+        GenerateShopBriefOrderJob::dispatchAfterResponse(
+            $token,
+            (int) $team->id,
+            (string) $request->validated('brief'),
+        );
+
+        return response()->json([
+            'success' => true,
+            'status' => 'processing',
+            'poll_token' => $token,
+        ]);
+    }
+
+    public function briefStatus(Request $request): JsonResponse
+    {
+        $team = $this->shopTeam($request, 'orders');
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $this->authorize('viewAny', Order::class);
+
+        $token = trim((string) $request->query('poll_token', ''));
+        $state = $token !== '' ? Cache::get(GenerateShopBriefOrderJob::cacheKey($token)) : null;
+        if (! is_array($state) || (int) ($state['team_id'] ?? 0) !== (int) $team->id)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Invalid or expired quote. Please generate a new estimate.'),
+            ], 422);
+        }
+
+        $status = (string) ($state['status'] ?? 'processing');
+        if ($status === 'failed')
+        {
+            return response()->json([
+                'success' => false,
+                'status' => 'failed',
+                'message' => (string) ($state['message'] ?? __('Could not generate the estimate. Please try again.')),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'status' => $status,
+            'order_id' => $state['order_id'] ?? null,
+            'order_number' => $state['order_number'] ?? null,
         ]);
     }
 
