@@ -118,7 +118,7 @@ class SupplierPriceListTest extends TestCase
         $this->assertEquals(500, (float) $draft->cost);
         $this->assertEquals(50, (float) $draft->markup_percent);
         $this->assertEquals(750, (float) $draft->price);
-        $this->assertFalse($draft->whatsapp_enabled);
+        $this->assertTrue($draft->whatsapp_enabled);
 
         $quote = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/shop/products/quote-search?search=Empanada')

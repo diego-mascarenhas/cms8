@@ -285,7 +285,7 @@ class SupplierPriceListImportService
             'catalog_status' => ProductCatalogStatus::Draft,
             'stock_status' => ProductStockStatus::InStock,
             'manage_stock' => false,
-            'whatsapp_enabled' => false,
+            'whatsapp_enabled' => true,
             'status' => false,
         ]);
     }
