@@ -58,6 +58,7 @@ use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\ManualController;
+use App\Http\Controllers\MeetingTranscriptController;
 use App\Http\Controllers\MeetTrialController;
 use App\Http\Controllers\MercadoPagoPaymentSyncController;
 use App\Http\Controllers\MessageController;
@@ -326,6 +327,12 @@ Route::get('/notification/{notification}/stats', [NotificationTrackingController
 // Authenticated routes
 Route::middleware(['auth'])->group(function ()
 {
+    Route::get('meeting', [MeetingTranscriptController::class, 'index'])->name('meeting.index');
+    Route::get('meeting/create', [MeetingTranscriptController::class, 'create'])->name('meeting.create');
+    Route::post('meeting', [MeetingTranscriptController::class, 'store'])->name('meeting.store');
+    Route::get('meeting/{meeting}', [MeetingTranscriptController::class, 'show'])->name('meeting.show');
+    Route::delete('meeting/{meeting}', [MeetingTranscriptController::class, 'destroy'])->name('meeting.destroy');
+
     if (app()->isLocal())
     {
         Route::post('/dev/prod-read-database', function (\Illuminate\Http\Request $request)
