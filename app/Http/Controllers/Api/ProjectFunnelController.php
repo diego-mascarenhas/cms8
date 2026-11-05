@@ -540,7 +540,7 @@ class ProjectFunnelController extends Controller
             'status' => 'processing',
         ], now()->addHour());
 
-        GenerateEstimatorDemoQuoteJob::dispatch($token, (int) $team->id, (string) $request->validated('brief'));
+        GenerateEstimatorDemoQuoteJob::dispatchAfterResponse($token, (int) $team->id, (string) $request->validated('brief'));
 
         return $this->demoStatusResponse($token);
     }

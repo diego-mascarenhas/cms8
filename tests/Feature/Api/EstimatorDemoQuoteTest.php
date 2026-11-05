@@ -14,7 +14,7 @@ use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
 use Database\Seeders\ProjectStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Jetstream\Features;
 use RuntimeException;
 use Tests\TestCase;
@@ -37,10 +37,29 @@ class EstimatorDemoQuoteTest extends TestCase
         ]);
     }
 
-    public function test_a_pasted_brief_starts_a_quote_without_saving_a_project(): void
+    public function test_a_pasted_brief_is_quoted_without_a_queue_worker(): void
     {
         $this->createFunnelTeam();
-        Queue::fake();
+        $this->mock(EstimatorProductQuoteService::class, function ($mock): void
+        {
+            $mock->shouldReceive('quote')->once()->andReturn([
+                'name' => 'Aceites',
+                'summary' => 'Dos aceites minerales.',
+                'lines' => [
+                    [
+                        'name' => 'Aceite mineral',
+                        'code' => 'ACM-1',
+                        'quantity' => 2,
+                        'unit' => 'u',
+                        'detail' => '',
+                        'matched' => true,
+                        'unit_price' => '5.488,00 ARS',
+                        'line_total' => '10.976,00 ARS',
+                    ],
+                ],
+                'totals' => ['total' => '10.976,00 ARS'],
+            ]);
+        });
 
         $response = $this->postJson('/api/projects/funnel/demo', [
             'brief' => '2 aceites minerales de 1 litro y 1 filtro de aceite.',
@@ -49,8 +68,12 @@ class EstimatorDemoQuoteTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('status', 'processing');
-        $this->assertNotSame('', (string) $response->json('poll_token'));
-        Queue::assertPushed(GenerateEstimatorDemoQuoteJob::class);
+        $token = (string) $response->json('poll_token');
+        $this->assertNotSame('', $token);
+
+        $state = Cache::get(GenerateEstimatorDemoQuoteJob::cacheKey($token));
+        $this->assertSame('ready', $state['status'] ?? null);
+        $this->assertSame('Aceite mineral', $state['data']['lines'][0]['name'] ?? null);
         $this->assertSame(0, Project::withoutGlobalScopes()->count());
     }
 

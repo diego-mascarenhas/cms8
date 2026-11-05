@@ -32,6 +32,27 @@ class GenerateEstimatorDemoQuoteJob implements ShouldQueue
     public function handle(EstimatorProductQuoteService $quotes): void
     {
         $key = self::cacheKey($this->pollToken);
+        ignore_user_abort(true);
+        set_time_limit($this->timeout);
+        $finished = false;
+        register_shutdown_function(function () use ($key, &$finished): void
+        {
+            if ($finished || app()->runningUnitTests())
+            {
+                return;
+            }
+
+            $state = Cache::get($key);
+            if (! is_array($state) || ($state['status'] ?? '') !== 'processing')
+            {
+                return;
+            }
+
+            Cache::put($key, [
+                'status' => 'failed',
+                'message' => __('Could not generate the estimate. Please try again.'),
+            ], now()->addHour());
+        });
         $team = Team::query()->find($this->teamId);
         if (! $team)
         {
@@ -76,5 +97,6 @@ class GenerateEstimatorDemoQuoteJob implements ShouldQueue
             'status' => 'ready',
             'data' => $preview,
         ], now()->addHour());
+        $finished = true;
     }
 }
