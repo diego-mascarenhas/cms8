@@ -33,6 +33,55 @@ JSON);
         $this->assertNull($document['lines'][0]['cost']);
     }
 
+    public function test_a_price_sheet_names_the_supplier_and_the_first_price(): void
+    {
+        $documents = new CommercialDocumentInterpreter(new \App\Services\DocumentAiOcrService);
+        $document = $documents->priceListFromText(<<<'TEXT'
+MAXIKOL Av. eva peron 3453
+COD REF	PRODUCTO	PV 1	PV 2
+7792180001665	ACEITE CAÑUELAS X 1,5 L - UNIDAD	5,488.00	5,390.00
+7792180001641	ACEITE CAÑUELAS X 900 ML - UNIDAD	3,353.28	3,293.40
+7790060234868	ACEITE COCINERO X MEZCLA 900 ML - UNIDAD	3,143.19	3,061.20
+TEXT, '2026-10-28-Maxikol-Listado-productos.pdf');
+
+        $this->assertNotNull($document);
+        $this->assertSame('MAXIKOL', $document['supplier_name']);
+        $this->assertSame('7792180001665', $document['lines'][0]['code']);
+        $this->assertSame('ACEITE CAÑUELAS X 1,5 L - UNIDAD', $document['lines'][0]['name']);
+        $this->assertEquals(5488, $document['lines'][0]['cost']);
+        $this->assertCount(3, $document['lines']);
+    }
+
+    public function test_a_ship_quotation_keeps_code_name_quantity_and_net_cost(): void
+    {
+        $documents = new CommercialDocumentInterpreter(new \App\Services\DocumentAiOcrService);
+        $document = $documents->quotationFromText(<<<'TEXT'
+Page 	2 of 5
+2BAMBOO 	000103	-	-	10.0	KG	-	-NA
+SHOOT FRESH
+3BEANS STRING 	000107	-	-	15.0	KG	15.0	3.02	10.00%	40.77	2-
+FRESH
+4BROCCOLI 	000109	-	-	30.0	KG	30.0	5.02	10.00%	135.54	2-
+FRESH
+Subtotal:	USD 7,922.29
+TEXT, 'qt_9020-FRS265012A_Seven_Seas_Ship_Suppliers_Argentina.pdf');
+
+        $this->assertNotNull($document);
+        $this->assertSame('price_list', $document['kind']);
+        $this->assertSame('Seven Seas Ship Suppliers Argentina', $document['supplier_name']);
+        $this->assertSame('USD', $document['currency']);
+        $this->assertSame('000103', $document['lines'][0]['code']);
+        $this->assertSame('BAMBOO SHOOT FRESH', $document['lines'][0]['name']);
+        $this->assertNull($document['lines'][0]['cost']);
+        $this->assertEquals(10, $document['lines'][0]['quantity']);
+        $this->assertSame('KG', $document['lines'][0]['unit']);
+        $this->assertSame('BEANS STRING FRESH', $document['lines'][1]['name']);
+        $this->assertEquals(2.72, $document['lines'][1]['cost']);
+        $this->assertEquals(15, $document['lines'][1]['quantity']);
+        $this->assertSame('BROCCOLI FRESH', $document['lines'][2]['name']);
+        $this->assertEquals(4.52, $document['lines'][2]['cost']);
+    }
+
     public function test_spreadsheet_text_keeps_the_item_and_the_quantity(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'list');
@@ -47,6 +96,46 @@ JSON);
 
         $this->assertStringContainsString('STAINLESS STEEL CONTAINERS', $text);
         $this->assertStringContainsString('3', $text);
+        unlink($path);
+    }
+
+    public function test_excel_markup_compatibility_prefixes_do_not_break_the_sheet(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'list');
+        $zip = new ZipArchive;
+        $zip->open($path, ZipArchive::OVERWRITE);
+        $zip->addFromString(
+            'xl/sharedStrings.xml',
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1">'
+            .'<si><t>STAINLESS STEEL CONTAINERS</t></si></sst>',
+        );
+        $zip->addFromString(
+            'xl/worksheets/sheet1.xml',
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"'
+            .' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+            .' xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"'
+            .' mc:Ignorable="x14ac xr xr2 xr3"'
+            .' xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac"'
+            .' xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision"'
+            .' xr:uid="{00000000-0001-0000-0000-000000000000}">'
+            .'<sheetFormatPr defaultRowHeight="15" x14ac:dyDescent="0.25"/>'
+            .'<sheetData>'
+            .'<row r="1" spans="1:2" x14ac:dyDescent="0.25">'
+            .'<c r="A1" t="s"><v>0</v></c>'
+            .'<c r="B1"><v>3</v></c>'
+            .'</row>'
+            .'</sheetData>'
+            .'<mc:AlternateContent><mc:Choice Requires="x14ac"><x14ac:note/></mc:Choice></mc:AlternateContent>'
+            .'</worksheet>',
+        );
+        $zip->close();
+
+        $documents = new CommercialDocumentInterpreter(new \App\Services\DocumentAiOcrService);
+        $text = $documents->spreadsheetText($path);
+
+        $this->assertSame("STAINLESS STEEL CONTAINERS\t3", $text);
         unlink($path);
     }
 }

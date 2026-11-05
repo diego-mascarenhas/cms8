@@ -33,7 +33,7 @@ class ConfirmSupplierPriceListRequest extends FormRequest
             'currency_id' => ['required', 'integer', Rule::exists('currencies', 'id')->where('status', 1)],
             'markup_percent' => ['nullable', 'numeric', 'min:0', 'max:1000'],
             'name' => ['nullable', 'string', 'max:255'],
-            'lines' => ['required', 'array', 'min:1', 'max:500'],
+            'lines' => ['required', 'array', 'min:1', 'max:2000'],
             'lines.*.name' => ['required', 'string', 'max:255'],
             'lines.*.cost' => ['required', 'numeric', 'min:0'],
             'lines.*.code' => ['nullable', 'string', 'max:64'],

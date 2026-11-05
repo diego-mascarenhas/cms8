@@ -94,30 +94,156 @@ class DocumentOcrService
         }
 
         $binary = $this->resolvePdftotextBinary();
-        if ($binary === null)
+        if ($binary !== null)
+        {
+            $process = new Process([
+                $binary,
+                '-layout',
+                '-enc',
+                'UTF-8',
+                $absolutePath,
+                '-',
+            ]);
+            $process->setTimeout(30);
+            $process->run();
+
+            if ($process->isSuccessful())
+            {
+                $text = trim($process->getOutput());
+                if ($text !== '')
+                {
+                    return $text;
+                }
+            }
+        }
+
+        $decoded = (new PdfTextExtractor)->extract($absolutePath);
+        if ($decoded !== null)
+        {
+            return $decoded;
+        }
+
+        return $this->extractTextFromPdfStreams($absolutePath);
+    }
+
+    private function extractTextFromPdfStreams(string $absolutePath): ?string
+    {
+        $raw = file_get_contents($absolutePath);
+        if (! is_string($raw) || $raw === '')
         {
             return null;
         }
 
-        $process = new Process([
-            $binary,
-            '-layout',
-            '-enc',
-            'UTF-8',
-            $absolutePath,
-            '-',
-        ]);
-        $process->setTimeout(30);
-        $process->run();
-
-        if (! $process->isSuccessful())
+        $parts = [];
+        $offset = 0;
+        while (($start = strpos($raw, 'stream', $offset)) !== false)
         {
-            return null;
+            $dataStart = $start + strlen('stream');
+            if (($raw[$dataStart] ?? '') === "\r")
+            {
+                $dataStart++;
+            }
+            if (($raw[$dataStart] ?? '') === "\n")
+            {
+                $dataStart++;
+            }
+
+            $end = strpos($raw, 'endstream', $dataStart);
+            if ($end === false)
+            {
+                break;
+            }
+
+            $headerStart = max(0, $start - 400);
+            $header = substr($raw, $headerStart, $start - $headerStart);
+            $chunk = rtrim(substr($raw, $dataStart, $end - $dataStart), "\r\n");
+            $offset = $end + strlen('endstream');
+
+            if (str_contains($header, '/Image'))
+            {
+                continue;
+            }
+
+            if (str_contains($header, 'FlateDecode'))
+            {
+                $inflated = @gzuncompress($chunk);
+                if ($inflated === false)
+                {
+                    $inflated = @gzinflate($chunk);
+                }
+                if (! is_string($inflated) || $inflated === '')
+                {
+                    continue;
+                }
+                $chunk = $inflated;
+            }
+
+            $text = $this->textFromPdfOperators($chunk);
+            if ($text !== '')
+            {
+                $parts[] = $text;
+            }
         }
 
-        $text = trim($process->getOutput());
+        $text = trim(implode("\n", $parts));
 
         return $text !== '' ? $text : null;
+    }
+
+    private function textFromPdfOperators(string $content): string
+    {
+        preg_match_all(
+            '/\(((?:\\\\.|[^\\\\)])*)\)\s*Tj|\[(.*?)\]\s*TJ/s',
+            $content,
+            $matches,
+            PREG_SET_ORDER,
+        );
+
+        $lines = [];
+        foreach ($matches as $match)
+        {
+            if (($match[1] ?? '') !== '')
+            {
+                $lines[] = $this->decodePdfLiteral($match[1]);
+
+                continue;
+            }
+
+            preg_match_all('/\(((?:\\\\.|[^\\\\)])*)\)/', $match[2] ?? '', $pieces);
+            $line = trim(implode('', array_map(
+                fn (string $piece): string => $this->decodePdfLiteral($piece),
+                $pieces[1] ?? [],
+            )));
+            if ($line !== '')
+            {
+                $lines[] = $line;
+            }
+        }
+
+        return trim(implode("\n", $lines));
+    }
+
+    private function decodePdfLiteral(string $value): string
+    {
+        $decoded = preg_replace_callback(
+            '/\\\\([nrtbf()\\\\]|[0-7]{1,3})/',
+            function (array $match): string
+            {
+                return match ($match[1])
+                {
+                    'n' => "\n",
+                    'r' => "\r",
+                    't' => "\t",
+                    'b' => "\x08",
+                    'f' => "\f",
+                    '(', ')', '\\' => $match[1],
+                    default => chr(octdec($match[1])),
+                };
+            },
+            $value,
+        );
+
+        return trim($decoded ?? $value);
     }
 
     private function isPdfFile(string $absolutePath): bool

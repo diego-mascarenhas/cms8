@@ -6,12 +6,14 @@ use App\Helpers\DnsHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\CaptureProjectFunnelLeadRequest;
 use App\Http\Requests\Api\ChatProjectFunnelRequest;
+use App\Http\Requests\Api\DemoProjectFunnelRequest;
 use App\Http\Requests\Api\GuideProjectFunnelRequest;
 use App\Http\Requests\Api\QuoteProjectFunnelRequest;
 use App\Http\Requests\Api\SubmitProjectFunnelRequest;
 use App\Http\Requests\Api\UpdateProjectFunnelChatPromptRequest;
 use App\Http\Requests\Api\UpdateProjectFunnelSenderRequest;
 use App\Http\Requests\Api\UpdateProjectFunnelTokenPricingRequest;
+use App\Jobs\GenerateEstimatorDemoQuoteJob;
 use App\Jobs\GenerateProjectFunnelQuoteJob;
 use App\Models\Category;
 use App\Models\Contact;
@@ -24,6 +26,7 @@ use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -519,6 +522,85 @@ class ProjectFunnelController extends Controller
             (int) ($payload['contact_id'] ?? 0),
             (int) ($payload['enterprise_id'] ?? 0),
         );
+    }
+
+    /**
+     * Public demo: interpret a pasted brief into a priced budget without saving a lead or a project.
+     */
+    public function demo(DemoProjectFunnelRequest $request): JsonResponse
+    {
+        $team = $this->funnelTeam($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $token = Str::random(48);
+        Cache::put(GenerateEstimatorDemoQuoteJob::cacheKey($token), [
+            'status' => 'processing',
+        ], now()->addHour());
+
+        GenerateEstimatorDemoQuoteJob::dispatchAfterResponse($token, (int) $team->id, (string) $request->validated('brief'));
+
+        return $this->demoStatusResponse($token);
+    }
+
+    public function demoStatus(Request $request): JsonResponse
+    {
+        $team = $this->funnelTeam($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $token = trim((string) $request->query('poll_token', ''));
+        if ($token === '')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Invalid or expired quote. Please generate a new estimate.'),
+            ], 422);
+        }
+
+        return $this->demoStatusResponse($token);
+    }
+
+    private function demoStatusResponse(string $token): JsonResponse
+    {
+        $state = Cache::get(GenerateEstimatorDemoQuoteJob::cacheKey($token));
+        if (! is_array($state))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Invalid or expired quote. Please generate a new estimate.'),
+            ], 422);
+        }
+
+        $status = (string) ($state['status'] ?? 'processing');
+        if ($status === 'failed')
+        {
+            return response()->json([
+                'success' => false,
+                'status' => 'failed',
+                'message' => (string) ($state['message'] ?? __('Could not generate the estimate. Please try again.')),
+            ], 422);
+        }
+
+        if ($status === 'ready')
+        {
+            return response()->json([
+                'success' => true,
+                'status' => 'ready',
+                'poll_token' => $token,
+                'data' => $state['data'] ?? [],
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'status' => 'processing',
+            'poll_token' => $token,
+        ]);
     }
 
     /**
