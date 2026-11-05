@@ -36,6 +36,7 @@ class ConfirmSupplierPriceListRequest extends FormRequest
             'lines' => ['required', 'array', 'min:1', 'max:2000'],
             'lines.*.name' => ['required', 'string', 'max:255'],
             'lines.*.cost' => ['required', 'numeric', 'min:0'],
+            'lines.*.price' => ['nullable', 'numeric', 'min:0'],
             'lines.*.code' => ['nullable', 'string', 'max:64'],
             'lines.*.quantity' => ['nullable', 'numeric', 'min:0'],
             'lines.*.unit' => ['nullable', 'string', 'max:32'],
