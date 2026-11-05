@@ -46,12 +46,12 @@ class AssistantPromptCatalogTest extends TestCase
         $this->assertTrue($keys->contains('chat:assistant_presupuesto'));
         $this->assertTrue($keys->contains('products:assistant_catalogo'));
         $this->assertSame(
-            'Venta desde la tienda',
+            'Shop: vender del catálogo',
             collect($catalog->items())->firstWhere('key', 'products:assistant_catalogo')['section_label'] ?? null,
         );
         $this->assertTrue($keys->contains('products:assistant_embudo'));
         $this->assertSame(
-            'Embudo comercial',
+            'WhatsApp: calificar y vender',
             collect($catalog->items())->firstWhere('key', 'products:assistant_embudo')['section_label'] ?? null,
         );
         $this->assertTrue($keys->contains('invoices:collections'));

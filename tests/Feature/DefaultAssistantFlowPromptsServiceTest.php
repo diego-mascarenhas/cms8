@@ -33,7 +33,7 @@ class DefaultAssistantFlowPromptsServiceTest extends TestCase
             ->where('section_key', 'assistant_presupuesto')
             ->first();
         $this->assertNotNull($presupuesto);
-        $this->assertSame('Pedido de presupuesto', $presupuesto->section_label);
+        $this->assertSame('Shop: cotizar una lista', $presupuesto->section_label);
         $this->assertStringContainsString('Consultoría de negocio o técnica', (string) $presupuesto->prompt_instruction);
         $this->assertStringContainsString('Nunca IDONEO', (string) $presupuesto->prompt_instruction);
         $this->assertStringContainsString('create_shop_order', (string) $presupuesto->prompt_instruction);
@@ -43,14 +43,14 @@ class DefaultAssistantFlowPromptsServiceTest extends TestCase
             ->where('section_key', 'assistant_catalogo')
             ->first();
         $this->assertNotNull($catalogo);
-        $this->assertSame('Venta desde la tienda', $catalogo->section_label);
+        $this->assertSame('Shop: vender del catálogo', $catalogo->section_label);
 
         $embudo = \App\Models\Prompt::withoutGlobalScope('team')
             ->forTeam((int) $team->id)
             ->where('section_key', 'assistant_embudo')
             ->first();
         $this->assertNotNull($embudo);
-        $this->assertSame('Embudo comercial', $embudo->section_label);
+        $this->assertSame('WhatsApp: calificar y vender', $embudo->section_label);
 
         $contactos = \App\Models\Prompt::withoutGlobalScope('team')
             ->forTeam((int) $team->id)
@@ -132,5 +132,29 @@ class DefaultAssistantFlowPromptsServiceTest extends TestCase
 
         $prompt->refresh();
         $this->assertSame('INSTRUCCIÓN PERSONALIZADA', $prompt->prompt_instruction);
+    }
+
+    public function test_sync_renames_the_old_shop_labels_and_keeps_a_custom_one(): void
+    {
+        $this->seed(ModuleSeeder::class);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+
+        DefaultAssistantFlowPromptsService::syncForTeam((int) $team->id);
+        $prompt = \App\Models\Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'assistant_presupuesto')
+            ->first();
+        $this->assertNotNull($prompt);
+        $prompt->section_label = 'Pedido de presupuesto';
+        $prompt->save();
+
+        DefaultAssistantFlowPromptsService::syncForTeam((int) $team->id);
+        $this->assertSame('Shop: cotizar una lista', $prompt->fresh()->section_label);
+
+        $prompt->section_label = 'Mi cotizador';
+        $prompt->save();
+        DefaultAssistantFlowPromptsService::syncForTeam((int) $team->id);
+        $this->assertSame('Mi cotizador', $prompt->fresh()->section_label);
     }
 }
