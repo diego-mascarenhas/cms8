@@ -155,6 +155,10 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->assertSee('name="prospect_credit"', false)
             ->assertSee('name="storage_megabyte"', false)
             ->assertSee('name="transcription_minute"', false)
+            ->assertSee('name="elevenlabs_voice_thousand"', false)
+            ->assertSee('name="paid_ad_video"', false)
+            ->assertSee('value="0.8"', false)
+            ->assertSee('value="1.89"', false)
             ->assertSee('value="0.037"', false)
             ->assertSee('value="10"', false)
             ->assertSee('value="0.003"', false)
@@ -306,6 +310,8 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             'prospect_credit' => 0.2,
             'storage_megabyte' => 0.05,
             'transcription_minute' => 0.3,
+            'elevenlabs_voice_thousand' => 0.8,
+            'paid_ad_video' => 1.89,
         ])->assertRedirect(route('account.rates.edit', $team->id))
             ->assertSessionHas('success', 'Tarifas actualizadas');
 
@@ -361,6 +367,8 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             'prospect_credit' => 0.15,
             'storage_megabyte' => 0.02,
             'transcription_minute' => 0.037,
+            'elevenlabs_voice_thousand' => 0.8,
+            'paid_ad_video' => 1.89,
         ])->assertRedirect(route('account.rates.edit', $team->id))
             ->assertSessionHas('success', 'Tarifas actualizadas');
 

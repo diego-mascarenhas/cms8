@@ -606,7 +606,7 @@ class AccountController extends Controller
     }
 
     /**
-     * @return array{tokens_multiplier: string, whatsapp_send: string, mailer_send: string, prospect_credit: string, storage_megabyte: string, transcription_minute: string}
+     * @return array{tokens_multiplier: string, whatsapp_send: string, mailer_send: string, prospect_credit: string, storage_megabyte: string, transcription_minute: string, elevenlabs_voice_thousand: string, paid_ad_video: string}
      */
     private function billingRatesForForm(Team $team): array
     {
@@ -617,6 +617,8 @@ class AccountController extends Controller
             'prospect_credit' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::ProspectCredit),
             'storage_megabyte' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::StorageMegabyte),
             'transcription_minute' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::TranscriptionMinute),
+            'elevenlabs_voice_thousand' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::ElevenlabsVoiceThousand),
+            'paid_ad_video' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::PaidAdVideo),
         ];
     }
 
@@ -629,6 +631,8 @@ class AccountController extends Controller
             'prospect_credit' => TeamBillingProduct::ProspectCredit,
             'storage_megabyte' => TeamBillingProduct::StorageMegabyte,
             'transcription_minute' => TeamBillingProduct::TranscriptionMinute,
+            'elevenlabs_voice_thousand' => TeamBillingProduct::ElevenlabsVoiceThousand,
+            'paid_ad_video' => TeamBillingProduct::PaidAdVideo,
         ];
 
         foreach ($fields as $field => $product)

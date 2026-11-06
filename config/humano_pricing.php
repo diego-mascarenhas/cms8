@@ -167,6 +167,34 @@ return [
     ],
 
     /*
+     * | ElevenLabs text-to-speech billing (USD per 1,000 characters).
+     * | Multilingual v2 list price is 0.08 USD per 1,000 characters.
+     * | The default includes the same ×10 margin as tokens: 0.80 USD.
+     * | Charged on the characters sent to the voice, including a reel that fails later.
+     */
+    'elevenlabs_voice_billing' => [
+        'currency' => env('HUMANO_ELEVENLABS_VOICE_BILLING_CURRENCY', 'USD'),
+        'our_amount' => (float) env('HUMANO_ELEVENLABS_VOICE_OUR_AMOUNT', 0.8),
+        'our_amount_by_team' => [
+            // 1 => 0.8,
+        ],
+    ],
+
+    /*
+     * | Paid-ad reel billing (USD per finished video).
+     * | Three medium portrait stills at the 0.063 USD list price are 0.189 USD.
+     * | The default includes the same ×10 margin as tokens: 1.89 USD.
+     * | Charged once the mp4 is stored. The script stays on the token line.
+     */
+    'paid_ad_video_billing' => [
+        'currency' => env('HUMANO_PAID_AD_VIDEO_BILLING_CURRENCY', 'USD'),
+        'our_amount' => (float) env('HUMANO_PAID_AD_VIDEO_OUR_AMOUNT', 1.89),
+        'our_amount_by_team' => [
+            // 1 => 1.89,
+        ],
+    ],
+
+    /*
      * | Default plan slug when checkout return URL omits &category= (assistant, business, or mentor).
      */
     'post_checkout_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_POST_CHECKOUT_PLAN_SLUG', 'assistant'))))

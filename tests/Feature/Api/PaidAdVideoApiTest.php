@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Api;
 
+use App\Enums\PaidAdUsageKind;
 use App\Jobs\GeneratePaidAdVideoJob;
 use App\Models\Module;
+use App\Models\PaidAdUsageLog;
 use App\Models\User;
 use App\Services\PaidAds\PaidAdCreativeAssetService;
 use App\Services\PaidAds\PaidAdVideoComposer;
@@ -248,6 +250,44 @@ JSON);
         $this->assertSame(1920, $status['asset']['height']);
         Storage::disk('public')->assertExists($status['asset']['path']);
         $this->assertDirectoryDoesNotExist(sys_get_temp_dir().'/paid-ad-video-'.$videoId);
+
+        $characters = 0;
+        foreach ($this->payload()['scenes'] as $scene)
+        {
+            $characters += mb_strlen($scene['spoken'], 'UTF-8');
+        }
+
+        $this->assertSame($characters, (int) PaidAdUsageLog::query()->where('team_id', $team->id)->where('kind', PaidAdUsageKind::Voice)->sum('quantity'));
+        $this->assertSame(1, (int) PaidAdUsageLog::query()->where('team_id', $team->id)->where('kind', PaidAdUsageKind::Video)->sum('quantity'));
+    }
+
+    public function test_render_bills_voice_when_the_reel_fails(): void
+    {
+        [, $team] = $this->adminWithToken();
+        Storage::fake('public');
+        Image::fake([self::TINY_PNG, self::TINY_PNG, self::TINY_PNG]);
+        Audio::fake();
+
+        $this->mock(PaidAdVideoComposer::class, function ($mock)
+        {
+            $mock->shouldReceive('compose')->once()->andThrow(new \RuntimeException('ffmpeg failed'));
+        });
+
+        try
+        {
+            app(PaidAdVideoGenerationService::class)->render($team->id, (string) Str::uuid(), $this->payload());
+            $this->fail('The render should fail when the reel cannot be composed.');
+        } catch (\RuntimeException)
+        {
+            $characters = 0;
+            foreach ($this->payload()['scenes'] as $scene)
+            {
+                $characters += mb_strlen($scene['spoken'], 'UTF-8');
+            }
+
+            $this->assertSame($characters, (int) PaidAdUsageLog::query()->where('team_id', $team->id)->where('kind', PaidAdUsageKind::Voice)->sum('quantity'));
+            $this->assertSame(0, (int) PaidAdUsageLog::query()->where('team_id', $team->id)->where('kind', PaidAdUsageKind::Video)->count());
+        }
     }
 
     public function test_story_mp4_is_reported_as_video(): void

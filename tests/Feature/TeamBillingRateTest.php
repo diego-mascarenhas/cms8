@@ -95,6 +95,8 @@ class TeamBillingRateTest extends TestCase
         $this->assertSame('0.15', TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::ProspectCredit));
         $this->assertSame('0.02', TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::StorageMegabyte));
         $this->assertSame('0.037', TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::TranscriptionMinute));
+        $this->assertSame('0.8', TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::ElevenlabsVoiceThousand));
+        $this->assertSame('1.89', TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::PaidAdVideo));
     }
 
     public function test_mailer_price_follows_the_team_rate_in_effect(): void

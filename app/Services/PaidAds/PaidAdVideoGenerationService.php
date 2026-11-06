@@ -3,7 +3,9 @@
 namespace App\Services\PaidAds;
 
 use App\Enums\AdCreativeFormat;
+use App\Enums\PaidAdUsageKind;
 use App\Jobs\GeneratePaidAdVideoJob;
+use App\Models\PaidAdUsageLog;
 use App\Models\Team;
 use App\Services\TokenUsageLogService;
 use App\Support\AiTasks;
@@ -135,7 +137,7 @@ class PaidAdVideoGenerationService
                 $imagePath = $work.'/scene-'.$index.'.png';
                 $audioPath = $work.'/scene-'.$index.'.mp3';
                 $this->writeStill($team, $scene, (string) ($payload['headline'] ?? ''), $imagePath);
-                $this->writeVoice($scene['spoken'], (string) ($payload['voice'] ?? 'female'), (string) ($payload['voice_id'] ?? ''), $audioPath);
+                $this->writeVoice($team, $scene['spoken'], (string) ($payload['voice'] ?? 'female'), (string) ($payload['voice_id'] ?? ''), $audioPath);
                 $clips[] = [
                     'image' => $imagePath,
                     'audio' => $audioPath,
@@ -152,6 +154,7 @@ class PaidAdVideoGenerationService
             $reel = $work.'/reel.mp4';
             $this->composer->compose($clips, $reel);
             $asset = $this->publish($team, $reel);
+            PaidAdUsageLog::record((int) $team->id, PaidAdUsageKind::Video, 1);
 
             $this->remember($teamId, $videoId, [
                 'status' => 'ready',
@@ -213,7 +216,7 @@ class PaidAdVideoGenerationService
         );
     }
 
-    private function writeVoice(string $spoken, string $voice, string $voiceId, string $path): void
+    private function writeVoice(Team $team, string $spoken, string $voice, string $voiceId, string $path): void
     {
         $pending = Audio::of($spoken);
         $voiceId = trim($voiceId);
@@ -233,6 +236,8 @@ class PaidAdVideoGenerationService
         {
             throw new RuntimeException(__('No se pudo generar la voz. Revisá la clave de ElevenLabs.'));
         }
+
+        PaidAdUsageLog::record((int) $team->id, PaidAdUsageKind::Voice, mb_strlen($spoken, 'UTF-8'));
     }
 
     /**

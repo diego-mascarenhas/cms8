@@ -229,6 +229,8 @@ class TeamBillingRate extends Model
             TeamBillingProduct::ProspectCredit => max(0, (float) config('humano_pricing.prospect_billing.our_amount', 0.15)),
             TeamBillingProduct::StorageMegabyte => max(0, (float) config('humano_pricing.storage_billing.our_amount', 0.02)),
             TeamBillingProduct::TranscriptionMinute => max(0, (float) config('humano_pricing.transcription_billing.our_amount', 0.037)),
+            TeamBillingProduct::ElevenlabsVoiceThousand => max(0, (float) config('humano_pricing.elevenlabs_voice_billing.our_amount', 0.8)),
+            TeamBillingProduct::PaidAdVideo => max(0, (float) config('humano_pricing.paid_ad_video_billing.our_amount', 1.89)),
         };
     }
 
@@ -245,6 +247,8 @@ class TeamBillingRate extends Model
             TeamBillingProduct::ProspectCredit => config('humano_pricing.prospect_billing.our_amount_by_team', []),
             TeamBillingProduct::StorageMegabyte => config('humano_pricing.storage_billing.our_amount_by_team', []),
             TeamBillingProduct::TranscriptionMinute => config('humano_pricing.transcription_billing.our_amount_by_team', []),
+            TeamBillingProduct::ElevenlabsVoiceThousand => config('humano_pricing.elevenlabs_voice_billing.our_amount_by_team', []),
+            TeamBillingProduct::PaidAdVideo => config('humano_pricing.paid_ad_video_billing.our_amount_by_team', []),
         };
 
         return is_array($overrides) ? $overrides : [];
@@ -275,6 +279,8 @@ class TeamBillingRate extends Model
             TeamBillingProduct::ProspectCredit => strtoupper((string) config('humano_pricing.prospect_billing.currency', 'USD')),
             TeamBillingProduct::StorageMegabyte => strtoupper((string) config('humano_pricing.storage_billing.currency', 'USD')),
             TeamBillingProduct::TranscriptionMinute => strtoupper((string) config('humano_pricing.transcription_billing.currency', 'USD')),
+            TeamBillingProduct::ElevenlabsVoiceThousand => strtoupper((string) config('humano_pricing.elevenlabs_voice_billing.currency', 'USD')),
+            TeamBillingProduct::PaidAdVideo => strtoupper((string) config('humano_pricing.paid_ad_video_billing.currency', 'USD')),
         };
     }
 
@@ -283,7 +289,7 @@ class TeamBillingRate extends Model
         return match ($product)
         {
             TeamBillingProduct::TokensMultiplier => max(1, $amount),
-            TeamBillingProduct::WhatsappSend, TeamBillingProduct::MailerSend, TeamBillingProduct::ProspectCredit, TeamBillingProduct::StorageMegabyte, TeamBillingProduct::TranscriptionMinute => max(0, $amount),
+            TeamBillingProduct::WhatsappSend, TeamBillingProduct::MailerSend, TeamBillingProduct::ProspectCredit, TeamBillingProduct::StorageMegabyte, TeamBillingProduct::TranscriptionMinute, TeamBillingProduct::ElevenlabsVoiceThousand, TeamBillingProduct::PaidAdVideo => max(0, $amount),
         };
     }
 

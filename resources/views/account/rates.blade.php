@@ -215,6 +215,22 @@
                     @enderror
                     <small class="text-muted">{{ $usageCurrency }} por minuto de audio transcrito.</small>
                 </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="elevenlabs_voice_thousand">Voz ElevenLabs ({{ $usageCurrency }}/1.000 caracteres)</label>
+                    <input type="number" step="any" min="0" class="form-control @error('elevenlabs_voice_thousand') is-invalid @enderror" id="elevenlabs_voice_thousand" name="elevenlabs_voice_thousand" value="{{ old('elevenlabs_voice_thousand', $billingRates['elevenlabs_voice_thousand'] ?? '0.8') }}">
+                    @error('elevenlabs_voice_thousand')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    <small class="text-muted">{{ $usageCurrency }} por cada 1.000 caracteres de la locución.</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="paid_ad_video">Vídeo de anuncio ({{ $usageCurrency }})</label>
+                    <input type="number" step="any" min="0" class="form-control @error('paid_ad_video') is-invalid @enderror" id="paid_ad_video" name="paid_ad_video" value="{{ old('paid_ad_video', $billingRates['paid_ad_video'] ?? '1.89') }}">
+                    @error('paid_ad_video')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    <small class="text-muted">{{ $usageCurrency }} por reel generado.</small>
+                </div>
             </div>
 
             @if(isset($billingRateHistory) && $billingRateHistory->isNotEmpty())
