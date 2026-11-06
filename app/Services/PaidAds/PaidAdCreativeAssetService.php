@@ -84,6 +84,7 @@ class PaidAdCreativeAssetService
                     'width' => isset($asset['width']) ? (int) $asset['width'] : null,
                     'height' => isset($asset['height']) ? (int) $asset['height'] : null,
                     'original_name' => $asset['original_name'] ?? null,
+                    'media' => $this->mediaKind($path),
                 ];
             })
             ->values()
@@ -101,6 +102,29 @@ class PaidAdCreativeAssetService
             ->map(fn (AdCreativeFormat $format) => $format->toLookup())
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array{format: string, path: string, url: string, width: int, height: int, original_name: string, media: string}
+     */
+    public function describeStored(Team $team, string $path, AdCreativeFormat $format, int $width, int $height, string $originalName): array
+    {
+        $this->assertOwnedPath($team, $path);
+
+        return [
+            'format' => $format->value,
+            'path' => $path,
+            'url' => $this->publicUrl($path),
+            'width' => $width,
+            'height' => $height,
+            'original_name' => $originalName,
+            'media' => $this->mediaKind($path),
+        ];
+    }
+
+    private function mediaKind(string $path): string
+    {
+        return str_ends_with(strtolower($path), '.mp4') ? 'video' : 'image';
     }
 
     private function assertOwnedPath(Team $team, string $path): void

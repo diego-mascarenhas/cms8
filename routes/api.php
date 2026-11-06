@@ -778,6 +778,9 @@ Route::middleware('auth.api')->group(function ()
     Route::post('paid-ads/suggest-copy', [ApiPaidAdCampaignController::class, 'suggestCopy']);
     Route::post('paid-ads/suggest-image', [ApiPaidAdCampaignController::class, 'suggestImage']);
     Route::post('paid-ads/generate-image', [ApiPaidAdCampaignController::class, 'generateImage']);
+    Route::post('paid-ads/suggest-video', [ApiPaidAdCampaignController::class, 'suggestVideo']);
+    Route::post('paid-ads/generate-video', [ApiPaidAdCampaignController::class, 'generateVideo']);
+    Route::get('paid-ads/videos/{id}', [ApiPaidAdCampaignController::class, 'videoStatus'])->whereUuid('id');
     Route::get('paid-ads/connections', [ApiAdPlatformConnectionController::class, 'index']);
     Route::post('paid-ads/connections/{platform}/authorize', [ApiAdPlatformConnectionController::class, 'authorizeUrl']);
     Route::post('paid-ads/connections/{id}/select-account', [ApiAdPlatformConnectionController::class, 'selectAccount'])->whereNumber('id');
