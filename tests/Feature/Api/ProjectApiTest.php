@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Mail\ClientChangeRequestMail;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactStatus;
@@ -28,6 +29,7 @@ use Database\Seeders\TaskStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
@@ -948,6 +950,7 @@ class ProjectApiTest extends TestCase
     public function test_client_suggests_changes_completes_review_tasks_and_creates_one(): void
     {
         Storage::fake('public');
+        Mail::fake();
         [$owner, $team, , $enterprise] = $this->adminWithToken();
         $this->seed(TaskStatusSeeder::class);
         Role::firstOrCreate(['name' => 'client', 'guard_name' => 'web']);
@@ -985,6 +988,10 @@ class ProjectApiTest extends TestCase
             'status_id' => 9,
             'board_id' => $board->id,
         ]);
+
+        $collaborator = User::factory()->create();
+        $team->users()->attach($collaborator, ['role' => 'editor']);
+        $project->participants()->attach([$owner->id, $collaborator->id]);
 
         $review = TaskStatus::query()->where('name', 'REVIEW')->firstOrFail();
         $inProgress = TaskStatus::query()->where('name', 'IN_PROGRESS')->firstOrFail();
@@ -1049,6 +1056,28 @@ class ProjectApiTest extends TestCase
         $this->assertSame('TO_DO', $suggest->status->name);
         $this->assertStringContainsString('El botón de entrar no se ve en el móvil.', (string) $suggest->description);
         $this->assertCount(1, $suggest->getMedia('attachments'));
+        Mail::assertSent(ClientChangeRequestMail::class, function (ClientChangeRequestMail $mail) use ($owner, $collaborator, $clientUser)
+        {
+            return $mail->hasTo($owner->email)
+                && $mail->hasTo($collaborator->email)
+                && ! $mail->hasTo($clientUser->email)
+                && $mail->body === 'El botón de entrar no se ve en el móvil.';
+        });
+
+        Auth::forgetGuards();
+        $this->flushHeaders();
+        $ownerToken = $owner->createToken('owner-tasks')->plainTextToken;
+        $listed = $this->withHeader('Authorization', 'Bearer '.$ownerToken)
+            ->getJson('/api/tasks?pending_only=1')
+            ->assertOk();
+        $withNote = collect($listed->json('data'))->firstWhere('title', 'Login a Colab');
+        $this->assertSame('El botón de entrar no se ve en el móvil.', $withNote['notes'][0]['message']);
+        $this->assertSame('Sugerencia de cambios', $withNote['notes'][0]['subject']);
+        $this->assertSame($clientUser->name, $withNote['notes'][0]['sender_name']);
+
+        Auth::forgetGuards();
+        $this->flushHeaders();
+
         $this->assertTrue(
             TaskCommunication::query()
                 ->where('task_id', $suggest->id)
