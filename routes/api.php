@@ -1022,6 +1022,10 @@ Route::middleware('team.token')->prefix('team')->group(function ()
     Route::post('communications', [CommunicationController::class, 'store'])->name('api.team.communications.store');
     Route::get('communications/{id}', [CommunicationController::class, 'show'])->whereNumber('id')->name('api.team.communications.show');
     Route::get('/settings', [TeamController::class, 'settings']);
+    Route::get('meetings', [\App\Http\Controllers\Api\TeamMeetingController::class, 'index'])->name('api.team.meetings.index');
+    Route::post('meetings', [\App\Http\Controllers\Api\TeamMeetingController::class, 'store'])->name('api.team.meetings.store');
+    Route::get('meetings/{meeting}', [\App\Http\Controllers\Api\TeamMeetingController::class, 'show'])->whereNumber('meeting')->name('api.team.meetings.show');
+    Route::post('meetings/{meeting}/speakers', [\App\Http\Controllers\Api\TeamMeetingController::class, 'linkSpeaker'])->whereNumber('meeting')->name('api.team.meetings.speakers');
     Route::get('meet/slots', [\App\Http\Controllers\Api\MeetBookingController::class, 'slots'])->name('api.team.meet.slots');
     Route::post('meet/bookings', [\App\Http\Controllers\Api\MeetBookingController::class, 'store'])->name('api.team.meet.bookings.store');
     Route::post('meet/knocks', [\App\Http\Controllers\Api\MeetKnockController::class, 'store'])->name('api.team.meet.knocks.store');

@@ -9,12 +9,15 @@ use App\Http\Requests\StoreMeetingTranscriptRequest;
 use App\Jobs\TranscribeMeetingTranscript;
 use App\Models\Contact;
 use App\Models\MeetingTranscript;
+use App\Services\MeetingSummaryService;
+use App\Services\MeetingTranscriptService;
 use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use RuntimeException;
 
 class MeetingTranscriptController extends Controller
 {
@@ -93,43 +96,43 @@ class MeetingTranscriptController extends Controller
         return response()->json(['results' => $results]);
     }
 
-    public function linkSpeaker(LinkMeetingSpeakerRequest $request, MeetingTranscript $meeting): RedirectResponse
+    public function linkSpeaker(LinkMeetingSpeakerRequest $request, MeetingTranscript $meeting, MeetingTranscriptService $transcripts): RedirectResponse
     {
         $speaker = $request->string('speaker')->toString();
         $contactId = $request->filled('contact_id') ? (int) $request->input('contact_id') : null;
-        $turns = $meeting->turns ?? [];
-        $matched = false;
+        $linked = $transcripts->linkSpeaker($meeting, $speaker, $contactId);
 
-        foreach ($turns as $index => $turn)
-        {
-            if (($turn['speaker'] ?? '') !== $speaker)
-            {
-                continue;
-            }
-
-            $matched = true;
-            if ($contactId === null)
-            {
-                unset($turns[$index]['contact_id']);
-            } else
-            {
-                $turns[$index]['contact_id'] = $contactId;
-            }
-        }
-
-        if (! $matched)
+        if (! $linked)
         {
             return redirect()
                 ->route('meeting.show', $meeting)
                 ->withErrors(['speaker' => 'Esa voz no está en la reunión.']);
         }
 
-        $meeting->turns = array_values($turns);
-        $meeting->save();
+        $status = $contactId === null
+            ? 'Se quitó el vínculo de la voz.'
+            : 'La voz quedó vinculada en esta reunión. Persona 1 de otra grabación no es esta persona.';
 
         return redirect()
             ->route('meeting.show', $meeting)
-            ->with('status', $contactId === null ? 'Se quitó el vínculo de la voz.' : 'La voz quedó vinculada en esta reunión.');
+            ->with('status', $status);
+    }
+
+    public function summarize(MeetingTranscript $meeting, MeetingSummaryService $summaries): RedirectResponse
+    {
+        try
+        {
+            $summaries->summarize($meeting);
+        } catch (RuntimeException $exception)
+        {
+            return redirect()
+                ->route('meeting.show', $meeting)
+                ->withErrors(['summary' => $exception->getMessage()]);
+        }
+
+        return redirect()
+            ->route('meeting.show', $meeting)
+            ->with('status', 'El resumen quedó guardado.');
     }
 
     public function destroy(MeetingTranscript $meeting): RedirectResponse

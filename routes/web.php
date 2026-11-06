@@ -332,6 +332,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('meeting/contacts', [MeetingTranscriptController::class, 'contacts'])->name('meeting.contacts');
     Route::post('meeting', [MeetingTranscriptController::class, 'store'])->name('meeting.store');
     Route::post('meeting/{meeting}/speakers', [MeetingTranscriptController::class, 'linkSpeaker'])->name('meeting.speakers.update');
+    Route::post('meeting/{meeting}/summary', [MeetingTranscriptController::class, 'summarize'])->name('meeting.summary');
     Route::get('meeting/{meeting}', [MeetingTranscriptController::class, 'show'])->name('meeting.show');
     Route::delete('meeting/{meeting}', [MeetingTranscriptController::class, 'destroy'])->name('meeting.destroy');
 

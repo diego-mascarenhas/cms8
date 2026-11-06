@@ -4,10 +4,11 @@ namespace App\Services;
 
 use App\Enums\MeetingTranscriptStatus;
 use App\Models\MeetingTranscript;
+use App\Models\MeetingVoiceProfile;
 use Illuminate\Http\Client\RequestException;
-use Laravel\Ai\Enums\Lab;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Responses\Data\TranscriptionSegment;
-use Laravel\Ai\Transcription;
 use Throwable;
 
 class MeetingTranscriptService
@@ -21,24 +22,25 @@ class MeetingTranscriptService
 
         try
         {
-            $pending = Transcription::fromStorage($meeting->audio_path, 'local')
-                ->diarize()
-                ->timeout(600);
+            $payload = $this->requestTranscript($meeting);
+            $segments = collect($payload['words'] ?? [])
+                ->filter(fn (array $word): bool => ($word['type'] ?? '') === 'word')
+                ->map(fn (array $word): TranscriptionSegment => new TranscriptionSegment(
+                    (string) ($word['text'] ?? ''),
+                    (string) ($word['speaker_id'] ?? 'speaker_0'),
+                    (float) ($word['start'] ?? 0),
+                    (float) ($word['end'] ?? 0),
+                ))
+                ->all();
+            $text = trim((string) ($payload['text'] ?? ''));
+            $turns = $this->turnsFromSegments($segments);
 
-            if (is_string($meeting->language) && $meeting->language !== '')
-            {
-                $pending->language($meeting->language);
-            }
-
-            $response = $pending->generate(provider: Lab::ElevenLabs);
-            $turns = $this->turnsFromSegments($response->segments->all());
-
-            if ($turns === [] && trim($response->text) !== '')
+            if ($turns === [] && $text !== '')
             {
                 $turns = [[
                     'speaker' => 'speaker_0',
                     'label' => 'Persona 1',
-                    'text' => trim($response->text),
+                    'text' => $text,
                     'start_seconds' => 0,
                     'end_seconds' => 0,
                 ]];
@@ -46,8 +48,8 @@ class MeetingTranscriptService
 
             $meeting->forceFill([
                 'status' => MeetingTranscriptStatus::Ready,
-                'transcript' => $response->text,
-                'turns' => $turns,
+                'transcript' => $text,
+                'turns' => $this->applyKnownSpeakers($meeting, $turns),
                 'error' => null,
             ])->save();
         } catch (Throwable $exception)
@@ -57,6 +59,70 @@ class MeetingTranscriptService
                 'error' => $this->failureMessage($exception),
             ])->save();
         }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $turns
+     */
+    public function linkSpeaker(MeetingTranscript $meeting, string $speaker, ?int $contactId): bool
+    {
+        $turns = $meeting->turns ?? [];
+        $matched = false;
+
+        foreach ($turns as $index => $turn)
+        {
+            if (($turn['speaker'] ?? '') !== $speaker)
+            {
+                continue;
+            }
+
+            $matched = true;
+            if ($contactId === null)
+            {
+                unset($turns[$index]['contact_id']);
+            } else
+            {
+                $turns[$index]['contact_id'] = $contactId;
+            }
+        }
+
+        if (! $matched)
+        {
+            return false;
+        }
+
+        $meeting->turns = array_values($turns);
+        $meeting->save();
+        $this->rememberVoice($meeting, $speaker, $contactId);
+
+        return true;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $turns
+     * @return list<array<string, mixed>>
+     */
+    public function applyKnownSpeakers(MeetingTranscript $meeting, array $turns): array
+    {
+        $profiles = MeetingVoiceProfile::withoutGlobalScope('team')
+            ->where('team_id', $meeting->team_id)
+            ->whereNotNull('provider_speaker_id')
+            ->get()
+            ->keyBy('provider_speaker_id');
+
+        foreach ($turns as $index => $turn)
+        {
+            $speaker = (string) ($turn['speaker'] ?? '');
+            $profile = $profiles->get($speaker);
+            if ($profile === null || $this->isTemporarySpeaker($speaker))
+            {
+                continue;
+            }
+
+            $turns[$index]['contact_id'] = $profile->contact_id;
+        }
+
+        return $turns;
     }
 
     public function failureMessage(Throwable $exception): string
@@ -128,5 +194,57 @@ class MeetingTranscriptService
         }
 
         return $turns;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function requestTranscript(MeetingTranscript $meeting): array
+    {
+        $fields = [
+            'model_id' => 'scribe_v2',
+            'diarize' => 'true',
+            'use_speaker_library' => 'true',
+        ];
+        if (is_string($meeting->language) && $meeting->language !== '')
+        {
+            $fields['language_code'] = $meeting->language;
+        }
+
+        $response = Http::withHeaders([
+            'xi-api-key' => (string) config('ai.providers.eleven.key'),
+        ])->timeout(600)->attach(
+            'file',
+            Storage::disk('local')->get($meeting->audio_path),
+            basename($meeting->audio_path),
+            ['Content-Type' => Storage::disk('local')->mimeType($meeting->audio_path) ?: 'application/octet-stream'],
+        )->post('https://api.elevenlabs.io/v1/speech-to-text', $fields)->throw();
+
+        $payload = $response->json();
+
+        return is_array($payload) ? $payload : [];
+    }
+
+    private function rememberVoice(MeetingTranscript $meeting, string $speaker, ?int $contactId): void
+    {
+        if ($contactId === null || $this->isTemporarySpeaker($speaker))
+        {
+            return;
+        }
+
+        MeetingVoiceProfile::withoutGlobalScope('team')->updateOrCreate(
+            [
+                'team_id' => $meeting->team_id,
+                'contact_id' => $contactId,
+            ],
+            [
+                'provider_speaker_id' => $speaker,
+            ],
+        );
+    }
+
+    private function isTemporarySpeaker(string $speaker): bool
+    {
+        return preg_match('/^speaker_\d+$/', $speaker) === 1;
     }
 }

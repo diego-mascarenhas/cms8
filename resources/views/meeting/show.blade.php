@@ -9,17 +9,43 @@
         <p class="text-muted">{{ $meeting->original_filename }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('meeting.index') }}" class="btn btn-label-secondary">Volver</a>
+        @if ($meeting->status->value === 'ready')
+            <form action="{{ route('meeting.summary', $meeting) }}" method="POST">
+                @csrf
+                <button type="submit" class="btn btn-label-primary waves-effect">
+                    <i class="ti ti-notes me-1"></i>Resumen
+                </button>
+            </form>
+        @endif
+        <a href="{{ route('meeting.index') }}" class="btn btn-label-secondary waves-effect">
+            <i class="ti ti-arrow-left me-1"></i>Volver
+        </a>
         <form action="{{ route('meeting.destroy', $meeting) }}" method="POST" onsubmit="return confirm('¿Eliminar esta reunión?');">
             @csrf
             @method('DELETE')
-            <button type="submit" class="btn btn-label-danger">Eliminar</button>
+            <button type="submit" class="btn btn-label-danger waves-effect">
+                <i class="ti ti-trash me-1"></i>Eliminar
+            </button>
         </form>
     </div>
 </div>
 
 @if (session('status'))
-    <div class="alert alert-success">{{ session('status') }}</div>
+    <div class="alert alert-success d-flex align-items-center" role="alert">
+        <span class="alert-icon text-success me-2">
+            <i class="ti ti-check ti-xs"></i>
+        </span>
+        {{ session('status') }}
+    </div>
+@endif
+
+@if ($errors->has('summary'))
+    <div class="alert alert-danger d-flex align-items-center" role="alert">
+        <span class="alert-icon text-danger me-2">
+            <i class="ti ti-ban ti-xs"></i>
+        </span>
+        {{ $errors->first('summary') }}
+    </div>
 @endif
 
 @if ($meeting->status->value === 'pending' || $meeting->status->value === 'processing')
@@ -31,6 +57,58 @@
 @endif
 
 @if ($meeting->status->value === 'ready')
+    @php
+        $summary = is_array($meeting->summary) ? $meeting->summary : null;
+    @endphp
+    @if ($summary)
+        <div class="card mb-4">
+            <h5 class="card-header">Resumen</h5>
+            <div class="card-body">
+                @if (($summary['synthesis'] ?? '') !== '')
+                    <p class="mb-3">{{ $summary['synthesis'] }}</p>
+                @endif
+                @if (($summary['viewpoints'] ?? []) !== [])
+                    <h6 class="mb-2">Puntos de vista</h6>
+                    <ul class="mb-3">
+                        @foreach ($summary['viewpoints'] as $viewpoint)
+                            <li>
+                                @if (($viewpoint['speaker'] ?? '') !== '')
+                                    <strong>{{ $viewpoint['speaker'] }}.</strong>
+                                @endif
+                                {{ $viewpoint['view'] ?? '' }}
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+                @if (($summary['intention'] ?? '') !== '')
+                    <h6 class="mb-2">Intención</h6>
+                    <p class="mb-3">{{ $summary['intention'] }}</p>
+                @endif
+                @if (($summary['items'] ?? []) !== [])
+                    <h6 class="mb-2">Para tratar</h6>
+                    <ol class="mb-3">
+                        @foreach ($summary['items'] as $item)
+                            <li>{{ $item }}</li>
+                        @endforeach
+                    </ol>
+                @endif
+                @if (($summary['tasks'] ?? []) !== [])
+                    <h6 class="mb-2">Tareas</h6>
+                    <ul class="mb-0">
+                        @foreach ($summary['tasks'] as $task)
+                            <li>
+                                {{ $task['title'] ?? '' }}
+                                @if (($task['owner'] ?? '') !== '')
+                                    <span class="text-muted">— {{ $task['owner'] }}</span>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+        </div>
+    @endif
+
     <div class="card">
         <div class="card-body d-flex flex-column gap-4">
             @forelse ($meeting->turns ?? [] as $turn)
@@ -42,27 +120,32 @@
                     $avatar = $contact
                         ? $contact->avatarUrl(40)
                         : \App\Helpers\AvatarHelper::generate($speakerName, 40);
+                    $linkLabel = $contact ? 'Cambiar' : 'Vincular';
                 @endphp
-                <div>
-                    <div class="d-flex justify-content-between align-items-center gap-3">
-                        <div class="d-flex align-items-center">
-                            <span class="position-relative d-inline-flex flex-shrink-0 me-3">
-                                <img src="{{ $avatar }}" alt="" class="rounded-circle" width="40" height="40" style="object-fit:cover">
-                            </span>
+                <div class="d-flex gap-3">
+                    <span class="position-relative d-inline-flex flex-shrink-0">
+                        <img src="{{ $avatar }}" alt="" class="rounded-circle" width="40" height="40" style="object-fit:cover">
+                    </span>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-center gap-3">
                             <strong>{{ $speakerName }}</strong>
+                            <div class="d-flex align-items-center gap-2">
+                                <button
+                                    type="button"
+                                    class="btn btn-sm btn-icon btn-text-secondary"
+                                    title="{{ $linkLabel }}"
+                                    aria-label="{{ $linkLabel }}"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#link-speaker-modal"
+                                    data-speaker="{{ $turn['speaker'] ?? '' }}"
+                                >
+                                    <i class="ti {{ $contact ? 'ti-replace' : 'ti-link' }} ti-sm"></i>
+                                </button>
+                                <span class="text-muted">{{ gmdate('i:s', (int) ($turn['start_seconds'] ?? 0)) }}</span>
+                            </div>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <button
-                                type="button"
-                                class="btn btn-sm btn-label-primary"
-                                data-bs-toggle="modal"
-                                data-bs-target="#link-speaker-modal"
-                                data-speaker="{{ $turn['speaker'] ?? '' }}"
-                            >{{ $contact ? 'Cambiar' : 'Vincular' }}</button>
-                            <span class="text-muted">{{ gmdate('i:s', (int) ($turn['start_seconds'] ?? 0)) }}</span>
-                        </div>
+                        <p class="mb-0 mt-2">{{ $turn['text'] ?? '' }}</p>
                     </div>
-                    <p class="mb-0 mt-2">{{ $turn['text'] ?? '' }}</p>
                 </div>
             @empty
                 <p class="text-muted mb-0">No hay intervenciones para mostrar.</p>
@@ -83,7 +166,7 @@
                     <div class="modal-body">
                         <label class="form-label" for="speaker-contact">Persona</label>
                         <select id="speaker-contact" name="contact_id" class="form-select"></select>
-                        <div class="form-text">El vínculo nombra esta voz en esta reunión. Una grabación nueva no la reconoce sola.</div>
+                        <div class="form-text">El vínculo nombra esta voz en esta reunión. Persona 1 de otra grabación no es la misma persona.</div>
                     </div>
                     <div class="modal-footer">
                         <button type="submit" class="btn btn-label-secondary" name="contact_id" value="">Quitar</button>

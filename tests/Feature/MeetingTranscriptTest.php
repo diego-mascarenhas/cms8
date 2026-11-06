@@ -6,6 +6,7 @@ use App\Enums\MeetingTranscriptStatus;
 use App\Jobs\TranscribeMeetingTranscript;
 use App\Models\Contact;
 use App\Models\MeetingTranscript;
+use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\MeetingTranscriptService;
 use GuzzleHttp\Psr7\Response as PsrResponse;
@@ -13,13 +14,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Ai\Responses\Data\Meta;
-use Laravel\Ai\Responses\Data\TranscriptionSegment;
-use Laravel\Ai\Responses\Data\Usage;
-use Laravel\Ai\Responses\TranscriptionResponse;
-use Laravel\Ai\Transcription;
+use Laravel\Ai\Ai;
+use Laravel\Ai\AnonymousAgent;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -99,8 +98,12 @@ class MeetingTranscriptTest extends TestCase
             ->assertOk()
             ->assertSee('Persona 1', false)
             ->assertSee('rounded-circle', false)
-            ->assertSee('Vincular', false)
-            ->assertSee('no la reconoce sola', false);
+            ->assertSee('ti-link', false)
+            ->assertSee('aria-label="Vincular"', false)
+            ->assertSee('ti-arrow-left', false)
+            ->assertSee('ti-trash', false)
+            ->assertSee('ti-notes', false)
+            ->assertSee('no es la misma persona', false);
     }
 
     public function test_linking_a_speaker_names_that_voice_in_this_meeting_only(): void
@@ -125,6 +128,7 @@ class MeetingTranscriptTest extends TestCase
             'team_id' => $team->id,
             'name' => 'Diego',
             'surname' => 'Mascarenhas',
+            'language' => 'es',
             'email' => 'diego-meeting@example.test',
             'phone' => '600111222',
             'country' => null,
@@ -177,6 +181,7 @@ class MeetingTranscriptTest extends TestCase
         $this->assertSame($contact->id, $turns[1]['contact_id']);
         $this->assertArrayNotHasKey('contact_id', $turns[2]);
         $this->assertSame('Persona 1', $turns[0]['label']);
+        $this->assertSame(0, TokenUsageLog::withoutGlobalScopes()->count());
     }
 
     public function test_index_renders_the_datatable(): void
@@ -220,17 +225,15 @@ class MeetingTranscriptTest extends TestCase
             'status' => MeetingTranscriptStatus::Pending,
         ]);
 
-        Transcription::fake([
-            new TranscriptionResponse(
-                'Hola equipo Listo',
-                collect([
-                    new TranscriptionSegment('Hola', 'speaker_0', 0, 1),
-                    new TranscriptionSegment('equipo', 'speaker_0', 1, 2),
-                    new TranscriptionSegment('Listo', 'speaker_1', 2, 3),
-                ]),
-                new Usage,
-                new Meta('eleven', 'scribe_v2'),
-            ),
+        Http::fake([
+            'api.elevenlabs.io/*' => Http::response([
+                'text' => 'Hola equipo Listo',
+                'words' => [
+                    ['text' => 'Hola', 'type' => 'word', 'speaker_id' => 'speaker_0', 'start' => 0, 'end' => 1],
+                    ['text' => 'equipo', 'type' => 'word', 'speaker_id' => 'speaker_0', 'start' => 1, 'end' => 2],
+                    ['text' => 'Listo', 'type' => 'word', 'speaker_id' => 'speaker_1', 'start' => 2, 'end' => 3],
+                ],
+            ]),
         ]);
 
         (new TranscribeMeetingTranscript($meeting->id))->handle(app(MeetingTranscriptService::class));
@@ -241,9 +244,113 @@ class MeetingTranscriptTest extends TestCase
         $this->assertSame('Hola equipo', $meeting->turns[0]['text']);
         $this->assertSame('Persona 2', $meeting->turns[1]['label']);
         $this->assertSame('Listo', $meeting->turns[1]['text']);
-        Transcription::assertGenerated(function ($prompt)
+        $this->assertArrayNotHasKey('contact_id', $meeting->turns[0]);
+        Http::assertSent(function ($request)
         {
-            return $prompt->diarize === true && $prompt->language === 'es';
+            return $request->url() === 'https://api.elevenlabs.io/v1/speech-to-text'
+                && str_contains($request->body(), 'use_speaker_library');
         });
+    }
+
+    public function test_a_known_voice_is_named_on_the_next_meeting(): void
+    {
+        Storage::fake('local');
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        Storage::disk('local')->put('meetings/'.$team->id.'/otra.mp3', 'audio');
+        \Illuminate\Support\Facades\DB::table('languages')->insertOrIgnore([
+            'code' => 'es',
+            'name' => 'Español',
+        ]);
+        \Illuminate\Support\Facades\DB::table('contact_statuses')->insertOrIgnore([
+            'id' => 1,
+            'name' => 'Lead',
+            'label_class' => 'bg-label-secondary',
+        ]);
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Diego',
+            'surname' => 'Mascarenhas',
+            'language' => 'es',
+            'email' => 'diego-voice@example.test',
+            'phone' => '600111223',
+            'country' => null,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+        \App\Models\MeetingVoiceProfile::query()->create([
+            'team_id' => $team->id,
+            'contact_id' => $contact->id,
+            'provider_speaker_id' => 'spk_diego',
+        ]);
+        $meeting = MeetingTranscript::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'title' => 'Otra',
+            'original_filename' => 'otra.mp3',
+            'audio_path' => 'meetings/'.$team->id.'/otra.mp3',
+            'language' => 'es',
+            'status' => MeetingTranscriptStatus::Pending,
+        ]);
+        Http::fake([
+            'api.elevenlabs.io/*' => Http::response([
+                'text' => 'Hola',
+                'words' => [
+                    ['text' => 'Hola', 'type' => 'word', 'speaker_id' => 'spk_diego', 'start' => 0, 'end' => 1],
+                ],
+            ]),
+        ]);
+
+        (new TranscribeMeetingTranscript($meeting->id))->handle(app(MeetingTranscriptService::class));
+
+        $this->assertSame($contact->id, $meeting->fresh()->turns[0]['contact_id']);
+    }
+
+    public function test_summary_is_stored_and_counted_for_the_team(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $meeting = MeetingTranscript::query()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'title' => 'Weekly',
+            'original_filename' => 'reunion.webm',
+            'audio_path' => 'meetings/'.$team->id.'/reunion.webm',
+            'language' => 'es',
+            'status' => MeetingTranscriptStatus::Ready,
+            'turns' => [[
+                'speaker' => 'speaker_0',
+                'label' => 'Persona 1',
+                'text' => 'Hay que publicar el precio mañana.',
+                'start_seconds' => 0,
+                'end_seconds' => 2,
+            ]],
+        ]);
+
+        Ai::fakeAgent(AnonymousAgent::class, [json_encode([
+            'synthesis' => 'Quedó pendiente publicar el precio.',
+            'viewpoints' => [['speaker' => 'Persona 1', 'view' => 'Hay que publicarlo mañana.']],
+            'intention' => 'Definir el precio.',
+            'items' => ['Precio'],
+            'tasks' => [['title' => 'Publicar el precio', 'owner' => 'Persona 1']],
+        ], JSON_UNESCAPED_UNICODE)]);
+
+        $this->actingAs($user)
+            ->followingRedirects()
+            ->post(route('meeting.summary', $meeting))
+            ->assertOk()
+            ->assertSee('ti-check', false)
+            ->assertSee('El resumen quedó guardado.', false)
+            ->assertSee('Quedó pendiente publicar el precio.', false)
+            ->assertSee('ti-link', false);
+
+        $summary = $meeting->fresh()->summary;
+        $this->assertSame('Quedó pendiente publicar el precio.', $summary['synthesis']);
+        $this->assertSame('Publicar el precio', $summary['tasks'][0]['title']);
+        $this->assertSame(1, TokenUsageLog::withoutGlobalScopes()->where('team_id', $team->id)->where('service', 'MeetingSummaryService')->count());
     }
 }

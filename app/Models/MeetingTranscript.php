@@ -13,18 +13,21 @@ class MeetingTranscript extends Model
         'team_id',
         'user_id',
         'title',
+        'external_ref',
         'original_filename',
         'audio_path',
         'language',
         'status',
         'transcript',
         'turns',
+        'summary',
         'error',
     ];
 
     protected $casts = [
         'status' => MeetingTranscriptStatus::class,
         'turns' => 'array',
+        'summary' => 'array',
     ];
 
     protected static function booted(): void
