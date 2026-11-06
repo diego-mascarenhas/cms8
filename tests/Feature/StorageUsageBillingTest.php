@@ -75,7 +75,7 @@ class StorageUsageBillingTest extends TestCase
         $this->assertSame(1024 ** 3, $usage['storage_bytes']);
         $this->assertSame(2048, $usage['storage_billed_cents']);
         $this->assertSame(2048, $usage['billed_cents']);
-        $this->assertSame('1,00 GB / 20,48 EUR', $usage['formatted']['storage']);
+        $this->assertSame('1,00 GB / 20,48 USD', $usage['formatted']['storage']);
 
         $lines = app(TeamBillingUsageSummaryService::class)->billableLines($usage, $usage['period_label']);
         $storage = collect($lines)->firstWhere('kind', 'storage');

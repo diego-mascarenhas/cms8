@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\TeamBillingFrequency;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class UpdateAccountRatesRequest extends FormRequest
 {
@@ -24,7 +22,7 @@ class UpdateAccountRatesRequest extends FormRequest
             'mailer_send' => ['required', 'numeric', 'min:0', 'max:10'],
             'prospect_credit' => ['required', 'numeric', 'min:0', 'max:100'],
             'storage_megabyte' => ['required', 'numeric', 'min:0', 'max:1'],
-            'invoice_frequency' => ['required', Rule::enum(TeamBillingFrequency::class)],
+            'transcription_minute' => ['required', 'numeric', 'min:0', 'max:100'],
         ];
     }
 
@@ -45,8 +43,8 @@ class UpdateAccountRatesRequest extends FormRequest
             'prospect_credit.numeric' => 'El precio de prospección debe ser numérico.',
             'storage_megabyte.required' => 'El precio de almacenamiento es obligatorio.',
             'storage_megabyte.numeric' => 'El precio de almacenamiento debe ser numérico.',
-            'invoice_frequency.required' => 'La frecuencia de facturación es obligatoria.',
-            'invoice_frequency.Illuminate\Validation\Rules\Enum' => 'La frecuencia de facturación no es válida.',
+            'transcription_minute.required' => 'El precio de transcripción es obligatorio.',
+            'transcription_minute.numeric' => 'El precio de transcripción debe ser numérico.',
         ];
     }
 }

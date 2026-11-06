@@ -30,7 +30,7 @@ final class TeamWhatsAppUsageStatsService
         $asOf = $to ?? now();
         $ourRate = TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, $asOf);
         $referenceRate = max(0, (float) config('humano_pricing.whatsapp_message_billing.reference_amount', 0.005));
-        $currency = strtoupper((string) config('humano_pricing.whatsapp_message_billing.currency', 'EUR'));
+        $currency = strtoupper((string) config('humano_pricing.whatsapp_message_billing.currency', 'USD'));
 
         $ourCents = $from instanceof CarbonInterface
             ? self::amountCentsForWindows($team, Carbon::instance($from), Carbon::instance($asOf))

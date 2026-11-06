@@ -362,4 +362,29 @@ class TeamApiUsageStatsServiceTest extends TestCase
         $this->assertSame('EUR', $summary['currency']);
         $this->assertSame('10.000.000 / 10,00 EUR', $summary['formatted']);
     }
+
+    public function test_meeting_summary_logs_without_a_module_are_named_reuniones(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'MeetingSummaryService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 400,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+
+        $stats = TeamApiUsageStatsService::forTeam((int) $team->id);
+
+        $this->assertSame(400, $stats['totalTokensUsed']);
+        $this->assertSame('Reuniones', $stats['byModule']['Reuniones']['module_name']);
+        $this->assertSame(400, $stats['byModule']['Reuniones']['tokens_used']);
+    }
 }

@@ -24,7 +24,7 @@ final class TeamProspectUsageStatsService
         $credits = self::creditCount($team, $from, $to);
         $asOf = $to ?? now();
         $ourRate = TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::ProspectCredit, $asOf);
-        $currency = strtoupper((string) config('humano_pricing.prospect_billing.currency', 'EUR'));
+        $currency = strtoupper((string) config('humano_pricing.prospect_billing.currency', 'USD'));
 
         $ourCents = $from instanceof CarbonInterface
             ? self::amountCentsForWindows($team, Carbon::instance($from), Carbon::instance($asOf))

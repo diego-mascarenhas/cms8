@@ -22,7 +22,25 @@ class TokenBillingRateService
 
     public static function displayCurrency(): string
     {
-        return strtoupper((string) config('humano_pricing.token_billing.currency', 'EUR'));
+        return strtoupper((string) config('humano_pricing.token_billing.currency', 'USD'));
+    }
+
+    public static function toDisplayCents(int $cents, string $fromCurrency, DateTimeInterface|string|null $on = null): int
+    {
+        $from = strtoupper(trim($fromCurrency));
+        $display = self::displayCurrency();
+        if ($cents === 0 || $from === '' || $from === $display)
+        {
+            return $cents;
+        }
+
+        $rate = ExchangeRate::rateOnOrBeforeDate($from, $display, self::resolveDate($on));
+        if ($rate === null)
+        {
+            return $cents;
+        }
+
+        return (int) round($cents * $rate);
     }
 
     public static function clientTokenMultiplier(Team|int|null $team = null, DateTimeInterface|string|null $on = null): float

@@ -18,14 +18,15 @@ return [
     'two_invoices_usage' => 'Usage: AI tokens, WhatsApp sends, emails, prospecting credits, and storage. One usage invoice per team and period. A Stripe draft is created when the cycle closes.',
 
     'rates_heading' => 'Rates',
-    'rates_intro' => 'There are five products. If the team has no row, the platform default is used, then config.',
-    'rates_tokens' => 'Token multiplier: the client sees N × real tokens at OpenRouter rates, with no extra markup. Default ×10.',
-    'rates_whatsapp' => 'WhatsApp send: USD per outbound message. Default 0.03 USD.',
+    'rates_intro' => 'There are six products. If the team has no row, the platform default is used, then config. Usage is billed monthly.',
+    'rates_tokens' => 'Token multiplier: the client sees N × real tokens at OpenRouter rates, with no extra markup. Meeting tokens are included. Default ×10.',
+    'rates_whatsapp' => 'WhatsApp send: USD per outbound message. Default 0.05 USD.',
     // 'rates_whatsapp' => 'WhatsApp send: EUR per outbound message. Default 0.003 EUR.', // en €
     'rates_mailer' => 'Mail send: USD per overage email (above the plan monthly cap). Default 0.003 USD.',
     // 'rates_mailer' => 'Mail send: EUR per overage email (above the plan monthly cap). Default 0.002 EUR.', // en €
-    'rates_prospect' => 'Prospecting: EUR per credit used when a prospect is imported. Default 0.15 EUR.',
-    'rates_storage' => 'Storage: EUR per MB occupied now (team files, multimedia, attachments, and product photos). Default 0.02 EUR.',
+    'rates_prospect' => 'Prospecting: USD per credit used when a prospect is imported. Default 0.15 USD.',
+    'rates_storage' => 'Storage: USD per MB occupied now (team files, multimedia, attachments, and product photos). Default 0.02 USD.',
+    'rates_transcription' => 'Transcription: USD per minute of meeting audio that was transcribed. Default 0.037 USD, the 0.22 USD/h cost with the ×10 margin.',
     'rates_history' => 'Saving a new rate keeps the previous one (SCD2) for usage that already happened. The page history shows From / Until / Current.',
 
     'frequency_heading' => 'Frequency',
@@ -41,13 +42,14 @@ return [
     'change_stripe' => 'Confirming closes the cycle in Humano. The Stripe draft is created on the next daily sweep.',
 
     'items_heading' => 'What is printed on the invoice',
-    'items_intro' => 'Each document (adjustment or open cycle) has these lines, even when the amount is 0.00 EUR:',
+    'items_intro' => 'Each document (adjustment or open cycle) has these lines, even when the amount is 0.00 USD:',
     'items_tokens' => 'AI tokens · period: billed tokens (real × multiplier) and amount.',
-    'items_sources' => 'Under that, a per-module breakdown when a source exists: Chat, Projects, Insights, or others. If every token has no module, only the total is shown.',
+    'items_sources' => 'Under that, a breakdown when a source exists: Chat, Projects, Insights, Meetings, or others. If every token has no module and is not a meeting, only the total is shown.',
     'items_whatsapp' => 'WhatsApp sends · period: send count and amount.',
     'items_mailer' => 'Overage emails · period: emails above the cap and amount.',
     'items_prospect' => 'Prospecting · period: credits used and amount.',
     'items_storage' => 'Storage · period: space occupied now and amount. Closed months in the table below are not reconstructed; the charge is applied when the cycle is invoiced.',
+    'items_transcription' => 'Transcription · period: transcribed audio length and amount.',
     'items_total' => 'The page preview and the confirmation modal list those items. The Tokens KPI shows the preview total (open cycle plus pending adjustments).',
 
     'preview_heading' => 'Preview',

@@ -13,6 +13,8 @@ use Throwable;
 
 class MeetingTranscriptService
 {
+    public function __construct(private MeetingCalendarSync $calendar) {}
+
     public function transcribe(MeetingTranscript $meeting): void
     {
         $meeting->forceFill([
@@ -52,6 +54,7 @@ class MeetingTranscriptService
                 'turns' => $this->applyKnownSpeakers($meeting, $turns),
                 'error' => null,
             ])->save();
+            $this->calendar->sync($meeting);
         } catch (Throwable $exception)
         {
             $meeting->forceFill([
@@ -94,6 +97,7 @@ class MeetingTranscriptService
         $meeting->turns = array_values($turns);
         $meeting->save();
         $this->rememberVoice($meeting, $speaker, $contactId);
+        $this->calendar->sync($meeting);
 
         return true;
     }

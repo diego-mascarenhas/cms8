@@ -22,10 +22,13 @@ return new class extends Migration
             $table->longText('transcript')->nullable();
             $table->json('turns')->nullable();
             $table->json('summary')->nullable();
+            $table->string('public_token', 40)->nullable();
+            $table->foreignId('calendar_event_id')->nullable()->constrained('calendar_events')->nullOnDelete();
             $table->text('error')->nullable();
             $table->timestamps();
 
             $table->index(['team_id', 'status']);
+            $table->unique('public_token', 'mt_public_token_unique');
         });
 
         Schema::create('meeting_voice_profiles', function (Blueprint $table)

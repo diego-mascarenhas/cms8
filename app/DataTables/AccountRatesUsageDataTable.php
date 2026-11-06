@@ -28,6 +28,7 @@ class AccountRatesUsageDataTable extends DataTable
             'whatsapp' => $row['formatted']['whatsapp'],
             'mailer' => $row['formatted']['mailer'],
             'prospect' => $row['formatted']['prospect'],
+            'transcription' => $row['formatted']['transcription'],
             'cost' => $row['formatted']['cost'],
             'billed' => $row['formatted']['billed'],
             'markup' => $row['formatted']['markup'],
@@ -69,43 +70,49 @@ class AccountRatesUsageDataTable extends DataTable
                 ->title('Tokens')
                 ->name('tokens')
                 ->data('tokens')
-                ->className('text-center')
+                ->className('text-end')
                 ->addClass('min-tablet'),
             Column::make('whatsapp')
                 ->title('WhatsApp')
                 ->name('whatsapp')
                 ->data('whatsapp')
-                ->className('text-center')
+                ->className('text-end')
                 ->addClass('min-tablet'),
             Column::make('mailer')
                 ->title('Mail')
                 ->name('mailer')
                 ->data('mailer')
-                ->className('text-center')
+                ->className('text-end')
                 ->addClass('min-tablet'),
             Column::make('prospect')
                 ->title('Prospección')
                 ->name('prospect')
                 ->data('prospect')
-                ->className('text-center')
+                ->className('text-end')
+                ->addClass('min-tablet'),
+            Column::make('transcription')
+                ->title('Transcripción')
+                ->name('transcription')
+                ->data('transcription')
+                ->className('text-end')
                 ->addClass('min-tablet'),
             Column::make('cost')
                 ->title('Coste')
                 ->name('cost')
                 ->data('cost')
-                ->className('text-center')
+                ->className('text-end')
                 ->addClass('all'),
             Column::make('billed')
                 ->title('Facturado')
                 ->name('billed')
                 ->data('billed')
-                ->className('text-center')
+                ->className('text-end')
                 ->addClass('all'),
             Column::make('markup')
                 ->title('Markup')
                 ->name('markup')
                 ->data('markup')
-                ->className('text-center')
+                ->className('text-end')
                 ->addClass('all'),
         ];
     }

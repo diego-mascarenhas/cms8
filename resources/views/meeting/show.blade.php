@@ -10,12 +10,9 @@
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
         @if ($meeting->status->value === 'ready')
-            <form action="{{ route('meeting.summary', $meeting) }}" method="POST">
-                @csrf
-                <button type="submit" class="btn btn-label-primary waves-effect">
-                    <i class="ti ti-notes me-1"></i>Resumen
-                </button>
-            </form>
+            <a href="{{ route('meeting.summary.show', $meeting) }}" class="btn btn-label-primary waves-effect">
+                <i class="ti ti-notes me-1"></i>Resumen
+            </a>
         @endif
         <a href="{{ route('meeting.index') }}" class="btn btn-label-secondary waves-effect">
             <i class="ti ti-arrow-left me-1"></i>Volver
@@ -39,15 +36,6 @@
     </div>
 @endif
 
-@if ($errors->has('summary'))
-    <div class="alert alert-danger d-flex align-items-center" role="alert">
-        <span class="alert-icon text-danger me-2">
-            <i class="ti ti-ban ti-xs"></i>
-        </span>
-        {{ $errors->first('summary') }}
-    </div>
-@endif
-
 @if ($meeting->status->value === 'pending' || $meeting->status->value === 'processing')
     <div class="alert alert-info">Se está transcribiendo el audio y separando las voces. Esta página se actualiza sola.</div>
 @endif
@@ -57,58 +45,6 @@
 @endif
 
 @if ($meeting->status->value === 'ready')
-    @php
-        $summary = is_array($meeting->summary) ? $meeting->summary : null;
-    @endphp
-    @if ($summary)
-        <div class="card mb-4">
-            <h5 class="card-header">Resumen</h5>
-            <div class="card-body">
-                @if (($summary['synthesis'] ?? '') !== '')
-                    <p class="mb-3">{{ $summary['synthesis'] }}</p>
-                @endif
-                @if (($summary['viewpoints'] ?? []) !== [])
-                    <h6 class="mb-2">Puntos de vista</h6>
-                    <ul class="mb-3">
-                        @foreach ($summary['viewpoints'] as $viewpoint)
-                            <li>
-                                @if (($viewpoint['speaker'] ?? '') !== '')
-                                    <strong>{{ $viewpoint['speaker'] }}.</strong>
-                                @endif
-                                {{ $viewpoint['view'] ?? '' }}
-                            </li>
-                        @endforeach
-                    </ul>
-                @endif
-                @if (($summary['intention'] ?? '') !== '')
-                    <h6 class="mb-2">Intención</h6>
-                    <p class="mb-3">{{ $summary['intention'] }}</p>
-                @endif
-                @if (($summary['items'] ?? []) !== [])
-                    <h6 class="mb-2">Para tratar</h6>
-                    <ol class="mb-3">
-                        @foreach ($summary['items'] as $item)
-                            <li>{{ $item }}</li>
-                        @endforeach
-                    </ol>
-                @endif
-                @if (($summary['tasks'] ?? []) !== [])
-                    <h6 class="mb-2">Tareas</h6>
-                    <ul class="mb-0">
-                        @foreach ($summary['tasks'] as $task)
-                            <li>
-                                {{ $task['title'] ?? '' }}
-                                @if (($task['owner'] ?? '') !== '')
-                                    <span class="text-muted">— {{ $task['owner'] }}</span>
-                                @endif
-                            </li>
-                        @endforeach
-                    </ul>
-                @endif
-            </div>
-        </div>
-    @endif
-
     <div class="card">
         <div class="card-body d-flex flex-column gap-4">
             @forelse ($meeting->turns ?? [] as $turn)
@@ -197,6 +133,18 @@ document.addEventListener('DOMContentLoaded', function () {
         placeholder: 'Buscar persona',
         allowClear: true,
         minimumInputLength: 2,
+        language: {
+            inputTooShort: function (args) {
+                var remaining = args.minimum - args.input.length;
+                return 'Escribí ' + remaining + (remaining === 1 ? ' carácter más' : ' caracteres o más');
+            },
+            searching: function () {
+                return 'Buscando…';
+            },
+            noResults: function () {
+                return 'Sin resultados';
+            }
+        },
         ajax: {
             url: @json(route('meeting.contacts')),
             dataType: 'json',

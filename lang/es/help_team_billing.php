@@ -18,14 +18,15 @@ return [
     'two_invoices_usage' => 'Consumo: tokens IA, envíos WhatsApp, envíos de email, créditos de prospección y almacenamiento. Va en una factura de uso por equipo y periodo. Al cierre se crea un draft en Stripe.',
 
     'rates_heading' => 'Tarifas',
-    'rates_intro' => 'Hay cinco productos. Si el equipo no tiene tarifa propia, se usa la de plataforma y, si tampoco existe, la de configuración.',
-    'rates_tokens' => 'Multiplicador de tokens: el cliente ve N × tokens reales a tarifa OpenRouter, sin recargo extra. Por defecto ×10.',
-    'rates_whatsapp' => 'Envío WhatsApp: USD por mensaje saliente. Por defecto 0,03 USD.',
+    'rates_intro' => 'Hay seis productos. Si el equipo no tiene tarifa propia, se usa la de plataforma y, si tampoco existe, la de configuración. El ciclo de consumo es mensual.',
+    'rates_tokens' => 'Multiplicador de tokens: el cliente ve N × tokens reales a tarifa OpenRouter, sin recargo extra. Incluye los tokens de las reuniones. Por defecto ×10.',
+    'rates_whatsapp' => 'Envío WhatsApp: USD por mensaje saliente. Por defecto 0,05 USD.',
     // 'rates_whatsapp' => 'Envío WhatsApp: EUR por mensaje saliente. Por defecto 0,003 EUR.', // en €
     'rates_mailer' => 'Envío mail: USD por email de excedente (por encima del tope mensual del plan). Por defecto 0,003 USD.',
     // 'rates_mailer' => 'Envío mail: EUR por email de excedente (por encima del tope mensual del plan). Por defecto 0,002 EUR.', // en €
-    'rates_prospect' => 'Prospección: EUR por crédito consumido al importar un prospecto. Por defecto 0,15 EUR.',
-    'rates_storage' => 'Almacenamiento: EUR por MB ocupado ahora (ficheros del equipo, multimedia, adjuntos y fotos de producto). Por defecto 0,02 EUR.',
+    'rates_prospect' => 'Prospección: USD por crédito consumido al importar un prospecto. Por defecto 0,15 USD.',
+    'rates_storage' => 'Almacenamiento: USD por MB ocupado ahora (ficheros del equipo, multimedia, adjuntos y fotos de producto). Por defecto 0,02 USD.',
+    'rates_transcription' => 'Transcripción: USD por minuto de audio transcrito en una reunión. Por defecto 0,037 USD, el coste de 0,22 USD/h con la ganancia ×10.',
     'rates_history' => 'Al guardar una tarifa nueva, la anterior se conserva (SCD2) para el consumo ya ocurrido. El historial de la página muestra Desde / Hasta / Actual.',
 
     'frequency_heading' => 'Frecuencia',
@@ -41,13 +42,14 @@ return [
     'change_stripe' => 'Confirmar cierra el ciclo en Humano. El draft de Stripe se crea en el siguiente barrido diario.',
 
     'items_heading' => 'Qué se imprime en la factura',
-    'items_intro' => 'Cada documento (ajuste o ciclo abierto) lleva estas líneas, aunque el importe sea 0,00 EUR:',
+    'items_intro' => 'Cada documento (ajuste o ciclo abierto) lleva estas líneas, aunque el importe sea 0,00 USD:',
     'items_tokens' => 'Tokens IA · periodo: tokens facturados (reales × multiplicador) e importe.',
-    'items_sources' => 'Debajo, el desglose por módulo cuando hay origen: Chat, Projects, Insights u otros. Si todo el consumo va sin módulo, solo se muestra el total.',
+    'items_sources' => 'Debajo, el desglose por origen cuando hay datos: Chat, Projects, Insights, Reuniones u otros. Si todo el consumo va sin módulo y no es una reunión, solo se muestra el total.',
     'items_whatsapp' => 'Envíos WhatsApp · periodo: número de envíos e importe.',
     'items_mailer' => 'Emails de excedente · periodo: emails por encima del tope e importe.',
     'items_prospect' => 'Prospección · periodo: créditos consumidos e importe.',
     'items_storage' => 'Almacenamiento · periodo: espacio ocupado ahora e importe. En meses ya cerrados de la tabla inferior no se reconstruye: el cargo entra al cerrar el ciclo.',
+    'items_transcription' => 'Transcripción · periodo: duración del audio transcrito e importe.',
     'items_total' => 'El preview de la página y el modal de confirmación listan esos ítems. El KPI Tokens muestra el total del preview (ciclo abierto más ajustes pendientes).',
 
     'preview_heading' => 'Preview',

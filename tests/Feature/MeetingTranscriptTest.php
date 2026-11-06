@@ -4,8 +4,11 @@ namespace Tests\Feature;
 
 use App\Enums\MeetingTranscriptStatus;
 use App\Jobs\TranscribeMeetingTranscript;
+use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\MeetingTranscript;
+use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\MeetingTranscriptService;
@@ -50,6 +53,7 @@ class MeetingTranscriptTest extends TestCase
         {
             return $job->meetingTranscriptId === $meeting->id;
         });
+        $this->assertNotNull($meeting->fresh()->calendar_event_id);
     }
 
     public function test_missing_transcription_permission_is_explained(): void
@@ -60,7 +64,7 @@ class MeetingTranscriptTest extends TestCase
             ],
         ])));
 
-        $message = (new MeetingTranscriptService)->failureMessage(new RequestException($response));
+        $message = app(MeetingTranscriptService::class)->failureMessage(new RequestException($response));
 
         $this->assertSame(
             'La clave no tiene el permiso de transcripción. Activalo en la clave y volvé a subir el audio.',
@@ -103,7 +107,8 @@ class MeetingTranscriptTest extends TestCase
             ->assertSee('ti-arrow-left', false)
             ->assertSee('ti-trash', false)
             ->assertSee('ti-notes', false)
-            ->assertSee('no es la misma persona', false);
+            ->assertSee('no es la misma persona', false)
+            ->assertSee('caracteres o más', false);
     }
 
     public function test_linking_a_speaker_names_that_voice_in_this_meeting_only(): void
@@ -182,6 +187,20 @@ class MeetingTranscriptTest extends TestCase
         $this->assertArrayNotHasKey('contact_id', $turns[2]);
         $this->assertSame('Persona 1', $turns[0]['label']);
         $this->assertSame(0, TokenUsageLog::withoutGlobalScopes()->count());
+
+        $eventId = $meeting->fresh()->calendar_event_id;
+        $this->assertNotNull($eventId);
+        $this->assertTrue(
+            CalendarEvent::query()->find($eventId)?->guests()->where('contacts.id', $contact->id)->exists(),
+        );
+
+        $this->actingAs($user)
+            ->get(route('app-calendar-events', [
+                'start' => now()->subDay()->toIso8601String(),
+                'end' => now()->addDay()->toIso8601String(),
+            ]))
+            ->assertOk()
+            ->assertJsonFragment(['guests' => [$contact->id]]);
     }
 
     public function test_index_renders_the_datatable(): void
@@ -331,13 +350,36 @@ class MeetingTranscriptTest extends TestCase
             ]],
         ]);
 
-        Ai::fakeAgent(AnonymousAgent::class, [json_encode([
-            'synthesis' => 'Quedó pendiente publicar el precio.',
-            'viewpoints' => [['speaker' => 'Persona 1', 'view' => 'Hay que publicarlo mañana.']],
-            'intention' => 'Definir el precio.',
-            'items' => ['Precio'],
-            'tasks' => [['title' => 'Publicar el precio', 'owner' => 'Persona 1']],
-        ], JSON_UNESCAPED_UNICODE)]);
+        TaskStatus::query()->create([
+            'name' => 'TO_DO',
+            'label_class' => 'bg-label-secondary',
+            'order' => 1,
+        ]);
+
+        $payload = json_encode([
+            'minutes' => 'Quedó pendiente publicar el precio.',
+            'points' => [[
+                'topic' => 'Publicar el precio',
+                'agree' => ['Persona 1'],
+                'disagree' => [],
+            ]],
+            'conclusions' => [[
+                'title' => 'Publicar el precio',
+                'owner' => 'Persona 1',
+                'detail' => 'Quedó para mañana.',
+            ]],
+            'opinions' => [[
+                'speaker' => 'Persona 1',
+                'text' => 'Conviene publicarlo.',
+            ]],
+            'opinion' => 'Publicar el precio antes de seguir.',
+            'follow_up' => [
+                'suggest' => false,
+                'reason' => 'Alcanza con publicar el precio.',
+                'after' => ['Publicar el precio'],
+            ],
+        ], JSON_UNESCAPED_UNICODE);
+        Ai::fakeAgent(AnonymousAgent::class, [$payload, $payload]);
 
         $this->actingAs($user)
             ->followingRedirects()
@@ -346,11 +388,81 @@ class MeetingTranscriptTest extends TestCase
             ->assertSee('ti-check', false)
             ->assertSee('El resumen quedó guardado.', false)
             ->assertSee('Quedó pendiente publicar el precio.', false)
-            ->assertSee('ti-link', false);
+            ->assertSee('De acuerdo: Persona 1', false)
+            ->assertSee('Persona 1.', false)
+            ->assertSee('Conviene publicarlo.', false)
+            ->assertSee('Publicar el precio antes de seguir.', false)
+            ->assertSee('No hace falta otra reunión por ahora.', false)
+            ->assertSee('Enlace público', false);
 
         $summary = $meeting->fresh()->summary;
+        $task = Task::withoutGlobalScopes()->where('team_id', $team->id)->first();
+        $this->assertNotNull($task);
+        $this->assertSame('Publicar el precio', $task->title);
+        $this->assertSame($user->id, $task->responsible_id);
+        $this->assertSame($task->id, $summary['conclusions'][0]['task_id']);
+        $this->assertSame('Quedó pendiente publicar el precio.', $summary['minutes']);
         $this->assertSame('Quedó pendiente publicar el precio.', $summary['synthesis']);
         $this->assertSame('Publicar el precio', $summary['tasks'][0]['title']);
-        $this->assertSame(1, TokenUsageLog::withoutGlobalScopes()->where('team_id', $team->id)->where('service', 'MeetingSummaryService')->count());
+
+        auth()->logout();
+        $this->get(route('meeting.public', $meeting->fresh()->public_token))
+            ->assertOk()
+            ->assertSee('Hay que publicar el precio mañana.', false)
+            ->assertSee('Quedó pendiente publicar el precio.', false)
+            ->assertSee('De acuerdo: Persona 1', false);
+
+        $this->actingAs($user)
+            ->followingRedirects()
+            ->post(route('meeting.summary', $meeting))
+            ->assertOk();
+        $this->assertSame(1, Task::withoutGlobalScopes()->where('team_id', $team->id)->count());
+        $this->assertSame(2, TokenUsageLog::withoutGlobalScopes()->where('team_id', $team->id)->where('service', 'MeetingSummaryService')->count());
+
+        $this->actingAs($user)
+            ->get(route('app-calendar-events', [
+                'start' => now()->subDay()->toIso8601String(),
+                'end' => now()->addDay()->toIso8601String(),
+            ]))
+            ->assertOk()
+            ->assertJsonFragment(['title' => 'Weekly']);
+        $this->assertNotNull(CalendarEvent::query()->find($meeting->fresh()->calendar_event_id));
+    }
+
+    public function test_list_actions_open_the_detail_and_the_rename_form(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $meeting = MeetingTranscript::query()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'title' => 'Weekly',
+            'original_filename' => 'reunion.webm',
+            'audio_path' => 'meetings/'.$team->id.'/reunion.webm',
+            'language' => 'es',
+            'status' => MeetingTranscriptStatus::Ready,
+        ]);
+
+        $actions = view('meeting.action', ['meeting' => $meeting])->render();
+        $this->assertStringContainsString('ti-eye', $actions);
+        $this->assertStringContainsString(route('meeting.show', $meeting), $actions);
+        $this->assertStringContainsString(route('meeting.edit', $meeting), $actions);
+        $this->assertStringNotContainsString('ti-trash', $actions);
+
+        $this->actingAs($user)
+            ->get(route('meeting.edit', $meeting))
+            ->assertOk()
+            ->assertSee('Indicá un título para la reunión.', false);
+
+        $this->actingAs($user)
+            ->put(route('meeting.update', $meeting), ['title' => 'Reunión semanal'])
+            ->assertRedirect(route('meeting.show', $meeting));
+
+        $this->assertSame('Reunión semanal', $meeting->fresh()->title);
+        $this->assertSame('Reunión semanal', CalendarEvent::query()->find($meeting->fresh()->calendar_event_id)?->title);
     }
 }

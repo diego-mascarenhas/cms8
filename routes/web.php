@@ -317,6 +317,7 @@ Route::get('misc-comingsoon', function ()
 
 // Public template view (no auth) – for sharing view links from assistant/WhatsApp
 Route::get('/template/public/{hashedId}', [TemplateController::class, 'showPublic'])->name('template.show-public');
+Route::get('reunion/{token}', [MeetingTranscriptController::class, 'publicShow'])->name('meeting.public');
 
 // Affiliate invitation tracking (no auth required)
 Route::get('/affiliate-invite/track/{token}/open', [AffiliateInvitationTrackingController::class, 'trackOpen'])->name('affiliate-invite.track.open');
@@ -332,6 +333,9 @@ Route::middleware(['auth'])->group(function ()
     Route::get('meeting/contacts', [MeetingTranscriptController::class, 'contacts'])->name('meeting.contacts');
     Route::post('meeting', [MeetingTranscriptController::class, 'store'])->name('meeting.store');
     Route::post('meeting/{meeting}/speakers', [MeetingTranscriptController::class, 'linkSpeaker'])->name('meeting.speakers.update');
+    Route::get('meeting/{meeting}/edit', [MeetingTranscriptController::class, 'edit'])->name('meeting.edit');
+    Route::put('meeting/{meeting}', [MeetingTranscriptController::class, 'update'])->name('meeting.update');
+    Route::get('meeting/{meeting}/summary', [MeetingTranscriptController::class, 'summary'])->name('meeting.summary.show');
     Route::post('meeting/{meeting}/summary', [MeetingTranscriptController::class, 'summarize'])->name('meeting.summary');
     Route::get('meeting/{meeting}', [MeetingTranscriptController::class, 'show'])->name('meeting.show');
     Route::delete('meeting/{meeting}', [MeetingTranscriptController::class, 'destroy'])->name('meeting.destroy');

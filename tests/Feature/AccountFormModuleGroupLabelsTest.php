@@ -145,8 +145,8 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->assertSee('Envíos email', false)
             ->assertSee('Prospección', false)
             ->assertSee('Almacenamiento', false)
-            ->assertSee('id="frequency-change-previews"', false)
-            ->assertSee('name="invoice_frequency"', false)
+            ->assertDontSee('name="invoice_frequency"', false)
+            ->assertDontSee('Frecuencia de facturación', false)
             ->assertSee('Meses anteriores', false)
             ->assertSee('id="account-rates-usage-table"', false)
             ->assertSee('name="tokens_multiplier"', false)
@@ -154,6 +154,8 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->assertSee('name="mailer_send"', false)
             ->assertSee('name="prospect_credit"', false)
             ->assertSee('name="storage_megabyte"', false)
+            ->assertSee('name="transcription_minute"', false)
+            ->assertSee('value="0.037"', false)
             ->assertSee('value="10"', false)
             ->assertSee('value="0.003"', false)
             ->assertSee('class="text-center">Importe', false)
@@ -216,7 +218,7 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->assertSee('9,00 EUR', false)
             ->assertSee('×10 sobre tokens reales', false)
             ->assertSee('Preview de factura', false)
-            ->assertSee('Aún no se emite', false)
+            ->assertDontSee('Aún no se emite', false)
             ->assertSee('class="text-end text-nowrap">Importe', false);
     }
 
@@ -303,22 +305,23 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             'mailer_send' => 0.008,
             'prospect_credit' => 0.2,
             'storage_megabyte' => 0.05,
-            'invoice_frequency' => TeamBillingFrequency::Weekly->value,
+            'transcription_minute' => 0.3,
         ])->assertRedirect(route('account.rates.edit', $team->id))
-            ->assertSessionHas('success', 'Frecuencia cambiada a semanal. El ciclo anterior queda como factura de ajuste. Aún no se emite.');
+            ->assertSessionHas('success', 'Tarifas actualizadas');
 
         $this->assertSame(8.0, TokenBillingRateService::clientTokenMultiplier($team));
         $this->assertSame(10.0, TokenBillingRateService::clientTokenMultiplier($team, now()->subMinute()));
         $this->assertSame(0.002, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend));
-        $this->assertSame(0.03, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, now()->subMinute()));
+        $this->assertSame(0.05, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, now()->subMinute()));
         $this->assertSame('0.008', MailerPaygPricing::pricePerEmail($team));
         $this->assertSame('0.003', MailerPaygPricing::pricePerEmail($team, now()->subMinute()));
         $this->assertSame(0.2, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::ProspectCredit));
         $this->assertSame(0.15, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::ProspectCredit, now()->subMinute()));
-        $this->assertSame(TeamBillingFrequency::Weekly, TeamUsageInvoiceFrequency::for($team));
+        $this->assertSame(0.3, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::TranscriptionMinute));
+        $this->assertSame(TeamBillingFrequency::Monthly, TeamUsageInvoiceFrequency::for($team));
     }
 
-    public function test_switching_invoice_frequency_to_weekly_shows_adjustment_preview(): void
+    public function test_saving_rates_keeps_the_monthly_cycle(): void
     {
         $this->seed(ModuleSeeder::class);
         $this->fakeTokenCatalog();
@@ -357,17 +360,17 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             'mailer_send' => 0.01,
             'prospect_credit' => 0.15,
             'storage_megabyte' => 0.02,
-            'invoice_frequency' => TeamBillingFrequency::Weekly->value,
+            'transcription_minute' => 0.037,
         ])->assertRedirect(route('account.rates.edit', $team->id))
-            ->assertSessionHas('success', 'Frecuencia cambiada a semanal. El ciclo anterior queda como factura de ajuste. Aún no se emite.');
+            ->assertSessionHas('success', 'Tarifas actualizadas');
+
+        $this->assertSame(TeamBillingFrequency::Monthly, TeamUsageInvoiceFrequency::for($team->fresh()));
 
         $this->actingAs($user)
             ->get(route('account.rates.edit', $team->id))
             ->assertOk()
-            ->assertSee('Incluye ajuste del ciclo anterior', false)
-            ->assertSee('Ajuste Mensual', false)
-            ->assertSee('Tokens IA · 1 al 22 de septiembre 2026', false)
-            ->assertSee('1 al 22 de septiembre 2026', false)
+            ->assertDontSee('Incluye ajuste del ciclo anterior', false)
+            ->assertDontSee('Frecuencia de facturación', false)
             ->assertSee('Total factura', false)
             ->assertSee('10,00 EUR', false);
 

@@ -8,6 +8,7 @@ use App\Jobs\TranscribeMeetingTranscript;
 use App\Models\Contact;
 use App\Models\MeetingTranscript;
 use App\Models\Team;
+use App\Services\MeetingCalendarSync;
 use App\Services\MeetingTranscriptService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,7 +30,7 @@ class TeamMeetingController extends Controller
         ]);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, MeetingCalendarSync $calendar): JsonResponse
     {
         $team = $this->team($request);
         $validated = $request->validate([
@@ -57,6 +58,7 @@ class TeamMeetingController extends Controller
             'status' => MeetingTranscriptStatus::Pending,
         ]);
 
+        $calendar->sync($meeting);
         TranscribeMeetingTranscript::dispatch($meeting->id)->afterResponse();
 
         return response()->json(['data' => $this->payload($meeting)], 201);

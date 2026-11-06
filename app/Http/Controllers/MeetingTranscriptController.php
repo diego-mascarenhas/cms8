@@ -6,16 +6,20 @@ use App\DataTables\MeetingTranscriptDataTable;
 use App\Enums\MeetingTranscriptStatus;
 use App\Http\Requests\LinkMeetingSpeakerRequest;
 use App\Http\Requests\StoreMeetingTranscriptRequest;
+use App\Http\Requests\UpdateMeetingTranscriptRequest;
 use App\Jobs\TranscribeMeetingTranscript;
 use App\Models\Contact;
 use App\Models\MeetingTranscript;
+use App\Services\MeetingCalendarSync;
 use App\Services\MeetingSummaryService;
 use App\Services\MeetingTranscriptService;
 use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use RuntimeException;
 
@@ -31,7 +35,7 @@ class MeetingTranscriptController extends Controller
         return view('meeting.create');
     }
 
-    public function store(StoreMeetingTranscriptRequest $request): RedirectResponse
+    public function store(StoreMeetingTranscriptRequest $request, MeetingCalendarSync $calendar): RedirectResponse
     {
         $team = $request->user()?->currentTeam;
         $audio = $request->file('audio');
@@ -45,8 +49,10 @@ class MeetingTranscriptController extends Controller
             'audio_path' => $path,
             'language' => $request->filled('language') ? strtolower($request->string('language')->toString()) : 'es',
             'status' => MeetingTranscriptStatus::Pending,
+            'public_token' => Str::random(40),
         ]);
 
+        $calendar->sync($meeting);
         TranscribeMeetingTranscript::dispatch($meeting->id)->afterResponse();
 
         return redirect()
@@ -56,15 +62,48 @@ class MeetingTranscriptController extends Controller
 
     public function show(MeetingTranscript $meeting): View
     {
-        $contactIds = collect($meeting->turns ?? [])
-            ->pluck('contact_id')
-            ->filter()
-            ->unique()
-            ->values();
-
         return view('meeting.show', [
             'meeting' => $meeting,
-            'contacts' => Contact::query()->whereIn('id', $contactIds)->get()->keyBy('id'),
+            'contacts' => $this->contactsFor($meeting),
+        ]);
+    }
+
+    public function edit(MeetingTranscript $meeting): View
+    {
+        return view('meeting.edit', ['meeting' => $meeting]);
+    }
+
+    public function update(UpdateMeetingTranscriptRequest $request, MeetingTranscript $meeting, MeetingCalendarSync $calendar): RedirectResponse
+    {
+        $meeting->forceFill([
+            'title' => $request->string('title')->toString(),
+        ])->save();
+        $calendar->sync($meeting);
+
+        return redirect()
+            ->route('meeting.show', $meeting)
+            ->with('status', 'El nombre quedó actualizado.');
+    }
+
+    public function summary(MeetingTranscript $meeting): View
+    {
+        $token = $meeting->publicToken();
+
+        return view('meeting.summary', [
+            'meeting' => $meeting,
+            'publicUrl' => route('meeting.public', $token),
+        ]);
+    }
+
+    public function publicShow(string $token): View
+    {
+        $meeting = MeetingTranscript::withoutGlobalScope('team')
+            ->where('public_token', $token)
+            ->firstOrFail();
+
+        return view('meeting.public', [
+            'meeting' => $meeting,
+            'contacts' => $this->contactsFor($meeting),
         ]);
     }
 
@@ -126,26 +165,45 @@ class MeetingTranscriptController extends Controller
         } catch (RuntimeException $exception)
         {
             return redirect()
-                ->route('meeting.show', $meeting)
+                ->route('meeting.summary.show', $meeting)
                 ->withErrors(['summary' => $exception->getMessage()]);
         }
 
         return redirect()
-            ->route('meeting.show', $meeting)
+            ->route('meeting.summary.show', $meeting)
             ->with('status', 'El resumen quedó guardado.');
     }
 
-    public function destroy(MeetingTranscript $meeting): RedirectResponse
+    public function destroy(MeetingTranscript $meeting, MeetingCalendarSync $calendar): RedirectResponse
     {
         if ($meeting->audio_path !== '')
         {
             Storage::disk('local')->delete($meeting->audio_path);
         }
 
+        $calendar->forget($meeting);
         $meeting->delete();
 
         return redirect()
             ->route('meeting.index')
             ->with('status', 'La reunión se eliminó.');
+    }
+
+    /**
+     * @return Collection<int, Contact>
+     */
+    private function contactsFor(MeetingTranscript $meeting): Collection
+    {
+        $contactIds = collect($meeting->turns ?? [])
+            ->pluck('contact_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        return Contact::withoutGlobalScope('team')
+            ->where('team_id', $meeting->team_id)
+            ->whereIn('id', $contactIds)
+            ->get()
+            ->keyBy('id');
     }
 }

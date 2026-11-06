@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\DataTables\AccountDataTable;
 use App\DataTables\AccountRatesUsageDataTable;
-use App\Enums\TeamBillingFrequency;
 use App\Enums\TeamBillingProduct;
 use App\Helpers\TokenHelper;
 use App\Http\Requests\UpdateAccountRatesRequest;
@@ -136,7 +135,6 @@ class AccountController extends Controller
             ->get();
         $invoiceFrequency = TeamUsageInvoiceFrequency::for($team);
         $invoicePreview = $usage->invoicePreview($team, $invoiceFrequency);
-        $frequencyChangePreviews = $usage->frequencyChangePreviews($team);
 
         return $dataTable->render('account.rates', compact(
             'team',
@@ -144,7 +142,6 @@ class AccountController extends Controller
             'billingRateHistory',
             'invoiceFrequency',
             'invoicePreview',
-            'frequencyChangePreviews',
         ));
     }
 
@@ -209,18 +206,11 @@ class AccountController extends Controller
     public function updateRates(UpdateAccountRatesRequest $request, string $id)
     {
         $team = Team::findOrFail($id);
-        $previousFrequency = TeamUsageInvoiceFrequency::for($team);
-        $nextFrequency = TeamBillingFrequency::from($request->validated('invoice_frequency'));
         $this->syncTeamBillingRates($team, $request);
-        TeamUsageInvoiceFrequency::set($team, $nextFrequency);
-
-        $message = $previousFrequency === $nextFrequency
-            ? 'Tarifas actualizadas'
-            : 'Frecuencia cambiada a '.mb_strtolower($nextFrequency->label()).'. El ciclo anterior queda como factura de ajuste. Aún no se emite.';
 
         return redirect()
             ->route('account.rates.edit', $team->id)
-            ->with('success', $message);
+            ->with('success', 'Tarifas actualizadas');
     }
 
     public function updateOwnerPassword(Request $request, string $id)
@@ -616,7 +606,7 @@ class AccountController extends Controller
     }
 
     /**
-     * @return array{tokens_multiplier: string, whatsapp_send: string, mailer_send: string, prospect_credit: string, storage_megabyte: string}
+     * @return array{tokens_multiplier: string, whatsapp_send: string, mailer_send: string, prospect_credit: string, storage_megabyte: string, transcription_minute: string}
      */
     private function billingRatesForForm(Team $team): array
     {
@@ -626,6 +616,7 @@ class AccountController extends Controller
             'mailer_send' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::MailerSend),
             'prospect_credit' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::ProspectCredit),
             'storage_megabyte' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::StorageMegabyte),
+            'transcription_minute' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::TranscriptionMinute),
         ];
     }
 
@@ -637,6 +628,7 @@ class AccountController extends Controller
             'mailer_send' => TeamBillingProduct::MailerSend,
             'prospect_credit' => TeamBillingProduct::ProspectCredit,
             'storage_megabyte' => TeamBillingProduct::StorageMegabyte,
+            'transcription_minute' => TeamBillingProduct::TranscriptionMinute,
         ];
 
         foreach ($fields as $field => $product)

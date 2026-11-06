@@ -452,7 +452,7 @@ final class TeamBillingUsageSummaryService
             'detail' => $this->formatCount((int) ($usage['prospect_credits'] ?? 0)).' créditos',
             'quantity' => max(1, (int) ($usage['prospect_credits'] ?? 0)),
             'amount_cents' => (int) ($usage['prospect_billed_cents'] ?? 0),
-            'formatted_amount' => $usage['formatted']['prospect_billed'] ?? $this->formatCents(0, (string) ($usage['currency'] ?? 'EUR')),
+            'formatted_amount' => $usage['formatted']['prospect_billed'] ?? $this->formatCents(0, (string) ($usage['currency'] ?? 'USD')),
         ];
         $lines[] = [
             'kind' => 'storage',
@@ -460,7 +460,15 @@ final class TeamBillingUsageSummaryService
             'detail' => (string) ($usage['formatted']['storage_size'] ?? '0 B'),
             'quantity' => max(1, (int) ($usage['storage_bytes'] ?? 0)),
             'amount_cents' => (int) ($usage['storage_billed_cents'] ?? 0),
-            'formatted_amount' => $usage['formatted']['storage_billed'] ?? $this->formatCents(0, (string) ($usage['currency'] ?? 'EUR')),
+            'formatted_amount' => $usage['formatted']['storage_billed'] ?? $this->formatCents(0, (string) ($usage['currency'] ?? 'USD')),
+        ];
+        $lines[] = [
+            'kind' => 'transcription',
+            'description' => 'Transcripción · '.$periodLabel,
+            'detail' => (string) ($usage['formatted']['transcription_duration'] ?? '0 s'),
+            'quantity' => max(1, (int) ($usage['transcription_seconds'] ?? 0)),
+            'amount_cents' => (int) ($usage['transcription_billed_cents'] ?? 0),
+            'formatted_amount' => $usage['formatted']['transcription_billed'] ?? $this->formatCents(0, (string) ($usage['currency'] ?? 'USD')),
         ];
 
         return $lines;
@@ -513,15 +521,22 @@ final class TeamBillingUsageSummaryService
         $mailer = $this->mailerForPeriod($team, $from, $to, $asOf);
         $prospect = TeamProspectUsageStatsService::forTeam($team, $from, $to);
         $storage = TeamStorageUsageStatsService::forTeam($team, $to, $billStorage);
+        $transcription = TeamTranscriptionUsageStatsService::forTeam($team, $from, $to);
         $currency = TokenBillingRateService::displayCurrency();
         $multiplier = TokenBillingRateService::clientTokenMultiplier($team, $asOf);
+        $whatsappCents = TokenBillingRateService::toDisplayCents((int) $whatsapp['our_amount_cents'], (string) ($whatsapp['currency'] ?? $currency), $asOf);
+        $mailerCents = TokenBillingRateService::toDisplayCents((int) $mailer['billed_cents'], (string) ($mailer['currency'] ?? $currency), $asOf);
+        $prospectCents = TokenBillingRateService::toDisplayCents((int) $prospect['our_amount_cents'], (string) ($prospect['currency'] ?? $currency), $asOf);
+        $storageCents = TokenBillingRateService::toDisplayCents((int) $storage['our_amount_cents'], (string) ($storage['currency'] ?? $currency), $asOf);
+        $transcriptionCents = TokenBillingRateService::toDisplayCents((int) $transcription['our_amount_cents'], (string) ($transcription['currency'] ?? $currency), $asOf);
 
         $costCents = $tokenCostCents;
         $billedCents = $tokenBilledCents
-            + (int) $whatsapp['our_amount_cents']
-            + $mailer['billed_cents']
-            + (int) $prospect['our_amount_cents']
-            + (int) $storage['our_amount_cents'];
+            + $whatsappCents
+            + $mailerCents
+            + $prospectCents
+            + $storageCents
+            + $transcriptionCents;
         $markupCents = $tokenMarkupCents;
         $periodLabel = $this->periodLabel($from, $to, $frequency);
 
@@ -540,14 +555,16 @@ final class TeamBillingUsageSummaryService
             'token_billed_cents' => $tokenBilledCents,
             'token_markup_cents' => $tokenMarkupCents,
             'whatsapp_messages' => (int) $whatsapp['messages_sent'],
-            'whatsapp_billed_cents' => (int) $whatsapp['our_amount_cents'],
+            'whatsapp_billed_cents' => $whatsappCents,
             'mailer_emails' => $mailer['emails'],
             'mailer_overage' => $mailer['overage'],
-            'mailer_billed_cents' => $mailer['billed_cents'],
+            'mailer_billed_cents' => $mailerCents,
             'prospect_credits' => (int) $prospect['credits_used'],
-            'prospect_billed_cents' => (int) $prospect['our_amount_cents'],
+            'prospect_billed_cents' => $prospectCents,
             'storage_bytes' => (int) $storage['bytes'],
-            'storage_billed_cents' => (int) $storage['our_amount_cents'],
+            'storage_billed_cents' => $storageCents,
+            'transcription_seconds' => (int) $transcription['audio_seconds'],
+            'transcription_billed_cents' => $transcriptionCents,
             'cost_cents' => $costCents,
             'billed_cents' => $billedCents,
             'markup_cents' => $markupCents,
@@ -558,21 +575,24 @@ final class TeamBillingUsageSummaryService
                 'tokens_billed' => $this->formatCount($billedTokens),
                 'tokens_by_module' => $this->formatTokenSources($tokensByModule),
                 'multiplier' => TeamBillingRate::formatAmount($multiplier),
-                'whatsapp' => $this->formatCount((int) $whatsapp['messages_sent']).' / '.$this->formatCents((int) $whatsapp['our_amount_cents'], $currency),
-                'mailer' => $this->formatCount($mailer['emails']).' / '.$this->formatCents($mailer['billed_cents'], $currency),
-                'prospect' => $this->formatCount((int) $prospect['credits_used']).' / '.$this->formatCents((int) $prospect['our_amount_cents'], $currency),
-                'storage' => $storage['formatted_size'].' / '.$this->formatCents((int) $storage['our_amount_cents'], $currency),
+                'whatsapp' => $this->formatCount((int) $whatsapp['messages_sent']).' / '.$this->formatCents($whatsappCents, $currency),
+                'mailer' => $this->formatCount($mailer['emails']).' / '.$this->formatCents($mailerCents, $currency),
+                'prospect' => $this->formatCount((int) $prospect['credits_used']).' / '.$this->formatCents($prospectCents, $currency),
+                'storage' => $storage['formatted_size'].' / '.$this->formatCents($storageCents, $currency),
                 'storage_size' => $storage['formatted_size'],
+                'transcription' => $transcription['formatted_duration'].' / '.$this->formatCents($transcriptionCents, $currency),
+                'transcription_duration' => $transcription['formatted_duration'],
                 'cost' => $this->formatCents($costCents, $currency),
                 'billed' => $this->formatCents($billedCents, $currency),
                 'markup' => $this->formatCents($markupCents, $currency),
                 'token_cost' => $this->formatCents($tokenCostCents, $currency),
                 'token_billed' => $this->formatCents($tokenBilledCents, $currency),
                 'token_markup' => $this->formatCents($tokenMarkupCents, $currency),
-                'whatsapp_billed' => $this->formatCents((int) $whatsapp['our_amount_cents'], $currency),
-                'mailer_billed' => $this->formatCents($mailer['billed_cents'], $currency),
-                'prospect_billed' => $this->formatCents((int) $prospect['our_amount_cents'], $currency),
-                'storage_billed' => $this->formatCents((int) $storage['our_amount_cents'], $currency),
+                'whatsapp_billed' => $this->formatCents($whatsappCents, $currency),
+                'mailer_billed' => $this->formatCents($mailerCents, $currency),
+                'prospect_billed' => $this->formatCents($prospectCents, $currency),
+                'storage_billed' => $this->formatCents($storageCents, $currency),
+                'transcription_billed' => $this->formatCents($transcriptionCents, $currency),
             ],
         ];
     }
@@ -632,7 +652,7 @@ final class TeamBillingUsageSummaryService
     /**
      * Plans do not include sends. Every delivered email in the window is billed from zero.
      *
-     * @return array{emails: int, overage: int, billed_cents: int}
+     * @return array{emails: int, overage: int, billed_cents: int, currency: string}
      */
     private function mailerForPeriod(Team $team, Carbon $from, Carbon $to, Carbon $asOf): array
     {
@@ -642,6 +662,7 @@ final class TeamBillingUsageSummaryService
             'emails' => (int) $stats['emails_sent'],
             'overage' => (int) $stats['emails_sent'],
             'billed_cents' => (int) $stats['amount_due_cents'],
+            'currency' => (string) ($stats['currency'] ?? TokenBillingRateService::displayCurrency()),
         ];
     }
 
@@ -655,6 +676,7 @@ final class TeamBillingUsageSummaryService
             || $row['mailer_emails'] > 0
             || (int) ($row['prospect_credits'] ?? 0) > 0
             || (int) ($row['storage_bytes'] ?? 0) > 0
+            || (int) ($row['transcription_seconds'] ?? 0) > 0
             || $row['billed_cents'] > 0;
     }
 
