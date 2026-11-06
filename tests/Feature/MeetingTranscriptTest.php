@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\MeetingTranscriptStatus;
 use App\Jobs\TranscribeMeetingTranscript;
+use App\Models\Contact;
 use App\Models\MeetingTranscript;
 use App\Models\User;
 use App\Services\MeetingTranscriptService;
@@ -66,6 +67,116 @@ class MeetingTranscriptTest extends TestCase
             'La clave no tiene el permiso de transcripción. Activalo en la clave y volvé a subir el audio.',
             $message,
         );
+    }
+
+    public function test_show_renders_a_speaker_avatar_and_link_button(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $meeting = MeetingTranscript::query()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'title' => 'Weekly',
+            'original_filename' => 'reunion.webm',
+            'audio_path' => 'meetings/'.$team->id.'/reunion.webm',
+            'language' => 'es',
+            'status' => MeetingTranscriptStatus::Ready,
+            'turns' => [[
+                'speaker' => 'speaker_0',
+                'label' => 'Persona 1',
+                'text' => 'Hola',
+                'start_seconds' => 0,
+                'end_seconds' => 1,
+            ]],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('meeting.show', $meeting))
+            ->assertOk()
+            ->assertSee('Persona 1', false)
+            ->assertSee('rounded-circle', false)
+            ->assertSee('Vincular', false)
+            ->assertSee('no la reconoce sola', false);
+    }
+
+    public function test_linking_a_speaker_names_that_voice_in_this_meeting_only(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        \Illuminate\Support\Facades\DB::table('languages')->insertOrIgnore([
+            'code' => 'es',
+            'name' => 'Español',
+        ]);
+        \Illuminate\Support\Facades\DB::table('contact_statuses')->insertOrIgnore([
+            'id' => 1,
+            'name' => 'Lead',
+            'label_class' => 'bg-label-secondary',
+        ]);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Diego',
+            'surname' => 'Mascarenhas',
+            'email' => 'diego-meeting@example.test',
+            'phone' => '600111222',
+            'country' => null,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+
+        $meeting = MeetingTranscript::query()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'title' => 'Weekly',
+            'original_filename' => 'reunion.webm',
+            'audio_path' => 'meetings/'.$team->id.'/reunion.webm',
+            'language' => 'es',
+            'status' => MeetingTranscriptStatus::Ready,
+            'turns' => [
+                [
+                    'speaker' => 'speaker_0',
+                    'label' => 'Persona 1',
+                    'text' => 'Hola',
+                    'start_seconds' => 0,
+                    'end_seconds' => 1,
+                ],
+                [
+                    'speaker' => 'speaker_0',
+                    'label' => 'Persona 1',
+                    'text' => 'Equipo',
+                    'start_seconds' => 2,
+                    'end_seconds' => 3,
+                ],
+                [
+                    'speaker' => 'speaker_1',
+                    'label' => 'Persona 2',
+                    'text' => 'Listo',
+                    'start_seconds' => 4,
+                    'end_seconds' => 5,
+                ],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('meeting.speakers.update', $meeting), [
+                'speaker' => 'speaker_0',
+                'contact_id' => $contact->id,
+            ])
+            ->assertRedirect(route('meeting.show', $meeting));
+
+        $turns = $meeting->fresh()->turns;
+        $this->assertSame($contact->id, $turns[0]['contact_id']);
+        $this->assertSame($contact->id, $turns[1]['contact_id']);
+        $this->assertArrayNotHasKey('contact_id', $turns[2]);
+        $this->assertSame('Persona 1', $turns[0]['label']);
     }
 
     public function test_index_renders_the_datatable(): void
