@@ -130,9 +130,9 @@
                         <div class="d-flex justify-content-between align-items-center gap-3">
                             <strong>{{ $speakerName }}</strong>
                             <div class="d-flex align-items-center gap-2">
-                                <button
-                                    type="button"
-                                    class="btn btn-sm btn-icon btn-text-secondary"
+                                <a
+                                    href="javascript:;"
+                                    class="text-body"
                                     title="{{ $linkLabel }}"
                                     aria-label="{{ $linkLabel }}"
                                     data-bs-toggle="modal"
@@ -140,7 +140,7 @@
                                     data-speaker="{{ $turn['speaker'] ?? '' }}"
                                 >
                                     <i class="ti {{ $contact ? 'ti-replace' : 'ti-link' }} ti-sm"></i>
-                                </button>
+                                </a>
                                 <span class="text-muted">{{ gmdate('i:s', (int) ($turn['start_seconds'] ?? 0)) }}</span>
                             </div>
                         </div>
