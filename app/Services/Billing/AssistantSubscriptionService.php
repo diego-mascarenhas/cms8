@@ -21,6 +21,7 @@ use App\Services\TeamMailerUsageStatsService;
 use App\Services\TeamProspectUsageStatsService;
 use App\Services\TeamStorageUsageStatsService;
 use App\Services\TeamStripeCustomerService;
+use App\Services\TeamTranscriptionUsageStatsService;
 use App\Services\TeamWhatsAppUsageStatsService;
 use App\Services\TokenBillingRateService;
 use App\Support\HumanoPricingCatalog;
@@ -94,6 +95,7 @@ class AssistantSubscriptionService
                 : $this->mailerPeriodUsagePayload($team, $stripe),
             'prospect_usage' => $this->prospectUsagePayload($team),
             'storage_usage' => $this->storageUsagePayload($team),
+            'transcription_usage' => $this->transcriptionUsagePayload($team),
             'estimator_usage' => $catalog === HumanoPricingCatalog::ESTIMATOR
                 ? $this->estimatorUsagePayload($team, $stripe)
                 : null,
@@ -984,6 +986,25 @@ class AssistantSubscriptionService
         return [
             'bytes' => (int) $stats['bytes'],
             'formatted_size' => (string) $stats['formatted_size'],
+            'amount_due_cents' => (int) $stats['our_amount_cents'],
+            'our_rate' => (float) $stats['our_rate'],
+            'currency' => (string) $stats['currency'],
+            'period_start' => $from->toIso8601String(),
+            'period_end' => $to->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function transcriptionUsagePayload(Team $team): array
+    {
+        [$from, $to] = $this->usagePeriod($team);
+        $stats = TeamTranscriptionUsageStatsService::forTeam($team, $from, $to);
+
+        return [
+            'audio_seconds' => (int) $stats['audio_seconds'],
+            'formatted_duration' => (string) $stats['formatted_duration'],
             'amount_due_cents' => (int) $stats['our_amount_cents'],
             'our_rate' => (float) $stats['our_rate'],
             'currency' => (string) $stats['currency'],

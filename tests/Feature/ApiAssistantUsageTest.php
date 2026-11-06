@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Enums\MeetingTranscriptStatus;
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\DocumentIngestion;
+use App\Models\MailerUsageLog;
+use App\Models\MeetingTranscript;
 use App\Models\Module;
+use App\Models\ProspectUsageLog;
 use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\AssistantWhatsAppUsageByLineService;
@@ -64,7 +68,57 @@ class ApiAssistantUsageTest extends TestCase
             ->assertJsonPath('data.storage.bytes', 0)
             ->assertJsonPath('data.storage.formatted_size', '0 B')
             ->assertJsonPath('data.storage.amount_due_cents', 0)
-            ->assertJsonPath('data.storage.currency', 'USD');
+            ->assertJsonPath('data.storage.currency', 'USD')
+            ->assertJsonPath('data.mailer.emails_sent', 0)
+            ->assertJsonPath('data.mailer.amount_due_cents', 0)
+            ->assertJsonPath('data.mailer.currency', 'USD')
+            ->assertJsonPath('data.transcription.audio_seconds', 0)
+            ->assertJsonPath('data.transcription.amount_due_cents', 0)
+            ->assertJsonPath('data.transcription.currency', 'USD')
+            ->assertJsonPath('data.transcriptions', [])
+            ->assertJsonPath('data.emails', [])
+            ->assertJsonPath('data.prospects', [])
+            ->assertJsonPath('data.storage_sources', []);
+    }
+
+    public function test_usage_lists_transcription_email_and_prospect_consumption(): void
+    {
+        [$token, $user, $team] = $this->team();
+
+        MeetingTranscript::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'title' => 'Reunión de prueba',
+            'original_filename' => 'reunion.mp3',
+            'audio_path' => 'meetings/reunion.mp3',
+            'status' => MeetingTranscriptStatus::Ready,
+            'turns' => [['end_seconds' => 90]],
+        ]);
+        MailerUsageLog::factory()->create([
+            'team_id' => $team->id,
+            'source' => 'communications',
+            'count' => 2,
+            'sent_at' => now(),
+        ]);
+        ProspectUsageLog::factory()->create([
+            'team_id' => $team->id,
+            'source' => 'import',
+            'count' => 2,
+            'consumed_at' => now(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/usage')
+            ->assertOk()
+            ->assertJsonPath('data.transcriptions.0.label', 'Reunión de prueba')
+            ->assertJsonPath('data.transcriptions.0.count', 90)
+            ->assertJsonPath('data.transcriptions.0.amount_cents', 6)
+            ->assertJsonPath('data.emails.0.label', 'Comunicaciones')
+            ->assertJsonPath('data.emails.0.count', 2)
+            ->assertJsonPath('data.emails.0.amount_cents', 1)
+            ->assertJsonPath('data.prospects.0.label', 'Importación')
+            ->assertJsonPath('data.prospects.0.count', 2)
+            ->assertJsonPath('data.prospects.0.amount_cents', 30);
     }
 
     public function test_usage_groups_tokens_by_whatsapp_line_and_exposes_the_model(): void

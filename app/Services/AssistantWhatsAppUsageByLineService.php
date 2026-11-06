@@ -42,7 +42,13 @@ class AssistantWhatsAppUsageByLineService
      *     lines: list<array<string, mixed>>,
      *     whatsapp: array{messages_sent: int, our_amount_cents: int, our_rate: float, currency: string},
      *     prospect: array{credits_used: int, amount_due_cents: int, our_rate: float, currency: string},
-     *     storage: array{bytes: int, formatted_size: string, amount_due_cents: int, our_rate: float, currency: string}
+     *     storage: array{bytes: int, formatted_size: string, amount_due_cents: int, our_rate: float, currency: string},
+     *     mailer: array{emails_sent: int, amount_due_cents: int, our_rate: float, currency: string},
+     *     transcription: array{audio_seconds: int, formatted_duration: string, amount_due_cents: int, our_rate: float, currency: string},
+     *     transcriptions: list<array{label: string, count: int, amount_cents: int, at: ?string}>,
+     *     emails: list<array{label: string, count: int, amount_cents: int, at: ?string}>,
+     *     prospects: list<array{label: string, count: int, amount_cents: int, at: ?string}>,
+     *     storage_sources: list<array{label: string, bytes: int, formatted_size: string, amount_cents: int}>
      * }
      */
     public function forTeam(Team $team, ?Carbon $from = null, ?Carbon $to = null): array
@@ -82,6 +88,8 @@ class AssistantWhatsAppUsageByLineService
         $whatsapp = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
         $prospect = TeamProspectUsageStatsService::forTeam($team, $from, $to);
         $storage = TeamStorageUsageStatsService::forTeam($team, $to);
+        $mailer = TeamMailerUsageStatsService::forTeam($team, $from, $to);
+        $transcription = TeamTranscriptionUsageStatsService::forTeam($team, $from, $to);
 
         return [
             'period_days' => max(1, (int) $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay())),
@@ -131,6 +139,23 @@ class AssistantWhatsAppUsageByLineService
                 'our_rate' => (float) $storage['our_rate'],
                 'currency' => (string) $storage['currency'],
             ],
+            'mailer' => [
+                'emails_sent' => (int) $mailer['emails_sent'],
+                'amount_due_cents' => (int) $mailer['amount_due_cents'],
+                'our_rate' => (float) $mailer['our_rate'],
+                'currency' => (string) $mailer['currency'],
+            ],
+            'transcription' => [
+                'audio_seconds' => (int) $transcription['audio_seconds'],
+                'formatted_duration' => (string) $transcription['formatted_duration'],
+                'amount_due_cents' => (int) $transcription['our_amount_cents'],
+                'our_rate' => (float) $transcription['our_rate'],
+                'currency' => (string) $transcription['currency'],
+            ],
+            'transcriptions' => TeamTranscriptionUsageStatsService::lines($team, $from, $to),
+            'emails' => TeamMailerUsageStatsService::lines($team, $from, $to),
+            'prospects' => TeamProspectUsageStatsService::lines($team, $from, $to),
+            'storage_sources' => TeamStorageUsageStatsService::sourceLines($team, $to),
         ];
     }
 
