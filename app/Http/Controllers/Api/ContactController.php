@@ -3,7 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\Contact;
+use App\Models\ContactIntent;
+use App\Models\ContactSentiment;
+use App\Models\ContactStatus;
+use App\Models\Country;
+use App\Models\Module;
+use App\Services\InboxContactAccessService;
 use Illuminate\Http\Request;
 
 class ContactController extends Controller
@@ -44,14 +51,19 @@ class ContactController extends Controller
                 ], 403);
             }
 
-            // Build base query with policy-based filtering
-            $query = Contact::with(['status', 'country', 'language', 'creator', 'responsible', 'user.roles', 'user.teams']);
+            $query = Contact::with([
+                'status:id,name,label_class',
+                'responsible:id,name',
+                'enterprises:id,name',
+                'categories:id,name',
+                'currentSentiment.sentiment',
+                'currentSentiment.intent',
+                'list60:id,contact_id',
+            ]);
 
-            // Apply role-based filtering using Policy
             $filterCallback = \App\Policies\ContactPolicy::getQueryFilter($user);
             $query = $filterCallback($query);
 
-            // Optional search by name, surname, email
             $search = $request->get('search');
             if (is_string($search) && trim($search) !== '')
             {
@@ -64,13 +76,56 @@ class ContactController extends Controller
                 });
             }
 
+            $sentimentId = $this->numericFilter($request, 'sentiment_id');
+            if ($sentimentId !== null)
+            {
+                $query->whereHas('currentSentiment', function ($q) use ($sentimentId)
+                {
+                    $q->where('sentiment_id', $sentimentId);
+                });
+            }
+
+            $intentId = $this->numericFilter($request, 'intent_id');
+            if ($intentId !== null)
+            {
+                $query->whereHas('currentSentiment', function ($q) use ($intentId)
+                {
+                    $q->where('intent_id', $intentId);
+                });
+            }
+
+            $categoryId = $this->numericFilter($request, 'category_id');
+            if ($categoryId !== null)
+            {
+                $query->whereHas('categories', function ($q) use ($categoryId)
+                {
+                    $q->where('categories.id', $categoryId);
+                });
+            }
+
+            $countryId = $this->numericFilter($request, 'country');
+            if ($countryId !== null)
+            {
+                $query->where('country', $countryId);
+            }
+
+            $statusId = $this->numericFilter($request, 'status_id');
+            if ($statusId !== null)
+            {
+                $query->where('status_id', $statusId);
+            }
+
             $query->orderBy('name')->orderBy('surname');
 
-            $contacts = $query->paginate($request->get('per_page', 20));
+            $perPage = (int) $request->get('per_page', 10);
+            $perPage = max(1, min($perPage, 100));
+
+            $contacts = $query->paginate($perPage)->through(fn (Contact $contact) => $this->listItem($contact));
 
             return response()->json([
                 'success' => true,
                 'data' => $contacts,
+                'show_list60' => (bool) $user->currentTeam?->hasModule('list60'),
                 'team' => [
                     'id' => $user->currentTeam->id,
                     'name' => $user->currentTeam->name,
@@ -135,6 +190,66 @@ class ContactController extends Controller
         return response()->json([
             'success' => true,
             'data' => $data,
+        ]);
+    }
+
+    /**
+     * Options for the contact list filters.
+     */
+    public function filters(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado',
+            ], 401);
+        }
+
+        if (! $user->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no tiene equipo asignado',
+            ], 400);
+        }
+
+        if (! $user->can('viewAny', Contact::class))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'No tienes permisos para ver contactos',
+            ], 403);
+        }
+
+        $moduleId = Module::query()->where('key', 'contacts')->value('id');
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'sentiments' => ContactSentiment::getOptions()->values(),
+                'intents' => ContactIntent::getOptions(),
+                'categories' => Category::getOptions($user->currentTeam->id, null, $moduleId)->values(),
+                'countries' => Country::query()
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'code'])
+                    ->map(fn (Country $country): array => [
+                        'id' => $country->id,
+                        'name' => $country->name,
+                        'flag' => strtolower((string) $country->code),
+                    ])
+                    ->values(),
+                'statuses' => ContactStatus::query()
+                    ->orderBy('id')
+                    ->get(['id', 'name'])
+                    ->map(fn (ContactStatus $status): array => [
+                        'id' => $status->id,
+                        'name' => $status->name,
+                    ])
+                    ->values(),
+            ],
         ]);
     }
 
@@ -206,5 +321,87 @@ class ContactController extends Controller
                 'error' => 'Error interno del servidor',
             ], 500);
         }
+    }
+
+    private function numericFilter(Request $request, string $key): ?int
+    {
+        $value = $request->get($key);
+
+        if ($value === null || $value === '' || ! is_numeric($value))
+        {
+            return null;
+        }
+
+        return (int) $value;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function listItem(Contact $contact): array
+    {
+        $sentiment = $contact->currentSentiment?->sentiment;
+        $intent = $contact->currentSentiment?->intent;
+        $fullName = trim((string) $contact->name.' '.((string) ($contact->surname ?? '')));
+        $enterprise = $contact->enterprises->first();
+
+        return [
+            'id' => $contact->id,
+            'name' => $contact->name,
+            'surname' => $contact->surname,
+            'email' => $contact->email,
+            'phone' => $contact->phone,
+            'country' => $contact->country,
+            'avatar_url' => $contact->avatarUrl(40),
+            'enterprise' => $enterprise?->name,
+            'enterprise_id' => $enterprise?->id,
+            'user' => app(InboxContactAccessService::class)->presentForContact(auth()->user()?->currentTeam, $contact),
+            'sentiment' => $sentiment ? [
+                'id' => $sentiment->id,
+                'name' => $sentiment->name,
+                'emoji' => $sentiment->emoji,
+            ] : null,
+            'intent' => $intent ? [
+                'id' => $intent->id,
+                'name' => $intent->displayName(),
+                'emoji' => $intent->emoji,
+            ] : null,
+            'categories' => $contact->categories->map(fn (Category $category): array => [
+                'id' => $category->id,
+                'name' => $category->name,
+            ])->values(),
+            'status' => $contact->status ? [
+                'id' => $contact->status->id,
+                'name' => $contact->status->name,
+                'label_class' => $contact->status->label_class,
+            ] : null,
+            'responsible' => $contact->responsible ? [
+                'id' => $contact->responsible->id,
+                'name' => $contact->responsible->name,
+            ] : null,
+            'in_list60' => $contact->list60 !== null,
+            'chat_path' => $this->chatPath($contact),
+            'display_name' => $fullName !== '' ? $fullName : '—',
+        ];
+    }
+
+    private function chatPath(Contact $contact): ?string
+    {
+        $url = $contact->chatIndexUrl();
+
+        if (! is_string($url) || $url === '')
+        {
+            return null;
+        }
+
+        $parts = parse_url($url);
+        $path = $parts['path'] ?? '/chat';
+
+        if (isset($parts['query']))
+        {
+            $path .= '?'.$parts['query'];
+        }
+
+        return $path;
     }
 }

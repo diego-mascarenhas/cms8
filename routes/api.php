@@ -67,6 +67,7 @@ use App\Http\Controllers\Api\Shop\SupplierPriceListController as ShopSupplierPri
 use App\Http\Controllers\Api\SiteAssistantInboxController;
 use App\Http\Controllers\Api\SiteAssistantPromptController;
 use App\Http\Controllers\Api\SoftwareController;
+use App\Http\Controllers\Api\SubscriptionController as ApiSubscriptionController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TeamAssistantController;
 use App\Http\Controllers\Api\TeamContactController;
@@ -87,6 +88,7 @@ use App\Http\Controllers\Api\TodayController;
 use App\Http\Controllers\Api\UserAssistantController;
 use App\Http\Controllers\Api\UserController as ApiUserController;
 use App\Http\Controllers\Api\WordPressCmsWebhookController;
+use App\Http\Controllers\apps\Calendar as AppCalendarController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ProspectSearchController;
@@ -624,6 +626,7 @@ Route::middleware('auth.api')->group(function ()
 
     // Today / Hoy (calendar events + tasks for the current day)
     Route::get('today', [TodayController::class, 'index'])->name('api.today.index');
+    Route::get('calendar/events', [AppCalendarController::class, 'events'])->name('api.calendar.events');
 
     // Users of current team (for IDONEO app)
     Route::get('users', [ApiUserController::class, 'index']);
@@ -855,6 +858,7 @@ Route::middleware('auth.api')->group(function ()
     // Contacts - for user-based authentication (Sanctum tokens)
     Route::get('contacts', [ContactController::class, 'index']);
     Route::get('contacts/stats', [ContactController::class, 'stats']);
+    Route::get('contacts/filters', [ContactController::class, 'filters']);
     Route::get('contacts/{id}', [ContactController::class, 'show']);
 
     // Clients (enterprises) — Assistant plan module "clients"
@@ -863,7 +867,10 @@ Route::middleware('auth.api')->group(function ()
 
     // Enterprises — Mentor plan module "enterprises"
     Route::get('enterprises', [\App\Http\Controllers\Api\EnterpriseController::class, 'index']);
+    Route::get('enterprises/{id}/subscriptions', [ApiSubscriptionController::class, 'forEnterprise'])->whereNumber('id');
     Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
+    Route::get('subscriptions', [ApiSubscriptionController::class, 'index']);
+    Route::get('subscriptions/{id}', [ApiSubscriptionController::class, 'show'])->whereNumber('id');
 
     // Mailbox inbox (synced IMAP emails)
     Route::get('emails', [MailInboxController::class, 'index'])->name('api.emails.index');

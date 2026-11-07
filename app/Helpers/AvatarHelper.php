@@ -11,8 +11,7 @@ class AvatarHelper
      */
     public static function generate(string $name, int $size = 100, ?string $backgroundColor = null, ?string $textColor = null): string
     {
-        // Get initials from name
-        $initials = self::getInitials($name);
+        $initials = htmlspecialchars(self::getInitials($name), ENT_XML1 | ENT_QUOTES, 'UTF-8');
 
         // Generate colors if not provided
         if ($backgroundColor === null)

@@ -67,6 +67,8 @@ class TaskTimerApiTest extends TestCase
             ->getJson('/api/tasks?pending_only=1')
             ->assertOk()
             ->assertJsonPath('data.0.responsible.name', $admin->name)
+            ->assertJsonPath('data.0.attachments_count', 0)
+            ->assertJsonPath('data.0.cover_url', null)
             ->assertJsonPath('data.0.time_seconds', 2400)
             ->assertJsonPath('data.0.workers.0.name', $admin->name)
             ->assertJsonPath('data.0.workers.0.working', false);

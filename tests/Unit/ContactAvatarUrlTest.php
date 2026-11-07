@@ -13,6 +13,16 @@ use Tests\TestCase;
 
 class ContactAvatarUrlTest extends TestCase
 {
+    public function test_generated_avatar_escapes_markup_in_the_name(): void
+    {
+        $encoded = substr(AvatarHelper::generate('< Resumir', 40), strlen('data:image/svg+xml;base64,'));
+        $svg = base64_decode($encoded, true);
+
+        $this->assertIsString($svg);
+        $this->assertStringContainsString('&lt;R', $svg);
+        $this->assertStringNotContainsString('><', $svg);
+    }
+
     public function test_falls_back_to_generated_initials_without_whatsapp_photo(): void
     {
         Storage::fake('public');

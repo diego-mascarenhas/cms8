@@ -477,7 +477,7 @@ class TaskController extends Controller
         $user = $request->user();
 
         // Query base: tareas asignadas al usuario (admins can filter by board/project without own-only)
-        $query = Task::with(['status', 'category', 'project', 'responsible']);
+        $query = Task::with(['status', 'category', 'project', 'responsible', 'media'])->withCount('media');
 
         $seeEveryTask = $request->boolean('all') && $user->hasAnyRole(['admin', 'root']);
         $seeProjectTasks = $request->boolean('all') && $this->collaboratorSeesProjectTasks($user);
@@ -547,6 +547,10 @@ class TaskController extends Controller
             {
                 return (int) $time->user_id === (int) $user->id && $time->end_time === null;
             });
+            $cover = $task->media->first(function ($media)
+            {
+                return str_starts_with((string) $media->mime_type, 'image/');
+            });
 
             return [
                 'id' => $task->id,
@@ -572,7 +576,10 @@ class TaskController extends Controller
                     'id' => $task->responsible?->id,
                     'name' => $task->responsible?->name,
                     'email' => $task->responsible?->email,
+                    'profile_photo_url' => $task->responsible?->profile_photo_url,
                 ],
+                'attachments_count' => (int) $task->media_count,
+                'cover_url' => $cover?->getUrl() ?: null,
                 'time_seconds' => $this->loggedSeconds($taskTimes),
                 'running_timers' => $taskTimes
                     ->filter(fn (Time $time) => $time->end_time === null && $time->start_time)
