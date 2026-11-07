@@ -7,6 +7,7 @@ use App\Models\Module;
 use App\Models\TokenUsageLog;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 final class TeamApiUsageStatsService
 {
@@ -20,6 +21,15 @@ final class TeamApiUsageStatsService
     private const CHAT_REPLY_LOG_SERVICES = [
         'AssistantChatService',
         'ChatAssistantReplyService',
+    ];
+
+    /**
+     * Usage that has no team module still needs its own line on the invoice.
+     *
+     * @var array<string, string>
+     */
+    private const NAMED_SERVICE_LABELS = [
+        'MeetingSummaryService' => 'Reuniones',
     ];
 
     /**
@@ -246,7 +256,7 @@ final class TeamApiUsageStatsService
             ->with('module:id,name')
             ->get();
 
-        return $rows
+        $byModule = $rows
             ->groupBy('module_id')
             ->map(function ($logs)
             {
@@ -255,17 +265,51 @@ final class TeamApiUsageStatsService
                 return [
                     'module_name' => $first->module->name ?? 'Unknown',
                     'count' => $logs->count(),
-                    'tokens_used' => (int) $logs->sum(function ($log)
-                    {
-                        return $log->used_toon ? (int) $log->toon_tokens : (int) $log->json_tokens;
-                    }),
-                    'tokens_saved' => (int) $logs->where('used_toon', true)->sum(function ($log)
-                    {
-                        return (int) $log->json_tokens - (int) $log->toon_tokens;
-                    }),
+                    'tokens_used' => self::tokensUsedByLogs($logs),
+                    'tokens_saved' => self::tokensSavedByLogs($logs),
                 ];
             })
             ->toArray();
+
+        $serviceLogs = self::nonChatLogQuery($teamId, $from, $to)
+            ->whereNull('module_id')
+            ->whereIn('service', array_keys(self::NAMED_SERVICE_LABELS))
+            ->get()
+            ->groupBy('service');
+
+        foreach ($serviceLogs as $service => $logs)
+        {
+            $byModule['service:'.$service] = [
+                'module_name' => self::NAMED_SERVICE_LABELS[$service],
+                'count' => $logs->count(),
+                'tokens_used' => self::tokensUsedByLogs($logs),
+                'tokens_saved' => self::tokensSavedByLogs($logs),
+            ];
+        }
+
+        return $byModule;
+    }
+
+    /**
+     * @param  Collection<int, TokenUsageLog>  $logs
+     */
+    private static function tokensUsedByLogs(Collection $logs): int
+    {
+        return (int) $logs->sum(function ($log)
+        {
+            return $log->used_toon ? (int) $log->toon_tokens : (int) $log->json_tokens;
+        });
+    }
+
+    /**
+     * @param  Collection<int, TokenUsageLog>  $logs
+     */
+    private static function tokensSavedByLogs(Collection $logs): int
+    {
+        return (int) $logs->where('used_toon', true)->sum(function ($log)
+        {
+            return (int) $log->json_tokens - (int) $log->toon_tokens;
+        });
     }
 
     /**

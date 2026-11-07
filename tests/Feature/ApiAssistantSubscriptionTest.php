@@ -84,7 +84,7 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.token_usage.total_calls', 0);
         $response->assertJsonPath('data.token_usage.total_tokens_used', 0);
         $response->assertJsonPath('data.token_usage.amount_due_cents', 0);
-        $response->assertJsonPath('data.token_usage.currency', 'EUR');
+        $response->assertJsonPath('data.token_usage.currency', 'USD');
         $this->assertNotEmpty($response->json('data.token_usage.period_start'));
         $this->assertNotEmpty($response->json('data.token_usage.period_end'));
         $this->assertIsArray($response->json('data.token_usage.by_module'));
@@ -92,17 +92,22 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.whatsapp_usage.our_amount_cents', 0);
         $response->assertJsonPath('data.whatsapp_usage.amount_due_cents', 0);
         $response->assertJsonPath('data.whatsapp_usage.currency', 'USD');
-        $this->assertSame(0.03, $response->json('data.whatsapp_usage.our_rate'));
+        $this->assertSame(0.05, $response->json('data.whatsapp_usage.our_rate'));
         $this->assertSame(0.005, $response->json('data.whatsapp_usage.reference_rate'));
         $response->assertJsonPath('data.prospect_usage.credits_used', 0);
         $response->assertJsonPath('data.prospect_usage.amount_due_cents', 0);
-        $response->assertJsonPath('data.prospect_usage.currency', 'EUR');
+        $response->assertJsonPath('data.prospect_usage.currency', 'USD');
         $this->assertSame(0.15, $response->json('data.prospect_usage.our_rate'));
         $response->assertJsonPath('data.storage_usage.bytes', 0);
         $response->assertJsonPath('data.storage_usage.formatted_size', '0 B');
         $response->assertJsonPath('data.storage_usage.amount_due_cents', 0);
-        $response->assertJsonPath('data.storage_usage.currency', 'EUR');
+        $response->assertJsonPath('data.storage_usage.currency', 'USD');
         $this->assertSame(0.02, $response->json('data.storage_usage.our_rate'));
+        $response->assertJsonPath('data.transcription_usage.audio_seconds', 0);
+        $response->assertJsonPath('data.transcription_usage.formatted_duration', '0 s');
+        $response->assertJsonPath('data.transcription_usage.amount_due_cents', 0);
+        $response->assertJsonPath('data.transcription_usage.currency', 'USD');
+        $this->assertSame(0.037, $response->json('data.transcription_usage.our_rate'));
     }
 
     public function test_estimator_catalog_is_free_and_ready_for_token_billing(): void

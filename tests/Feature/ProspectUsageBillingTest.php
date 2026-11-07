@@ -35,7 +35,7 @@ class ProspectUsageBillingTest extends TestCase
         $this->assertSame(3, $usage['prospect_credits']);
         $this->assertSame(45, $usage['prospect_billed_cents']);
         $this->assertSame(45, $usage['billed_cents']);
-        $this->assertStringContainsString('3 / 0,45 EUR', $usage['formatted']['prospect']);
+        $this->assertStringContainsString('3 / 0,45 USD', $usage['formatted']['prospect']);
 
         $lines = app(TeamBillingUsageSummaryService::class)->billableLines($usage, $usage['period_label']);
         $prospect = collect($lines)->firstWhere('kind', 'prospect');

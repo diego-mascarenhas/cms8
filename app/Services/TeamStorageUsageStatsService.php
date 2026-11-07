@@ -35,7 +35,7 @@ final class TeamStorageUsageStatsService
         $bytes = $bill ? self::bytesForTeam((int) $team->id) : 0;
         $at = $asOf ?? now();
         $ourRate = TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::StorageMegabyte, $at);
-        $currency = strtoupper((string) config('humano_pricing.storage_billing.currency', 'EUR'));
+        $currency = strtoupper((string) config('humano_pricing.storage_billing.currency', 'USD'));
         $megabytes = $bytes / (1024 ** 2);
 
         return [
@@ -95,18 +95,125 @@ final class TeamStorageUsageStatsService
     }
 
     /**
-     * @return array<class-string, array{0: string, 1: bool}>
+     * @return list<array{label: string, bytes: int, formatted_size: string, amount_cents: int}>
+     */
+    public static function sourceLines(Team $team, ?CarbonInterface $asOf = null): array
+    {
+        $rows = [];
+
+        foreach (self::labeledSources((int) $team->id) as $row)
+        {
+            if ($row['bytes'] < 1)
+            {
+                continue;
+            }
+
+            $rows[] = $row;
+        }
+
+        usort($rows, fn (array $left, array $right): int => $right['bytes'] <=> $left['bytes']);
+        $totalBytes = array_sum(array_column($rows, 'bytes'));
+        $billed = self::forTeam($team, $asOf);
+        $cents = self::allocateCents(array_column($rows, 'bytes'), (int) $billed['our_amount_cents']);
+
+        return array_map(function (array $row, int $amount) use ($totalBytes): array
+        {
+            return [
+                'label' => $row['label'],
+                'bytes' => $row['bytes'],
+                'formatted_size' => self::formatBytes($row['bytes']),
+                'amount_cents' => $totalBytes > 0 ? $amount : 0,
+            ];
+        }, $rows, $cents);
+    }
+
+    /**
+     * @return list<array{label: string, bytes: int}>
+     */
+    private static function labeledSources(int $teamId): array
+    {
+        $rows = [];
+
+        foreach (self::directSources() as $modelClass => [$table, $softDeletes, $label])
+        {
+            $rows[] = [
+                'label' => $label,
+                'bytes' => self::sumMedia($modelClass, function ($query) use ($table, $teamId, $softDeletes): void
+                {
+                    $query->select('id')->from($table)->where('team_id', $teamId);
+                    if ($softDeletes)
+                    {
+                        $query->whereNull('deleted_at');
+                    }
+                }),
+            ];
+        }
+
+        $rows[] = [
+            'label' => 'Respuestas',
+            'bytes' => self::sumMedia(TicketResponse::class, function ($query) use ($teamId): void
+            {
+                $query->select('ticket_responses.id')
+                    ->from('ticket_responses')
+                    ->join('tickets', 'tickets.id', '=', 'ticket_responses.ticket_id')
+                    ->where('tickets.team_id', $teamId);
+            }),
+        ];
+
+        return $rows;
+    }
+
+    /**
+     * @param  list<int|float>  $weights
+     * @return list<int>
+     */
+    private static function allocateCents(array $weights, int $totalCents): array
+    {
+        $sum = array_sum($weights);
+        $cents = array_fill(0, count($weights), 0);
+        if ($sum <= 0 || $totalCents <= 0)
+        {
+            return $cents;
+        }
+
+        $fractions = [];
+        $assigned = 0;
+        foreach (array_values($weights) as $index => $weight)
+        {
+            $exact = $totalCents * ($weight / $sum);
+            $cents[$index] = (int) floor($exact);
+            $fractions[$index] = $exact - $cents[$index];
+            $assigned += $cents[$index];
+        }
+
+        arsort($fractions);
+        foreach (array_keys($fractions) as $index)
+        {
+            if ($assigned >= $totalCents)
+            {
+                break;
+            }
+
+            $cents[$index]++;
+            $assigned++;
+        }
+
+        return $cents;
+    }
+
+    /**
+     * @return array<class-string, array{0: string, 1: bool, 2: string}>
      */
     private static function directSources(): array
     {
         return [
-            Contact::class => ['contacts', true],
-            Task::class => ['tasks', true],
-            Communication::class => ['communications', false],
-            Ticket::class => ['tickets', false],
-            TeamFile::class => ['team_files', true],
-            Multimedia::class => ['multimedia', true],
-            Product::class => ['products', false],
+            Contact::class => ['contacts', true, 'Contactos'],
+            Task::class => ['tasks', true, 'Tareas'],
+            Communication::class => ['communications', false, 'Comunicaciones'],
+            Ticket::class => ['tickets', false, 'Tickets'],
+            TeamFile::class => ['team_files', true, 'Archivos'],
+            Multimedia::class => ['multimedia', true, 'Multimedia'],
+            Product::class => ['products', false, 'Productos'],
         ];
     }
 

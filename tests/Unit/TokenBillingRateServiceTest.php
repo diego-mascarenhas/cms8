@@ -54,4 +54,22 @@ class TokenBillingRateServiceTest extends TestCase
 
         $this->assertEqualsWithDelta(0.90, TokenBillingRateService::usdToDisplay(), 0.0001);
     }
+
+    public function test_to_display_cents_converts_a_foreign_amount_into_usd(): void
+    {
+        config([
+            'humano_pricing.token_billing.currency' => 'USD',
+        ]);
+
+        ExchangeRate::query()->create([
+            'base_currency' => 'EUR',
+            'target_currency' => 'USD',
+            'rate' => 1.10,
+            'date' => now()->toDateString(),
+            'fetched_at' => now(),
+        ]);
+
+        $this->assertSame(110, TokenBillingRateService::toDisplayCents(100, 'EUR'));
+        $this->assertSame(100, TokenBillingRateService::toDisplayCents(100, 'USD'));
+    }
 }

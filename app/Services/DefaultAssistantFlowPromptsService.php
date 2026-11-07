@@ -51,7 +51,36 @@ class DefaultAssistantFlowPromptsService
                     ],
                 );
             }
+
+            self::renameDefaultLabels($teamId);
         });
+    }
+
+    /**
+     * Replace the previous default names. A label the team already edited stays as they left it.
+     */
+    public static function renameDefaultLabels(int $teamId): void
+    {
+        foreach (self::previousLabels() as $sectionKey => [$from, $to])
+        {
+            Prompt::withoutGlobalScope('team')
+                ->where('team_id', $teamId)
+                ->where('section_key', $sectionKey)
+                ->where('section_label', $from)
+                ->update(['section_label' => $to]);
+        }
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string}>
+     */
+    private static function previousLabels(): array
+    {
+        return [
+            'assistant_catalogo' => ['Venta desde la tienda', 'Shop: vender del catálogo'],
+            'assistant_presupuesto' => ['Pedido de presupuesto', 'Shop: cotizar una lista'],
+            'assistant_embudo' => ['Embudo comercial', 'WhatsApp: calificar y vender'],
+        ];
     }
 
     /**
@@ -122,7 +151,7 @@ PROMPT,
             [
                 'module_key' => 'products',
                 'section_key' => 'assistant_embudo',
-                'section_label' => 'Embudo comercial',
+                'section_label' => 'WhatsApp: calificar y vender',
                 'order' => 2,
                 'is_active' => true,
                 'helper_text' => 'Captación por WhatsApp: calificar, mostrar el catálogo real y cerrar el pedido en el sistema.',
@@ -157,7 +186,7 @@ PROMPT,
             [
                 'module_key' => 'products',
                 'section_key' => 'assistant_catalogo',
-                'section_label' => 'Venta desde la tienda',
+                'section_label' => 'Shop: vender del catálogo',
                 'order' => 3,
                 'is_active' => true,
                 'helper_text' => 'Mostrar el catálogo de la tienda, agregar al carrito y cerrar el pedido.',
@@ -182,10 +211,10 @@ PROMPT,
             [
                 'module_key' => 'chat',
                 'section_key' => 'assistant_presupuesto',
-                'section_label' => 'Pedido de presupuesto',
+                'section_label' => 'Shop: cotizar una lista',
                 'order' => 4,
                 'is_active' => true,
-                'helper_text' => 'El cliente pide una cotización: recoger alcance y contacto, sin inventar precios.',
+                'helper_text' => 'El cliente manda una lista de productos: se cotiza contra el shop y se arma el pedido. Un sitio o una marca siguen sin precio.',
                 'prompt_instruction' => <<<PROMPT
 # Flujo: pedido de presupuesto
 

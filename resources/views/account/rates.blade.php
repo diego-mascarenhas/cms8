@@ -6,13 +6,11 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}">
 @endsection
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
 @section('content')
@@ -58,7 +56,7 @@
                         </span>
                     </span>
                 </div>
-                <small class="text-muted">Tokens, WhatsApp, mail, prospección y almacenamiento</small>
+                <small class="text-muted">Tokens, reuniones, transcripción, WhatsApp, mail, prospección y almacenamiento</small>
             </div>
             <div class="col-sm-6 col-lg-3">
                 <div class="d-flex align-items-start justify-content-between">
@@ -161,67 +159,77 @@
         @if(session('success'))
             <div class="alert alert-success">{{ session('success') }}</div>
         @endif
-        <p class="text-muted">Al cambiar una tarifa, la anterior se conserva para el consumo ya facturado. El consumo se factura aparte, no en la cuota del plan.</p>
+        @php
+            $usageCurrency = \App\Services\TokenBillingRateService::displayCurrency();
+        @endphp
+        <p class="text-muted">Al cambiar una tarifa, la anterior se conserva para el consumo ya facturado. El consumo se factura aparte, no en la cuota del plan. Los importes de esta página están en {{ $usageCurrency }}.</p>
         <form id="account-rates-form" action="{{ route('account.rates.update', $team->id) }}" method="POST">
             @csrf
             @method('PUT')
             <div class="row g-3">
-                <div class="col-md-3">
-                    <label class="form-label" for="invoice_frequency">Frecuencia de facturación</label>
-                    <select
-                        id="invoice_frequency"
-                        name="invoice_frequency"
-                        class="form-select @error('invoice_frequency') is-invalid @enderror"
-                        data-original="{{ $invoiceFrequency->value }}"
-                    >
-                        @foreach(\App\Enums\TeamBillingFrequency::options() as $value => $label)
-                            <option value="{{ $value }}" @selected(old('invoice_frequency', $invoiceFrequency->value) === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    @error('invoice_frequency')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                    <small class="text-muted">Al cambiar, se cierra el ciclo en curso ese día y el nuevo arranca ahí (miércoles a miércoles, o del 15 al 15).</small>
-                </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label" for="tokens_multiplier">Multiplicador de tokens</label>
                     <input type="number" step="any" min="1" class="form-control @error('tokens_multiplier') is-invalid @enderror" id="tokens_multiplier" name="tokens_multiplier" value="{{ old('tokens_multiplier', $billingRates['tokens_multiplier'] ?? '10') }}">
                     @error('tokens_multiplier')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                    <small class="text-muted">El cliente ve este × tokens reales.</small>
+                    <small class="text-muted">El cliente ve este × tokens reales. Incluye las reuniones.</small>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="whatsapp_send">Envío WhatsApp (€)</label>
-                    <input type="number" step="any" min="0" class="form-control @error('whatsapp_send') is-invalid @enderror" id="whatsapp_send" name="whatsapp_send" value="{{ old('whatsapp_send', $billingRates['whatsapp_send'] ?? '0.03') }}" {{-- en €: 0.003 --}}>
+                <div class="col-md-4">
+                    <label class="form-label" for="whatsapp_send">Envío WhatsApp ({{ $usageCurrency }})</label>
+                    <input type="number" step="any" min="0" class="form-control @error('whatsapp_send') is-invalid @enderror" id="whatsapp_send" name="whatsapp_send" value="{{ old('whatsapp_send', $billingRates['whatsapp_send'] ?? '0.05') }}" {{-- en €: 0.003 --}}>
                     @error('whatsapp_send')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                    <small class="text-muted">EUR por mensaje saliente.</small>
+                    <small class="text-muted">{{ $usageCurrency }} por mensaje saliente.</small>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="mailer_send">Envío mail (€)</label>
+                <div class="col-md-4">
+                    <label class="form-label" for="mailer_send">Envío mail ({{ $usageCurrency }})</label>
                     <input type="number" step="any" min="0" class="form-control @error('mailer_send') is-invalid @enderror" id="mailer_send" name="mailer_send" value="{{ old('mailer_send', $billingRates['mailer_send'] ?? '0.003') }}" {{-- en €: 0.002 --}}>
                     @error('mailer_send')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                    <small class="text-muted">EUR por email enviado. El plan no incluye envíos.</small>
+                    <small class="text-muted">{{ $usageCurrency }} por email enviado. El plan no incluye envíos.</small>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="prospect_credit">Prospección (€)</label>
+                <div class="col-md-4">
+                    <label class="form-label" for="prospect_credit">Prospección ({{ $usageCurrency }})</label>
                     <input type="number" step="any" min="0" class="form-control @error('prospect_credit') is-invalid @enderror" id="prospect_credit" name="prospect_credit" value="{{ old('prospect_credit', $billingRates['prospect_credit'] ?? '0.15') }}">
                     @error('prospect_credit')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                    <small class="text-muted">EUR por crédito consumido al importar un prospecto.</small>
+                    <small class="text-muted">{{ $usageCurrency }} por crédito consumido al importar un prospecto.</small>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label" for="storage_megabyte">Almacenamiento (€/MB)</label>
+                <div class="col-md-4">
+                    <label class="form-label" for="storage_megabyte">Almacenamiento ({{ $usageCurrency }}/MB)</label>
                     <input type="number" step="any" min="0" class="form-control @error('storage_megabyte') is-invalid @enderror" id="storage_megabyte" name="storage_megabyte" value="{{ old('storage_megabyte', $billingRates['storage_megabyte'] ?? '0.02') }}">
                     @error('storage_megabyte')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                    <small class="text-muted">EUR por MB ocupado (ficheros, multimedia, adjuntos y fotos de producto).</small>
+                    <small class="text-muted">{{ $usageCurrency }} por MB ocupado (ficheros, multimedia, adjuntos y fotos de producto).</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="transcription_minute">Transcripción ({{ $usageCurrency }}/min)</label>
+                    <input type="number" step="any" min="0" class="form-control @error('transcription_minute') is-invalid @enderror" id="transcription_minute" name="transcription_minute" value="{{ old('transcription_minute', $billingRates['transcription_minute'] ?? '0.037') }}">
+                    @error('transcription_minute')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    <small class="text-muted">{{ $usageCurrency }} por minuto de audio transcrito.</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="elevenlabs_voice_thousand">Voz ElevenLabs ({{ $usageCurrency }}/1.000 caracteres)</label>
+                    <input type="number" step="any" min="0" class="form-control @error('elevenlabs_voice_thousand') is-invalid @enderror" id="elevenlabs_voice_thousand" name="elevenlabs_voice_thousand" value="{{ old('elevenlabs_voice_thousand', $billingRates['elevenlabs_voice_thousand'] ?? '0.8') }}">
+                    @error('elevenlabs_voice_thousand')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    <small class="text-muted">{{ $usageCurrency }} por cada 1.000 caracteres de la locución.</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="paid_ad_video">Vídeo de anuncio ({{ $usageCurrency }})</label>
+                    <input type="number" step="any" min="0" class="form-control @error('paid_ad_video') is-invalid @enderror" id="paid_ad_video" name="paid_ad_video" value="{{ old('paid_ad_video', $billingRates['paid_ad_video'] ?? '1.89') }}">
+                    @error('paid_ad_video')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    <small class="text-muted">{{ $usageCurrency }} por reel generado.</small>
                 </div>
             </div>
 
@@ -269,88 +277,5 @@
 @endsection
 
 @push('scripts')
-    <script type="application/json" id="frequency-change-previews">{!! json_encode($frequencyChangePreviews ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
-    <script>
-        (function () {
-            const form = document.getElementById('account-rates-form');
-            const frequency = document.getElementById('invoice_frequency');
-            if (!form || !frequency) {
-                return;
-            }
-
-            form.addEventListener('submit', function (event) {
-                if (frequency.value === frequency.dataset.original) {
-                    return;
-                }
-
-                event.preventDefault();
-
-                let previews = {};
-                const payload = document.getElementById('frequency-change-previews');
-                try {
-                    previews = JSON.parse(payload ? payload.textContent : '{}');
-                } catch (error) {
-                    previews = {};
-                }
-
-                const preview = previews[frequency.value];
-                const escapeHtml = function (value) {
-                    return String(value)
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/"/g, '&quot;');
-                };
-                const invoices = preview && preview.invoices ? preview.invoices : [];
-                const rows = invoices.map(function (invoice) {
-                    const header = '<tr><td colspan="3" class="text-muted pt-2">' + escapeHtml(invoice.title) + ' · ' + escapeHtml(invoice.period_label) + ' · Tokens ' + escapeHtml(invoice.formatted_tokens || '') + '</td></tr>';
-                    const lines = (invoice.lines || []).map(function (line) {
-                        const isSource = line.kind === 'token_source';
-                        const itemClass = isSource ? ' class="ps-3 text-muted"' : '';
-                        const detailClass = isSource ? ' class="text-muted"' : '';
-                        return '<tr><td' + itemClass + '>' + escapeHtml(line.description) + '</td><td' + detailClass + '>' + escapeHtml(line.detail) + '</td><td class="text-end text-nowrap">' + escapeHtml(line.formatted_amount || '') + '</td></tr>';
-                    }).join('');
-                    return header + lines;
-                }).join('');
-                const total = preview && preview.formatted_total ? preview.formatted_total : '0,00 EUR';
-                const tokens = preview && preview.formatted_tokens ? preview.formatted_tokens : '';
-                const fromLabel = preview && preview.from_frequency ? preview.from_frequency : '';
-                const toLabel = preview && preview.to_frequency ? preview.to_frequency : frequency.options[frequency.selectedIndex].text;
-
-                const html = '<p class="mb-2 text-start">Se cierra el ciclo ' + fromLabel.toLowerCase() + ' y arranca ' + toLabel.toLowerCase() + ' hoy. El draft de Stripe se crea en el siguiente barrido.</p>'
-                    + (tokens ? '<p class="mb-2 text-start"><strong>Tokens totales:</strong> ' + escapeHtml(tokens) + '</p>' : '')
-                    + '<div class="table-responsive text-start"><table class="table table-sm mb-0 text-start"><thead><tr><th class="text-start">Ítem</th><th class="text-start">Detalle</th><th class="text-end text-nowrap">Importe</th></tr></thead><tbody>'
-                    + rows
-                    + '</tbody><tfoot><tr><th class="text-start">Total</th><th></th><th class="text-end text-nowrap">' + total + '</th></tr></tfoot></table></div>';
-
-                if (typeof Swal === 'undefined') {
-                    if (window.confirm('¿Cambiar la frecuencia de facturación? El ciclo anterior se cierra como ajuste.')) {
-                        form.submit();
-                    }
-                    return;
-                }
-
-                Swal.fire({
-                    title: '¿Cambiar facturación?',
-                    html: html,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Cambiar y guardar',
-                    cancelButtonText: 'Cancelar',
-                    buttonsStyling: false,
-                    width: '48rem',
-                    customClass: {
-                        htmlContainer: 'text-start',
-                        confirmButton: 'btn btn-primary me-3 waves-effect waves-light',
-                        cancelButton: 'btn btn-label-secondary waves-effect waves-light'
-                    }
-                }).then(function (result) {
-                    if (result.isConfirmed) {
-                        form.submit();
-                    }
-                });
-            });
-        })();
-    </script>
 @endpush

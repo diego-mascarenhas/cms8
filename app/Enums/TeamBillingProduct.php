@@ -9,6 +9,9 @@ enum TeamBillingProduct: string
     case MailerSend = 'mailer_send';
     case ProspectCredit = 'prospect_credit';
     case StorageMegabyte = 'storage_megabyte';
+    case TranscriptionMinute = 'transcription_minute';
+    case ElevenlabsVoiceThousand = 'elevenlabs_voice_thousand';
+    case PaidAdVideo = 'paid_ad_video';
 
     public function label(): string
     {
@@ -19,6 +22,9 @@ enum TeamBillingProduct: string
             self::MailerSend => 'Envío mail',
             self::ProspectCredit => 'Crédito de prospección',
             self::StorageMegabyte => 'Almacenamiento',
+            self::TranscriptionMinute => 'Transcripción',
+            self::ElevenlabsVoiceThousand => 'Voz ElevenLabs',
+            self::PaidAdVideo => 'Vídeo de anuncio',
         };
     }
 }

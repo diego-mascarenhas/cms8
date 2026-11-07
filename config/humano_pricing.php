@@ -76,7 +76,7 @@ return [
      */
     'token_billing' => [
         'base_currency' => 'USD',
-        'currency' => env('HUMANO_TOKEN_BILLING_CURRENCY', 'EUR'),
+        'currency' => env('HUMANO_TOKEN_BILLING_CURRENCY', 'USD'),
         'client_token_multiplier' => (float) env('HUMANO_TOKEN_CLIENT_MULTIPLIER', 10),
         /*
          * | Current team overrides when team_billing_rates has no row.
@@ -118,7 +118,7 @@ return [
     'whatsapp_message_billing' => [
         'currency' => env('HUMANO_WHATSAPP_BILLING_CURRENCY', 'USD'),
         // 'currency' => env('HUMANO_WHATSAPP_BILLING_CURRENCY', 'EUR'), // en €
-        'our_amount' => (float) env('HUMANO_WHATSAPP_OUR_AMOUNT', 0.03),
+        'our_amount' => (float) env('HUMANO_WHATSAPP_OUR_AMOUNT', 0.05),
         // 'our_amount' => (float) env('HUMANO_WHATSAPP_OUR_AMOUNT', 0.003), // en €
         'reference_amount' => (float) env('HUMANO_WHATSAPP_REFERENCE_AMOUNT', 0.005),
         'our_amount_by_team' => [
@@ -127,11 +127,11 @@ return [
     ],
 
     /*
-     * | Prospect import billing (EUR per credit consumed when a prospect is imported).
+     * | Prospect import billing (USD per credit consumed when a prospect is imported).
      * | Every credit used in the usage window is billed from zero, same as email sends.
      */
     'prospect_billing' => [
-        'currency' => env('HUMANO_PROSPECT_BILLING_CURRENCY', 'EUR'),
+        'currency' => env('HUMANO_PROSPECT_BILLING_CURRENCY', 'USD'),
         'our_amount' => (float) env('HUMANO_PROSPECT_OUR_AMOUNT', 0.15),
         'our_amount_by_team' => [
             // 1 => 0.10,
@@ -139,16 +139,58 @@ return [
     ],
 
     /*
-     * | Storage billing (EUR per MiB occupied now).
+     * | Storage billing (USD per MiB occupied now).
      * | Counts media-library files still attached to the team: team files,
      * | multimedia, and attachments on contacts, tasks, tickets and communications.
      * | Charged on the open usage cycle and again when that cycle is invoiced.
      */
     'storage_billing' => [
-        'currency' => env('HUMANO_STORAGE_BILLING_CURRENCY', 'EUR'),
+        'currency' => env('HUMANO_STORAGE_BILLING_CURRENCY', 'USD'),
         'our_amount' => (float) env('HUMANO_STORAGE_OUR_AMOUNT', 0.02),
         'our_amount_by_team' => [
             // 1 => 0.05,
+        ],
+    ],
+
+    /*
+     * | Meeting transcription billing (USD per audio minute).
+     * | Scribe v2 list price is 0.22 USD per hour, 0.003667 per minute.
+     * | The default includes the same ×10 margin as tokens: 0.037 USD per minute.
+     * | Charged on audio that finished transcribing, from the first word to the last.
+     */
+    'transcription_billing' => [
+        'currency' => env('HUMANO_TRANSCRIPTION_BILLING_CURRENCY', 'USD'),
+        'our_amount' => (float) env('HUMANO_TRANSCRIPTION_OUR_AMOUNT', 0.037),
+        'our_amount_by_team' => [
+            // 1 => 0.037,
+        ],
+    ],
+
+    /*
+     * | ElevenLabs text-to-speech billing (USD per 1,000 characters).
+     * | Multilingual v2 list price is 0.08 USD per 1,000 characters.
+     * | The default includes the same ×10 margin as tokens: 0.80 USD.
+     * | Charged on the characters sent to the voice, including a reel that fails later.
+     */
+    'elevenlabs_voice_billing' => [
+        'currency' => env('HUMANO_ELEVENLABS_VOICE_BILLING_CURRENCY', 'USD'),
+        'our_amount' => (float) env('HUMANO_ELEVENLABS_VOICE_OUR_AMOUNT', 0.8),
+        'our_amount_by_team' => [
+            // 1 => 0.8,
+        ],
+    ],
+
+    /*
+     * | Paid-ad reel billing (USD per finished video).
+     * | Three medium portrait stills at the 0.063 USD list price are 0.189 USD.
+     * | The default includes the same ×10 margin as tokens: 1.89 USD.
+     * | Charged once the mp4 is stored. The script stays on the token line.
+     */
+    'paid_ad_video_billing' => [
+        'currency' => env('HUMANO_PAID_AD_VIDEO_BILLING_CURRENCY', 'USD'),
+        'our_amount' => (float) env('HUMANO_PAID_AD_VIDEO_OUR_AMOUNT', 1.89),
+        'our_amount_by_team' => [
+            // 1 => 1.89,
         ],
     ],
 

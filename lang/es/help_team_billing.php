@@ -6,7 +6,7 @@ return [
     'sidebar_title' => 'Tarifas de consumo',
     'index_card_title' => 'Tarifas de consumo',
     'index_card_body' => 'Preview de factura, tarifas SCD2, frecuencia mensual o semanal, y desglose de tokens por módulo. Solo root.',
-    'intro' => 'El consumo de tokens, WhatsApp, envíos de email, prospección y almacenamiento se factura aparte de la cuota del plan. Cada equipo puede tener tarifas propias y frecuencia mensual o semanal. Al cerrar el ciclo se crea un draft en Stripe; no se cobra hasta que se finalice.',
+    'intro' => 'El consumo de tokens, WhatsApp, envíos de email, prospección, almacenamiento, voz y vídeos de anuncio se factura aparte de la cuota del plan. Cada equipo puede tener tarifas propias y frecuencia mensual o semanal. Al cerrar el ciclo se crea un draft en Stripe; no se cobra hasta que se finalice.',
 
     'where_heading' => 'Dónde está',
     'where_body' => 'Solo el rol root ve esta pantalla. En Gestión de Cuentas, el icono de euro de cada fila abre las tarifas de ese equipo.',
@@ -15,17 +15,20 @@ return [
 
     'two_invoices_heading' => 'Dos facturas distintas',
     'two_invoices_plan' => 'Cuota del plan: Assistant, Business u otro producto contratado. Sigue saliendo en las facturas de Stripe de suscripción.',
-    'two_invoices_usage' => 'Consumo: tokens IA, envíos WhatsApp, envíos de email, créditos de prospección y almacenamiento. Va en una factura de uso por equipo y periodo. Al cierre se crea un draft en Stripe.',
+    'two_invoices_usage' => 'Consumo: tokens IA, envíos WhatsApp, envíos de email, créditos de prospección, almacenamiento, voz y vídeos de anuncio. Va en una factura de uso por equipo y periodo. Al cierre se crea un draft en Stripe.',
 
     'rates_heading' => 'Tarifas',
-    'rates_intro' => 'Hay cinco productos. Si el equipo no tiene tarifa propia, se usa la de plataforma y, si tampoco existe, la de configuración.',
-    'rates_tokens' => 'Multiplicador de tokens: el cliente ve N × tokens reales a tarifa OpenRouter, sin recargo extra. Por defecto ×10.',
-    'rates_whatsapp' => 'Envío WhatsApp: USD por mensaje saliente. Por defecto 0,03 USD.',
+    'rates_intro' => 'Hay ocho productos. Si el equipo no tiene tarifa propia, se usa la de plataforma y, si tampoco existe, la de configuración. El ciclo de consumo es mensual.',
+    'rates_tokens' => 'Multiplicador de tokens: el cliente ve N × tokens reales a tarifa OpenRouter, sin recargo extra. Incluye los tokens de las reuniones. Por defecto ×10.',
+    'rates_whatsapp' => 'Envío WhatsApp: USD por mensaje saliente. Por defecto 0,05 USD.',
     // 'rates_whatsapp' => 'Envío WhatsApp: EUR por mensaje saliente. Por defecto 0,003 EUR.', // en €
     'rates_mailer' => 'Envío mail: USD por email de excedente (por encima del tope mensual del plan). Por defecto 0,003 USD.',
     // 'rates_mailer' => 'Envío mail: EUR por email de excedente (por encima del tope mensual del plan). Por defecto 0,002 EUR.', // en €
-    'rates_prospect' => 'Prospección: EUR por crédito consumido al importar un prospecto. Por defecto 0,15 EUR.',
-    'rates_storage' => 'Almacenamiento: EUR por MB ocupado ahora (ficheros del equipo, multimedia, adjuntos y fotos de producto). Por defecto 0,02 EUR.',
+    'rates_prospect' => 'Prospección: USD por crédito consumido al importar un prospecto. Por defecto 0,15 USD.',
+    'rates_storage' => 'Almacenamiento: USD por MB ocupado ahora (ficheros del equipo, multimedia, adjuntos y fotos de producto). Por defecto 0,02 USD.',
+    'rates_transcription' => 'Transcripción: USD por minuto de audio transcrito en una reunión. Por defecto 0,037 USD, el coste de 0,22 USD/h con la ganancia ×10.',
+    'rates_voice' => 'Voz ElevenLabs: USD por cada 1.000 caracteres de la locución. Por defecto 0,80 USD, el coste de 0,08 USD con la ganancia ×10. Se cobra aunque el reel falle después.',
+    'rates_video' => 'Vídeo de anuncio: USD por reel generado. Por defecto 1,89 USD, tres fotos verticales en calidad media (0,063 USD cada una) con la ganancia ×10.',
     'rates_history' => 'Al guardar una tarifa nueva, la anterior se conserva (SCD2) para el consumo ya ocurrido. El historial de la página muestra Desde / Hasta / Actual.',
 
     'frequency_heading' => 'Frecuencia',
@@ -41,13 +44,16 @@ return [
     'change_stripe' => 'Confirmar cierra el ciclo en Humano. El draft de Stripe se crea en el siguiente barrido diario.',
 
     'items_heading' => 'Qué se imprime en la factura',
-    'items_intro' => 'Cada documento (ajuste o ciclo abierto) lleva estas líneas, aunque el importe sea 0,00 EUR:',
+    'items_intro' => 'Cada documento (ajuste o ciclo abierto) lleva estas líneas, aunque el importe sea 0,00 USD:',
     'items_tokens' => 'Tokens IA · periodo: tokens facturados (reales × multiplicador) e importe.',
-    'items_sources' => 'Debajo, el desglose por módulo cuando hay origen: Chat, Projects, Insights u otros. Si todo el consumo va sin módulo, solo se muestra el total.',
+    'items_sources' => 'Debajo, el desglose por origen cuando hay datos: Chat, Projects, Insights, Reuniones u otros. Si todo el consumo va sin módulo y no es una reunión, solo se muestra el total.',
     'items_whatsapp' => 'Envíos WhatsApp · periodo: número de envíos e importe.',
     'items_mailer' => 'Emails de excedente · periodo: emails por encima del tope e importe.',
     'items_prospect' => 'Prospección · periodo: créditos consumidos e importe.',
     'items_storage' => 'Almacenamiento · periodo: espacio ocupado ahora e importe. En meses ya cerrados de la tabla inferior no se reconstruye: el cargo entra al cerrar el ciclo.',
+    'items_transcription' => 'Transcripción · periodo: duración del audio transcrito e importe.',
+    'items_voice' => 'Voz ElevenLabs · periodo: caracteres locutados e importe.',
+    'items_video' => 'Vídeos de anuncio · periodo: reels generados e importe.',
     'items_total' => 'El preview de la página y el modal de confirmación listan esos ítems. El KPI Tokens muestra el total del preview (ciclo abierto más ajustes pendientes).',
 
     'preview_heading' => 'Preview',
@@ -65,7 +71,7 @@ return [
     'cli_body' => 'Para fijar una tarifa sin pasar por la pantalla (team_id 0 = default de plataforma):',
     'cli_example' => 'php artisan billing:set-team-rate {team_id} {product} {amount}',
     'cli_drafts' => 'php artisan billing:issue-usage-invoice-drafts [--team=] [--dry-run]',
-    'cli_products' => 'product: tokens_multiplier, whatsapp_send, mailer_send, prospect_credit o storage_megabyte. Opcional: --from= y --currency=.',
+    'cli_products' => 'product: tokens_multiplier, whatsapp_send, mailer_send, prospect_credit, storage_megabyte, transcription_minute, elevenlabs_voice_thousand o paid_ad_video. Opcional: --from= y --currency=.',
 
     'related_heading' => 'Relacionado',
     'related_stripe' => 'Webhooks de Stripe (cuota del plan y facturas de suscripción)',

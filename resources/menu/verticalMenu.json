@@ -76,6 +76,12 @@
       "module_key": "tasks"
     },
     {
+      "url": "meeting",
+      "name": "Reuniones",
+      "icon": "menu-icon tf-icons ti ti-microphone",
+      "slug": "meeting.index"
+    },
+    {
       "menuHeader": "E-commerce"
     },
     {

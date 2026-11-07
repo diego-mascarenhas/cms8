@@ -40,6 +40,9 @@
           <li>{{ __('help_team_billing.rates_mailer') }}</li>
           <li>{{ __('help_team_billing.rates_prospect') }}</li>
           <li>{{ __('help_team_billing.rates_storage') }}</li>
+          <li>{{ __('help_team_billing.rates_transcription') }}</li>
+          <li>{{ __('help_team_billing.rates_voice') }}</li>
+          <li>{{ __('help_team_billing.rates_video') }}</li>
         </ul>
         <p class="mb-0">{{ __('help_team_billing.rates_history') }}</p>
 
@@ -68,6 +71,9 @@
           <li>{{ __('help_team_billing.items_mailer') }}</li>
           <li>{{ __('help_team_billing.items_prospect') }}</li>
           <li>{{ __('help_team_billing.items_storage') }}</li>
+          <li>{{ __('help_team_billing.items_transcription') }}</li>
+          <li>{{ __('help_team_billing.items_voice') }}</li>
+          <li>{{ __('help_team_billing.items_video') }}</li>
         </ul>
         <p class="mb-0">{{ __('help_team_billing.items_total') }}</p>
 

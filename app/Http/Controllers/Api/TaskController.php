@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SendTaskCommunication;
+use App\Mail\ClientChangeRequestMail;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskCommunication;
@@ -17,6 +18,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class TaskController extends Controller
@@ -525,6 +527,12 @@ class TaskController extends Controller
 
         // Ordenamiento
         $tasks = $query->defaultOrder()->get();
+        $notesByTask = TaskCommunication::query()
+            ->with('user')
+            ->whereIn('task_id', $tasks->pluck('id'))
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy('task_id');
         $timesByTask = Time::query()
             ->with('user')
             ->whereIn('task_id', $tasks->pluck('id'))
@@ -532,7 +540,7 @@ class TaskController extends Controller
             ->groupBy('task_id');
 
         // Transformar a formato API
-        $data = $tasks->map(function ($task) use ($user, $timesByTask)
+        $data = $tasks->map(function ($task) use ($user, $timesByTask, $notesByTask)
         {
             $taskTimes = $timesByTask->get($task->id, collect());
             $activeTime = $taskTimes->first(function (Time $time) use ($user)
@@ -570,6 +578,17 @@ class TaskController extends Controller
                     ->filter(fn (Time $time) => $time->end_time === null && $time->start_time)
                     ->count(),
                 'workers' => \App\Support\TaskTimeBudget::workers($taskTimes),
+                'notes' => $notesByTask->get($task->id, collect())->map(function (TaskCommunication $note)
+                {
+                    return [
+                        'id' => $note->id,
+                        'subject' => $note->subject,
+                        'message' => $note->message,
+                        'response' => $note->response,
+                        'sender_name' => $note->user?->name ?? 'Cliente',
+                        'created_at' => $note->created_at?->toIso8601String(),
+                    ];
+                })->values()->all(),
                 'active_time' => $activeTime ? [
                     'id' => $activeTime->id,
                     'started_at' => $activeTime->start_time->toIso8601String(),
@@ -1358,6 +1377,8 @@ class TaskController extends Controller
                 'sent_at' => now(),
             ]);
 
+            $this->notifyCollaboratorsOfChange($task, $project, $request->user(), $message);
+
             $nextStatus = TaskStatus::where('name', 'TO_DO')->firstOrFail();
         } else
         {
@@ -1385,6 +1406,40 @@ class TaskController extends Controller
                 ],
             ],
         ]);
+    }
+
+    private function notifyCollaboratorsOfChange(Task $task, Project $project, User $client, string $message): void
+    {
+        $task->setRelation('project', $project);
+        $project->loadMissing('responsible');
+        $task->loadMissing('responsible');
+
+        $recipients = $project->participants()->get()
+            ->concat(collect([$project->responsible, $task->responsible])->filter())
+            ->unique('id')
+            ->reject(function (User $user) use ($client)
+            {
+                return (int) $user->id === (int) $client->id || ! filled($user->email);
+            });
+
+        if ($recipients->isEmpty())
+        {
+            return;
+        }
+
+        $taskUrl = rtrim((string) config('services.projects.url'), '/')
+            .'/projects/'.$project->id.'/board?task='.$task->id;
+
+        $pending = Mail::to($recipients->pluck('email')->all());
+        $mailable = new ClientChangeRequestMail($task, $message, $client->name, $taskUrl);
+
+        if (app()->environment('local', 'testing'))
+        {
+            $pending->send($mailable);
+        } else
+        {
+            $pending->queue($mailable);
+        }
     }
 
     private function storeClientImage(Task $task, Request $request, bool $replace): void

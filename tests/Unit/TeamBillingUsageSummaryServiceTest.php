@@ -286,8 +286,9 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
         $this->assertSame('Tokens IA · 1 al 22 de septiembre 2026', $preview['invoice_lines'][0]['description']);
         $this->assertSame('10,00 EUR', $preview['invoice_lines'][0]['formatted_amount']);
         $this->assertSame('storage', $preview['invoice_lines'][4]['kind']);
-        $this->assertSame('Tokens IA · Semana del 23 al 30 de septiembre 2026', $preview['invoice_lines'][5]['description']);
-        $this->assertSame('5,00 EUR', $preview['invoice_lines'][5]['formatted_amount']);
+        $this->assertSame('transcription', $preview['invoice_lines'][5]['kind']);
+        $this->assertSame('Tokens IA · Semana del 23 al 30 de septiembre 2026', $preview['invoice_lines'][6]['description']);
+        $this->assertSame('5,00 EUR', $preview['invoice_lines'][6]['formatted_amount']);
         $this->assertSame('prospect', $preview['invoice_lines'][3]['kind']);
         $this->assertSame('15.000.000', $preview['formatted']['total_tokens']);
 
@@ -326,7 +327,8 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
         $this->assertSame(500_000, $preview['tokens_real']);
         $this->assertSame(15, TeamUsageInvoiceFrequency::anchorDay($team));
         $this->assertSame('storage', $preview['invoice_lines'][4]['kind']);
-        $this->assertSame('Tokens IA · 15 de septiembre al 15 de octubre 2026', $preview['invoice_lines'][5]['description']);
+        $this->assertSame('transcription', $preview['invoice_lines'][5]['kind']);
+        $this->assertSame('Tokens IA · 15 de septiembre al 15 de octubre 2026', $preview['invoice_lines'][6]['description']);
         $this->assertSame('prospect', $preview['invoice_lines'][3]['kind']);
 
         Carbon::setTestNow();
@@ -392,6 +394,43 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
         $this->assertSame('80.000', $weekly['lines'][1]['detail']);
 
         Carbon::setTestNow();
+    }
+
+    public function test_meeting_summary_tokens_appear_as_their_own_invoice_line(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $this->fakeTokenCatalog();
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+
+        $log = TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'MeetingSummaryService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 2_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+        $log->forceFill(['created_at' => now(), 'updated_at' => now()])->save();
+
+        $preview = app(TeamBillingUsageSummaryService::class)->invoicePreview($team);
+
+        $this->assertSame(2_000, $preview['tokens_real']);
+        $this->assertSame('Reuniones', $preview['tokens_by_module'][0]['name']);
+        $this->assertSame(2_000, $preview['tokens_by_module'][0]['tokens_real']);
+        $meeting = collect($preview['invoice_lines'])->firstWhere('description', 'Reuniones');
+        $this->assertNotNull($meeting);
+        $this->assertSame('token_source', $meeting['kind']);
+        $this->assertSame('20.000', $meeting['detail']);
     }
 
     public function test_billable_lines_omit_token_sources_and_zero_amounts(): void

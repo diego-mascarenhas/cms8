@@ -6,9 +6,11 @@ use App\Enums\PaidAdCampaignStatus;
 use App\Http\Controllers\Api\Concerns\ChecksTeamModule;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\GeneratePaidAdImageRequest;
+use App\Http\Requests\GeneratePaidAdVideoRequest;
 use App\Http\Requests\StorePaidAdCampaignRequest;
 use App\Http\Requests\SuggestPaidAdCopyRequest;
 use App\Http\Requests\SuggestPaidAdImageRequest;
+use App\Http\Requests\SuggestPaidAdVideoRequest;
 use App\Http\Requests\UpdatePaidAdCampaignRequest;
 use App\Jobs\PublishPaidAdCampaignJob;
 use App\Jobs\SyncPaidAdMetricsJob;
@@ -17,6 +19,8 @@ use App\Services\PaidAds\PaidAdCampaignApiService;
 use App\Services\PaidAds\PaidAdCopySuggestionService;
 use App\Services\PaidAds\PaidAdImageGenerationService;
 use App\Services\PaidAds\PaidAdImageSuggestionService;
+use App\Services\PaidAds\PaidAdVideoGenerationService;
+use App\Services\PaidAds\PaidAdVideoScriptService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -388,6 +392,83 @@ class PaidAdCampaignController extends Controller
                 'success' => false,
                 'message' => $exception->getMessage(),
             ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    }
+
+    public function suggestVideo(SuggestPaidAdVideoRequest $request, PaidAdVideoScriptService $scripts): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'paid_ads'))
+        {
+            return $denied;
+        }
+
+        try
+        {
+            $data = $scripts->suggest($team, $request->validated());
+        } catch (RuntimeException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
+    }
+
+    public function generateVideo(GeneratePaidAdVideoRequest $request, PaidAdVideoGenerationService $videos): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'paid_ads'))
+        {
+            return $denied;
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $videos->start($team, $request->validated()),
+        ]);
+    }
+
+    public function videoStatus(Request $request, string $id, PaidAdVideoGenerationService $videos): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'paid_ads'))
+        {
+            return $denied;
+        }
+
+        $data = $videos->status((int) $team->id, $id);
+        if ($data === null)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No encontramos ese vídeo.'),
+            ], 404);
         }
 
         return response()->json([

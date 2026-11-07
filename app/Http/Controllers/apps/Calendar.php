@@ -7,6 +7,7 @@ use App\Jobs\PushCalendarEventToGoogleJob;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Services\CalendarEventInvitationService;
+use App\Services\MeetingCalendarSync;
 use App\Services\PaidAds\PaidAdCampaignCalendarSyncer;
 use App\Support\CalendarEventDateTimeParser;
 use App\Support\MeetRoomLink;
@@ -54,6 +55,10 @@ class Calendar extends Controller
         }
 
         $team = $request->user()?->currentTeam;
+        if ($team)
+        {
+            app(MeetingCalendarSync::class)->syncTeam((int) $team->id);
+        }
         if ($team && $team->hasModule('paid_ads'))
         {
             app(PaidAdCampaignCalendarSyncer::class)->syncForTeam($team);

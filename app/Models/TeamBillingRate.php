@@ -224,10 +224,13 @@ class TeamBillingRate extends Model
         return match ($product)
         {
             TeamBillingProduct::TokensMultiplier => max(1, (float) config('humano_pricing.token_billing.client_token_multiplier', 10)),
-            TeamBillingProduct::WhatsappSend => max(0, (float) config('humano_pricing.whatsapp_message_billing.our_amount', 0.03)), // en €: 0.003
+            TeamBillingProduct::WhatsappSend => max(0, (float) config('humano_pricing.whatsapp_message_billing.our_amount', 0.05)), // en €: 0.003
             TeamBillingProduct::MailerSend => max(0, (float) config('emailer.payg.price_per_email', 0.003)), // en €: 0.002
             TeamBillingProduct::ProspectCredit => max(0, (float) config('humano_pricing.prospect_billing.our_amount', 0.15)),
             TeamBillingProduct::StorageMegabyte => max(0, (float) config('humano_pricing.storage_billing.our_amount', 0.02)),
+            TeamBillingProduct::TranscriptionMinute => max(0, (float) config('humano_pricing.transcription_billing.our_amount', 0.037)),
+            TeamBillingProduct::ElevenlabsVoiceThousand => max(0, (float) config('humano_pricing.elevenlabs_voice_billing.our_amount', 0.8)),
+            TeamBillingProduct::PaidAdVideo => max(0, (float) config('humano_pricing.paid_ad_video_billing.our_amount', 1.89)),
         };
     }
 
@@ -243,6 +246,9 @@ class TeamBillingRate extends Model
             TeamBillingProduct::MailerSend => config('emailer.payg.price_per_email_by_team', []),
             TeamBillingProduct::ProspectCredit => config('humano_pricing.prospect_billing.our_amount_by_team', []),
             TeamBillingProduct::StorageMegabyte => config('humano_pricing.storage_billing.our_amount_by_team', []),
+            TeamBillingProduct::TranscriptionMinute => config('humano_pricing.transcription_billing.our_amount_by_team', []),
+            TeamBillingProduct::ElevenlabsVoiceThousand => config('humano_pricing.elevenlabs_voice_billing.our_amount_by_team', []),
+            TeamBillingProduct::PaidAdVideo => config('humano_pricing.paid_ad_video_billing.our_amount_by_team', []),
         };
 
         return is_array($overrides) ? $overrides : [];
@@ -270,8 +276,11 @@ class TeamBillingRate extends Model
             TeamBillingProduct::TokensMultiplier => null,
             TeamBillingProduct::WhatsappSend => strtoupper((string) config('humano_pricing.whatsapp_message_billing.currency', 'USD')), // en €: EUR
             TeamBillingProduct::MailerSend => strtoupper((string) config('emailer.payg.currency', 'USD')), // en €: EUR
-            TeamBillingProduct::ProspectCredit => strtoupper((string) config('humano_pricing.prospect_billing.currency', 'EUR')),
-            TeamBillingProduct::StorageMegabyte => strtoupper((string) config('humano_pricing.storage_billing.currency', 'EUR')),
+            TeamBillingProduct::ProspectCredit => strtoupper((string) config('humano_pricing.prospect_billing.currency', 'USD')),
+            TeamBillingProduct::StorageMegabyte => strtoupper((string) config('humano_pricing.storage_billing.currency', 'USD')),
+            TeamBillingProduct::TranscriptionMinute => strtoupper((string) config('humano_pricing.transcription_billing.currency', 'USD')),
+            TeamBillingProduct::ElevenlabsVoiceThousand => strtoupper((string) config('humano_pricing.elevenlabs_voice_billing.currency', 'USD')),
+            TeamBillingProduct::PaidAdVideo => strtoupper((string) config('humano_pricing.paid_ad_video_billing.currency', 'USD')),
         };
     }
 
@@ -280,7 +289,7 @@ class TeamBillingRate extends Model
         return match ($product)
         {
             TeamBillingProduct::TokensMultiplier => max(1, $amount),
-            TeamBillingProduct::WhatsappSend, TeamBillingProduct::MailerSend, TeamBillingProduct::ProspectCredit, TeamBillingProduct::StorageMegabyte => max(0, $amount),
+            TeamBillingProduct::WhatsappSend, TeamBillingProduct::MailerSend, TeamBillingProduct::ProspectCredit, TeamBillingProduct::StorageMegabyte, TeamBillingProduct::TranscriptionMinute, TeamBillingProduct::ElevenlabsVoiceThousand, TeamBillingProduct::PaidAdVideo => max(0, $amount),
         };
     }
 
