@@ -37,12 +37,12 @@ class TeamMeetingController extends Controller
             'title' => ['required', 'string', 'max:160'],
             'language' => ['nullable', 'string', 'size:2'],
             'external_ref' => ['nullable', 'string', 'max:160'],
-            'audio' => ['required', 'file', 'mimes:mp3,wav,m4a,mp4,webm,ogg,mpeg', 'max:102400'],
+            'audio' => ['required', 'file', 'mimes:mp3,wav,m4a,mp4,webm,ogg,mpeg', 'max:512000'],
         ], [
             'title.required' => 'Indicá un título para la reunión.',
             'audio.required' => 'Subí el audio de la reunión.',
             'audio.mimes' => 'El audio tiene que ser mp3, wav, m4a, mp4, webm u ogg.',
-            'audio.max' => 'El audio no puede pesar más de 100 MB.',
+            'audio.max' => 'El audio no puede pesar más de 500 MB.',
         ]);
 
         $audio = $request->file('audio');

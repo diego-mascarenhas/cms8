@@ -48,7 +48,7 @@
                 @error('audio')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
-                <div class="form-text">Grabá con el micrófono o subí un mp3, wav, m4a, mp4, webm u ogg. Hasta 100 MB. Una hora grabada desde aquí queda en unos 30 MB.</div>
+                <div class="form-text">Grabá con el micrófono o subí un mp3, wav, m4a, mp4, webm u ogg. Hasta 500 MB. Una hora grabada desde aquí queda en unos 30 MB.</div>
             </div>
         </div>
         <div class="pt-4">
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var activeStream = null;
     var timer = null;
     var startedAt = 0;
-    var maxBytes = 95 * 1024 * 1024;
+    var maxBytes = 475 * 1024 * 1024;
 
     function clock(totalSeconds) {
         var minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             event.preventDefault();
             event.stopPropagation();
-            status.textContent = 'El audio pesa ' + megabytes(file.size) + ' MB y el servidor acepta hasta 100 MB.';
+            status.textContent = 'El audio pesa ' + megabytes(file.size) + ' MB y el servidor acepta hasta 500 MB.';
         }, true);
     }
 
@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 };
                 if (blob.size > maxBytes) {
-                    status.textContent = 'La grabación pesa ' + megabytes(blob.size) + ' MB y el servidor acepta hasta 100 MB.';
+                    status.textContent = 'La grabación pesa ' + megabytes(blob.size) + ' MB y el servidor acepta hasta 500 MB.';
                 } else {
                     status.textContent = 'Grabación lista (' + clock(elapsed) + ', ' + megabytes(blob.size) + ' MB). Podés transcribirla.';
                 }

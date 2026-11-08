@@ -222,6 +222,7 @@ class MeetingTranscriptTest extends TestCase
             ->assertOk()
             ->assertSee('id="record-audio"', false)
             ->assertSee('audioBitsPerSecond: 64000', false)
+            ->assertSee('Hasta 500 MB', false)
             ->assertSee('select2', false)
             ->assertSee('Indicá un título para la reunión.', false)
             ->assertDontSee('ElevenLabs', false);
