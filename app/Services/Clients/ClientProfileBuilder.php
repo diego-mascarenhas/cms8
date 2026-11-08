@@ -2,7 +2,9 @@
 
 namespace App\Services\Clients;
 
+use App\Helpers\PhoneHelper;
 use App\Models\Contact;
+use App\Models\Country;
 use App\Models\Enterprise;
 use App\Models\EnterpriseBillingAddress;
 use App\Models\Invoice;
@@ -79,13 +81,15 @@ class ClientProfileBuilder
             'contacts' => $client->contacts->sortBy('name')->values()->map(function (Contact $contact): array
             {
                 $role = trim((string) ($contact->pivot->position ?? ''));
+                $phone = PhoneHelper::formatForDisplayReadable($contact->phone);
 
                 return [
                     'id' => $contact->id,
                     'name' => trim($contact->name.' '.($contact->surname ?? '')),
                     'role' => $role !== '' ? $role : null,
                     'email' => (string) ($contact->email ?? ''),
-                    'phone' => (string) ($contact->phone ?? ''),
+                    'phone' => $phone ?? '',
+                    'avatar_url' => $contact->avatarUrl(40),
                 ];
             })->all(),
             'subscriptions' => $subscriptions->map(fn (ServiceSync $sync): array => $this->subscriptionRow($sync))->all(),
@@ -138,7 +142,7 @@ class ClientProfileBuilder
 
     /**
      * @param  Collection<int, ServiceSync>  $subscriptions
-     * @return list<array{name: string, tax_id: string, tax_status: string, country: string, active: bool}>
+     * @return list<array{name: string, email: string, phone: string, tax_id: string, tax_status: string, country: string, active: bool}>
      */
     private function billingRows(Enterprise $client, Collection $subscriptions): array
     {
@@ -150,17 +154,92 @@ class ClientProfileBuilder
                 ->first(fn (string $code): bool => $code !== '') ?? '';
         }
 
-        return $client->enterpriseBillingAddresses
+        $rows = $client->enterpriseBillingAddresses
             ->sortByDesc('status')
             ->values()
             ->map(fn (EnterpriseBillingAddress $billing): array => [
                 'name' => (string) $billing->name,
+                'email' => '',
+                'phone' => '',
                 'tax_id' => (string) ($billing->identification_number ?? ''),
                 'tax_status' => (string) ($billing->taxStatusType?->label() ?? ''),
                 'country' => $billing->countryLabel($fallback),
                 'active' => (int) $billing->status === 1,
             ])
             ->all();
+
+        if ($rows !== [])
+        {
+            return $rows;
+        }
+
+        $configured = $this->stripeCustomerBilling($client);
+
+        return $configured === null ? [] : [$configured];
+    }
+
+    /**
+     * Stripe customer details already stored on the subscription sync.
+     *
+     * @return array{name: string, email: string, phone: string, tax_id: string, tax_status: string, country: string, active: bool}|null
+     */
+    private function stripeCustomerBilling(Enterprise $client): ?array
+    {
+        if (! filled($client->code))
+        {
+            return null;
+        }
+
+        $sync = $client->serviceSyncs()->orderByDesc('last_synced_at')->orderByDesc('id')->first();
+        if (! $sync)
+        {
+            return null;
+        }
+
+        $payload = is_array($sync->raw_payload) ? $sync->raw_payload : [];
+        $name = trim((string) $sync->customer_name);
+        $email = trim((string) $sync->customer_email);
+        $taxId = trim((string) $sync->customer_tax_id);
+        $phone = trim((string) (data_get($payload, 'customer.phone') ?: data_get($payload, 'latest_invoice.customer_phone')));
+        $countryCode = trim((string) ($sync->customer_country ?: data_get($payload, 'customer.address.country')));
+        $exempt = strtolower(trim((string) (data_get($payload, 'customer.tax_exempt') ?: data_get($payload, 'latest_invoice.customer_tax_exempt'))));
+
+        if ($name === '' && $email === '' && $taxId === '' && $phone === '' && $countryCode === '')
+        {
+            return null;
+        }
+
+        $taxStatus = match ($exempt)
+        {
+            'exempt' => __('tax_status.Exempt from tax'),
+            'reverse' => 'Inversión del sujeto pasivo',
+            default => '',
+        };
+
+        return [
+            'name' => $name,
+            'email' => $email,
+            'phone' => PhoneHelper::formatForDisplayReadable($phone) ?? '',
+            'tax_id' => $taxId,
+            'tax_status' => $taxStatus === 'tax_status.Exempt from tax' ? 'Exento de impuestos' : $taxStatus,
+            'country' => $this->countryName($countryCode),
+            'active' => true,
+        ];
+    }
+
+    private function countryName(string $code): string
+    {
+        $code = trim($code);
+        if ($code === '')
+        {
+            return '';
+        }
+
+        $match = Country::query()
+            ->whereIn('code', array_unique([$code, strtoupper($code), strtolower($code)]))
+            ->value('name');
+
+        return is_string($match) && $match !== '' ? $match : $code;
     }
 
     /**
@@ -197,6 +276,7 @@ class ClientProfileBuilder
         return [
             'date' => $date instanceof Carbon ? $date->format('d/m/Y') : '',
             'summary' => $row->consumptionSummary(),
+            'lines' => $row->consumptionLines(),
             'amount' => $row->total !== null
                 ? number_format((float) $row->total, 2, ',', '.').' '.strtoupper((string) $row->currency)
                 : '',

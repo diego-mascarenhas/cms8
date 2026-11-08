@@ -118,7 +118,7 @@ class WhatsAppInboxContactStarter
      * @param  list<int|string>  $categoryIds
      * @return array{contact: array{id: int, contact_id: int, name: string, phone: string, status_id: int|null}, thread_categories: array{contact_id: int|null, selected: list<array{id: int, name: string}>, available: list<array{id: int, name: string}>}}
      */
-    public function update(User $user, Team $team, Contact $contact, string $name, int $statusId, array $categoryIds, ?string $email = null, bool $updateEmail = false): array
+    public function update(User $user, Team $team, Contact $contact, string $name, int $statusId, array $categoryIds, ?string $email = null, bool $updateEmail = false, ?string $surname = null, bool $hasSurname = false): array
     {
         if (! Gate::forUser($user)->allows('update', $contact))
         {
@@ -130,10 +130,20 @@ class WhatsAppInboxContactStarter
             throw new HttpException(422, __('The selected status is invalid.'));
         }
 
-        [$firstName, $surname] = $this->matcher->splitFullName($name);
+        if ($hasSurname)
+        {
+            $storedName = trim($name);
+            $storedSurname = trim((string) $surname);
+            $storedSurname = $storedSurname !== '' ? $storedSurname : null;
+        } else
+        {
+            [$storedName, $storedSurname] = $this->matcher->splitFullName($name);
+            $storedName = $storedName !== '' ? $storedName : $name;
+        }
+
         $values = [
-            'name' => $firstName !== '' ? $firstName : $name,
-            'surname' => $surname,
+            'name' => $storedName,
+            'surname' => $storedSurname,
             'status_id' => $statusId,
         ];
         if ($updateEmail)

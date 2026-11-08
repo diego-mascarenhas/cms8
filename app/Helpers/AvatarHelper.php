@@ -26,12 +26,14 @@ class AvatarHelper
 
         // Calculate font size (approximately 40% of avatar size)
         $fontSize = round($size * 0.4);
+        // Capitals sit above the baseline. Place the baseline so the cap height is centered.
+        $baseline = round($size / 2 + $fontSize * 0.36, 2);
 
         // Generate SVG
         $svg = <<<SVG
 <svg xmlns="http://www.w3.org/2000/svg" width="{$size}" height="{$size}" viewBox="0 0 {$size} {$size}">
 	<rect width="{$size}" height="{$size}" fill="{$backgroundColor}" rx="4"/>
-	<text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="{$fontSize}" font-weight="600" fill="{$textColor}">{$initials}</text>
+	<text x="50%" y="{$baseline}" text-anchor="middle" font-family="Arial, sans-serif" font-size="{$fontSize}" font-weight="600" fill="{$textColor}">{$initials}</text>
 </svg>
 SVG;
 

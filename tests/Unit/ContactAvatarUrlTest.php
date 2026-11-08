@@ -21,6 +21,8 @@ class ContactAvatarUrlTest extends TestCase
         $this->assertIsString($svg);
         $this->assertStringContainsString('&lt;R', $svg);
         $this->assertStringNotContainsString('><', $svg);
+        $this->assertStringContainsString('y="25.76"', $svg);
+        $this->assertStringNotContainsString('dominant-baseline', $svg);
     }
 
     public function test_falls_back_to_generated_initials_without_whatsapp_photo(): void

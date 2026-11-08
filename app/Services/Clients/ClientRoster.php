@@ -18,12 +18,14 @@ use Illuminate\Support\Facades\Schema;
 class ClientRoster
 {
     /**
-     * @return array{data: list<array<string, mixed>>, current_page: int, last_page: int, total: int}
+     * @return array{data: list<array<string, mixed>>, current_page: int, last_page: int, total: int, summary: array{clients: int, active: int, with_consumption: int, with_renewal: int}}
      */
-    public function page(User $user, ?string $search, int $page, int $perPage): array
+    public function page(User $user, ?string $search, int $page, int $perPage, ?string $filter = null, ?string $status = null): array
     {
-        $query = Enterprise::query()->clients()->with('status:id,name,label_class');
+        $query = Enterprise::query()->clients()->with(['status:id,name,label_class']);
         $query = ClientPolicy::getQueryFilter($user)($query);
+        $this->applyFilter($query, $user, (string) $filter);
+        $this->applyStatus($query, (string) $status);
 
         $term = trim((string) $search);
         if ($term !== '')
@@ -86,19 +88,22 @@ class ClientRoster
                 ->get();
 
         $contactsByClient = [];
+        $positionsByClient = [];
         foreach ($contacts as $contact)
         {
             foreach ($contact->enterprises as $enterprise)
             {
-                $contactsByClient[(int) $enterprise->id][] = $contact;
+                $enterpriseId = (int) $enterprise->id;
+                $contactsByClient[$enterpriseId][] = $contact;
+                $positionsByClient[$enterpriseId][(int) $contact->id] = trim((string) ($enterprise->pivot->position ?? ''));
             }
         }
 
         $logins = $this->lastLogins($contacts->pluck('user_id')->filter()->map(fn ($id): int => (int) $id)->unique()->all());
 
-        $rows = $clients->map(function (Enterprise $client) use ($subscriptions, $usages, $balances, $contactsByClient, $logins, $serviceCounts): array
+        $rows = $clients->map(function (Enterprise $client) use ($subscriptions, $usages, $balances, $contactsByClient, $positionsByClient, $logins, $serviceCounts): array
         {
-            return $this->row($client, $subscriptions, $usages, $balances, $contactsByClient, $logins, $serviceCounts);
+            return $this->row($client, $subscriptions, $usages, $balances, $contactsByClient, $positionsByClient, $logins, $serviceCounts);
         })->values()->all();
 
         return [
@@ -106,6 +111,7 @@ class ClientRoster
             'current_page' => $paginator->currentPage(),
             'last_page' => $paginator->lastPage(),
             'total' => $paginator->total(),
+            'summary' => $this->summary($user),
         ];
     }
 
@@ -114,11 +120,12 @@ class ClientRoster
      * @param  \Illuminate\Support\Collection<string, \Illuminate\Support\Collection<int, InvoiceSync>>  $usages
      * @param  \Illuminate\Support\Collection<int, Invoice>  $balances
      * @param  array<int, list<Contact>>  $contactsByClient
+     * @param  array<int, array<int, string>>  $positionsByClient
      * @param  array<int, Carbon>  $logins
      * @param  \Illuminate\Support\Collection<int|string, int|string>  $serviceCounts
      * @return array<string, mixed>
      */
-    private function row(Enterprise $client, $subscriptions, $usages, $balances, array $contactsByClient, array $logins, $serviceCounts): array
+    private function row(Enterprise $client, $subscriptions, $usages, $balances, array $contactsByClient, array $positionsByClient, array $logins, $serviceCounts): array
     {
         $people = collect($contactsByClient[(int) $client->id] ?? [])
             ->sortBy(fn (Contact $contact): string => mb_strtolower(trim($contact->name.' '.(string) ($contact->surname ?? ''))));
@@ -151,8 +158,133 @@ class ClientRoster
             'balance' => $balance ? $this->money((float) $balance->balance, '') : null,
             'last_login' => $lastLogin?->toIso8601String(),
             'avatar_url' => $primary ? $primary->avatarUrl(40) : AvatarHelper::generate((string) $client->name, 40),
+            'administrator' => $this->companyAdministrator($people, $positionsByClient[(int) $client->id] ?? []),
             'contact' => $primary ? $this->contact($primary) : null,
         ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Contact>  $people
+     * @param  array<int, string>  $positions
+     * @return array{id: int, name: string}|null
+     */
+    private function companyAdministrator($people, array $positions): ?array
+    {
+        $admin = $people->first(function (Contact $contact) use ($positions): bool
+        {
+            return strcasecmp($positions[(int) $contact->id] ?? '', 'Administrador') === 0;
+        });
+
+        if (! $admin)
+        {
+            return null;
+        }
+
+        return [
+            'id' => (int) $admin->id,
+            'name' => trim($admin->name.' '.(string) ($admin->surname ?? '')),
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<Enterprise>  $query
+     */
+    private function applyStatus($query, string $status): void
+    {
+        if ($status === '1' || $status === '2')
+        {
+            $query->where('status_id', (int) $status);
+        }
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<Enterprise>  $query
+     */
+    private function applyFilter($query, User $user, string $filter): void
+    {
+        if ($filter === 'active')
+        {
+            $query->activeClients();
+
+            return;
+        }
+
+        if (! in_array($filter, ['consumption', 'renewal'], true))
+        {
+            return;
+        }
+
+        $teamId = (int) $user->currentTeam->id;
+        $codes = $filter === 'consumption'
+            ? $this->customerCodes(InvoiceSync::query()->where('billing_reason', 'manual'), $teamId)
+            : $this->customerCodes(
+                ServiceSync::query()->whereNotIn('status', ['canceled', 'incomplete_expired'])->whereNotNull('current_period_end'),
+                $teamId,
+            );
+
+        $query->whereIn('code', $codes);
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<InvoiceSync|ServiceSync>  $query
+     * @return list<string>
+     */
+    private function customerCodes($query, int $teamId): array
+    {
+        return $query
+            ->where('team_id', $teamId)
+            ->pluck('customer_id')
+            ->map(fn ($code): string => trim((string) $code))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array{clients: int, active: int, with_consumption: int, with_renewal: int}
+     */
+    private function summary(User $user): array
+    {
+        $clients = Enterprise::query()->clients();
+        $clients = ClientPolicy::getQueryFilter($user)($clients);
+        $teamId = (int) $user->currentTeam->id;
+        $codes = (clone $clients)
+            ->pluck('code')
+            ->map(fn ($code): string => trim((string) $code))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return [
+            'clients' => (int) (clone $clients)->count(),
+            'active' => (int) (clone $clients)->activeClients()->count(),
+            'with_consumption' => $this->distinctCustomers(InvoiceSync::query()->where('billing_reason', 'manual'), $teamId, $codes),
+            'with_renewal' => $this->distinctCustomers(
+                ServiceSync::query()->whereNotIn('status', ['canceled', 'incomplete_expired'])->whereNotNull('current_period_end'),
+                $teamId,
+                $codes,
+            ),
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<InvoiceSync|ServiceSync>  $query
+     * @param  list<string>  $codes
+     */
+    private function distinctCustomers($query, int $teamId, array $codes): int
+    {
+        if ($codes === [])
+        {
+            return 0;
+        }
+
+        return (int) $query
+            ->where('team_id', $teamId)
+            ->whereIn('customer_id', $codes)
+            ->selectRaw('COUNT(DISTINCT customer_id) as aggregate')
+            ->value('aggregate');
     }
 
     /**
@@ -248,6 +380,7 @@ class ClientRoster
         return [
             'id' => (int) $contact->id,
             'name' => (string) $contact->name,
+            'surname' => trim((string) ($contact->surname ?? '')) ?: null,
             'display_name' => $name !== '' ? $name : (string) $contact->name,
             'email' => (string) ($contact->email ?? ''),
             'phone' => (string) ($contact->phone ?? ''),

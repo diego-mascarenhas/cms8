@@ -878,6 +878,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('enterprises/roster', [\App\Http\Controllers\Api\EnterpriseController::class, 'roster']);
     Route::get('enterprises/{id}/subscriptions', [ApiSubscriptionController::class, 'forEnterprise'])->whereNumber('id');
     Route::get('enterprises/{id}/profile', [\App\Http\Controllers\Api\EnterpriseController::class, 'profile'])->whereNumber('id');
+    Route::patch('enterprises/{id}/contacts/{contactId}', [\App\Http\Controllers\Api\EnterpriseController::class, 'updateContactRole'])->whereNumber(['id', 'contactId']);
     Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
     Route::get('subscriptions', [ApiSubscriptionController::class, 'index']);
     Route::get('subscriptions/{id}', [ApiSubscriptionController::class, 'show'])->whereNumber('id');
@@ -992,6 +993,7 @@ Route::middleware('auth.api')->group(function ()
         ->where('sessionKey', '[A-Za-z0-9._-]{8,191}')
         ->name('api.chat.site-assistant-messages.identity');
     Route::get('chat/whatsapp-list', [ChatController::class, 'getChatList'])->name('api.chat.whatsapp-list');
+    Route::get('chat/whatsapp-unread', [ChatController::class, 'whatsAppUnread'])->name('api.chat.whatsapp-unread');
     Route::get('chat/whatsapp-messages/{phone}', [ChatController::class, 'getMessages'])
         ->where('phone', '[0-9]+')
         ->name('api.chat.whatsapp-messages');

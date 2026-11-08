@@ -13,15 +13,24 @@ class UpdateWhatsAppInboxContactRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        if (! $this->exists('email'))
+        $merged = [];
+
+        if ($this->exists('email'))
         {
-            return;
+            $email = trim((string) $this->input('email', ''));
+            $merged['email'] = $email !== '' ? $email : null;
         }
 
-        $email = trim((string) $this->input('email', ''));
-        $this->merge([
-            'email' => $email !== '' ? $email : null,
-        ]);
+        if ($this->exists('surname'))
+        {
+            $surname = trim((string) $this->input('surname', ''));
+            $merged['surname'] = $surname !== '' ? $surname : null;
+        }
+
+        if ($merged !== [])
+        {
+            $this->merge($merged);
+        }
     }
 
     /**
@@ -33,6 +42,7 @@ class UpdateWhatsAppInboxContactRequest extends FormRequest
             'phone' => ['required_without:contact_id', 'nullable', 'string'],
             'contact_id' => ['required_without:phone', 'nullable', 'integer', 'min:1'],
             'name' => ['required', 'string', 'max:255'],
+            'surname' => ['sometimes', 'nullable', 'string', 'max:255'],
             'email' => ['sometimes', 'nullable', 'email:rfc', 'max:255'],
             'status_id' => ['required', 'integer', 'exists:contact_statuses,id'],
             'category_ids' => ['sometimes', 'array'],

@@ -57,6 +57,30 @@ class ApiChatWhatsAppReadTest extends TestCase
             ->assertJsonPath('contacts.0.unread_count', 1);
     }
 
+    public function test_unread_count_follows_inbound_messages_until_they_are_read(): void
+    {
+        [$token] = $this->inbox();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-unread')
+            ->assertOk()
+            ->assertJsonPath('unread', true)
+            ->assertJsonPath('unread_count', 1);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-read', [
+                'phone' => self::CLIENT_PHONE,
+                'unread' => false,
+            ])
+            ->assertOk();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-unread')
+            ->assertOk()
+            ->assertJsonPath('unread', false)
+            ->assertJsonPath('unread_count', 0);
+    }
+
     public function test_mark_read_clears_inbound_received_messages(): void
     {
         [$token] = $this->inbox();

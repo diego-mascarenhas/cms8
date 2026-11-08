@@ -2,11 +2,14 @@
 
 namespace Tests\Feature\Api;
 
+use App\Helpers\PhoneHelper;
+use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Enterprise;
 use App\Models\EnterpriseBillingAddress;
 use App\Models\Invoice;
 use App\Models\InvoiceSync;
+use App\Models\ServiceSync;
 use App\Models\StripeSubscription;
 use App\Models\User;
 use Database\Seeders\CurrencySeeder;
@@ -114,5 +117,51 @@ class ClientProfileApiTest extends TestCase
             ->assertJsonPath('data.subscriptions.0.name', 'Hosting anual')
             ->assertJsonPath('data.invoices.0.number', '0005-1')
             ->assertJsonPath('data.invoices.0.url', 'https://invoice.stripe.com/i/acct_profile/test');
+    }
+
+    public function test_profile_uses_stripe_customer_when_the_company_has_no_billing_address(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        Country::query()->updateOrCreate(['id' => 32], ['name' => 'Argentina', 'code' => 'AR']);
+
+        $client = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Alicia Luecero',
+            'code' => 'cus_config',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        ServiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'stripe_id' => 'sub_config',
+            'customer_id' => 'cus_config',
+            'customer_name' => 'Alicia B. Lucero',
+            'customer_email' => 'constelaciones.alicialucero@gmail.com',
+            'customer_country' => 'AR',
+            'status' => 'active',
+            'raw_payload' => [
+                'customer' => [
+                    'phone' => '+5491156562935',
+                    'tax_exempt' => 'exempt',
+                ],
+            ],
+        ]);
+
+        $token = $user->createToken('client-profile')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/'.$client->id.'/profile')
+            ->assertOk()
+            ->assertJsonPath('data.billing.0.name', 'Alicia B. Lucero')
+            ->assertJsonPath('data.billing.0.email', 'constelaciones.alicialucero@gmail.com')
+            ->assertJsonPath('data.billing.0.phone', PhoneHelper::formatForDisplayReadable('+5491156562935'))
+            ->assertJsonPath('data.billing.0.country', 'Argentina')
+            ->assertJsonPath('data.billing.0.tax_status', __('tax_status.Exempt from tax') === 'tax_status.Exempt from tax' ? 'Exento de impuestos' : __('tax_status.Exempt from tax'))
+            ->assertJsonPath('data.billing.0.active', true);
     }
 }

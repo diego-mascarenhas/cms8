@@ -50,6 +50,7 @@ class ClientRosterApiTest extends TestCase
             'type_id' => 1,
             'status_id' => 1,
             'country' => 'ES',
+            'responsible_id' => $user->id,
         ]);
         Enterprise::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -73,7 +74,7 @@ class ClientRosterApiTest extends TestCase
             'status_id' => $leadId,
             'user_id' => $member->id,
         ]);
-        $contact->enterprises()->attach($client->id);
+        $contact->enterprises()->attach($client->id, ['position' => 'Administrador']);
 
         Service::withoutGlobalScopes()->create([
             'enterprise_id' => $client->id,
@@ -154,8 +155,49 @@ class ClientRosterApiTest extends TestCase
             ->assertJsonPath('data.data.0.consumption', 'Tokens')
             ->assertJsonPath('data.data.0.consumption_amount', '3,50 EUR')
             ->assertJsonPath('data.data.0.balance', '10,00')
+            ->assertJsonPath('data.data.0.administrator.name', 'Ana')
+            ->assertJsonPath('data.summary.clients', 1)
+            ->assertJsonPath('data.summary.active', 0)
+            ->assertJsonPath('data.summary.with_consumption', 1)
+            ->assertJsonPath('data.summary.with_renewal', 1)
             ->assertJsonPath('data.data.0.contact.id', $contact->id)
             ->assertJsonPath('data.data.0.contact.email', 'ana@norte.test')
             ->assertJsonPath('data.data.0.last_login', '2026-11-01T10:00:00+00:00');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/roster?status=2')
+            ->assertOk()
+            ->assertJsonPath('data.total', 0)
+            ->assertJsonPath('data.summary.clients', 1);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/roster?status=1')
+            ->assertOk()
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.data.0.name', 'Norte Studio');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/roster?filter=active')
+            ->assertOk()
+            ->assertJsonPath('data.total', 0)
+            ->assertJsonPath('data.summary.clients', 1);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/roster?filter=consumption')
+            ->assertOk()
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.data.0.name', 'Norte Studio')
+            ->assertJsonPath('data.summary.with_consumption', 1);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/roster?filter=renewal&search=Norte')
+            ->assertOk()
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.data.0.name', 'Norte Studio');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/roster?filter=renewal&search=Proveedor')
+            ->assertOk()
+            ->assertJsonPath('data.total', 0);
     }
 }
