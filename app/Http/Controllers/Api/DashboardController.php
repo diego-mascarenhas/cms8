@@ -848,6 +848,7 @@ class DashboardController extends Controller
                 'total' => 0,
             ],
             'statuses' => [],
+            'weeks' => [],
             'due' => [],
             'upcoming' => [],
         ];
@@ -872,6 +873,17 @@ class DashboardController extends Controller
         $due = [];
         $upcoming = [];
         $statusCounts = [];
+        $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
+        $weeks = [];
+
+        for ($index = 0; $index < 8; $index++)
+        {
+            $from = $weekStart->copy()->addWeeks($index);
+            $weeks[] = [
+                'label' => $from->locale(app()->getLocale())->isoFormat('D MMM'),
+                'count' => 0,
+            ];
+        }
 
         foreach ($query->orderBy('date_next')->orderBy('id')->get() as $entry)
         {
@@ -883,6 +895,18 @@ class DashboardController extends Controller
             $item = $this->formatFollowUp($entry, $today);
             $statusName = $item['status'] ?: 'Sin estado';
             $statusCounts[$statusName] = ($statusCounts[$statusName] ?? 0) + 1;
+            $bucketDate = $entry->date_next?->copy()->startOfDay() ?? $today;
+            $dayOffset = (int) $weekStart->diffInDays($bucketDate, false);
+
+            if ($dayOffset >= 0)
+            {
+                $weekIndex = intdiv($dayOffset, 7);
+
+                if ($weekIndex < 8)
+                {
+                    $weeks[$weekIndex]['count']++;
+                }
+            }
 
             if ($item['when'] === 'upcoming')
             {
@@ -931,6 +955,7 @@ class DashboardController extends Controller
                 'total' => count($due) + count($upcoming),
             ],
             'statuses' => $statuses,
+            'weeks' => $weeks,
             'due' => array_slice($due, 0, 12),
             'upcoming' => array_slice($upcoming, 0, 8),
         ];

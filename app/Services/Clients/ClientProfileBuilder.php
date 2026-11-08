@@ -76,12 +76,18 @@ class ClientProfileBuilder
             'archived' => $client->trashed(),
             'headline' => ClientHeadlineMetrics::cards($invoices, $subscriptions, $paymentCard),
             'billing' => $this->billingRows($client, $subscriptions),
-            'contacts' => $client->contacts->sortBy('name')->values()->map(fn (Contact $contact): array => [
-                'id' => $contact->id,
-                'name' => trim($contact->name.' '.($contact->surname ?? '')),
-                'email' => (string) ($contact->email ?? ''),
-                'phone' => (string) ($contact->phone ?? ''),
-            ])->all(),
+            'contacts' => $client->contacts->sortBy('name')->values()->map(function (Contact $contact): array
+            {
+                $role = trim((string) ($contact->pivot->position ?? ''));
+
+                return [
+                    'id' => $contact->id,
+                    'name' => trim($contact->name.' '.($contact->surname ?? '')),
+                    'role' => $role !== '' ? $role : null,
+                    'email' => (string) ($contact->email ?? ''),
+                    'phone' => (string) ($contact->phone ?? ''),
+                ];
+            })->all(),
             'subscriptions' => $subscriptions->map(fn (ServiceSync $sync): array => $this->subscriptionRow($sync))->all(),
             'consumptions' => $consumptions->map(fn (InvoiceSync $row): array => $this->consumptionRow($row))->all(),
             'services' => $services->map(fn (Service $service): array => $this->serviceRow($service))->all(),

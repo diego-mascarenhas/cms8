@@ -11,7 +11,10 @@ use App\Models\PaymentSync;
 use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\User;
+use Database\Seeders\ContactStatusSeeder;
+use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\LanguageSeeder;
 use Database\Seeders\List60StatusesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -168,6 +171,9 @@ class DashboardWidgetsApiTest extends TestCase
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
+            ContactStatusSeeder::class,
             EnterpriseTypeSeeder::class,
             List60StatusesSeeder::class,
         ]);
@@ -263,6 +269,9 @@ class DashboardWidgetsApiTest extends TestCase
             ->assertJsonPath('follow_up.statuses.0.name', '1 Contacto')
             ->assertJsonPath('follow_up.statuses.0.count', 2)
             ->assertJsonPath('follow_up.statuses.1.name', 'Sin respuesta')
-            ->assertJsonPath('follow_up.statuses.1.count', 1);
+            ->assertJsonPath('follow_up.statuses.1.count', 1)
+            ->assertJsonCount(8, 'follow_up.weeks')
+            ->assertJsonPath('follow_up.weeks.0.count', 2)
+            ->assertJsonPath('follow_up.weeks.1.count', 1);
     }
 }
