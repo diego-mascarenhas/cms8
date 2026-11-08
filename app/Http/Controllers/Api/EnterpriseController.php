@@ -218,6 +218,58 @@ class EnterpriseController extends Controller
     }
 
     /**
+     * Remove the contact from this company. The contact and its login stay.
+     */
+    public function detachContact(Request $request, string $id, string $contactId): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user?->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
+
+        $enterprise = Enterprise::withTrashed()->whereKey($id)->first();
+
+        if (! $enterprise || $enterprise->team_id !== $user->currentTeam->id || ! $user->can('update', $enterprise))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Empresa no encontrada',
+            ], 404);
+        }
+
+        $contact = Contact::query()->whereKey($contactId)->first();
+
+        if (! $contact || ! $contact->enterprises()->where('enterprises.id', $enterprise->id)->exists())
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Contacto no encontrado',
+            ], 404);
+        }
+
+        $contact->enterprises()->detach($enterprise->id);
+        $contact->unsetRelation('enterprises');
+
+        if ((int) $contact->current_enterprise_id === (int) $enterprise->id)
+        {
+            $nextEnterprise = $contact->enterprises()->orderBy('enterprises.id')->first();
+            $contact->update([
+                'current_enterprise_id' => $nextEnterprise?->id,
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Contacto desvinculado correctamente.',
+        ]);
+    }
+
+    /**
      * Display the specified enterprise.
      */
     public function show(Request $request, string $id)

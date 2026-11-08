@@ -879,6 +879,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('enterprises/{id}/subscriptions', [ApiSubscriptionController::class, 'forEnterprise'])->whereNumber('id');
     Route::get('enterprises/{id}/profile', [\App\Http\Controllers\Api\EnterpriseController::class, 'profile'])->whereNumber('id');
     Route::patch('enterprises/{id}/contacts/{contactId}', [\App\Http\Controllers\Api\EnterpriseController::class, 'updateContactRole'])->whereNumber(['id', 'contactId']);
+    Route::delete('enterprises/{id}/contacts/{contactId}', [\App\Http\Controllers\Api\EnterpriseController::class, 'detachContact'])->whereNumber(['id', 'contactId']);
     Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
     Route::get('subscriptions', [ApiSubscriptionController::class, 'index']);
     Route::get('subscriptions/{id}', [ApiSubscriptionController::class, 'show'])->whereNumber('id');

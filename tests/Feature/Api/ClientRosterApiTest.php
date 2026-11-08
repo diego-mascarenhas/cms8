@@ -164,6 +164,25 @@ class ClientRosterApiTest extends TestCase
             ->assertJsonPath('data.data.0.contact.email', 'ana@norte.test')
             ->assertJsonPath('data.data.0.last_login', '2026-11-01T10:00:00+00:00');
 
+        $other = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Crolina',
+            'surname' => 'Devoto',
+            'email' => 'crolina@norte.test',
+            'language' => 'es',
+            'country' => 32,
+            'creator_id' => $user->id,
+            'status_id' => $leadId,
+        ]);
+        $other->enterprises()->attach($client->id, ['position' => 'Usuario']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/roster')
+            ->assertOk()
+            ->assertJsonPath('data.data.0.administrator.name', 'Ana')
+            ->assertJsonPath('data.data.0.contact.id', $contact->id)
+            ->assertJsonPath('data.data.0.contact.email', 'ana@norte.test');
+
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/enterprises/roster?status=2')
             ->assertOk()
@@ -199,5 +218,93 @@ class ClientRosterApiTest extends TestCase
             ->getJson('/api/enterprises/roster?filter=renewal&search=Proveedor')
             ->assertOk()
             ->assertJsonPath('data.total', 0);
+    }
+
+    public function test_administrator_stays_on_their_own_client_when_they_are_also_a_team_client(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            ContactStatusSeeder::class,
+            LanguageSeeder::class,
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        Country::query()->updateOrCreate(['id' => 32], ['name' => 'Argentina', 'code' => 'AR']);
+
+        $north = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Norte Studio',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+        $south = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Sur Studio',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $otherCompanyAdmin = User::factory()->withPersonalTeam()->create();
+        $otherCompanyAdmin->assignRole('admin');
+        $team->users()->attach($otherCompanyAdmin, ['role' => 'client']);
+
+        $leadId = \App\Models\ContactStatus::query()->where('name', 'Lead')->value('id');
+        $gonzalo = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Gonzalo',
+            'surname' => 'Frery',
+            'email' => 'gonzalo@norte.test',
+            'language' => 'es',
+            'country' => 32,
+            'creator_id' => $user->id,
+            'status_id' => $leadId,
+            'user_id' => $otherCompanyAdmin->id,
+            'current_enterprise_id' => $north->id,
+        ]);
+        $carolina = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Crolina',
+            'surname' => 'Devoto',
+            'email' => 'crolina@norte.test',
+            'language' => 'es',
+            'country' => 32,
+            'creator_id' => $user->id,
+            'status_id' => $leadId,
+        ]);
+        $emilio = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Emilio',
+            'surname' => 'Arcioni',
+            'email' => 'emilio@sur.test',
+            'language' => 'es',
+            'country' => 32,
+            'creator_id' => $user->id,
+            'status_id' => $leadId,
+            'current_enterprise_id' => $south->id,
+        ]);
+        $gonzalo->enterprises()->attach($north->id, ['position' => 'Administrador']);
+        $gonzalo->enterprises()->attach($south->id, ['position' => 'Usuario']);
+        $carolina->enterprises()->attach($north->id, ['position' => 'Usuario']);
+        $emilio->enterprises()->attach($south->id, ['position' => 'Administrador']);
+
+        $token = $user->createToken('roster-admin')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/roster?search=Norte')
+            ->assertOk()
+            ->assertJsonPath('data.data.0.administrator.name', 'Gonzalo Frery')
+            ->assertJsonPath('data.data.0.contact.id', $gonzalo->id)
+            ->assertJsonPath('data.data.0.contact.user.staff', false);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/roster?search=Sur')
+            ->assertOk()
+            ->assertJsonPath('data.data.0.administrator.name', 'Emilio Arcioni')
+            ->assertJsonPath('data.data.0.contact.id', $emilio->id);
     }
 }
