@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Enterprise;
 use App\Services\Clients\ClientProfileBuilder;
+use App\Services\Clients\ClientRoster;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class EnterpriseController extends Controller
@@ -92,6 +94,35 @@ class EnterpriseController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function roster(Request $request, ClientRoster $roster): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
+
+        if (! $user->can('viewAny', Enterprise::class))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'No tienes permisos para ver clientes',
+            ], 403);
+        }
+
+        $page = max(1, (int) $request->get('page', 1));
+        $perPage = min(50, max(1, (int) $request->get('per_page', 20)));
+
+        return response()->json([
+            'success' => true,
+            'data' => $roster->page($user, $request->get('search'), $page, $perPage),
+        ]);
     }
 
     /**

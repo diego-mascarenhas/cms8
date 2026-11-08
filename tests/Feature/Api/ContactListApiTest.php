@@ -38,6 +38,10 @@ class ContactListApiTest extends TestCase
             ['id' => 32],
             ['name' => 'Argentina', 'code' => 'AR'],
         );
+        Country::query()->updateOrCreate(
+            ['id' => 724],
+            ['name' => 'España', 'code' => 'ES'],
+        );
 
         $module = Module::query()->firstOrCreate(
             ['key' => 'contacts'],
@@ -118,6 +122,7 @@ class ContactListApiTest extends TestCase
             ->assertJsonFragment(['name' => '🛒 Comprar'])
             ->assertJsonFragment(['name' => 'Lead web'])
             ->assertJsonFragment(['name' => 'Argentina'])
+            ->assertJsonMissing(['name' => 'España'])
             ->assertJsonFragment(['name' => 'Lead'])
             ->assertJsonFragment(['name' => 'Finalizado']);
     }

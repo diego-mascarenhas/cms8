@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\ImportMailerAudienceCsvRequest;
+use App\Http\Requests\Api\StoreApiContactRequest;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactIntent;
@@ -11,10 +13,148 @@ use App\Models\ContactStatus;
 use App\Models\Country;
 use App\Models\Module;
 use App\Services\InboxContactAccessService;
+use App\Services\MailerAudienceCsvImportService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ContactController extends Controller
 {
+    public function store(StoreApiContactRequest $request): JsonResponse
+    {
+        $user = $request->user();
+        $team = $user?->currentTeam;
+
+        if (! $user || ! $team)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Usuario no tiene equipo asignado',
+            ], 400);
+        }
+
+        $validated = $request->validated();
+        $digits = preg_replace('/[^\d]/', '', (string) ($validated['phone'] ?? ''));
+        $phone = is_string($digits) && $digits !== '' ? (int) $digits : null;
+        $email = trim((string) ($validated['email'] ?? ''));
+        $leadId = (int) (ContactStatus::query()->where('name', 'Lead')->value('id') ?? 1);
+
+        $contact = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => trim((string) $validated['name']),
+            'surname' => trim((string) ($validated['surname'] ?? '')) ?: null,
+            'email' => $email !== '' ? Str::lower($email) : null,
+            'phone' => $phone,
+            'language' => $this->defaultLanguageCode(),
+            'country' => $this->defaultCountryId(),
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => $leadId,
+        ]);
+
+        $categoryId = isset($validated['category_id']) ? (int) $validated['category_id'] : 0;
+        if ($categoryId > 0)
+        {
+            $validIds = Category::onlyExistingIds([$categoryId]);
+            if ($validIds !== [])
+            {
+                $contact->categories()->sync($validIds);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $contact->id,
+                'name' => $contact->name,
+                'email' => $contact->email,
+            ],
+        ], 201);
+    }
+
+    public function importSchema(Request $request, MailerAudienceCsvImportService $importer): JsonResponse
+    {
+        $user = $request->user();
+        $team = $user?->currentTeam;
+
+        if (! $user || ! $team)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Usuario no tiene equipo asignado',
+            ], 400);
+        }
+
+        $this->authorize('create', Contact::class);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'required_columns' => MailerAudienceCsvImportService::REQUIRED_COLUMNS,
+                'optional_columns' => MailerAudienceCsvImportService::OPTIONAL_COLUMNS,
+                'sample_csv' => $importer->templateContents(),
+                ...$importer->importOptions((int) $team->id),
+            ],
+        ]);
+    }
+
+    public function import(ImportMailerAudienceCsvRequest $request, MailerAudienceCsvImportService $importer): JsonResponse
+    {
+        $user = $request->user();
+        $team = $user?->currentTeam;
+
+        if (! $user || ! $team)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Usuario no tiene equipo asignado',
+            ], 400);
+        }
+
+        $this->authorize('create', Contact::class);
+
+        $path = $request->file('file')->getRealPath();
+        $countryId = (int) $request->input('country_id', MailerAudienceCsvImportService::DEFAULT_COUNTRY_ID);
+        $categoryIds = $this->importCategoryIds($request);
+
+        if ($request->boolean('preview'))
+        {
+            return response()->json([
+                'success' => true,
+                'data' => $importer->preview($path, $team, $this->importChoices($request), $countryId),
+            ]);
+        }
+
+        $result = $importer->import(
+            $path,
+            $team,
+            (int) $user->id,
+            $this->importChoices($request),
+            $countryId,
+            $categoryIds,
+        );
+
+        if ($result['duplicates'] !== [])
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Elegí qué teléfono conservar en los emails repetidos.',
+                'data' => $result,
+            ], 422);
+        }
+
+        $imported = $result['created'] + $result['updated'];
+
+        return response()->json([
+            'success' => $imported > 0,
+            'message' => $imported > 0
+                ? $result['created'].' creados, '.$result['updated'].' actualizados, '.$result['skipped'].' salteados.'
+                : 'No se importó ningún contacto.',
+            'data' => $result,
+        ], $imported > 0 ? 200 : 422);
+    }
+
     /**
      * Display a listing of the user's team contacts.
      */
@@ -233,6 +373,7 @@ class ContactController extends Controller
                 'intents' => ContactIntent::getOptions(),
                 'categories' => Category::getOptions($user->currentTeam->id, null, $moduleId)->values(),
                 'countries' => Country::query()
+                    ->whereIn('id', Contact::query()->whereNotNull('country')->select('country'))
                     ->orderBy('name')
                     ->get(['id', 'name', 'code'])
                     ->map(fn (Country $country): array => [
@@ -403,5 +544,70 @@ class ContactController extends Controller
         }
 
         return $path;
+    }
+
+    private function defaultCountryId(): int
+    {
+        return (int) (DB::table('countries')->where('id', 32)->value('id')
+            ?? DB::table('countries')->value('id')
+            ?? 32);
+    }
+
+    private function defaultLanguageCode(): string
+    {
+        return (string) (DB::table('languages')->where('code', 'es')->value('code')
+            ?? DB::table('languages')->value('code')
+            ?? 'es');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function importChoices(Request $request): array
+    {
+        $raw = $request->input('choices');
+        if (! is_string($raw) || trim($raw) === '')
+        {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded))
+        {
+            return [];
+        }
+
+        $choices = [];
+        foreach ($decoded as $email => $phone)
+        {
+            if (! is_string($email) || ! is_string($phone))
+            {
+                continue;
+            }
+
+            $choices[Str::lower(trim($email))] = trim($phone);
+        }
+
+        return $choices;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function importCategoryIds(Request $request): array
+    {
+        $raw = $request->input('category_ids');
+        if (! is_string($raw) || trim($raw) === '')
+        {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded))
+        {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('intval', $decoded)));
     }
 }

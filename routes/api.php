@@ -577,6 +577,8 @@ Route::middleware('auth.api')->group(function ()
 
     // Menu for mobile app (filtered by user permissions and team modules)
     Route::get('menu', [MenuController::class, 'index']);
+    Route::get('app/menu', [\App\Http\Controllers\Api\AxisMenuPreferenceController::class, 'show']);
+    Route::put('app/menu', [\App\Http\Controllers\Api\AxisMenuPreferenceController::class, 'update']);
 
     Route::get('billing', [ApiBillingController::class, 'show'])->name('api.billing.show');
     Route::get('billing/history', [ApiBillingController::class, 'history'])->name('api.billing.history');
@@ -860,8 +862,11 @@ Route::middleware('auth.api')->group(function ()
 
     // Contacts - for user-based authentication (Sanctum tokens)
     Route::get('contacts', [ContactController::class, 'index']);
+    Route::post('contacts', [ContactController::class, 'store']);
     Route::get('contacts/stats', [ContactController::class, 'stats']);
     Route::get('contacts/filters', [ContactController::class, 'filters']);
+    Route::get('contacts/import', [ContactController::class, 'importSchema']);
+    Route::post('contacts/import', [ContactController::class, 'import']);
     Route::get('contacts/{id}', [ContactController::class, 'show']);
 
     // Clients (enterprises) — Assistant plan module "clients"
@@ -870,6 +875,7 @@ Route::middleware('auth.api')->group(function ()
 
     // Enterprises — Mentor plan module "enterprises"
     Route::get('enterprises', [\App\Http\Controllers\Api\EnterpriseController::class, 'index']);
+    Route::get('enterprises/roster', [\App\Http\Controllers\Api\EnterpriseController::class, 'roster']);
     Route::get('enterprises/{id}/subscriptions', [ApiSubscriptionController::class, 'forEnterprise'])->whereNumber('id');
     Route::get('enterprises/{id}/profile', [\App\Http\Controllers\Api\EnterpriseController::class, 'profile'])->whereNumber('id');
     Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
