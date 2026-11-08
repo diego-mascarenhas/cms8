@@ -54,6 +54,48 @@ class ContactNavbarSearchNormalizationTest extends TestCase
         $team->enableModule('contacts');
     }
 
+    public function test_navbar_contact_search_points_at_the_company(): void
+    {
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+        ]);
+
+        $team = $this->user->currentTeam;
+        $enterpriseId = DB::table('enterprises')->insertGetId([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Grupo Gremond',
+            'code' => 'GRE',
+            'creator_id' => $this->user->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Beatriz',
+            'surname' => 'Teran',
+            'email' => 'beatrizt@grupogremond.com',
+            'current_enterprise_id' => $enterpriseId,
+            'responsible_id' => $this->user->id,
+            'creator_id' => $this->user->id,
+        ]);
+
+        $this->actingAs($this->user)
+            ->getJson(route('contact.search', ['q' => 'beatriz']))
+            ->assertOk()
+            ->assertJsonPath('members.0.name', 'Beatriz Teran')
+            ->assertJsonPath('members.0.enterprise_id', $enterpriseId);
+
+        $this->actingAs($this->user)
+            ->getJson(route('contact.search', ['q' => 'gremond']))
+            ->assertOk()
+            ->assertJsonPath('enterprises.0.name', 'Grupo Gremond')
+            ->assertJsonPath('enterprises.0.enterprise_id', $enterpriseId);
+    }
+
     public function test_navbar_contact_search_is_case_insensitive(): void
     {
         $team = $this->user->currentTeam;

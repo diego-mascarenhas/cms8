@@ -3,7 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateEnterpriseContactRoleRequest;
+use App\Models\Contact;
+use App\Models\ContactEnterprise;
 use App\Models\Enterprise;
+use App\Services\Clients\ClientProfileBuilder;
+use App\Services\Clients\ClientRoster;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class EnterpriseController extends Controller
@@ -91,6 +97,124 @@ class EnterpriseController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function roster(Request $request, ClientRoster $roster): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
+
+        if (! $user->can('viewAny', Enterprise::class))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'No tienes permisos para ver clientes',
+            ], 403);
+        }
+
+        $page = max(1, (int) $request->get('page', 1));
+        $perPage = min(50, max(1, (int) $request->get('per_page', 20)));
+        $filter = (string) $request->get('filter', '');
+        if (! in_array($filter, ['active', 'consumption', 'renewal'], true))
+        {
+            $filter = '';
+        }
+
+        $status = (string) $request->get('status', '');
+        if (! in_array($status, ['1', '2', 'all'], true))
+        {
+            $status = '';
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $roster->page($user, $request->get('search'), $page, $perPage, $filter, $status),
+        ]);
+    }
+
+    /**
+     * Client dossier used by the Axis client page.
+     */
+    public function profile(Request $request, string $id, ClientProfileBuilder $profiles)
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
+
+        $enterprise = Enterprise::withTrashed()->where('id', $id)->first();
+
+        if (! $enterprise || ! $user->can('view', $enterprise))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Empresa no encontrada',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $profiles->build($enterprise),
+            'roles' => ContactEnterprise::ROLES,
+        ]);
+    }
+
+    /**
+     * Change a contact's role inside this company.
+     */
+    public function updateContactRole(UpdateEnterpriseContactRoleRequest $request, string $id, string $contactId): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user?->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
+
+        $enterprise = Enterprise::withTrashed()->whereKey($id)->first();
+
+        if (! $enterprise || $enterprise->team_id !== $user->currentTeam->id || ! $user->can('update', $enterprise))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Empresa no encontrada',
+            ], 404);
+        }
+
+        $contact = Contact::query()->whereKey($contactId)->first();
+
+        if (! $contact || ! $contact->enterprises()->where('enterprises.id', $enterprise->id)->exists())
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Contacto no encontrado',
+            ], 404);
+        }
+
+        $role = $request->validated('role');
+        $contact->enterprises()->updateExistingPivot($enterprise->id, [
+            'position' => $role,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'role' => $role,
+        ]);
     }
 
     /**

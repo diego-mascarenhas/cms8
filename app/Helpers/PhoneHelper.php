@@ -183,6 +183,12 @@ class PhoneHelper
         {
             return null;
         }
+        $argentina = self::formatArgentina($cleaned);
+        if ($argentina !== null)
+        {
+            return $argentina;
+        }
+
         $len = strlen($cleaned);
         if ($len <= 3)
         {
@@ -195,6 +201,34 @@ class PhoneHelper
         $groups = trim(chunk_split($rest, 3, ' '));
 
         return '+'.$code.' '.$groups;
+    }
+
+    /**
+     * Argentine mobiles keep the 9 and the area code apart. Landlines group the subscriber in fours.
+     */
+    private static function formatArgentina(string $digits): ?string
+    {
+        if (preg_match('/^54911(\d{4})(\d{4})$/', $digits, $matches) === 1)
+        {
+            return '+54 9 11 '.$matches[1].' '.$matches[2];
+        }
+
+        if (preg_match('/^549(\d{3})(\d{3})(\d{4})$/', $digits, $matches) === 1)
+        {
+            return '+54 9 '.$matches[1].' '.$matches[2].' '.$matches[3];
+        }
+
+        if (preg_match('/^5411(\d{4})(\d{4})$/', $digits, $matches) === 1)
+        {
+            return '+54 11 '.$matches[1].' '.$matches[2];
+        }
+
+        if (preg_match('/^54(\d{3})(\d{3})(\d{4})$/', $digits, $matches) === 1)
+        {
+            return '+54 '.$matches[1].' '.$matches[2].' '.$matches[3];
+        }
+
+        return null;
     }
 
     /**

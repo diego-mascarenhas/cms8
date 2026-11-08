@@ -704,7 +704,8 @@ class MailerAudienceApiTest extends TestCase
             ->assertJsonPath('data.0.contact.sentiment', null)
             ->assertJsonPath('data.0.contact.intent', null)
             ->assertJsonPath('data.0.contact.digest', null)
-            ->assertJsonPath('data.0.contact.enterprise', null);
+            ->assertJsonPath('data.0.contact.enterprise', null)
+            ->assertJsonPath('data.0.contact.user', null);
 
         $this->seed(EnterpriseStatusSeeder::class);
         $enterprise = Enterprise::withoutGlobalScopes()->create([
@@ -723,7 +724,8 @@ class MailerAudienceApiTest extends TestCase
             ->getJson('/api/mailer/list60')
             ->assertOk()
             ->assertJsonPath('data.0.contact.status.name', 'Cliente')
-            ->assertJsonPath('data.0.contact.enterprise', 'Arte en Vidrio');
+            ->assertJsonPath('data.0.contact.enterprise', 'Arte en Vidrio')
+            ->assertJsonPath('data.0.contact.enterprise_id', $enterprise->id);
     }
 
     public function test_records_a_contact_interaction_from_the_mailer_list(): void

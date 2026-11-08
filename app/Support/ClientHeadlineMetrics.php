@@ -53,7 +53,7 @@ class ClientHeadlineMetrics
                 'value' => '0 €',
                 'hint' => 'Sin coste de adquisición cargado',
                 'icon' => 'ti-target',
-                'tone' => 'secondary',
+                'tone' => 'success',
             ],
             [
                 'kicker' => 'LTV',
@@ -61,7 +61,7 @@ class ClientHeadlineMetrics
                 'value' => self::money($collected),
                 'hint' => 'Cobrado en facturas de venta',
                 'icon' => 'ti-currency-euro',
-                'tone' => 'success',
+                'tone' => 'info',
             ],
             [
                 'kicker' => 'Debe',
@@ -69,7 +69,7 @@ class ClientHeadlineMetrics
                 'value' => self::money($owed),
                 'hint' => $owed === [] ? 'Nada pendiente de cobro' : 'Facturas de venta abiertas',
                 'icon' => 'ti-receipt',
-                'tone' => $owed === [] ? 'success' : 'warning',
+                'tone' => $owed === [] ? 'secondary' : 'warning',
             ],
             [
                 'kicker' => 'Medio de pago',

@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class ContactEnterprise extends Pivot
 {
+    public const ROLES = ['Administrador', 'Usuario', 'Invitado'];
+
     protected $table = 'contact_enterprise';
 
     public function contact()

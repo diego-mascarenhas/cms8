@@ -47,6 +47,7 @@ use App\Services\WhatsApp\WhatsAppChatArchiveService;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use App\Services\WhatsApp\WhatsAppInboundContactRegistrationService;
+use App\Services\WhatsApp\WhatsAppInboundUnreadCount;
 use App\Services\WhatsApp\WhatsAppInboxContactStarter;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
@@ -1791,6 +1792,8 @@ class ChatController extends Controller
             $categoryIds,
             $validated['email'] ?? null,
             array_key_exists('email', $validated),
+            array_key_exists('surname', $validated) ? $validated['surname'] : null,
+            array_key_exists('surname', $validated),
         );
 
         $password = isset($validated['password']) ? trim((string) $validated['password']) : '';
@@ -2170,6 +2173,23 @@ class ChatController extends Controller
             'success' => true,
             'phone' => $phone,
             'is_archived' => $archived,
+        ]);
+    }
+
+    public function whatsAppUnread(WhatsAppInboundUnreadCount $unread): \Illuminate\Http\JsonResponse
+    {
+        $team = auth()->user()?->currentTeam;
+        if (! $team)
+        {
+            return response()->json(['success' => false, 'unread' => false, 'unread_count' => 0], 422);
+        }
+
+        $count = $unread->forTeam($team);
+
+        return response()->json([
+            'success' => true,
+            'unread' => $count > 0,
+            'unread_count' => $count,
         ]);
     }
 

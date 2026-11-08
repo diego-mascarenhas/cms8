@@ -1221,8 +1221,8 @@ class ContactController extends Controller
         // Only search contacts if the contacts module is active
         if ($team && $team->hasModule('contacts'))
         {
-            $contactsQuery = Contact::select('id', 'name', 'surname', 'phone', 'email', 'status_id', 'created_at')
-                ->with(['user.roles', 'user.teams', 'user.currentTeam.settings']);
+            $contactsQuery = Contact::select('id', 'name', 'surname', 'phone', 'email', 'status_id', 'created_at', 'current_enterprise_id')
+                ->with(['user.roles', 'user.teams', 'user.currentTeam.settings', 'enterprises:id']);
             // No filter by status_id - include all contacts regardless of status
 
             if (! $isInitialLoad)
@@ -1236,12 +1236,14 @@ class ContactController extends Controller
                 ->map(function ($contact)
                 {
                     $displayName = trim($contact->name.' '.$contact->surname);
+                    $enterpriseId = $contact->current_enterprise_id ?: $contact->enterprises->first()?->id;
 
                     return [
                         'name' => $displayName,
                         'subtitle' => $contact->email ?: 'Creado el '.($contact->created_at?->format('d-m-Y H:i:s') ?? '').' hs',
                         // remove avatar 'src' to simplify rendering
                         'url' => route('contact.show', $contact->id),
+                        'enterprise_id' => $enterpriseId ? (int) $enterpriseId : null,
                     ];
                 })
                 ->values()
@@ -1276,6 +1278,7 @@ class ContactController extends Controller
                     'subtitle' => ($enterprise->code ? 'Código: '.$enterprise->code : 'Empresa creada el '.($enterprise->created_at?->format('d-m-Y H:i:s') ?? '').' hs'),
                     // remove icon 'src' to simplify rendering
                     'url' => route('empresas.show', $enterprise->id),
+                    'enterprise_id' => (int) $enterprise->id,
                 ];
             })
             ->values()
@@ -1307,6 +1310,7 @@ class ContactController extends Controller
                         'subtitle' => ! empty($user) ? "Usuario: {$user}" : 'Servicio creado el '.($service->created_at?->format('d-m-Y') ?? ''),
                         'src' => 'img/icons/brands/web.png',
                         'url' => route('service.show', $service->id),
+                        'enterprise_id' => $service->enterprise_id ? (int) $service->enterprise_id : null,
                     ];
                 })
                 ->values()
@@ -1337,6 +1341,7 @@ class ContactController extends Controller
                         'subtitle' => "Cliente: {$clientName} - Estado: {$statusName}",
                         'src' => 'img/icons/brands/project.png',
                         'url' => route('project.show', $project->id),
+                        'enterprise_id' => $project->enterprise_id ? (int) $project->enterprise_id : null,
                     ];
                 })
                 ->values()
@@ -1411,6 +1416,7 @@ class ContactController extends Controller
                         'subtitle' => "Cliente: {$clientName}",
                         'src' => 'img/icons/brands/invoice.png',
                         'url' => route('invoice.show', $invoice->id),
+                        'enterprise_id' => $invoice->enterprise_id ? (int) $invoice->enterprise_id : null,
                     ];
                 })
                 ->values()
@@ -1450,6 +1456,7 @@ class ContactController extends Controller
                         'subtitle' => "Empresa: {$enterpriseName} - ID: {$address->identification_number}",
                         'src' => 'img/icons/brands/enterprise.png',
                         'url' => $enterpriseUrl,
+                        'enterprise_id' => $address->enterprise_id ? (int) $address->enterprise_id : null,
                     ];
                 })
                 ->values()

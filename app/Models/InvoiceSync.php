@@ -121,8 +121,23 @@ class InvoiceSync extends Model
 
     public function consumptionSummary(): string
     {
+        $parts = array_map(
+            fn (array $line): string => implode(' · ', array_filter([$line['name'], $line['period'], $line['detail']])),
+            $this->consumptionLines(),
+        );
+
+        return $parts !== [] ? implode(' · ', $parts) : 'Consumo';
+    }
+
+    /**
+     * Each Stripe usage line is stored as "Name · period" or "Name · period · detail".
+     *
+     * @return list<array{name: string, period: string, detail: string}>
+     */
+    public function consumptionLines(): array
+    {
         $lines = data_get($this->raw_payload, 'lines.data', []);
-        $parts = [];
+        $items = [];
 
         if (is_array($lines))
         {
@@ -134,21 +149,65 @@ class InvoiceSync extends Model
                 }
 
                 $description = trim((string) ($line['description'] ?? ''));
-                if ($description !== '')
+                if ($description === '')
                 {
-                    $parts[] = $description;
+                    continue;
                 }
+
+                $items[] = $this->splitConsumptionDescription($description);
             }
         }
 
-        if ($parts !== [])
+        if ($items !== [])
         {
-            return implode(' · ', $parts);
+            return $items;
         }
 
         $number = trim((string) $this->number);
 
-        return $number !== '' ? $number : 'Consumo';
+        return [[
+            'name' => $number !== '' ? $number : 'Consumo',
+            'period' => '',
+            'detail' => '',
+        ]];
+    }
+
+    /**
+     * @return array{name: string, period: string, detail: string}
+     */
+    private function splitConsumptionDescription(string $description): array
+    {
+        $segments = array_values(array_filter(
+            array_map(trim(...), explode(' · ', $description)),
+            fn (string $segment): bool => $segment !== '',
+        ));
+
+        if (count($segments) >= 3)
+        {
+            $name = (string) array_shift($segments);
+            $detail = (string) array_pop($segments);
+
+            return [
+                'name' => $name,
+                'period' => implode(' · ', $segments),
+                'detail' => $detail,
+            ];
+        }
+
+        if (count($segments) === 2)
+        {
+            return [
+                'name' => $segments[0],
+                'period' => $segments[1],
+                'detail' => '',
+            ];
+        }
+
+        return [
+            'name' => $description,
+            'period' => '',
+            'detail' => '',
+        ];
     }
 
     public function getStatusBadgeAttribute(): string

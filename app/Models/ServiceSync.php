@@ -243,6 +243,10 @@ class ServiceSync extends Model
         $fromData = strtolower(trim((string) data_get($this->data, 'domain')));
         if ($fromData === '')
         {
+            $fromData = strtolower(trim((string) data_get($this->data, 'metadata.domain')));
+        }
+        if ($fromData === '')
+        {
             $fromData = strtolower(trim((string) data_get($this->raw_payload, 'metadata.domain')));
         }
         if ($fromData !== '')

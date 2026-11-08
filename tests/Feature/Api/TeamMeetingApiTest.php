@@ -39,7 +39,7 @@ class TeamMeetingApiTest extends TestCase
 
         $id = $store->json('data.id');
         Storage::disk('local')->assertExists(MeetingTranscript::withoutGlobalScope('team')->find($id)->audio_path);
-        Queue::assertPushed(TranscribeMeetingTranscript::class);
+        Queue::assertPushedOn('meetings', TranscribeMeetingTranscript::class);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/team/meetings/'.$id)

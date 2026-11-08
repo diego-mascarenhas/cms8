@@ -1,0 +1,23 @@
+; Forge / Supervisor — worker solo para transcripciones de reuniones.
+; No lo mezcles con el worker general: ese corta a los 120 segundos.
+;
+; Cola: meetings — TranscribeMeetingTranscript
+; Conexión: redis-meetings (retry_after 960, mayor que el timeout del job).
+
+[program:humano-queue-meetings]
+directory=/home/forge/staging.humano.app
+command=php8.4 -d memory_limit=1024M /home/forge/staging.humano.app/artisan queue:work redis-meetings --queue=meetings --sleep=3 --tries=1 --timeout=930 --max-time=3600 --memory=1024
+process_name=%(program_name)s_%(process_num)02d
+autostart=true
+autorestart=true
+user=forge
+numprocs=1
+startsecs=1
+redirect_stderr=true
+stdout_logfile=/home/forge/staging.humano.app/storage/logs/queue-meetings.log
+stdout_logfile_maxbytes=5MB
+stdout_logfile_backups=3
+stopwaitsecs=1200
+stopsignal=SIGTERM
+stopasgroup=true
+killasgroup=true

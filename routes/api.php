@@ -67,6 +67,7 @@ use App\Http\Controllers\Api\Shop\SupplierPriceListController as ShopSupplierPri
 use App\Http\Controllers\Api\SiteAssistantInboxController;
 use App\Http\Controllers\Api\SiteAssistantPromptController;
 use App\Http\Controllers\Api\SoftwareController;
+use App\Http\Controllers\Api\SubscriptionController as ApiSubscriptionController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TeamAssistantController;
 use App\Http\Controllers\Api\TeamContactController;
@@ -87,8 +88,10 @@ use App\Http\Controllers\Api\TodayController;
 use App\Http\Controllers\Api\UserAssistantController;
 use App\Http\Controllers\Api\UserController as ApiUserController;
 use App\Http\Controllers\Api\WordPressCmsWebhookController;
+use App\Http\Controllers\apps\Calendar as AppCalendarController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ContactController as WebContactController;
 use App\Http\Controllers\ProspectSearchController;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
@@ -525,6 +528,7 @@ Route::prefix('client')->group(function ()
 Route::group(['prefix' => 'auth'], function ()
 {
     Route::post('login', [AuthController::class, 'login']);
+    Route::post('google', [AuthController::class, 'loginWithGoogle'])->middleware('throttle:10,1');
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
     Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:6,1');
     Route::post('reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:6,1');
@@ -573,8 +577,11 @@ Route::middleware('auth.api')->group(function ()
 
     // Menu for mobile app (filtered by user permissions and team modules)
     Route::get('menu', [MenuController::class, 'index']);
+    Route::get('app/menu', [\App\Http\Controllers\Api\AxisMenuPreferenceController::class, 'show']);
+    Route::put('app/menu', [\App\Http\Controllers\Api\AxisMenuPreferenceController::class, 'update']);
 
     Route::get('billing', [ApiBillingController::class, 'show'])->name('api.billing.show');
+    Route::get('billing/history', [ApiBillingController::class, 'history'])->name('api.billing.history');
     Route::put('billing', [ApiBillingController::class, 'update'])->name('api.billing.update');
     Route::post('ai/complete', [AiCompletionController::class, 'complete'])->name('api.ai.complete');
     Route::get('team/business-profile', [BusinessProfileController::class, 'show'])->name('api.team.business-profile.show');
@@ -624,6 +631,7 @@ Route::middleware('auth.api')->group(function ()
 
     // Today / Hoy (calendar events + tasks for the current day)
     Route::get('today', [TodayController::class, 'index'])->name('api.today.index');
+    Route::get('calendar/events', [AppCalendarController::class, 'events'])->name('api.calendar.events');
 
     // Users of current team (for IDONEO app)
     Route::get('users', [ApiUserController::class, 'index']);
@@ -854,7 +862,11 @@ Route::middleware('auth.api')->group(function ()
 
     // Contacts - for user-based authentication (Sanctum tokens)
     Route::get('contacts', [ContactController::class, 'index']);
+    Route::post('contacts', [ContactController::class, 'store']);
     Route::get('contacts/stats', [ContactController::class, 'stats']);
+    Route::get('contacts/filters', [ContactController::class, 'filters']);
+    Route::get('contacts/import', [ContactController::class, 'importSchema']);
+    Route::post('contacts/import', [ContactController::class, 'import']);
     Route::get('contacts/{id}', [ContactController::class, 'show']);
 
     // Clients (enterprises) — Assistant plan module "clients"
@@ -863,7 +875,14 @@ Route::middleware('auth.api')->group(function ()
 
     // Enterprises — Mentor plan module "enterprises"
     Route::get('enterprises', [\App\Http\Controllers\Api\EnterpriseController::class, 'index']);
+    Route::get('enterprises/roster', [\App\Http\Controllers\Api\EnterpriseController::class, 'roster']);
+    Route::get('enterprises/{id}/subscriptions', [ApiSubscriptionController::class, 'forEnterprise'])->whereNumber('id');
+    Route::get('enterprises/{id}/profile', [\App\Http\Controllers\Api\EnterpriseController::class, 'profile'])->whereNumber('id');
+    Route::patch('enterprises/{id}/contacts/{contactId}', [\App\Http\Controllers\Api\EnterpriseController::class, 'updateContactRole'])->whereNumber(['id', 'contactId']);
     Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
+    Route::get('subscriptions', [ApiSubscriptionController::class, 'index']);
+    Route::get('subscriptions/{id}', [ApiSubscriptionController::class, 'show'])->whereNumber('id');
+    Route::get('search', [WebContactController::class, 'search']);
 
     // Mailbox inbox (synced IMAP emails)
     Route::get('emails', [MailInboxController::class, 'index'])->name('api.emails.index');
@@ -873,6 +892,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('notifications', [NotificationInboxController::class, 'index'])->name('api.notifications.index');
     Route::post('notifications/mark-all-read', [NotificationInboxController::class, 'markAllAsRead'])->name('api.notifications.mark-all-read');
     Route::patch('notifications/{notification}/read', [NotificationInboxController::class, 'markAsRead'])->name('api.notifications.mark-as-read');
+    Route::patch('notifications/{notification}/unread', [NotificationInboxController::class, 'markAsUnread'])->name('api.notifications.mark-as-unread');
     Route::delete('notifications/{notification}', [NotificationInboxController::class, 'dismiss'])->name('api.notifications.dismiss');
 
     // Payments, Products, Orders - moved to team.token middleware (see below)
@@ -973,6 +993,7 @@ Route::middleware('auth.api')->group(function ()
         ->where('sessionKey', '[A-Za-z0-9._-]{8,191}')
         ->name('api.chat.site-assistant-messages.identity');
     Route::get('chat/whatsapp-list', [ChatController::class, 'getChatList'])->name('api.chat.whatsapp-list');
+    Route::get('chat/whatsapp-unread', [ChatController::class, 'whatsAppUnread'])->name('api.chat.whatsapp-unread');
     Route::get('chat/whatsapp-messages/{phone}', [ChatController::class, 'getMessages'])
         ->where('phone', '[0-9]+')
         ->name('api.chat.whatsapp-messages');

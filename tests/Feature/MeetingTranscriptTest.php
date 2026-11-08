@@ -49,7 +49,7 @@ class MeetingTranscriptTest extends TestCase
         $response->assertRedirect(route('meeting.show', $meeting));
         $this->assertSame(MeetingTranscriptStatus::Pending, $meeting->status);
         Storage::disk('local')->assertExists($meeting->audio_path);
-        Queue::assertPushed(TranscribeMeetingTranscript::class, function (TranscribeMeetingTranscript $job) use ($meeting)
+        Queue::assertPushedOn('meetings', TranscribeMeetingTranscript::class, function (TranscribeMeetingTranscript $job) use ($meeting)
         {
             return $job->meetingTranscriptId === $meeting->id;
         });
@@ -221,6 +221,8 @@ class MeetingTranscriptTest extends TestCase
             ->get(route('meeting.create'))
             ->assertOk()
             ->assertSee('id="record-audio"', false)
+            ->assertSee('audioBitsPerSecond: 64000', false)
+            ->assertSee('Hasta 500 MB', false)
             ->assertSee('select2', false)
             ->assertSee('Indicá un título para la reunión.', false)
             ->assertDontSee('ElevenLabs', false);

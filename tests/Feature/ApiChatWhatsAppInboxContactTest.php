@@ -195,6 +195,37 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
         $this->assertEqualsCanonicalizing([$keep->id], $contact->categories->pluck('id')->all());
     }
 
+    public function test_update_stores_name_and_surname_separately(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $contact = $this->crmContact($team, ['name' => 'Ana', 'surname' => 'Pérez', 'status_id' => 1]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact', [
+                'phone' => self::CLIENT_PHONE,
+                'name' => 'María del Carmen',
+                'surname' => 'López García',
+                'status_id' => 1,
+            ])
+            ->assertOk();
+
+        $contact->refresh();
+        $this->assertSame('María del Carmen', $contact->name);
+        $this->assertSame('López García', $contact->surname);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact', [
+                'phone' => self::CLIENT_PHONE,
+                'name' => 'María',
+                'surname' => '',
+                'status_id' => 1,
+            ])
+            ->assertOk();
+
+        $this->assertSame('María', $contact->fresh()->name);
+        $this->assertNull($contact->fresh()->surname);
+    }
+
     public function test_update_fetches_whatsapp_profile_photo(): void
     {
         Bus::fake();
