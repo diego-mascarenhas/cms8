@@ -91,6 +91,7 @@ use App\Http\Controllers\Api\WordPressCmsWebhookController;
 use App\Http\Controllers\apps\Calendar as AppCalendarController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ContactController as WebContactController;
 use App\Http\Controllers\ProspectSearchController;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
@@ -527,6 +528,7 @@ Route::prefix('client')->group(function ()
 Route::group(['prefix' => 'auth'], function ()
 {
     Route::post('login', [AuthController::class, 'login']);
+    Route::post('google', [AuthController::class, 'loginWithGoogle'])->middleware('throttle:10,1');
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
     Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:6,1');
     Route::post('reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:6,1');
@@ -577,6 +579,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('menu', [MenuController::class, 'index']);
 
     Route::get('billing', [ApiBillingController::class, 'show'])->name('api.billing.show');
+    Route::get('billing/history', [ApiBillingController::class, 'history'])->name('api.billing.history');
     Route::put('billing', [ApiBillingController::class, 'update'])->name('api.billing.update');
     Route::post('ai/complete', [AiCompletionController::class, 'complete'])->name('api.ai.complete');
     Route::get('team/business-profile', [BusinessProfileController::class, 'show'])->name('api.team.business-profile.show');
@@ -868,9 +871,11 @@ Route::middleware('auth.api')->group(function ()
     // Enterprises — Mentor plan module "enterprises"
     Route::get('enterprises', [\App\Http\Controllers\Api\EnterpriseController::class, 'index']);
     Route::get('enterprises/{id}/subscriptions', [ApiSubscriptionController::class, 'forEnterprise'])->whereNumber('id');
+    Route::get('enterprises/{id}/profile', [\App\Http\Controllers\Api\EnterpriseController::class, 'profile'])->whereNumber('id');
     Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
     Route::get('subscriptions', [ApiSubscriptionController::class, 'index']);
     Route::get('subscriptions/{id}', [ApiSubscriptionController::class, 'show'])->whereNumber('id');
+    Route::get('search', [WebContactController::class, 'search']);
 
     // Mailbox inbox (synced IMAP emails)
     Route::get('emails', [MailInboxController::class, 'index'])->name('api.emails.index');
@@ -880,6 +885,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('notifications', [NotificationInboxController::class, 'index'])->name('api.notifications.index');
     Route::post('notifications/mark-all-read', [NotificationInboxController::class, 'markAllAsRead'])->name('api.notifications.mark-all-read');
     Route::patch('notifications/{notification}/read', [NotificationInboxController::class, 'markAsRead'])->name('api.notifications.mark-as-read');
+    Route::patch('notifications/{notification}/unread', [NotificationInboxController::class, 'markAsUnread'])->name('api.notifications.mark-as-unread');
     Route::delete('notifications/{notification}', [NotificationInboxController::class, 'dismiss'])->name('api.notifications.dismiss');
 
     // Payments, Products, Orders - moved to team.token middleware (see below)

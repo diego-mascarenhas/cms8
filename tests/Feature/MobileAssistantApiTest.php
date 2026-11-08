@@ -440,6 +440,84 @@ class MobileAssistantApiTest extends TestCase
         $this->assertCount(1, $response->json('data'));
     }
 
+    public function test_recipient_can_mark_a_notification_unread_again(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+        ]);
+
+        $type = NotificationType::query()->firstOrCreate(
+            ['name' => 'General Message'],
+            ['description' => 'Test', 'status' => 1],
+        );
+
+        $notification = Notification::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => $type->id,
+            'contact_id' => $contact->id,
+            'user_id' => $user->id,
+            'subject' => 'Already read',
+            'message' => 'Seen',
+            'is_sent' => true,
+            'sent_at' => now(),
+            'is_read' => true,
+            'read_at' => now(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/notifications/'.$notification->id.'/unread')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.is_read', false)
+            ->assertJsonPath('unread_count', 1);
+
+        $notification->refresh();
+        $this->assertFalse($notification->is_read);
+        $this->assertNull($notification->read_at);
+    }
+
+    public function test_another_user_cannot_mark_a_notification_unread(): void
+    {
+        [$user, $team] = $this->assistantUserWithToken();
+
+        $other = User::factory()->create();
+        $other->teams()->attach($team->id, ['role' => 'admin']);
+        $other->forceFill(['current_team_id' => $team->id])->save();
+        $otherToken = $other->createToken('mobile-test')->plainTextToken;
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+        ]);
+
+        $type = NotificationType::query()->firstOrCreate(
+            ['name' => 'General Message'],
+            ['description' => 'Test', 'status' => 1],
+        );
+
+        $notification = Notification::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => $type->id,
+            'contact_id' => $contact->id,
+            'user_id' => $user->id,
+            'subject' => 'Private',
+            'message' => 'Seen',
+            'is_sent' => true,
+            'sent_at' => now(),
+            'is_read' => true,
+            'read_at' => now(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$otherToken)
+            ->patchJson('/api/notifications/'.$notification->id.'/unread')
+            ->assertForbidden();
+
+        $this->assertTrue($notification->fresh()->is_read);
+    }
+
     public function test_auth_user_includes_phone_and_can_update_profile(): void
     {
         [$user, , $token] = $this->assistantUserWithToken();

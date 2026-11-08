@@ -20,6 +20,7 @@ use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -128,6 +129,107 @@ class AuthController extends Controller
         $response = ['message' => 'Los datos de acceso son incorrectos'];
 
         return response()->json($response, 401);
+    }
+
+    public function loginWithGoogle(Request $request)
+    {
+        $validated = $request->validate([
+            'id_token' => ['required', 'string'],
+        ]);
+
+        $identity = $this->googleIdentityFromIdToken($validated['id_token']);
+        if ($identity === null)
+        {
+            return response()->json([
+                'message' => 'No se pudo verificar la cuenta de Google.',
+            ], 401);
+        }
+
+        $user = User::query()->whereRaw('LOWER(email) = ?', [$identity['email']])->first();
+
+        if ($user === null)
+        {
+            $user = User::create([
+                'name' => $identity['name'],
+                'email' => $identity['email'],
+                'password' => Hash::make(Str::random(40)),
+            ]);
+            $user->forceFill(['email_verified_at' => now()])->save();
+
+            $this->createPersonalTeamForApiUser($user);
+            event(new Registered($user->fresh()));
+        }
+
+        EnsureRegisteredUserRole::assignIfMissing($user);
+
+        if ($user->currentTeam === null)
+        {
+            $team = $user->allTeams()->first();
+            if ($team !== null)
+            {
+                $user->switchTeam($team);
+            }
+        }
+
+        $user->load(['currentTeam', 'roles']);
+        $token = $user->createToken('IDONEO Access Token')->plainTextToken;
+        $profile = $this->profilePayload($user);
+
+        return response()->json([
+            'email' => $user->email,
+            'token' => $token,
+            'user' => $profile,
+            'current_team' => $profile['current_team'],
+        ], 200);
+    }
+
+    /**
+     * @return array{email: string, name: string}|null
+     */
+    private function googleIdentityFromIdToken(string $idToken): ?array
+    {
+        $clientId = (string) config('services.google.client_id');
+        if ($clientId === '')
+        {
+            return null;
+        }
+
+        $response = Http::timeout(8)->acceptJson()->get('https://oauth2.googleapis.com/tokeninfo', [
+            'id_token' => $idToken,
+        ]);
+
+        if (! $response->ok())
+        {
+            return null;
+        }
+
+        $payload = $response->json();
+        if (! is_array($payload))
+        {
+            return null;
+        }
+
+        $email = strtolower(trim((string) ($payload['email'] ?? '')));
+        $audience = (string) ($payload['aud'] ?? '');
+        $issuer = (string) ($payload['iss'] ?? '');
+        $verified = filter_var($payload['email_verified'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $allowedIssuers = ['accounts.google.com', 'https://accounts.google.com'];
+
+        if ($email === '' || ! $verified || ! hash_equals($clientId, $audience) || ! in_array($issuer, $allowedIssuers, true))
+        {
+            return null;
+        }
+
+        $name = trim((string) ($payload['name'] ?? ''));
+        if ($name === '' || SpamRegistrationName::isRandomToken($name))
+        {
+            $name = Str::before($email, '@');
+        }
+
+        return [
+            'email' => $email,
+            'name' => $name,
+        ];
     }
 
     public function loginWithSignedToken(Request $request)

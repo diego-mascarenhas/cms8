@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Enterprise;
+use App\Services\Clients\ClientProfileBuilder;
 use Illuminate\Http\Request;
 
 class EnterpriseController extends Controller
@@ -91,6 +92,37 @@ class EnterpriseController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Client dossier used by the Axis client page.
+     */
+    public function profile(Request $request, string $id, ClientProfileBuilder $profiles)
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
+
+        $enterprise = Enterprise::withTrashed()->where('id', $id)->first();
+
+        if (! $enterprise || ! $user->can('view', $enterprise))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Empresa no encontrada',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $profiles->build($enterprise),
+        ]);
     }
 
     /**

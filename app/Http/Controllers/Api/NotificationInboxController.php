@@ -55,6 +55,22 @@ class NotificationInboxController extends Controller
         ]);
     }
 
+    public function markAsUnread(Request $request, Notification $notification): JsonResponse
+    {
+        $this->authorizeRecipient($request, $notification);
+
+        if ($notification->is_read)
+        {
+            $notification->markAsUnread();
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->formatNotification($notification->fresh()),
+            'unread_count' => Notification::query()->forRecipientUser((int) $request->user()->id)->unread()->count(),
+        ]);
+    }
+
     public function markAllAsRead(Request $request): JsonResponse
     {
         $userId = $request->user()?->id;

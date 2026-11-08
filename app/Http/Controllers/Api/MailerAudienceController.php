@@ -21,6 +21,8 @@ use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
 use App\Models\Module;
+use App\Models\Team;
+use App\Services\InboxContactAccessService;
 use App\Services\MailerCategoryService;
 use App\Support\AssignableTeamUsers;
 use App\Support\List60NextContactDate;
@@ -446,7 +448,7 @@ class MailerAudienceController extends Controller
             ->orderBy('id')
             ->get()
             ->filter(fn (List60 $entry): bool => $entry->contact !== null)
-            ->map(fn (List60 $entry): array => $this->formatList60Entry($entry))
+            ->map(fn (List60 $entry): array => $this->formatList60Entry($entry, $team))
             ->values();
 
         return response()->json([
@@ -1032,9 +1034,10 @@ class MailerAudienceController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function formatList60Entry(List60 $entry): array
+    private function formatList60Entry(List60 $entry, Team $team): array
     {
         $notes = trim((string) ($entry->notes ?? ''));
+        $enterprise = $this->formatEnterprise($entry->contact);
 
         return [
             'id' => (int) $entry->id,
@@ -1042,7 +1045,9 @@ class MailerAudienceController extends Controller
                 'sentiment' => $this->formatContactSentiment($entry->contact),
                 'intent' => $this->formatContactIntent($entry->contact),
                 'digest' => $this->formatInboxDigest($entry->contact),
-                'enterprise' => $this->formatClientEnterprise($entry->contact),
+                'enterprise' => $enterprise['name'] ?? null,
+                'enterprise_id' => $enterprise['id'] ?? null,
+                'user' => app(InboxContactAccessService::class)->presentForContact($team, $entry->contact),
             ]),
             'status' => $entry->status?->name,
             'date_next' => $entry->date_next?->toDateString(),
@@ -1146,20 +1151,23 @@ class MailerAudienceController extends Controller
         ];
     }
 
-    private function formatClientEnterprise(Contact $contact): ?string
+    /**
+     * @return array{id: int, name: string}|null
+     */
+    private function formatEnterprise(Contact $contact): ?array
     {
-        if (strcasecmp(trim((string) ($contact->status?->name ?? '')), 'Cliente') !== 0)
+        $enterprise = $contact->currentEnterprise ?? $contact->enterprises->first();
+        $name = trim((string) ($enterprise?->name ?? ''));
+
+        if ($enterprise === null || $name === '')
         {
             return null;
         }
 
-        $name = trim((string) ($contact->currentEnterprise?->name ?? ''));
-        if ($name === '')
-        {
-            $name = trim((string) ($contact->enterprises->first()?->name ?? ''));
-        }
-
-        return $name !== '' ? $name : null;
+        return [
+            'id' => (int) $enterprise->id,
+            'name' => $name,
+        ];
     }
 
     private function formatContactSentiment(Contact $contact): ?array
