@@ -221,6 +221,7 @@ class MeetingTranscriptTest extends TestCase
             ->get(route('meeting.create'))
             ->assertOk()
             ->assertSee('id="record-audio"', false)
+            ->assertSee('audioBitsPerSecond: 64000', false)
             ->assertSee('select2', false)
             ->assertSee('Indicá un título para la reunión.', false)
             ->assertDontSee('ElevenLabs', false);

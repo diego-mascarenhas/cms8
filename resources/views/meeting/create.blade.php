@@ -48,7 +48,7 @@
                 @error('audio')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
-                <div class="form-text">Grabá con el micrófono o subí un mp3, wav, m4a, mp4, webm u ogg. Hasta 100 MB.</div>
+                <div class="form-text">Grabá con el micrófono o subí un mp3, wav, m4a, mp4, webm u ogg. Hasta 100 MB. Una hora grabada desde aquí queda en unos 30 MB.</div>
             </div>
         </div>
         <div class="pt-4">
@@ -108,16 +108,35 @@ document.addEventListener('DOMContentLoaded', function () {
     var status = document.getElementById('record-status');
     var preview = document.getElementById('record-preview');
     var input = document.getElementById('audio');
+    var form = document.getElementById('meeting-form');
     var recorder = null;
     var chunks = [];
     var activeStream = null;
     var timer = null;
     var startedAt = 0;
+    var maxBytes = 95 * 1024 * 1024;
 
     function clock(totalSeconds) {
         var minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
         var rest = String(totalSeconds % 60).padStart(2, '0');
         return minutes + ':' + rest;
+    }
+
+    function megabytes(bytes) {
+        return (bytes / (1024 * 1024)).toFixed(1).replace('.', ',');
+    }
+
+    if (form) {
+        form.addEventListener('click', function (event) {
+            var submit = event.target.closest('button[type="submit"]');
+            var file = input.files && input.files[0];
+            if (!submit || !file || file.size <= maxBytes) {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            status.textContent = 'El audio pesa ' + megabytes(file.size) + ' MB y el servidor acepta hasta 100 MB.';
+        }, true);
     }
 
     if (!navigator.mediaDevices || typeof MediaRecorder === 'undefined') {
@@ -135,7 +154,15 @@ document.addEventListener('DOMContentLoaded', function () {
             } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
                 mime = 'audio/mp4';
             }
-            recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+            var options = { audioBitsPerSecond: 64000 };
+            if (mime) {
+                options.mimeType = mime;
+            }
+            try {
+                recorder = new MediaRecorder(stream, options);
+            } catch (error) {
+                recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+            }
             chunks = [];
             recorder.ondataavailable = function (event) {
                 if (event.data && event.data.size > 0) {
@@ -169,7 +196,11 @@ document.addEventListener('DOMContentLoaded', function () {
                         };
                     }
                 };
-                status.textContent = 'Grabación lista (' + clock(elapsed) + '). Podés transcribirla.';
+                if (blob.size > maxBytes) {
+                    status.textContent = 'La grabación pesa ' + megabytes(blob.size) + ' MB y el servidor acepta hasta 100 MB.';
+                } else {
+                    status.textContent = 'Grabación lista (' + clock(elapsed) + ', ' + megabytes(blob.size) + ' MB). Podés transcribirla.';
+                }
             };
             recorder.start(1000);
             recordBtn.classList.add('d-none');
