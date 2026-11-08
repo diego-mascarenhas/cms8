@@ -16,7 +16,19 @@ class TranscribeMeetingTranscript implements ShouldQueue
 
     public int $timeout = 900;
 
-    public function __construct(public int $meetingTranscriptId) {}
+    public int $tries = 1;
+
+    public function __construct(public int $meetingTranscriptId)
+    {
+        $driver = (string) config('queue.default');
+
+        if ($driver === 'database' || $driver === 'redis')
+        {
+            $this->onConnection($driver.'-meetings');
+        }
+
+        $this->onQueue('meetings');
+    }
 
     public function handle(MeetingTranscriptService $transcripts): void
     {

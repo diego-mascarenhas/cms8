@@ -23,6 +23,14 @@ Own daemon so campaign/mailer jobs never block it.
 
 Campaign queue configuration: `config/message_delivery_dispatch.php`.
 
+### Meetings (dedicated worker)
+
+| Queue | Job | Usage |
+|------|-----|-----|
+| `meetings` | `TranscribeMeetingTranscript` | Meeting audio transcription |
+
+Connection `redis-meetings` in production and `database-meetings` locally. `retry_after` is 960 seconds, above the job timeout of 900. One attempt. The general worker must not listen to this queue.
+
 ### General (separate worker)
 
 | Queue | Job / usage |
@@ -68,14 +76,18 @@ php artisan queue:work redis --queue=track,task-communications,notifications,mai
 
 # Everything else
 php artisan queue:work redis --queue=default,domain-info,domain-updates,domain-version,whm-sync,whm-tests,ovh-sync --sleep=3 --tries=3 --timeout=120
+
+# Meeting transcription
+php artisan queue:work redis-meetings --queue=meetings --sleep=3 --tries=1 --timeout=930 --memory=1024
 ```
 
-### Production / Forge (three daemons)
+### Production / Forge (four daemons)
 
 Ready-to-copy examples for Forge:
 
 - `deploy/supervisor/forge-queue-communications.conf.example`
 - `deploy/supervisor/forge-queue-email.conf.example`
+- `deploy/supervisor/forge-queue-meetings.conf.example`
 - `deploy/supervisor/forge-queue-general.conf.example`
 - `deploy/supervisor/README.md`
 
@@ -95,7 +107,15 @@ directory=/home/forge/staging.humano.app
 numprocs=1
 ```
 
-**Daemon 3 — Communications** (new, do not mix with mailer/campaign):
+**Daemon 3 — meetings** (transcription, do not mix with the general worker):
+
+```ini
+command=php8.4 -d memory_limit=1024M /home/forge/staging.humano.app/artisan queue:work redis-meetings --queue=meetings --sleep=3 --tries=1 --timeout=930 --max-time=3600 --memory=1024
+directory=/home/forge/staging.humano.app
+numprocs=1
+```
+
+**Daemon 4 — Communications** (new, do not mix with mailer/campaign):
 
 ```ini
 command=php8.4 /home/forge/admin.idoneo.dev/artisan queue:work redis --queue=communications --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
@@ -110,7 +130,7 @@ After every deploy: `php artisan queue:restart`.
 ## 5) Deployment checklist
 
 1. `.env` with `QUEUE_CONNECTION=redis` and mail configured.
-2. Three active daemons (general + email + communications).
+2. Four active daemons (general + email + meetings + communications).
 3. `php artisan queue:restart` in the deploy script.
 
 ## 6) Monitoring and recovery

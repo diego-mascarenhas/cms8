@@ -49,7 +49,7 @@ class MeetingTranscriptTest extends TestCase
         $response->assertRedirect(route('meeting.show', $meeting));
         $this->assertSame(MeetingTranscriptStatus::Pending, $meeting->status);
         Storage::disk('local')->assertExists($meeting->audio_path);
-        Queue::assertPushed(TranscribeMeetingTranscript::class, function (TranscribeMeetingTranscript $job) use ($meeting)
+        Queue::assertPushedOn('meetings', TranscribeMeetingTranscript::class, function (TranscribeMeetingTranscript $job) use ($meeting)
         {
             return $job->meetingTranscriptId === $meeting->id;
         });

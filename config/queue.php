@@ -42,6 +42,14 @@ return [
             'after_commit' => false,
         ],
 
+        'database-meetings' => [
+            'driver' => 'database',
+            'table' => 'jobs',
+            'queue' => 'meetings',
+            'retry_after' => 960,
+            'after_commit' => false,
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => 'localhost',
@@ -67,6 +75,15 @@ return [
             'connection' => 'default',
             'queue' => env('REDIS_QUEUE', 'default'),
             'retry_after' => 90,
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
+        'redis-meetings' => [
+            'driver' => 'redis',
+            'connection' => 'default',
+            'queue' => 'meetings',
+            'retry_after' => 960,
             'block_for' => null,
             'after_commit' => false,
         ],
