@@ -51,7 +51,7 @@ trait HasProspectLimits
     /**
      * Record prospect consumption. Included balance is used first; the rest is still logged and billed.
      */
-    public function decrementProspectCredits(int $credits): bool
+    public function decrementProspectCredits(int $credits, ?int $prospectImportId = null): bool
     {
         if ($credits < 1)
         {
@@ -80,6 +80,7 @@ trait HasProspectLimits
 
         ProspectUsageLog::query()->create([
             'team_id' => $this->id,
+            'prospect_import_id' => $prospectImportId,
             'source' => 'import',
             'count' => $credits,
             'consumed_at' => now(),

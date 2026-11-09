@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\ProspectImport;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\ApolloService;
@@ -32,6 +33,7 @@ class ImportApolloProspectsJob implements ShouldQueue
         public int $page = 1,
         public ?int $categoryId = null,
         public ?string $lockKey = null,
+        public ?int $importId = null,
     ) {
         $this->onQueue('prospects');
     }
@@ -82,6 +84,7 @@ class ImportApolloProspectsJob implements ShouldQueue
 
         if ($people === [])
         {
+            ProspectImport::query()->find($this->importId)?->noteQueued(0, $total, true);
             $this->releaseLock();
 
             return;
@@ -110,6 +113,7 @@ class ImportApolloProspectsJob implements ShouldQueue
                 $person,
                 $this->categoryId,
                 $search->id,
+                $this->importId,
             );
             $queued++;
         }
@@ -120,7 +124,10 @@ class ImportApolloProspectsJob implements ShouldQueue
             'total' => $total,
             'queued' => $queued,
             'category_id' => $this->categoryId,
+            'import_id' => $this->importId,
         ]);
+
+        ProspectImport::query()->find($this->importId)?->noteQueued($queued, $total, $this->page * $perPage >= $total);
 
         if ($this->page * $perPage < $total)
         {
@@ -131,6 +138,7 @@ class ImportApolloProspectsJob implements ShouldQueue
                 $this->page + 1,
                 $this->categoryId,
                 $this->lockKey,
+                $this->importId,
             );
 
             return;
@@ -146,6 +154,7 @@ class ImportApolloProspectsJob implements ShouldQueue
             'page' => $this->page,
             'error' => $exception->getMessage(),
         ]);
+        ProspectImport::query()->find($this->importId)?->markFailed($exception->getMessage());
         $this->releaseLock();
     }
 
