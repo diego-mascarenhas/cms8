@@ -201,6 +201,7 @@ class DashboardController extends Controller
             'ads' => $this->adsWidget($team),
             'income' => $this->incomeWidget($team),
             'expiring' => $this->expiringWidgets($team),
+            'payments' => $this->paymentWidgets($team),
             'drafts' => $this->draftWidgets($user),
             'sentiment' => $this->sentimentWidget($team),
         ];
@@ -709,6 +710,53 @@ class DashboardController extends Controller
     }
 
     /**
+     * Latest successful card charges, newest first.
+     *
+     * @return list<array{id: int, subscription_id: int|null, customer_name: string, brand: string, funding: string, last4: string, date: string, amount: string}>
+     */
+    private function paymentWidgets(Team $team): array
+    {
+        $charges = $this->latestCardCharges($team)
+            ->filter(function ($charge): bool
+            {
+                return strtolower(trim((string) $charge->status)) === 'succeeded'
+                    && trim((string) $charge->card_last4) !== '';
+            })
+            ->take(6)
+            ->values();
+
+        $customerIds = $charges
+            ->map(fn ($charge): string => trim((string) $charge->customer_id))
+            ->filter()
+            ->values();
+        $subscriptions = ServiceSync::query()
+            ->where('team_id', $team->id)
+            ->whereIn('customer_id', $customerIds)
+            ->orderByDesc('id')
+            ->get(['id', 'customer_id', 'customer_name'])
+            ->groupBy('customer_id');
+
+        return $charges->map(function ($charge) use ($subscriptions): array
+        {
+            $subscription = $subscriptions->get($charge->customer_id)?->first();
+            $when = $charge->charge_created_at ? Carbon::parse($charge->charge_created_at) : null;
+            $currency = strtoupper((string) ($charge->currency ?: 'eur'));
+
+            return [
+                'id' => (int) $charge->id,
+                'subscription_id' => $subscription?->id,
+                'customer_name' => $subscription?->customer_name
+                    ?: ($charge->customer_email ?: 'Cliente'),
+                'brand' => strtolower(trim((string) $charge->card_brand)),
+                'funding' => strtolower(trim((string) $charge->card_funding)),
+                'last4' => (string) $charge->card_last4,
+                'date' => $when?->locale(app()->getLocale())->isoFormat('DD/MMM') ?? '',
+                'amount' => number_format(((int) $charge->amount_cents) / 100, 2, ',', '.').' '.$currency,
+            ];
+        })->all();
+    }
+
+    /**
      * @return Collection<int, PaymentSync>
      */
     private function latestCardCharges(Team $team): Collection
@@ -724,6 +772,9 @@ class DashboardController extends Controller
                 id,
                 customer_id,
                 customer_email,
+                status,
+                currency,
+                amount_cents,
                 charge_created_at,
                 raw_payload->'payment_method_details'->'card'->>'brand' as card_brand,
                 raw_payload->'payment_method_details'->'card'->>'funding' as card_funding,
@@ -737,6 +788,9 @@ class DashboardController extends Controller
                 id,
                 customer_id,
                 customer_email,
+                status,
+                currency,
+                amount_cents,
                 charge_created_at,
                 json_extract(raw_payload, '$.payment_method_details.card.brand') as card_brand,
                 json_extract(raw_payload, '$.payment_method_details.card.funding') as card_funding,

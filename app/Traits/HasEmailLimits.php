@@ -24,6 +24,11 @@ trait HasEmailLimits
      */
     public function canSendEmails(int $count = 1): bool
     {
+        if ($this->hasComplimentaryPlanAccess())
+        {
+            return true;
+        }
+
         $this->resetLimitsIfNeeded();
 
         if ($this->contacts()->count() > $this->getContactLimit())
