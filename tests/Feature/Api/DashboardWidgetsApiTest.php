@@ -4,6 +4,9 @@ namespace Tests\Feature\Api;
 
 use App\Models\CalendarEvent;
 use App\Models\Contact;
+use App\Models\ContactIntent;
+use App\Models\ContactSentimentHistory;
+use App\Models\ContactStatus;
 use App\Models\List60;
 use App\Models\List60Status;
 use App\Models\Module;
@@ -17,6 +20,7 @@ use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
 use Database\Seeders\List60StatusesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -171,6 +175,11 @@ class DashboardWidgetsApiTest extends TestCase
             ->assertJsonPath('widgets.income.total', 0)
             ->assertJsonPath('widgets.income.currency', 'EUR')
             ->assertJsonPath('widgets.drafts', null)
+            ->assertJsonCount(0, 'widgets.audience')
+            ->assertJsonCount(6, 'widgets.intents')
+            ->assertJsonPath('widgets.intents.0.key', 'buy')
+            ->assertJsonPath('widgets.intents.0.count', 0)
+            ->assertJsonPath('widgets.intents.5.key', 'unclear')
             ->assertJsonPath('follow_up.enabled', false);
     }
 
@@ -203,20 +212,26 @@ class DashboardWidgetsApiTest extends TestCase
         ]);
         $team->modules()->attach($module->id, ['status' => 1, 'settings' => null]);
 
+        $lead = ContactStatus::query()->where('name', 'Lead')->firstOrFail();
+        $client = ContactStatus::query()->where('name', 'Cliente')->firstOrFail();
+
         $overdue = Contact::factory()->create([
             'team_id' => $team->id,
             'name' => 'Ana',
             'surname' => 'García',
+            'status_id' => $lead->id,
         ]);
         $today = Contact::factory()->create([
             'team_id' => $team->id,
             'name' => 'Luis',
             'surname' => 'Paz',
+            'status_id' => $lead->id,
         ]);
         $later = Contact::factory()->create([
             'team_id' => $team->id,
             'name' => 'Marta',
             'surname' => 'Ríos',
+            'status_id' => $client->id,
         ]);
 
         $otherTeam = Team::factory()->create(['user_id' => $user->id]);
@@ -232,7 +247,7 @@ class DashboardWidgetsApiTest extends TestCase
         List60::query()->create([
             'contact_id' => $overdue->id,
             'type_id' => 1,
-            'date_next' => now()->subDays(2)->toDateString(),
+            'date_next' => now()->startOfWeek()->subDay()->toDateString(),
             'status_id' => $called->id,
             'responsible_id' => $user->id,
         ]);
@@ -246,10 +261,42 @@ class DashboardWidgetsApiTest extends TestCase
         List60::query()->create([
             'contact_id' => $later->id,
             'type_id' => 1,
-            'date_next' => now()->addDays(4)->toDateString(),
+            'date_next' => now()->startOfWeek()->addWeek()->toDateString(),
             'status_id' => $called->id,
             'responsible_id' => $user->id,
         ]);
+        $sentimentId = DB::table('contact_sentiments')->value('id');
+
+        if ($sentimentId === null)
+        {
+            $sentimentId = DB::table('contact_sentiments')->insertGetId(['name' => 'Neutral']);
+        }
+
+        ContactSentimentHistory::query()->create([
+            'contact_id' => $overdue->id,
+            'sentiment_id' => $sentimentId,
+            'intent_id' => ContactIntent::query()->where('key', 'unclear')->value('id'),
+            'notes' => 'Poco clara',
+        ]);
+        ContactSentimentHistory::query()->create([
+            'contact_id' => $today->id,
+            'sentiment_id' => $sentimentId,
+            'intent_id' => ContactIntent::query()->where('key', 'buy')->value('id'),
+            'notes' => 'Quiere comprar',
+        ]);
+        ContactSentimentHistory::query()->create([
+            'contact_id' => $today->id,
+            'sentiment_id' => $sentimentId,
+            'intent_id' => ContactIntent::query()->where('key', 'unclear')->value('id'),
+            'notes' => 'La última manda',
+        ]);
+        ContactSentimentHistory::query()->create([
+            'contact_id' => $later->id,
+            'sentiment_id' => $sentimentId,
+            'intent_id' => ContactIntent::query()->where('key', 'buy')->value('id'),
+            'notes' => 'Quiere comprar',
+        ]);
+
         List60::query()->create([
             'contact_id' => $other->id,
             'type_id' => 1,
@@ -278,7 +325,16 @@ class DashboardWidgetsApiTest extends TestCase
             ->assertJsonPath('follow_up.statuses.1.name', 'Sin respuesta')
             ->assertJsonPath('follow_up.statuses.1.count', 1)
             ->assertJsonCount(8, 'follow_up.weeks')
-            ->assertJsonPath('follow_up.weeks.0.count', 2)
-            ->assertJsonPath('follow_up.weeks.1.count', 1);
+            ->assertJsonPath('follow_up.weeks.0.count', 1)
+            ->assertJsonPath('follow_up.weeks.1.count', 1)
+            ->assertJsonCount(2, 'widgets.audience')
+            ->assertJsonPath('widgets.audience.0.name', 'Lead')
+            ->assertJsonPath('widgets.audience.0.count', 2)
+            ->assertJsonPath('widgets.audience.1.name', 'Cliente')
+            ->assertJsonPath('widgets.audience.1.count', 1)
+            ->assertJsonPath('widgets.intents.0.key', 'buy')
+            ->assertJsonPath('widgets.intents.0.count', 1)
+            ->assertJsonPath('widgets.intents.5.key', 'unclear')
+            ->assertJsonPath('widgets.intents.5.count', 2);
     }
 }

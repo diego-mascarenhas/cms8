@@ -7,6 +7,9 @@ use App\Enums\TransactionType;
 use App\Http\Controllers\Controller;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
+use App\Models\ContactIntent;
+use App\Models\ContactSentimentHistory;
+use App\Models\ContactStatus;
 use App\Models\List60;
 use App\Models\Notification;
 use App\Models\PaidAdMetricSnapshot;
@@ -204,6 +207,8 @@ class DashboardController extends Controller
             'payments' => $this->paymentWidgets($team),
             'drafts' => $this->draftWidgets($user),
             'sentiment' => $this->sentimentWidget($team),
+            'audience' => $this->audienceWidgets($user, $team),
+            'intents' => $this->intentWidgets($user, $team),
         ];
     }
 
@@ -627,6 +632,86 @@ class DashboardController extends Controller
         }
 
         return (int) round((($current - $previous) / $previous) * 100);
+    }
+
+    /**
+     * Contacts grouped by status: leads, follow-up, clients and the rest.
+     *
+     * @return list<array{name: string, count: int}>
+     */
+    private function audienceWidgets(User $user, Team $team): array
+    {
+        if (! $user->can('viewAny', Contact::class))
+        {
+            return [];
+        }
+
+        $counts = Contact::query()
+            ->where('team_id', $team->id)
+            ->whereNotNull('status_id')
+            ->selectRaw('status_id, COUNT(*) as aggregate')
+            ->groupBy('status_id')
+            ->pluck('aggregate', 'status_id');
+
+        $order = array_flip(['Lead', 'En seguimiento', 'Conversión', 'Cliente', 'Perdido', 'Finalizado']);
+
+        return ContactStatus::query()
+            ->orderBy('id')
+            ->get(['id', 'name'])
+            ->map(function (ContactStatus $status) use ($counts): array
+            {
+                return [
+                    'name' => $status->name,
+                    'count' => (int) ($counts[$status->id] ?? 0),
+                ];
+            })
+            ->filter(fn (array $row): bool => $row['count'] > 0)
+            ->sortBy(fn (array $row): int => $order[$row['name']] ?? 99)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Latest purchase intent of each contact.
+     *
+     * @return list<array{key: string, name: string, emoji: string, count: int}>
+     */
+    private function intentWidgets(User $user, Team $team): array
+    {
+        if (! $user->can('viewAny', Contact::class))
+        {
+            return [];
+        }
+
+        $latest = ContactSentimentHistory::query()
+            ->selectRaw('contact_id, MAX(id) as id')
+            ->groupBy('contact_id');
+
+        $counts = ContactSentimentHistory::query()
+            ->joinSub($latest, 'latest', function ($join): void
+            {
+                $join->on('latest.id', '=', 'contact_sentiment_histories.id');
+            })
+            ->join('contacts', 'contacts.id', '=', 'contact_sentiment_histories.contact_id')
+            ->where('contacts.team_id', $team->id)
+            ->whereNotNull('contact_sentiment_histories.intent_id')
+            ->selectRaw('contact_sentiment_histories.intent_id as intent_id, COUNT(*) as aggregate')
+            ->groupBy('contact_sentiment_histories.intent_id')
+            ->pluck('aggregate', 'intent_id');
+
+        return ContactIntent::query()
+            ->orderBy('id')
+            ->get()
+            ->map(function (ContactIntent $intent) use ($counts): array
+            {
+                return [
+                    'key' => $intent->key,
+                    'name' => $intent->displayName(),
+                    'emoji' => $intent->emoji,
+                    'count' => (int) ($counts[(int) $intent->id] ?? $counts[(string) $intent->id] ?? 0),
+                ];
+            })
+            ->all();
     }
 
     /**
