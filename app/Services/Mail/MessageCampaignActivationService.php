@@ -3,10 +3,10 @@
 namespace App\Services\Mail;
 
 use App\Enums\CampaignStatus;
+use App\Jobs\ResumeMessageCampaign;
 use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\Team;
-use Illuminate\Support\Facades\Artisan;
 
 class MessageCampaignActivationService
 {
@@ -57,11 +57,7 @@ class MessageCampaignActivationService
 
             $message->update($updateData);
 
-            Artisan::call('campaigns:process-active', [
-                '--message' => $message->id,
-            ]);
-
-            $message->reschedulePendingDeliveries();
+            ResumeMessageCampaign::dispatch($message->id)->afterResponse();
 
             $message->load('campaigns');
             foreach ($message->campaigns as $campaign)
