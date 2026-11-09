@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Helpers\Helpers;
 use App\Models\Category;
+use App\Models\ExchangeRate;
 use App\Models\Module;
 use App\Models\Project;
 use App\Models\Prompt;
@@ -704,6 +705,93 @@ class ProjectBudgetSpecService
         }
 
         return $lines;
+    }
+
+    /**
+     * Plans chosen on the project form. Prices are the ones in force when they were saved.
+     *
+     * @return list<array{subscription_product_id: int|null, name: string, category: string, unit_price: float, currency: string, frequency: string}>
+     */
+    public function normalizeQuotePlans(mixed $raw): array
+    {
+        if (! is_array($raw))
+        {
+            return [];
+        }
+
+        $plans = [];
+        foreach ($raw as $line)
+        {
+            if (! is_array($line))
+            {
+                continue;
+            }
+
+            $name = trim((string) ($line['name'] ?? ''));
+            if ($name === '')
+            {
+                continue;
+            }
+
+            $currency = strtoupper(trim((string) ($line['currency'] ?? 'EUR')));
+            if (! in_array($currency, ['EUR', 'USD', 'ARS'], true))
+            {
+                $currency = 'EUR';
+            }
+
+            $plans[] = [
+                'subscription_product_id' => isset($line['subscription_product_id']) && is_numeric($line['subscription_product_id'])
+                    ? (int) $line['subscription_product_id']
+                    : null,
+                'name' => $name,
+                'category' => trim((string) ($line['category'] ?? '')),
+                'unit_price' => is_numeric($line['unit_price'] ?? null) ? round(max(0, (float) $line['unit_price']), 2) : 0.0,
+                'currency' => $currency,
+                'frequency' => trim((string) ($line['frequency'] ?? '')),
+            ];
+        }
+
+        return $plans;
+    }
+
+    /**
+     * @param  array<int, mixed>  $ids
+     * @return list<array{subscription_product_id: int|null, name: string, category: string, unit_price: float, currency: string, frequency: string}>
+     */
+    public function quotePlansFromIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map(intval(...), $ids))));
+        if ($ids === [])
+        {
+            return [];
+        }
+
+        $products = \App\Models\SubscriptionProduct::query()
+            ->active()
+            ->whereIn('id', $ids)
+            ->get()
+            ->keyBy('id');
+
+        $plans = [];
+        foreach ($ids as $id)
+        {
+            $product = $products->get($id);
+            if (! $product instanceof \App\Models\SubscriptionProduct)
+            {
+                continue;
+            }
+
+            $plans[] = [
+                'subscription_product_id' => $product->id,
+                'name' => (string) $product->name,
+                'category' => (string) ($product->category ?? ''),
+                'unit_price' => round(max(0, (float) $product->unit_amount), 2),
+                'currency' => strtoupper((string) ($product->currency ?: 'EUR')),
+                'frequency' => (string) ($product->getBillingFrequency() ?? ''),
+            ];
+        }
+
+        return $this->normalizeQuotePlans($plans);
     }
 
     /**
@@ -1942,11 +2030,45 @@ class ProjectBudgetSpecService
 
         $grandTotal = (int) round($totalLabor + $totalTokenBillable);
         $discountPercent = is_numeric($project->discount) ? max(0.0, min(100.0, (float) $project->discount)) : 0.0;
+        $manualAmount = data_get($project->data, 'quote_amount');
+        $hasManualAmount = is_numeric($manualAmount) && (string) $manualAmount !== '';
+        if ($hasManualAmount && abs((float) $manualAmount - (float) $grandTotal) >= 0.01)
+        {
+            $scaledLines = $this->scaleQuoteLines((float) $manualAmount, array_map(
+                fn (array $row): array => [
+                    'labor' => (float) ($row['labor_amount'] ?? 0),
+                    'tokens' => (float) ($row['token_amount'] ?? 0),
+                ],
+                $rows,
+            ));
+            $totalLabor = 0.0;
+            $totalTokenBillable = 0.0;
+            foreach ($rows as $index => $row)
+            {
+                $scaledLabor = (float) ($scaledLines[$index]['labor'] ?? 0);
+                $scaledTokens = (float) ($scaledLines[$index]['tokens'] ?? 0);
+                $rows[$index]['labor_amount'] = $scaledLabor;
+                $rows[$index]['token_amount'] = $scaledTokens;
+                $laborDisplay = $scaledLabor;
+                if ($includeTokens && ! $discriminateTokens)
+                {
+                    $laborDisplay += $scaledTokens;
+                }
+                $displayTokens = (int) ($row['display_tokens'] ?? 0);
+                $rows[$index]['labor'] = ($scaledLabor > 0 || $scaledTokens > 0) ? $formatMoney($laborDisplay) : '—';
+                $rows[$index]['token_cost'] = ($displayTokens > 0 || $scaledTokens > 0) ? $formatMoney($scaledTokens) : '—';
+                $totalLabor += $scaledLabor;
+                $totalTokenBillable += $scaledTokens;
+            }
+            $grandTotal = (int) round((float) $manualAmount);
+        }
         $laborDiscountAmount = round($totalLabor * ($discountPercent / 100), 2);
         $discountedLabor = round($totalLabor - $laborDiscountAmount, 2);
         $discountedTotal = (int) round($discountedLabor + $totalTokenBillable);
         $payableTotal = $discountPercent > 0 ? $discountedTotal : $grandTotal;
-        $clientTotal = $this->resolveDisplayedQuoteAmount($project, $payableTotal);
+        $clientTotal = $hasManualAmount
+            ? (float) $payableTotal
+            : $this->resolveDisplayedQuoteAmount($project, $payableTotal);
         $scaledLines = $this->scaleQuoteLines($clientTotal, array_map(
             fn (array $row): array => [
                 'labor' => (float) ($row['labor_amount'] ?? 0),
@@ -1954,7 +2076,7 @@ class ProjectBudgetSpecService
             ],
             $rows,
         ));
-        if (abs($clientTotal - (float) $payableTotal) >= 0.01)
+        if (! $hasManualAmount && abs($clientTotal - (float) $payableTotal) >= 0.01)
         {
             $totalLabor = 0.0;
             $totalTokenBillable = 0.0;
@@ -2020,6 +2142,7 @@ class ProjectBudgetSpecService
             'include_tokens' => $includeTokens,
             'rows' => $rows,
             'product_rows' => $productRows,
+            'quote_plans' => $this->normalizeQuotePlans(data_get($project->data, 'quote_plans')),
             'totals' => [
                 'labor' => $formatMoney($discriminateTokens || ! $includeTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)),
                 'tokens' => $totalDisplayTokens > 0 ? $this->formatTokenCount($totalDisplayTokens) : '—',
@@ -2451,6 +2574,21 @@ class ProjectBudgetSpecService
         $code = strtoupper(trim((string) $code));
 
         return in_array($code, ['EUR', 'USD', 'ARS'], true) ? $code : 'EUR';
+    }
+
+    public function amountInQuoteCurrency(float|int $amount, string $fromCurrency, string $toCurrency): float
+    {
+        $from = $this->normalizeQuoteCurrency($fromCurrency);
+        $to = $this->normalizeQuoteCurrency($toCurrency);
+        $amount = round((float) $amount, 2);
+        if ($from === $to)
+        {
+            return $amount;
+        }
+
+        $converted = ExchangeRate::convert($amount, $from, $to);
+
+        return round($converted ?? $amount, 2);
     }
 
     public function formatQuoteMoney(float|int $amount, string $currencyCode = 'EUR'): string

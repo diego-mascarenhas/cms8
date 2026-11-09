@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Enterprise;
+use App\Models\ExchangeRate;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\Team;
@@ -189,6 +190,104 @@ class ProjectBudgetPreviewTest extends TestCase
             ->assertSee('US$ 347,00', false)
             ->assertDontSee('1.550,84', false)
             ->assertDontSee('1.000,00', false);
+    }
+
+    #[Test]
+    public function public_budget_preview_applies_discount_to_a_manual_amount(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'quote_finalized' => true,
+            'quote_amount' => 300,
+            'token_include' => false,
+            'suggested_tasks' => [
+                [
+                    'title' => 'Alcance',
+                    'estimated_hours' => 4,
+                    'resource_level' => 'Senior',
+                    'unit_price' => 1000,
+                    'estimated_tokens' => 0,
+                    'included' => true,
+                ],
+            ],
+        ]);
+        $created['project']->forceFill(['discount' => 10])->save();
+
+        $this->get(route('project.budget-preview', [
+            'token' => $created['token'],
+            'report' => 1,
+        ]))
+            ->assertOk()
+            ->assertSee('300,00 €', false)
+            ->assertSee('270,00 €', false)
+            ->assertSee('10%', false);
+    }
+
+    #[Test]
+    public function public_budget_preview_lists_additional_service_plans(): void
+    {
+        ExchangeRate::query()->create([
+            'base_currency' => 'EUR',
+            'target_currency' => 'USD',
+            'rate' => 2,
+            'date' => now()->toDateString(),
+            'fetched_at' => now(),
+        ]);
+        $created = $this->createBudgetPreviewProject([
+            'quote_currency' => 'USD',
+            'quote_plans' => [[
+                'subscription_product_id' => 4,
+                'name' => 'Mailer Pro',
+                'category' => 'mailer',
+                'unit_price' => 19,
+                'currency' => 'EUR',
+                'frequency' => 'Mensual',
+            ]],
+        ]);
+
+        $this->get(route('project.budget-preview', [
+            'token' => $created['token'],
+            'report' => 1,
+        ]))
+            ->assertOk()
+            ->assertSee(__('Additional services'), false)
+            ->assertSee('Mailer Pro', false)
+            ->assertSee('US$ 38,00', false)
+            ->assertSee('Mensual', false)
+            ->assertDontSee('19,00 €', false);
+    }
+
+    #[Test]
+    public function public_budget_preview_shows_observations_exactly_as_written(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'quote_observations' => "Entrega en dos etapas.\n  El dominio lo pone el cliente.",
+        ]);
+
+        $this->get(route('project.budget-preview', [
+            'token' => $created['token'],
+            'report' => 1,
+        ]))
+            ->assertOk()
+            ->assertSee(__('Observations'), false)
+            ->assertSee("Entrega en dos etapas.\n  El dominio lo pone el cliente.", false);
+    }
+
+    #[Test]
+    public function public_budget_preview_uses_a_manual_duration_instead_of_the_ai_estimate(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'estimated_times' => 'About 1 week.',
+            'quote_duration' => 'Entrega en 10 días hábiles.',
+        ]);
+
+        $this->get(route('project.budget-preview', [
+            'token' => $created['token'],
+            'report' => 1,
+        ]))
+            ->assertOk()
+            ->assertSee('Entrega en 10 días hábiles.', false)
+            ->assertDontSee('About 1 week.', false)
+            ->assertDontSee(__('Estimated development time, :weeks weeks after the budget has been confirmed.', ['weeks' => 1]), false);
     }
 
     #[Test]

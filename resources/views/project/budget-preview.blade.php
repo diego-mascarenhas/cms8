@@ -7,7 +7,12 @@
     $clientName = trim((string) (optional($project->enterprise)->name ?? ''));
     $dimension = trim((string) data_get($project->data, 'dimension', ''));
     $estimatedTimes = trim((string) data_get($project->data, 'estimated_times', ''));
+    $quoteDuration = trim((string) data_get($project->data, 'quote_duration', ''));
+    if ($quoteDuration !== '') {
+        $estimatedTimes = '';
+    }
     $resources = trim((string) data_get($project->data, 'resources', ''));
+    $observations = trim((string) data_get($project->data, 'quote_observations', ''));
     $savings = (float) data_get($project->data, 'token_consumption.savings_percent', 57);
     $aiUsage = $budgetService->normalizeAiUsagePercent(
         data_get($project->data, 'ai_usage_percent', \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT)
@@ -93,13 +98,44 @@
 
     $grandTotal = (int) round($totalLabor + $totalTokenBillable);
     $weeks = $totalHours > 0 ? (int) ceil($totalHours / 40) : 0;
-    $hasContent = $summary !== '' || $dimension !== '' || $estimatedTimes !== '' || $resources !== '' || count($rows) > 0;
+    $quotePlans = $budgetService->normalizeQuotePlans(data_get($project->data, 'quote_plans'));
+    $hasContent = $summary !== '' || $dimension !== '' || $estimatedTimes !== '' || $resources !== '' || $observations !== '' || count($rows) > 0 || count($quotePlans) > 0;
     $discountPercent = is_numeric($project->discount) ? max(0.0, min(100.0, (float) $project->discount)) : 0.0;
+    $hasManualAmount = is_numeric($manualAmount) && (string) $manualAmount !== '';
+    if ($hasManualAmount && abs((float) $manualAmount - (float) $grandTotal) >= 0.01) {
+        $scaledToManual = $budgetService->scaleQuoteLines((float) $manualAmount, array_map(
+            fn (array $row): array => [
+                'labor' => (float) ($row['labor_amount'] ?? 0),
+                'tokens' => (float) ($row['token_amount'] ?? 0),
+            ],
+            $rows,
+        ));
+        $totalLabor = 0.0;
+        $totalTokenBillable = 0.0;
+        foreach ($rows as $index => $row) {
+            $scaledLabor = (float) ($scaledToManual[$index]['labor'] ?? 0);
+            $scaledTokens = (float) ($scaledToManual[$index]['tokens'] ?? 0);
+            $rows[$index]['labor_amount'] = $scaledLabor;
+            $rows[$index]['token_amount'] = $scaledTokens;
+            $laborDisplay = $scaledLabor;
+            if ($includeTokens && ! $discriminateTokens) {
+                $laborDisplay += $scaledTokens;
+            }
+            $displayTokens = (int) ($row['display_tokens'] ?? 0);
+            $rows[$index]['labor'] = ($scaledLabor > 0 || $scaledTokens > 0) ? $formatEuros($laborDisplay) : '—';
+            $rows[$index]['token_cost'] = ($displayTokens > 0 || $scaledTokens > 0) ? $formatEuros($scaledTokens) : '—';
+            $totalLabor += $scaledLabor;
+            $totalTokenBillable += $scaledTokens;
+        }
+        $grandTotal = (int) round((float) $manualAmount);
+    }
     $laborDiscountAmount = round($totalLabor * ($discountPercent / 100), 2);
     $discountedLabor = round($totalLabor - $laborDiscountAmount, 2);
     $discountedTotal = (int) round($discountedLabor + $totalTokenBillable);
     $payableTotal = $discountPercent > 0 ? $discountedTotal : $grandTotal;
-    $clientTotal = $budgetService->resolveDisplayedQuoteAmount($project, $payableTotal);
+    $clientTotal = $hasManualAmount
+        ? (float) $payableTotal
+        : $budgetService->resolveDisplayedQuoteAmount($project, $payableTotal);
     $scaledLines = $budgetService->scaleQuoteLines($clientTotal, array_map(
         fn (array $row): array => [
             'labor' => (float) ($row['labor_amount'] ?? 0),
@@ -107,7 +143,7 @@
         ],
         $rows,
     ));
-    if (abs($clientTotal - (float) $payableTotal) >= 0.01) {
+    if (! $hasManualAmount && abs($clientTotal - (float) $payableTotal) >= 0.01) {
         $totalLabor = 0.0;
         $totalTokenBillable = 0.0;
         foreach ($rows as $index => $row) {
@@ -180,6 +216,7 @@
         h2 { font-size: 14px; color: #111827; margin: 24px 0 8px; font-weight: 700; }
         h3 { font-size: 12px; color: #374151; margin: 16px 0 6px; font-weight: 700; }
         .prose { color: #374151; margin: 0 0 8px; }
+        .observations { white-space: pre-wrap; }
         .labor-report { font-size: 11px; color: #4b5563; margin-top: 4px; line-height: 1.35; font-weight: 400; }
         table { width: 100%; border-collapse: collapse; margin: 12px 0 16px; }
         th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
@@ -396,6 +433,16 @@
             @endforeach
         @endif
 
+        @if (count($quotePlans) > 0)
+            <h2>{{ __('Additional services') }}</h2>
+            @foreach ($quotePlans as $plan)
+                <div class="scope-item">
+                    <strong>{{ $plan['name'] }}</strong>
+                    <span class="labor-report">{{ $budgetService->formatQuoteMoney($budgetService->amountInQuoteCurrency($plan['unit_price'], $plan['currency'], $quoteCurrency), $quoteCurrency) }}@if ($plan['frequency'] !== '') · {{ $plan['frequency'] }}@endif</span>
+                </div>
+            @endforeach
+        @endif
+
         @if (count($rows) > 0)
             <h3>{{ __('Details') }}</h3>
             <table>
@@ -457,9 +504,16 @@
                     <strong style="text-align:right;">{{ $formatEuros($clientTotal) }} + {{ __('I.V.A.') }}</strong>
                 </div>
             </div>
-            @if ($weeks > 0)
+            @if ($quoteDuration !== '')
+                <p class="prose">{{ $quoteDuration }}</p>
+            @elseif ($weeks > 0)
                 <p class="prose">{{ __('Estimated development time, :weeks weeks after the budget has been confirmed.', ['weeks' => $weeks]) }}</p>
             @endif
+        @endif
+
+        @if ($observations !== '')
+            <h2>{{ __('Observations') }}</h2>
+            <p class="prose observations">{{ $observations }}</p>
         @endif
     @endunless
 

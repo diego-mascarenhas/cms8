@@ -425,6 +425,18 @@ class MailerProspectApiTest extends TestCase
             'has_email' => true,
             'has_phone' => false,
         ], ['channels' => ['email']]));
+        $this->assertTrue(ImportApolloProspectsJob::personMatchesChannels([
+            'has_email' => true,
+            'has_phone' => false,
+        ], ['channels' => ['email', 'phone']]));
+        $this->assertTrue(ImportApolloProspectsJob::personMatchesChannels([
+            'has_email' => false,
+            'has_phone' => true,
+        ], ['channels' => ['email', 'phone']]));
+        $this->assertFalse(ImportApolloProspectsJob::personMatchesChannels([
+            'has_email' => false,
+            'has_phone' => false,
+        ], ['channels' => ['email', 'phone']]));
     }
 
     public function test_import_without_credits_is_recorded_as_usage(): void

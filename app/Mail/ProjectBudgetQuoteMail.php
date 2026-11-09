@@ -151,13 +151,31 @@ class ProjectBudgetQuoteMail extends Mailable
         $data = is_array($this->project->data) ? $this->project->data : [];
         $sections = [];
 
+        $quoteDuration = trim((string) data_get($data, 'quote_duration', ''));
         foreach ([
-            [__('Dimension'), data_get($data, 'dimension', '')],
-            [__('Times'), data_get($data, 'estimated_times', '')],
-            [__('Resources'), data_get($data, 'resources', '')],
-        ] as [$title, $text])
+            [__('Dimension'), data_get($data, 'dimension', ''), false],
+            [__('Times'), $quoteDuration !== '' ? $quoteDuration : data_get($data, 'estimated_times', ''), $quoteDuration !== ''],
+            [__('Resources'), data_get($data, 'resources', ''), false],
+        ] as [$title, $text, $verbatim])
         {
-            $paragraphs = $this->splitParagraphs((string) $text);
+            $text = trim((string) $text);
+            if ($text === '')
+            {
+                continue;
+            }
+
+            if ($verbatim)
+            {
+                $sections[] = [
+                    'title' => $title,
+                    'paragraphs' => [],
+                    'verbatim' => $text,
+                ];
+
+                continue;
+            }
+
+            $paragraphs = $this->splitParagraphs($text);
             if ($paragraphs === [])
             {
                 continue;
@@ -166,6 +184,38 @@ class ProjectBudgetQuoteMail extends Mailable
             $sections[] = [
                 'title' => $title,
                 'paragraphs' => $paragraphs,
+            ];
+        }
+
+        $planParagraphs = [];
+        $quoteCurrency = app(ProjectBudgetSpecService::class)->normalizeQuoteCurrency(data_get($data, 'quote_currency', 'EUR'));
+        foreach (app(ProjectBudgetSpecService::class)->normalizeQuotePlans(data_get($data, 'quote_plans')) as $plan)
+        {
+            $detail = app(ProjectBudgetSpecService::class)->formatQuoteMoney(
+                app(ProjectBudgetSpecService::class)->amountInQuoteCurrency($plan['unit_price'], $plan['currency'], $quoteCurrency),
+                $quoteCurrency,
+            );
+            if ($plan['frequency'] !== '')
+            {
+                $detail .= ' · '.$plan['frequency'];
+            }
+            $planParagraphs[] = $plan['name'].' — '.$detail;
+        }
+        if ($planParagraphs !== [])
+        {
+            $sections[] = [
+                'title' => __('Additional services'),
+                'paragraphs' => $planParagraphs,
+            ];
+        }
+
+        $observations = trim((string) data_get($data, 'quote_observations', ''));
+        if ($observations !== '')
+        {
+            $sections[] = [
+                'title' => __('Observations'),
+                'paragraphs' => [],
+                'verbatim' => $observations,
             ];
         }
 
