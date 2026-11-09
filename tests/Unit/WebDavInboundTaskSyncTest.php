@@ -51,4 +51,32 @@ class WebDavInboundTaskSyncTest extends TestCase
     {
         $this->assertFalse(WebDavInboundTaskSync::shouldApplyRemoteContent(null, Carbon::now(), false));
     }
+
+    public function test_missing_start_date_uses_the_remote_due_date(): void
+    {
+        $dates = WebDavInboundTaskSync::resolveInboundDates('2026-10-28', null, null);
+
+        $this->assertSame('2026-10-28', $dates['start_date']);
+        $this->assertSame('2026-10-28', $dates['due_date']);
+    }
+
+    public function test_existing_start_date_is_kept_when_the_reminder_is_updated(): void
+    {
+        $dates = WebDavInboundTaskSync::resolveInboundDates('2026-10-28', '2026-10-01', '2026-10-20');
+
+        $this->assertSame('2026-10-01', $dates['start_date']);
+        $this->assertSame('2026-10-28', $dates['due_date']);
+    }
+
+    public function test_missing_remote_due_date_falls_back_to_today(): void
+    {
+        Carbon::setTestNow('2026-11-09 14:16:20');
+
+        $dates = WebDavInboundTaskSync::resolveInboundDates(null, null, null);
+
+        $this->assertSame('2026-11-09', $dates['start_date']);
+        $this->assertSame('2026-11-09', $dates['due_date']);
+
+        Carbon::setTestNow();
+    }
 }

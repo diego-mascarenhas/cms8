@@ -145,4 +145,30 @@ class WebDavTaskInboundSyncTest extends TestCase
 
         $this->assertSame($doneStatusId, (int) Task::withoutGlobalScopes()->findOrFail($task->id)->status_id);
     }
+
+    public function test_inbound_sync_fills_start_date_from_the_reminder_due_date(): void
+    {
+        $user = $this->userWithTeam();
+        $account = $this->externalAccount($user);
+
+        Http::fake([
+            'https://webdav.test/api/tasks*' => Http::response([
+                'data' => [[
+                    'uid' => 'vtodo-uid-3',
+                    'summary' => 'NO Análisis y diseño del flujo de pluses y dietas',
+                    'description' => null,
+                    'due_at' => '2026-10-28T00:00:00+00:00',
+                    'completed' => false,
+                    'updated_at' => now()->getTimestamp(),
+                ]],
+            ]),
+        ]);
+
+        (new SyncWebDavTasksJob($account->id))->handle(app(\App\Sync\Providers\WebDavTaskSyncProvider::class));
+
+        $task = Task::withoutGlobalScopes()->where('title', 'NO Análisis y diseño del flujo de pluses y dietas')->firstOrFail();
+
+        $this->assertSame('2026-10-28', $task->start_date?->toDateString());
+        $this->assertSame('2026-10-28', $task->due_date?->toDateString());
+    }
 }
