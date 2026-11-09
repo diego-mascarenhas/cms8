@@ -143,10 +143,12 @@ class CampaignMessageApiService
 
         if ($status === 'unsubscribed')
         {
-            $query->whereHas('contact', function (Builder $contact): void
-            {
-                $contact->where('status_id', 4);
-            });
+            $query->whereNotNull('message_deliveries.sent_at')
+                ->where('message_deliveries.sent_at', '<=', now())
+                ->whereHas('contact', function (Builder $contact): void
+                {
+                    $contact->where('status_id', 4);
+                });
 
             return;
         }
@@ -431,11 +433,16 @@ class CampaignMessageApiService
             return ! $delivery->sent_at || $delivery->sent_at->isFuture();
         })->count();
 
-        $contactIds = $deliveries->pluck('contact_id')->filter()->unique()->values();
-        $unsubscribed = $contactIds->isEmpty()
+        $sentContactIds = $deliveries
+            ->filter(fn (MessageDelivery $delivery): bool => $delivery->sent_at !== null && $delivery->sent_at->isPast())
+            ->pluck('contact_id')
+            ->filter()
+            ->unique()
+            ->values();
+        $unsubscribed = $sentContactIds->isEmpty()
             ? 0
             : Contact::withoutGlobalScopes()
-                ->whereIn('id', $contactIds)
+                ->whereIn('id', $sentContactIds)
                 ->where('status_id', 4)
                 ->count();
 
@@ -1013,10 +1020,12 @@ class CampaignMessageApiService
             },
             'deliveries as unsubscribed_count' => function ($query): void
             {
-                $query->whereHas('contact', function ($contact): void
-                {
-                    $contact->withoutGlobalScopes()->where('contacts.status_id', 4);
-                });
+                $query->whereNotNull('sent_at')
+                    ->where('sent_at', '<=', now())
+                    ->whereHas('contact', function ($contact): void
+                    {
+                        $contact->withoutGlobalScopes()->where('contacts.status_id', 4);
+                    });
             },
         ];
     }
