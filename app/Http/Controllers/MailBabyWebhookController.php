@@ -232,6 +232,8 @@ class MailBabyWebhookController extends Controller
             $delivery->contact->dropPermanentlyRejectedEmail(is_string($bounceReason) ? $bounceReason : null);
         }
 
+        $delivery->reactMailerPace('bounce');
+
         Log::warning('MailBaby webhook: Email bounced', [
             'delivery_id' => $delivery->id,
             'provider_message_id' => $delivery->provider_message_id,

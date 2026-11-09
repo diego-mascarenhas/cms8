@@ -236,6 +236,7 @@ class SendMessageCampaignJob implements ShouldQueue
         ]);
 
         $this->messageDelivery->team->recordSuccessfulMailerSend();
+        $this->messageDelivery->reactMailerPace('success');
         $this->recordEmailAttempt('sent');
     }
 
@@ -266,6 +267,7 @@ class SendMessageCampaignJob implements ShouldQueue
         ]);
 
         $this->messageDelivery->team->recordSuccessfulMailerSend();
+        $this->messageDelivery->reactMailerPace('success');
         $this->recordEmailAttempt('sent');
     }
 

@@ -232,6 +232,64 @@ class MessageDelivery extends Model
         {
             $this->message->handleCriticalError($errorMessage, $this->id);
         }
+
+        if ($this->shouldWidenMailerPace($errorMessage))
+        {
+            $this->reactMailerPace('bounce');
+        }
+    }
+
+    /**
+     * One bounce lengthens the team's pause. A streak of accepted sends shortens it, down to the cap.
+     */
+    public function reactMailerPace(string $outcome): void
+    {
+        $team = $this->team;
+        if (! $team?->usesAdaptiveMailerPace())
+        {
+            return;
+        }
+
+        $data = $this->provider_data ?? [];
+        if (($data['pace_reaction'] ?? null) === $outcome)
+        {
+            return;
+        }
+
+        $data['pace_reaction'] = $outcome;
+        $this->provider_data = $data;
+        $this->save();
+
+        if ($outcome === 'bounce')
+        {
+            $team->noteAdaptiveMailerBounce();
+
+            return;
+        }
+
+        $team->noteAdaptiveMailerSuccess();
+    }
+
+    private function shouldWidenMailerPace(?string $errorMessage): bool
+    {
+        if (is_string($errorMessage) && Message::isProviderSpamRejection($errorMessage))
+        {
+            return true;
+        }
+
+        if (in_array($this->bounce_type, ['hard', 'complaint', 'block'], true))
+        {
+            return true;
+        }
+
+        if ($this->bounce_type !== 'soft')
+        {
+            return false;
+        }
+
+        $text = mb_strtolower((string) $errorMessage);
+
+        return ! str_contains($text, 'timed out') && ! str_contains($text, 'connection');
     }
 
     /**

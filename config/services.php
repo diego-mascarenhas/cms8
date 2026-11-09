@@ -83,6 +83,13 @@ return [
             'opening_sends' => (int) env('EMAIL_OPENING_SENDS', 10),
             'max_average_spacing_seconds' => (int) env('EMAIL_MAX_AVERAGE_SPACING_SECONDS', 300),
             'spacing_jitter_ratio' => (float) env('EMAIL_SPACING_JITTER_RATIO', 0.4),
+            // Complimentary teams start at 120/hour, lengthen the gap on a bounce, and recover only up to 300/hour.
+            'adaptive_start_seconds' => (int) env('EMAIL_ADAPTIVE_START_SECONDS', 30),
+            'adaptive_min_seconds' => (int) env('EMAIL_ADAPTIVE_MIN_SECONDS', 12),
+            'adaptive_max_seconds' => (int) env('EMAIL_ADAPTIVE_MAX_SECONDS', 900),
+            'adaptive_bounce_factor' => (int) env('EMAIL_ADAPTIVE_BOUNCE_FACTOR', 2),
+            'adaptive_success_factor' => (float) env('EMAIL_ADAPTIVE_SUCCESS_FACTOR', 0.8),
+            'adaptive_success_streak' => (int) env('EMAIL_ADAPTIVE_SUCCESS_STREAK', 10),
         ],
 
         // Campaign processing limits. Basic is 3,000/day, Foundation 20,000 per 12 hours, Scale is a burst.

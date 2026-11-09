@@ -67,12 +67,10 @@ class SendScheduledDeliveries extends Command
 
         foreach ($dueDeliveries as $delivery)
         {
-            $pace = $delivery->team?->sendsMailerWithoutSpacing()
-                ? 'scale'
-                : ($delivery->team?->getEmailPlan()->value ?? 'basic');
+            $bucket = (string) ($delivery->team_id ?? '0');
             $limit = $delivery->team?->mailerDispatchBatch()
                 ?? (int) config('services.email.processing.deliveries_per_send_run', 5);
-            if (($queuedByPace[$pace] ?? 0) >= $limit)
+            if (($queuedByPace[$bucket] ?? 0) >= $limit)
             {
                 continue;
             }
@@ -95,7 +93,7 @@ class SendScheduledDeliveries extends Command
 
                 $this->info("   ✅ Queued delivery {$delivery->id} to {$delivery->contact->email}");
                 $successCount++;
-                $queuedByPace[$pace] = ($queuedByPace[$pace] ?? 0) + 1;
+                $queuedByPace[$bucket] = ($queuedByPace[$bucket] ?? 0) + 1;
             } catch (\Exception $e)
             {
                 $this->error("   ❌ Failed to queue delivery {$delivery->id}: {$e->getMessage()}");
