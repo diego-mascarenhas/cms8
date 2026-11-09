@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Api;
 
+use App\Jobs\ImportApolloProspectContactJob;
+use App\Jobs\ImportApolloProspectsJob;
+use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Module;
 use App\Models\Person;
@@ -9,11 +12,14 @@ use App\Models\ProspectSearch;
 use App\Models\ProspectUsageLog;
 use App\Models\User;
 use App\Services\ApolloService;
+use App\Services\Billing\AssistantSubscriptionService;
+use App\Services\Prospecting\ProspectDirectory;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -225,6 +231,121 @@ class MailerProspectApiTest extends TestCase
             ->assertJsonPath('people.0.first_name', 'Ana');
     }
 
+    public function test_filter_import_runs_on_the_queue_and_skips_a_known_person(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        [, $otherTeam, $otherToken] = $this->adminWithToken();
+        config(['humano_pricing.plan_access_team_ids' => [$team->id, $otherTeam->id]]);
+        $team->addProspectCreditsFromPurchase(5);
+        $otherTeam->addProspectCreditsFromPurchase(5);
+        $fake = $this->bindApollo();
+        $fake->totalEntries = 40;
+
+        Bus::fake();
+
+        $this->withToken($token)
+            ->postJson('/api/mailer/prospects/imports', [
+                'person_titles' => ['owner'],
+                'person_locations' => ['Argentina'],
+                'category_id' => null,
+            ])
+            ->assertStatus(202)
+            ->assertJsonPath('message', 'La importación quedó en el servidor. Podés cerrar esta página.');
+
+        Bus::assertDispatched(ImportApolloProspectsJob::class, function (ImportApolloProspectsJob $job) use ($team): bool
+        {
+            return $job->teamId === $team->id && $job->page === 1 && $job->filters['person_locations'] === ['Argentina'];
+        });
+
+        $this->withToken($token)
+            ->postJson('/api/mailer/prospects/imports', [
+                'person_titles' => ['owner'],
+                'person_locations' => ['Argentina'],
+            ])
+            ->assertStatus(409);
+
+        $contactsModule = Module::query()->firstOrCreate(
+            ['key' => 'contacts'],
+            [
+                'name' => 'Contacts',
+                'icon' => 'users',
+                'description' => 'Contacts',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+        $category = Category::query()->create([
+            'team_id' => $team->id,
+            'module_id' => $contactsModule->id,
+            'name' => 'Humano Buenos Aires',
+            'color' => '#1f5c45',
+            'status' => 1,
+        ]);
+        $filters = [
+            'person_titles' => ['owner'],
+            'person_locations' => ['Argentina'],
+        ];
+        $job = new ImportApolloProspectsJob($team->id, $user->id, $filters, 1, $category->id);
+        $job->handle(
+            app(ApolloService::class),
+            app(ProspectDirectory::class),
+            app(AssistantSubscriptionService::class),
+        );
+
+        $this->assertSame(1, $fake->searches);
+        $this->assertSame(0, $fake->enrichments);
+        Bus::assertDispatched(ImportApolloProspectsJob::class, function (ImportApolloProspectsJob $next): bool
+        {
+            return $next->page === 2 && $next->queue === 'prospects';
+        });
+        Bus::assertDispatched(ImportApolloProspectContactJob::class, function (ImportApolloProspectContactJob $contact) use ($team, $category): bool
+        {
+            return $contact->teamId === $team->id
+                && $contact->apolloId === 'p1'
+                && $contact->categoryId === $category->id
+                && $contact->queue === 'prospects';
+        });
+
+        $person = [
+            'id' => 'p1',
+            'first_name' => 'Ana',
+            'title' => 'Owner',
+            'organization_name' => 'Acme',
+            'apollo_raw' => [
+                'id' => 'p1',
+                'first_name' => 'Ana',
+                'seniority' => 'owner',
+            ],
+        ];
+        $contactJob = new ImportApolloProspectContactJob($team->id, $user->id, 'p1', $person, $category->id);
+        $contactJob->handle(app(\App\Services\Prospecting\ProspectContactImporter::class), app(AssistantSubscriptionService::class));
+
+        $imported = Contact::withoutGlobalScopes()->where('team_id', $team->id)->where('email', 'ana@acme.test')->first();
+        $this->assertNotNull($imported);
+        $this->assertTrue($imported->categories()->where('categories.id', $category->id)->exists());
+        $this->assertSame(1, $fake->enrichments);
+
+        $contactJob->handle(app(\App\Services\Prospecting\ProspectContactImporter::class), app(AssistantSubscriptionService::class));
+
+        $this->assertSame(1, $fake->enrichments);
+        $this->assertSame(1, Contact::withoutGlobalScopes()->where('team_id', $team->id)->count());
+        $this->assertSame(3, (int) ProspectUsageLog::query()->where('team_id', $team->id)->sum('count'));
+
+        $this->app['auth']->forgetGuards();
+        $otherUser = User::query()->where('current_team_id', $otherTeam->id)->first();
+        $this->assertNotNull($otherUser);
+        $copy = new ImportApolloProspectContactJob($otherTeam->id, $otherUser->id, 'p1', $person, null);
+        $copy->handle(app(\App\Services\Prospecting\ProspectContactImporter::class), app(AssistantSubscriptionService::class));
+
+        $copied = Contact::withoutGlobalScopes()->where('team_id', $otherTeam->id)->where('email', 'ana@acme.test')->first();
+        $this->assertNotNull($copied);
+        $this->assertSame($imported->person_id, $copied->person_id);
+        $this->assertSame(1, $fake->enrichments);
+        $this->assertSame(3, (int) ProspectUsageLog::query()->where('team_id', $otherTeam->id)->sum('count'));
+        $this->assertSame(2, $otherTeam->fresh()->getRemainingProspectCredits());
+        $this->assertNotNull($otherToken);
+    }
+
     public function test_import_without_credits_is_recorded_as_usage(): void
     {
         [, $team, $token] = $this->adminWithToken();
@@ -257,6 +378,8 @@ class MailerProspectApiTest extends TestCase
 
             public int $enrichments = 0;
 
+            public int $totalEntries = 1;
+
             public function __construct()
             {
                 parent::__construct('test-key');
@@ -281,7 +404,7 @@ class MailerProspectApiTest extends TestCase
                             'seniority' => 'owner',
                         ],
                     ]],
-                    'total_entries' => 1,
+                    'total_entries' => $this->totalEntries,
                     'page' => $page,
                     'per_page' => $perPage,
                 ];

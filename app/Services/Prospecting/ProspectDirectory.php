@@ -54,7 +54,6 @@ class ProspectDirectory
         $enrichment = PersonEnrichment::query()
             ->where('source', $source)
             ->where('external_id', $externalId)
-            ->whereNotNull('person_id')
             ->first();
 
         if ($enrichment === null || ! is_array($enrichment->payload) || $enrichment->payload === [])
@@ -63,6 +62,25 @@ class ProspectDirectory
         }
 
         return $enrichment->payload;
+    }
+
+    public function contactOnTeam(int $teamId, string $externalId): ?Contact
+    {
+        $enrichment = PersonEnrichment::query()
+            ->where('source', self::SOURCE_APOLLO)
+            ->where('external_id', $externalId)
+            ->whereNotNull('person_id')
+            ->first();
+
+        if ($enrichment === null)
+        {
+            return null;
+        }
+
+        return Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('person_id', $enrichment->person_id)
+            ->first();
     }
 
     /**
@@ -80,16 +98,16 @@ class ProspectDirectory
         $email = $this->normalizeEmail($contact->email);
         $person = $this->findPerson($source, $externalId, $email);
 
+        if ($person === null)
+        {
+            $person = Person::query()->create([
+                'name' => $contact->name !== '' ? $contact->name : 'Contact',
+            ]);
+        }
+
+        $this->fillPerson($person, $contact, $organizationName);
         if ($email !== null)
         {
-            if ($person === null)
-            {
-                $person = Person::query()->create([
-                    'name' => $contact->name !== '' ? $contact->name : 'Contact',
-                ]);
-            }
-
-            $this->fillPerson($person, $contact, $organizationName);
             $this->syncEmail($person, $email);
         }
 

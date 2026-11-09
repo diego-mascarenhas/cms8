@@ -83,27 +83,51 @@ class ClientRoster
         $contacts = $ids === []
             ? collect()
             : Contact::query()
-                ->with(['status:id,name', 'categories:id', 'user:id,name,email', 'enterprises:id'])
-                ->whereHas('enterprises', fn ($builder) => $builder->whereIn('enterprises.id', $ids))
+                ->with([
+                    'status:id,name',
+                    'categories:id',
+                    'user:id,name,email',
+                    'enterprises' => function ($query) use ($ids, $teamId)
+                    {
+                        $query->where('enterprises.team_id', $teamId)->whereIn('enterprises.id', $ids);
+                    },
+                ])
+                ->where('team_id', $teamId)
+                ->whereHas('enterprises', fn ($builder) => $builder->where('enterprises.team_id', $teamId)->whereIn('enterprises.id', $ids))
                 ->get();
 
         $contactsByClient = [];
         $positionsByClient = [];
         foreach ($contacts as $contact)
         {
+            if ((int) $contact->team_id !== $teamId)
+            {
+                continue;
+            }
+
             foreach ($contact->enterprises as $enterprise)
             {
+                if ((int) $enterprise->team_id !== $teamId || ! in_array((int) $enterprise->id, $ids, true))
+                {
+                    continue;
+                }
+
                 $enterpriseId = (int) $enterprise->id;
                 $contactsByClient[$enterpriseId][] = $contact;
                 $positionsByClient[$enterpriseId][(int) $contact->id] = trim((string) ($enterprise->pivot->position ?? ''));
             }
         }
 
+        $staffUserIds = $this->staffUserIds(
+            $teamId,
+            $contacts->pluck('user_id')->filter()->map(fn ($id): int => (int) $id)->unique()->all(),
+        );
+
         $logins = $this->lastLogins($contacts->pluck('user_id')->filter()->map(fn ($id): int => (int) $id)->unique()->all());
 
-        $rows = $clients->map(function (Enterprise $client) use ($subscriptions, $usages, $balances, $contactsByClient, $positionsByClient, $logins, $serviceCounts): array
+        $rows = $clients->map(function (Enterprise $client) use ($subscriptions, $usages, $balances, $contactsByClient, $positionsByClient, $logins, $serviceCounts, $staffUserIds): array
         {
-            return $this->row($client, $subscriptions, $usages, $balances, $contactsByClient, $positionsByClient, $logins, $serviceCounts);
+            return $this->row($client, $subscriptions, $usages, $balances, $contactsByClient, $positionsByClient, $logins, $serviceCounts, $staffUserIds);
         })->values()->all();
 
         return [
@@ -123,13 +147,18 @@ class ClientRoster
      * @param  array<int, array<int, string>>  $positionsByClient
      * @param  array<int, Carbon>  $logins
      * @param  \Illuminate\Support\Collection<int|string, int|string>  $serviceCounts
+     * @param  array<int, true>  $staffUserIds
      * @return array<string, mixed>
      */
-    private function row(Enterprise $client, $subscriptions, $usages, $balances, array $contactsByClient, array $positionsByClient, array $logins, $serviceCounts): array
+    private function row(Enterprise $client, $subscriptions, $usages, $balances, array $contactsByClient, array $positionsByClient, array $logins, $serviceCounts, array $staffUserIds): array
     {
         $people = collect($contactsByClient[(int) $client->id] ?? [])
             ->sortBy(fn (Contact $contact): string => mb_strtolower(trim($contact->name.' '.(string) ($contact->surname ?? ''))));
-        $primary = $people->first(fn (Contact $contact): bool => trim((string) $contact->email) !== '') ?? $people->first();
+        $positions = $positionsByClient[(int) $client->id] ?? [];
+        $administrator = $this->companyAdministrator($people, $positions, (int) $client->id);
+        $primary = $administrator
+            ?? $people->first(fn (Contact $contact): bool => trim((string) $contact->email) !== '')
+            ?? $people->first();
         $plan = $this->plan($subscriptions->get((string) $client->code));
         $usage = $usages->get((string) $client->code)?->first();
         $balance = $balances->get((int) $client->id);
@@ -158,32 +187,71 @@ class ClientRoster
             'balance' => $balance ? $this->money((float) $balance->balance, '') : null,
             'last_login' => $lastLogin?->toIso8601String(),
             'avatar_url' => $primary ? $primary->avatarUrl(40) : AvatarHelper::generate((string) $client->name, 40),
-            'administrator' => $this->companyAdministrator($people, $positionsByClient[(int) $client->id] ?? []),
-            'contact' => $primary ? $this->contact($primary) : null,
+            'administrator' => $administrator ? [
+                'id' => (int) $administrator->id,
+                'name' => trim($administrator->name.' '.(string) ($administrator->surname ?? '')),
+            ] : null,
+            'contact' => $primary ? $this->contact($primary, $staffUserIds) : null,
         ];
     }
 
     /**
+     * The company administrator is the contact with that role on this enterprise.
+     * A person who administers another company can also be a client of this team,
+     * so the role is never taken from the user account or from another enterprise.
+     *
      * @param  \Illuminate\Support\Collection<int, Contact>  $people
      * @param  array<int, string>  $positions
-     * @return array{id: int, name: string}|null
      */
-    private function companyAdministrator($people, array $positions): ?array
+    private function companyAdministrator($people, array $positions, int $enterpriseId): ?Contact
     {
-        $admin = $people->first(function (Contact $contact) use ($positions): bool
+        $admins = $people->filter(function (Contact $contact) use ($positions): bool
         {
             return strcasecmp($positions[(int) $contact->id] ?? '', 'Administrador') === 0;
-        });
+        })->values();
 
-        if (! $admin)
+        if ($admins->isEmpty())
         {
             return null;
         }
 
-        return [
-            'id' => (int) $admin->id,
-            'name' => trim($admin->name.' '.(string) ($admin->surname ?? '')),
-        ];
+        $current = $admins->filter(function (Contact $contact) use ($enterpriseId): bool
+        {
+            return (int) $contact->current_enterprise_id === $enterpriseId;
+        })->values();
+
+        if ($current->count() === 1)
+        {
+            return $current->first();
+        }
+
+        return $admins->count() === 1 ? $admins->first() : null;
+    }
+
+    /**
+     * @param  list<int>  $userIds
+     * @return array<int, true>
+     */
+    private function staffUserIds(int $teamId, array $userIds): array
+    {
+        if ($userIds === [])
+        {
+            return [];
+        }
+
+        $ids = [];
+        $rows = DB::table('team_user')
+            ->where('team_id', $teamId)
+            ->whereIn('user_id', $userIds)
+            ->whereIn('role', ['admin', 'editor', 'collaborator'])
+            ->pluck('user_id');
+
+        foreach ($rows as $userId)
+        {
+            $ids[(int) $userId] = true;
+        }
+
+        return $ids;
     }
 
     /**
@@ -371,9 +439,10 @@ class ClientRoster
     }
 
     /**
+     * @param  array<int, true>  $staffUserIds
      * @return array<string, mixed>
      */
-    private function contact(Contact $contact): array
+    private function contact(Contact $contact, array $staffUserIds): array
     {
         $name = trim($contact->name.' '.(string) ($contact->surname ?? ''));
 
@@ -390,6 +459,7 @@ class ClientRoster
                 'id' => (int) $contact->user->id,
                 'name' => (string) $contact->user->name,
                 'email' => (string) $contact->user->email,
+                'staff' => isset($staffUserIds[(int) $contact->user->id]),
             ] : null,
         ];
     }
