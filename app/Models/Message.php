@@ -301,6 +301,12 @@ class Message extends Model
             return null;
         }
 
+        $this->loadMissing('team');
+        if ($this->team?->usesAdaptiveMailerPace())
+        {
+            return $this->team->mailerSendPaceText();
+        }
+
         $pendingAt = MessageDelivery::query()
             ->where('message_id', $this->id)
             ->whereNull('sent_at')
