@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Enums\EmailPlan;
 use App\Helpers\EmailTrackingHelper;
+use App\Jobs\ResumeMessageCampaign;
 use App\Jobs\SendMessageCampaignJob;
 use App\Mail\TestMessageMail;
 use App\Models\Category;
@@ -227,6 +228,105 @@ class MessageApiWriteTest extends TestCase
 
         $message->refresh();
         $this->assertFalse((bool) $message->status_id);
+    }
+
+    public function test_start_clears_a_manual_pause(): void
+    {
+        Bus::fake([ResumeMessageCampaign::class]);
+        [, $team, $token] = $this->adminWithToken(configureSender: true);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Paused Campaign',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'pause_reason' => Message::PAUSE_REASON_MANUAL,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        $start = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message/'.$message->id.'/start');
+
+        $start->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status.key', 'sending')
+            ->assertJsonPath('data.pause_reason', null);
+
+        $message->refresh();
+        $this->assertTrue((bool) $message->status_id);
+        $this->assertNull($message->pause_reason);
+        Bus::assertDispatched(ResumeMessageCampaign::class);
+    }
+
+    public function test_start_stays_paused_when_the_subscriber_cap_is_exceeded(): void
+    {
+        Bus::fake([ResumeMessageCampaign::class]);
+        [$user, $team, $token] = $this->adminWithToken(configureSender: true);
+        $team->setSetting('contact_limit', 0, ['type' => 'integer', 'group' => 'email']);
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Over Cap',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'pause_reason' => Message::PAUSE_REASON_MANUAL,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        $start = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message/'.$message->id.'/start');
+
+        $start->assertStatus(400)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Alcanzaste el límite de suscriptores del plan. Actualizá el plan para enviar a más contactos.');
+
+        $message->refresh();
+        $this->assertFalse((bool) $message->status_id);
+        $this->assertSame(Message::PAUSE_REASON_MANUAL, $message->pause_reason);
+        Bus::assertNotDispatched(ResumeMessageCampaign::class);
+    }
+
+    public function test_complimentary_team_can_resume_when_over_the_subscriber_cap(): void
+    {
+        Bus::fake([ResumeMessageCampaign::class]);
+        [$user, $team, $token] = $this->adminWithToken(configureSender: true);
+        config(['humano_pricing.plan_access_team_ids' => [(int) $team->id]]);
+        $team->setSetting('contact_limit', 0, ['type' => 'integer', 'group' => 'email']);
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Complimentary Resume',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'pause_reason' => Message::PAUSE_REASON_MANUAL,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        $start = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message/'.$message->id.'/start');
+
+        $start->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status.key', 'sending')
+            ->assertJsonPath('data.pause_reason', null);
+
+        $message->refresh();
+        $this->assertTrue((bool) $message->status_id);
+        $this->assertNull($message->pause_reason);
+        Bus::assertDispatched(ResumeMessageCampaign::class);
     }
 
     public function test_test_send_requires_email_and_sends_mail(): void
