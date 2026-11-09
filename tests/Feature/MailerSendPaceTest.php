@@ -186,6 +186,27 @@ class MailerSendPaceTest extends TestCase
         $this->assertSame('120 envíos por hora', $message->team->fresh()->mailerSendPaceText());
     }
 
+    public function test_a_bunched_queue_still_shows_the_adaptive_pace(): void
+    {
+        $message = $this->messageWithContacts(EmailPlan::FREE, 'bunched');
+        config(['humano_pricing.plan_access_team_ids' => [(int) $message->team_id]]);
+        $contacts = Contact::query()->where('team_id', $message->team_id)->orderBy('id')->get();
+        $sameSecond = now()->startOfSecond();
+
+        foreach ($contacts as $contact)
+        {
+            MessageDelivery::query()->create([
+                'team_id' => $message->team_id,
+                'message_id' => $message->id,
+                'contact_id' => $contact->id,
+                'status_id' => 1,
+                'scheduled_for' => $sameSecond,
+            ]);
+        }
+
+        $this->assertSame('120 envíos por hora', $message->fresh()->currentSendPaceText());
+    }
+
     public function test_a_bounce_lengthens_the_pause_and_accepted_sends_recover_up_to_the_cap(): void
     {
         config([
