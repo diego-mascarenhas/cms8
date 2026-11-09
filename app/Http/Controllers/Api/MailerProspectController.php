@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Concerns\ChecksTeamModule;
 use App\Http\Controllers\Controller;
+use App\Jobs\ImportApolloProspectsJob;
 use App\Models\Team;
 use App\Services\ApolloService;
 use App\Services\Billing\AssistantSubscriptionService;
@@ -13,6 +14,7 @@ use App\Services\Prospecting\ProspectDirectory;
 use App\Support\HumanoPricingCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class MailerProspectController extends Controller
 {
@@ -216,6 +218,78 @@ class MailerProspectController extends Controller
             'skipped' => $skipped,
             'credits' => $team->fresh()->getRemainingProspectCredits(),
         ], 201);
+    }
+
+    public function queueImport(Request $request): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        if ($locked = $this->lockedResponse($team))
+        {
+            return $locked;
+        }
+
+        $validated = $request->validate([
+            'person_titles' => 'nullable|array',
+            'person_titles.*' => 'string|max:255',
+            'person_locations' => 'nullable|array',
+            'person_locations.*' => 'string|max:255',
+            'person_seniorities' => 'nullable|array',
+            'person_seniorities.*' => 'string|max:50',
+            'organization_locations' => 'nullable|array',
+            'organization_locations.*' => 'string|max:255',
+            'q_organization_domains_list' => 'nullable|array',
+            'q_organization_domains_list.*' => 'string|max:255',
+            'q_keywords' => 'nullable|string|max:500',
+            'category_id' => 'nullable|integer',
+        ]);
+
+        $filters = array_filter([
+            'person_titles' => $validated['person_titles'] ?? null,
+            'person_locations' => $validated['person_locations'] ?? null,
+            'person_seniorities' => $validated['person_seniorities'] ?? null,
+            'organization_locations' => $validated['organization_locations'] ?? null,
+            'q_organization_domains_list' => $validated['q_organization_domains_list'] ?? null,
+            'q_keywords' => $validated['q_keywords'] ?? null,
+        ], fn ($value) => $value !== null && $value !== '' && $value !== []);
+
+        if ($filters === [])
+        {
+            return response()->json([
+                'message' => 'Indicá al menos un filtro para importar.',
+            ], 422);
+        }
+
+        $categoryId = isset($validated['category_id']) ? (int) $validated['category_id'] : null;
+        $lockKey = ImportApolloProspectsJob::lockKey((int) $team->id, $filters, $categoryId);
+        if (! Cache::add($lockKey, true, now()->addHours(6)))
+        {
+            return response()->json([
+                'message' => 'Ya hay una importación con estos filtros.',
+            ], 409);
+        }
+
+        ImportApolloProspectsJob::dispatch(
+            (int) $team->id,
+            (int) $request->user()->id,
+            $filters,
+            1,
+            $categoryId,
+            $lockKey,
+        );
+
+        return response()->json([
+            'message' => 'La importación quedó en el servidor. Podés cerrar esta página.',
+        ], 202);
     }
 
     /**

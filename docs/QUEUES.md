@@ -79,6 +79,9 @@ php artisan queue:work redis --queue=default,domain-info,domain-updates,domain-v
 
 # Meeting transcription
 php artisan queue:work redis-meetings --queue=meetings --sleep=3 --tries=1 --timeout=930 --memory=1024
+
+# Apollo prospect import
+php artisan queue:work redis --queue=prospects --sleep=3 --tries=3 --timeout=180
 ```
 
 ### Production / Forge (four daemons)
@@ -112,6 +115,14 @@ numprocs=1
 ```ini
 command=php8.4 -d memory_limit=1024M /home/forge/staging.humano.app/artisan queue:work redis-meetings --queue=meetings --sleep=3 --tries=1 --timeout=930 --max-time=3600 --memory=1024
 directory=/home/forge/staging.humano.app
+numprocs=1
+```
+
+**Daemon 5 — Prospects** (Apollo import, do not mix with mailer or default):
+
+```ini
+command=php8.4 /home/forge/admin.idoneo.dev/artisan queue:work redis --queue=prospects --sleep=3 --tries=3 --timeout=180 --max-time=3600 --memory=256
+directory=/home/forge/admin.idoneo.dev
 numprocs=1
 ```
 

@@ -52,6 +52,14 @@ class ProspectContactImporter
         ?int $categoryId,
         ?int $prospectSearchId = null,
     ): Contact {
+        $existing = $this->directory->contactOnTeam((int) $team->id, $apolloId);
+        if ($existing !== null)
+        {
+            $this->attachCategory($existing, $team, $categoryId);
+
+            return $existing;
+        }
+
         $apolloData = [
             'apollo_id' => $apolloId,
             'title' => $title,
@@ -281,6 +289,17 @@ class ProspectContactImporter
             ->first();
 
         return $category ? [$category->id] : [];
+    }
+
+    private function attachCategory(Contact $contact, Team $team, ?int $categoryId): void
+    {
+        $ids = $this->categoryIds($team, $categoryId);
+        if ($ids === [])
+        {
+            return;
+        }
+
+        $contact->categories()->syncWithoutDetaching($ids);
     }
 
     /**

@@ -713,6 +713,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('mailer/prospects', [MailerProspectController::class, 'show']);
     Route::post('mailer/prospects/search', [MailerProspectController::class, 'search']);
     Route::post('mailer/prospects/import', [MailerProspectController::class, 'import']);
+    Route::post('mailer/prospects/imports', [MailerProspectController::class, 'queueImport']);
     Route::get('mailer/audience/{id}', [MailerAudienceController::class, 'show'])->whereNumber('id');
     Route::put('mailer/audience/{id}', [MailerAudienceController::class, 'update'])->whereNumber('id');
     Route::post('mailer/audience/{id}/clear-email', [MailerAudienceController::class, 'clearEmail'])->whereNumber('id');
