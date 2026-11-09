@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\ProspectImport;
 use App\Models\Team;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\Prospecting\ProspectContactImporter;
@@ -29,6 +30,7 @@ class ImportApolloProspectContactJob implements ShouldQueue
         public array $person,
         public ?int $categoryId = null,
         public ?int $searchId = null,
+        public ?int $importId = null,
     ) {
         $this->onQueue('prospects');
     }
@@ -63,9 +65,12 @@ class ImportApolloProspectContactJob implements ShouldQueue
                 is_array($person['apollo_raw'] ?? null) ? $person['apollo_raw'] : $person,
                 $this->categoryId,
                 $this->searchId,
+                $this->importId,
             );
+            $this->record($importer->lastOutcome, $importer->lastCredits);
         } catch (Throwable $exception)
         {
+            $this->record('failed', 0);
             Log::error('Apollo prospect contact import failed', [
                 'team_id' => $team->id,
                 'apollo_id' => $this->apolloId,
@@ -75,5 +80,15 @@ class ImportApolloProspectContactJob implements ShouldQueue
 
             throw $exception;
         }
+    }
+
+    private function record(string $outcome, int $credits): void
+    {
+        if ($this->importId === null)
+        {
+            return;
+        }
+
+        ProspectImport::query()->find($this->importId)?->noteContact($outcome, $credits);
     }
 }

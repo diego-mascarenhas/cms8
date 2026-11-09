@@ -74,7 +74,14 @@ class WebDavTaskSyncProvider implements TaskSyncProviderInterface
             {
                 $task->title = (string) ($item['summary'] ?? 'WebDAV Task');
                 $task->description = $item['description'] ?? null;
-                $task->due_date = isset($item['due_at']) ? Carbon::parse($item['due_at'])->toDateString() : null;
+                $remoteDueDate = isset($item['due_at']) ? Carbon::parse($item['due_at'])->toDateString() : null;
+                $dates = WebDavInboundTaskSync::resolveInboundDates(
+                    $remoteDueDate,
+                    $task->start_date?->toDateString(),
+                    $task->due_date?->toDateString(),
+                );
+                $task->start_date = $dates['start_date'];
+                $task->due_date = $dates['due_date'];
             }
 
             $task->saveQuietly();

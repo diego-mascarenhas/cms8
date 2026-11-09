@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\TeamBillingProduct;
+use App\Models\ProspectImport;
 use App\Models\ProspectUsageLog;
 use App\Models\Team;
 use App\Models\TeamBillingRate;
@@ -54,7 +55,7 @@ final class TeamProspectUsageStatsService
         }
 
         $groups = [];
-        foreach ($query->get(['source', 'count', 'consumed_at']) as $row)
+        foreach ($query->whereNull('prospect_import_id')->get(['source', 'count', 'consumed_at']) as $row)
         {
             $source = trim((string) $row->source) ?: 'import';
             $groups[$source] ??= [
@@ -79,12 +80,54 @@ final class TeamProspectUsageStatsService
         usort($rows, fn (array $left, array $right): int => $right['weight'] <=> $left['weight']);
         $cents = self::allocateCents(array_column($rows, 'weight'), (int) round(array_sum(array_column($rows, 'weight')) * 100));
 
-        return array_map(function (array $row, int $amount): array
+        $lines = array_map(function (array $row, int $amount): array
         {
             unset($row['weight']);
 
             return $row + ['amount_cents' => $amount];
         }, $rows, $cents);
+
+        return array_merge($lines, self::importLines($team, $from, $to));
+    }
+
+    /**
+     * @return list<array{label: string, count: int, amount_cents: int, at: ?string}>
+     */
+    private static function importLines(Team $team, ?CarbonInterface $from, ?CarbonInterface $to): array
+    {
+        $query = ProspectImport::query()->where('team_id', $team->id);
+        if ($from)
+        {
+            $query->where(function ($inner) use ($from): void
+            {
+                $inner->where('finished_at', '>=', $from)->orWhereNull('finished_at');
+            });
+        }
+        if ($to)
+        {
+            $query->where('created_at', '<=', $to);
+        }
+
+        $lines = [];
+        foreach ($query->orderByDesc('id')->get() as $import)
+        {
+            $credits = (int) ProspectUsageLog::query()->where('prospect_import_id', $import->id)->sum('count');
+            $at = $import->finished_at ?? $import->updated_at;
+            $weight = 0.0;
+            if ($credits > 0 && $at !== null)
+            {
+                $weight = $credits * TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::ProspectCredit, $at);
+            }
+
+            $lines[] = [
+                'label' => $import->usageLabel(),
+                'count' => $credits,
+                'amount_cents' => (int) round($weight * 100),
+                'at' => $at?->toIso8601String(),
+            ];
+        }
+
+        return $lines;
     }
 
     private static function sourceLabel(string $source): string

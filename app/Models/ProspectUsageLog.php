@@ -13,6 +13,7 @@ class ProspectUsageLog extends Model
 
     protected $fillable = [
         'team_id',
+        'prospect_import_id',
         'source',
         'count',
         'consumed_at',

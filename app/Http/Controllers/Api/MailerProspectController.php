@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Api\Concerns\ChecksTeamModule;
 use App\Http\Controllers\Controller;
 use App\Jobs\ImportApolloProspectsJob;
+use App\Models\ProspectImport;
 use App\Models\Team;
 use App\Services\ApolloService;
 use App\Services\Billing\AssistantSubscriptionService;
@@ -278,6 +279,14 @@ class MailerProspectController extends Controller
             ], 409);
         }
 
+        $import = ProspectImport::query()->create([
+            'team_id' => $team->id,
+            'user_id' => $request->user()->id,
+            'category_id' => $categoryId,
+            'filters' => $filters,
+            'status' => 'discovering',
+        ]);
+
         ImportApolloProspectsJob::dispatch(
             (int) $team->id,
             (int) $request->user()->id,
@@ -285,6 +294,7 @@ class MailerProspectController extends Controller
             1,
             $categoryId,
             $lockKey,
+            $import->id,
         );
 
         return response()->json([

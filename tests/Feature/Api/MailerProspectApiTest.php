@@ -8,12 +8,14 @@ use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Module;
 use App\Models\Person;
+use App\Models\ProspectImport;
 use App\Models\ProspectSearch;
 use App\Models\ProspectUsageLog;
 use App\Models\User;
 use App\Services\ApolloService;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\Prospecting\ProspectDirectory;
+use App\Services\TeamProspectUsageStatsService;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
@@ -285,7 +287,14 @@ class MailerProspectApiTest extends TestCase
             'person_titles' => ['owner'],
             'person_locations' => ['Argentina'],
         ];
-        $job = new ImportApolloProspectsJob($team->id, $user->id, $filters, 1, $category->id);
+        $import = ProspectImport::query()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'category_id' => $category->id,
+            'filters' => $filters,
+            'status' => 'discovering',
+        ]);
+        $job = new ImportApolloProspectsJob($team->id, $user->id, $filters, 1, $category->id, null, $import->id);
         $job->handle(
             app(ApolloService::class),
             app(ProspectDirectory::class),
@@ -317,7 +326,7 @@ class MailerProspectApiTest extends TestCase
                 'seniority' => 'owner',
             ],
         ];
-        $contactJob = new ImportApolloProspectContactJob($team->id, $user->id, 'p1', $person, $category->id);
+        $contactJob = new ImportApolloProspectContactJob($team->id, $user->id, 'p1', $person, $category->id, null, $import->id);
         $contactJob->handle(app(\App\Services\Prospecting\ProspectContactImporter::class), app(AssistantSubscriptionService::class));
 
         $imported = Contact::withoutGlobalScopes()->where('team_id', $team->id)->where('email', 'ana@acme.test')->first();
@@ -330,6 +339,25 @@ class MailerProspectApiTest extends TestCase
         $this->assertSame(1, $fake->enrichments);
         $this->assertSame(1, Contact::withoutGlobalScopes()->where('team_id', $team->id)->count());
         $this->assertSame(3, (int) ProspectUsageLog::query()->where('team_id', $team->id)->sum('count'));
+        $import->refresh();
+        $this->assertSame('discovering', $import->status);
+        $this->assertSame(2, (int) $import->processed);
+        $this->assertSame(3, (int) $import->credits);
+        $labels = array_column(TeamProspectUsageStatsService::lines($team->fresh()), 'label');
+        $this->assertTrue(collect($labels)->contains(fn (string $label): bool => str_contains($label, 'Argentina') && str_contains($label, 'en curso')));
+
+        $finished = ProspectImport::query()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'filters' => $filters,
+            'status' => 'discovering',
+        ]);
+        $finished->noteQueued(1, 1, true);
+        $finished->noteContact('imported', 3);
+        $finished->refresh();
+        $this->assertSame('finished', $finished->status);
+        $this->assertNotNull($finished->finished_at);
+        $this->assertStringContainsString('terminada', $finished->usageLabel());
 
         $this->app['auth']->forgetGuards();
         $otherUser = User::query()->where('current_team_id', $otherTeam->id)->first();

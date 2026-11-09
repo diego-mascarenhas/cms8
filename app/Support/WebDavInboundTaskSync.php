@@ -52,4 +52,19 @@ class WebDavInboundTaskSync
 
         return $remoteUpdatedAt >= $localUpdatedAt->getTimestamp();
     }
+
+    /**
+     * VTODO reminders often have only a due date. Both columns are required on tasks.
+     *
+     * @return array{start_date: string, due_date: string}
+     */
+    public static function resolveInboundDates(?string $remoteDueDate, ?string $currentStartDate, ?string $currentDueDate): array
+    {
+        $dueDate = $remoteDueDate ?? $currentDueDate ?? now()->toDateString();
+
+        return [
+            'start_date' => $currentStartDate ?? $dueDate,
+            'due_date' => $dueDate,
+        ];
+    }
 }

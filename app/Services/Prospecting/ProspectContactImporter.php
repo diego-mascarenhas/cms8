@@ -19,6 +19,10 @@ class ProspectContactImporter
      */
     private ?array $countryIdsByLabel = null;
 
+    public string $lastOutcome = 'imported';
+
+    public int $lastCredits = 0;
+
     public function __construct(
         private ApolloService $apollo,
         private ProspectDirectory $directory,
@@ -51,10 +55,13 @@ class ProspectContactImporter
         ?array $person,
         ?int $categoryId,
         ?int $prospectSearchId = null,
+        ?int $prospectImportId = null,
     ): Contact {
         $existing = $this->directory->contactOnTeam((int) $team->id, $apolloId);
         if ($existing !== null)
         {
+            $this->lastOutcome = 'skipped';
+            $this->lastCredits = 0;
             $this->attachCategory($existing, $team, $categoryId);
 
             return $existing;
@@ -70,10 +77,12 @@ class ProspectContactImporter
             $apolloData = $person;
         }
 
-        $team->decrementProspectCredits($this->creditsCost($apolloData));
+        $cached = $this->directory->cachedPayload(ProspectDirectory::SOURCE_APOLLO, $apolloId);
+        $this->lastOutcome = is_array($cached) ? 'copied' : 'imported';
+        $this->lastCredits = $this->creditsCost($apolloData);
+        $team->decrementProspectCredits($this->lastCredits, $prospectImportId);
 
         $revealPhone = is_array($person) && ApolloService::personNeedsPhoneReveal($person);
-        $cached = $this->directory->cachedPayload(ProspectDirectory::SOURCE_APOLLO, $apolloId);
         $enriched = null;
         if (is_array($cached))
         {
