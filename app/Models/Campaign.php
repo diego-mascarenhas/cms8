@@ -223,10 +223,10 @@ class Campaign extends Model
                 SUM(CASE WHEN message_deliveries.clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked_raw,
                 SUM(CASE WHEN message_deliveries.bounced_at IS NOT NULL THEN 1 ELSE 0 END) as bounced_raw,
                 SUM(CASE WHEN message_deliveries.complained_at IS NOT NULL THEN 1 ELSE 0 END) as complained_raw,
-                COUNT(DISTINCT CASE WHEN contacts.status_id = ? THEN message_deliveries.contact_id END) as unsubscribed_raw,
+                COUNT(DISTINCT CASE WHEN contacts.status_id = ? AND message_deliveries.sent_at IS NOT NULL AND message_deliveries.sent_at <= ? THEN message_deliveries.contact_id END) as unsubscribed_raw,
                 SUM(CASE WHEN message_deliveries.status_id = 4 THEN 1 ELSE 0 END) as failed_raw,
                 SUM(CASE WHEN message_deliveries.sent_at IS NULL OR message_deliveries.sent_at > ? THEN 1 ELSE 0 END) as pending_raw',
-                [$now, 4, $now],
+                [$now, 4, $now, $now],
             )
             ->first();
 

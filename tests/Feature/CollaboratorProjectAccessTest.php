@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Enterprise;
 use App\Models\Project;
+use App\Models\SubscriptionProduct;
 use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
@@ -319,6 +320,52 @@ class CollaboratorProjectAccessTest extends TestCase
         $this->assertEquals(2, (float) data_get($project->data, 'suggested_tasks.0.estimated_hours'));
         $this->assertEquals(250, (float) data_get($project->data, 'suggested_tasks.0.unit_price'));
         $this->assertEquals(250, (float) $project->price);
+    }
+
+    public function test_project_form_saves_a_custom_summary_and_additional_plans(): void
+    {
+        [$admin, $team, $client] = $this->adminTeamAndClient();
+        $project = $this->createProject($team->id, $client->id, $admin->id, 'Plan Form');
+        $project->forceFill(['real_name' => 'Plan Form'])->save();
+        $plan = SubscriptionProduct::query()->create([
+            'name' => 'Mailer Pro',
+            'active' => true,
+            'category' => 'mailer',
+            'currency' => 'eur',
+            'unit_amount' => 19,
+            'recurring_interval' => 'month',
+            'recurring_interval_count' => 1,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('project.edit', $project->id))
+            ->assertOk()
+            ->assertSee('id="quote_plan_ids"', false)
+            ->assertSee('Mailer Pro', false);
+
+        $this->actingAs($admin)
+            ->post(route('project.store'), [
+                'id' => $project->id,
+                'name' => 'Plan Form',
+                'real_name' => 'Plan Form',
+                'status_id' => 1,
+                'enterprise_id' => $client->id,
+                'responsible_id' => $admin->id,
+                'quote_plans_present' => '1',
+                'quote_plan_ids' => [$plan->id],
+                'data' => [
+                    'budget_preview_html' => '<p>Texto editado a mano</p>',
+                    'budget_preview_custom' => '1',
+                ],
+            ])
+            ->assertRedirect(route('project.show', $project->id));
+
+        $project->refresh();
+        $this->assertSame('<p>Texto editado a mano</p>', data_get($project->data, 'budget_preview_html'));
+        $this->assertTrue((bool) data_get($project->data, 'budget_preview_custom'));
+        $this->assertSame('Mailer Pro', data_get($project->data, 'quote_plans.0.name'));
+        $this->assertSame(19.0, (float) data_get($project->data, 'quote_plans.0.unit_price'));
+        $this->assertSame('Mensual', data_get($project->data, 'quote_plans.0.frequency'));
     }
 
     public function test_project_participants_limit_who_appears_in_task_filters(): void

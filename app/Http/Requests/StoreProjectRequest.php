@@ -62,7 +62,13 @@ class StoreProjectRequest extends FormRequest
             'data.token_consumption.currency' => 'nullable|string|max:8',
             'data.quote_currency' => 'nullable|string|in:EUR,USD,ARS',
             'data.quote_amount' => 'nullable|numeric|min:0',
+            'data.quote_duration' => 'nullable|string|max:255',
+            'data.quote_observations' => 'nullable|string',
             'data.budget_preview_html' => 'nullable|string',
+            'data.budget_preview_custom' => 'nullable|boolean',
+            'quote_plans_present' => 'nullable|boolean',
+            'quote_plan_ids' => 'nullable|array',
+            'quote_plan_ids.*' => 'integer|exists:subscription_products,id',
             'data.suggested_tasks' => 'nullable',
         ];
     }

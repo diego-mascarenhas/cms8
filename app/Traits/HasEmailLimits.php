@@ -390,7 +390,7 @@ trait HasEmailLimits
     }
 
     /**
-     * Scale and complimentary teams use a fast steady pace. Complimentary teams get that pace too.
+     * Scale keeps a short opening gap. Complimentary teams send without that drip.
      */
     public function sendsMailerWithoutSpacing(): bool
     {
@@ -430,6 +430,11 @@ trait HasEmailLimits
      */
     public function mailerFastGapSeconds(int $index): int
     {
+        if ($this->hasComplimentaryPlanAccess())
+        {
+            return 0;
+        }
+
         $steady = max(1, (int) round($this->mailerSpacingSecondsForContact(false)));
         $opening = max($steady, (int) config('services.email.delay.opening_spacing_seconds', 60));
         $openingCount = max(0, (int) config('services.email.delay.opening_sends', 10));
@@ -490,6 +495,11 @@ trait HasEmailLimits
 
     public function mailerSendPaceText(): string
     {
+        if ($this->hasComplimentaryPlanAccess())
+        {
+            return 'Inmediata';
+        }
+
         if ($this->sendsMailerWithoutSpacing())
         {
             return $this->mailerPaceTextForSpacing($this->mailerSpacingSecondsForContact(false));
@@ -595,6 +605,11 @@ trait HasEmailLimits
 
     public function mailerDispatchBatch(): int
     {
+        if ($this->hasComplimentaryPlanAccess())
+        {
+            return (int) config('services.email.processing.fast_deliveries_per_send_run', 1000);
+        }
+
         if ($this->sendsMailerWithoutSpacing())
         {
             $spacing = max(1, (int) round($this->mailerSpacingSecondsForContact(false)));

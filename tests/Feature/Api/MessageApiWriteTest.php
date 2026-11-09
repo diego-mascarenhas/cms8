@@ -900,6 +900,20 @@ class MessageApiWriteTest extends TestCase
             ]);
         }
 
+        $waiting = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'pendiente@example.test',
+            'status_id' => $lostStatusId,
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $waiting->id,
+            'status_id' => 1,
+        ]);
+
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/message/'.$message->id)
             ->assertOk()

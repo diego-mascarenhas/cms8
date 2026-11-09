@@ -74,7 +74,9 @@ class ProjectController extends Controller
 
         $enterprise_id = $data->enterprise_id;
 
-        return view('project.form', compact('enterprise_id', 'statuses', 'data'));
+        $quotePlans = $this->quotePlanOptions();
+
+        return view('project.form', compact('enterprise_id', 'statuses', 'data', 'quotePlans'));
     }
 
     /**
@@ -113,6 +115,8 @@ class ProjectController extends Controller
             : $existing?->discount;
 
         $previousStatusId = $existing ? (int) $existing->status_id : null;
+
+        $data = $this->attachQuotePlans($data, $request);
 
         $attributes = [
             'team_id' => auth()->user()->currentTeam->id,
@@ -1235,8 +1239,9 @@ class ProjectController extends Controller
         $data = Project::findOrFail($id);
         $enterprise_id = $data->enterprise_id;
         $statuses = ProjectStatus::getOptions();
+        $quotePlans = $this->quotePlanOptions();
 
-        return view('project.form', compact('data', 'enterprise_id', 'statuses'));
+        return view('project.form', compact('data', 'enterprise_id', 'statuses', 'quotePlans'));
     }
 
     /**
@@ -1316,6 +1321,8 @@ class ProjectController extends Controller
                 is_array($validated['data']) ? $validated['data'] : null,
             );
         }
+
+        $validated = $this->attachQuotePlans($validated, $request);
 
         if ($project->isBudgetContentLocked())
         {
@@ -1431,9 +1438,45 @@ class ProjectController extends Controller
             $incoming['ai_usage_percent'] = $previous['ai_usage_percent'];
         }
 
+        if (array_key_exists('quote_plans', $previous))
+        {
+            $incoming['quote_plans'] = $previous['quote_plans'];
+        }
+
         $attributes['data'] = $incoming;
         $attributes['discount'] = $project->discount;
         $attributes['price'] = $project->price;
+
+        return $attributes;
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, \App\Models\SubscriptionProduct>
+     */
+    private function quotePlanOptions(): \Illuminate\Support\Collection
+    {
+        return \App\Models\SubscriptionProduct::query()
+            ->active()
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function attachQuotePlans(array $attributes, Request $request): array
+    {
+        if (! $request->boolean('quote_plans_present'))
+        {
+            return $attributes;
+        }
+
+        $payload = is_array($attributes['data'] ?? null) ? $attributes['data'] : [];
+        $ids = $request->input('quote_plan_ids', []);
+        $payload['quote_plans'] = app(\App\Services\ProjectBudgetSpecService::class)->quotePlansFromIds(is_array($ids) ? $ids : []);
+        $attributes['data'] = $payload;
 
         return $attributes;
     }

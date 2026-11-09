@@ -153,7 +153,7 @@ class MailerSendPaceTest extends TestCase
         $this->assertSame(60, (int) $knownTime->diffInSeconds($coldTime));
     }
 
-    public function test_a_whitelisted_team_starts_slowly_for_known_and_new_addresses(): void
+    public function test_a_whitelisted_team_sends_without_the_per_minute_drip(): void
     {
         $message = $this->messageWithContacts(EmailPlan::FREE, 'listed');
         config(['humano_pricing.plan_access_team_ids' => [(int) $message->team_id]]);
@@ -180,11 +180,13 @@ class MailerSendPaceTest extends TestCase
         $times = $this->scheduledTimes($message->id);
 
         $this->assertCount(2, $times);
-        $this->assertSame(60, (int) $times[0]->diffInSeconds($times[1]));
+        $this->assertSame(0, (int) $times[0]->diffInSeconds($times[1]));
         $this->assertSame(
-            $message->started_at->copy()->addSeconds(60)->format('Y-m-d H:i:s'),
+            $message->started_at->format('Y-m-d H:i:s'),
             $times[0]->format('Y-m-d H:i:s'),
         );
+        $this->assertSame(1000, $message->team->fresh()->mailerDispatchBatch());
+        $this->assertSame('Inmediata', $message->team->fresh()->mailerSendPaceText());
     }
 
     public function test_resume_recalculates_pending_sends_for_new_addresses(): void

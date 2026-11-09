@@ -36,6 +36,9 @@
             @foreach ($sections as $section)
                 <div class="section">
                     <h2>{{ $section['title'] }}</h2>
+                    @if (($section['verbatim'] ?? '') !== '')
+                        <p style="white-space:pre-wrap;">{{ $section['verbatim'] }}</p>
+                    @endif
                     @foreach ($section['paragraphs'] as $paragraph)
                         <p>{{ $paragraph }}</p>
                     @endforeach
