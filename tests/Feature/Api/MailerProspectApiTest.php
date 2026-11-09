@@ -374,6 +374,59 @@ class MailerProspectApiTest extends TestCase
         $this->assertNotNull($otherToken);
     }
 
+    public function test_channel_import_skips_people_outside_the_requested_channel(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        config(['humano_pricing.plan_access_team_ids' => [$team->id]]);
+        $team->addProspectCreditsFromPurchase(5);
+        $fake = $this->bindApollo();
+        $fake->totalEntries = 1;
+
+        Bus::fake();
+
+        $this->withToken($token)
+            ->postJson('/api/mailer/prospects/imports', [
+                'person_locations' => ['Buenos Aires, Argentina'],
+                'channels' => ['phone'],
+            ])
+            ->assertStatus(202);
+
+        Bus::assertDispatched(ImportApolloProspectsJob::class, function (ImportApolloProspectsJob $job): bool
+        {
+            return $job->filters['channels'] === ['phone'];
+        });
+
+        $import = ProspectImport::query()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'filters' => [
+                'person_locations' => ['Buenos Aires, Argentina'],
+                'channels' => ['phone'],
+            ],
+            'status' => 'discovering',
+        ]);
+        $job = new ImportApolloProspectsJob($team->id, $user->id, $import->filters, 1, null, null, $import->id);
+        $job->handle(
+            app(ApolloService::class),
+            app(ProspectDirectory::class),
+            app(AssistantSubscriptionService::class),
+        );
+
+        $this->assertArrayNotHasKey('channels', $fake->lastFilters);
+        Bus::assertNotDispatched(ImportApolloProspectContactJob::class);
+        $import->refresh();
+        $this->assertSame(0, (int) $import->queued);
+        $this->assertSame('finished', $import->status);
+        $this->assertFalse(ImportApolloProspectsJob::personMatchesChannels([
+            'has_email' => true,
+            'has_phone' => false,
+        ], ['channels' => ['phone']]));
+        $this->assertTrue(ImportApolloProspectsJob::personMatchesChannels([
+            'has_email' => true,
+            'has_phone' => false,
+        ], ['channels' => ['email']]));
+    }
+
     public function test_import_without_credits_is_recorded_as_usage(): void
     {
         [, $team, $token] = $this->adminWithToken();
@@ -408,6 +461,9 @@ class MailerProspectApiTest extends TestCase
 
             public int $totalEntries = 1;
 
+            /** @var array<string, mixed> */
+            public array $lastFilters = [];
+
             public function __construct()
             {
                 parent::__construct('test-key');
@@ -416,6 +472,7 @@ class MailerProspectApiTest extends TestCase
             public function searchPeople(array $filters, int $page = 1, int $perPage = 25): array
             {
                 $this->searches++;
+                $this->lastFilters = $filters;
 
                 return [
                     'people' => [[
