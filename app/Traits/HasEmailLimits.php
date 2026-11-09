@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Enums\EmailPlan;
+use App\Models\Message;
 use App\Support\MailerPaygPricing;
 use Carbon\Carbon;
 
@@ -395,7 +396,7 @@ trait HasEmailLimits
     }
 
     /**
-     * Scale keeps a short opening gap. Complimentary teams send without that drip.
+     * Scale and complimentary teams use the fast scheduler. Complimentary teams still wait out an adaptive gap.
      */
     public function sendsMailerWithoutSpacing(): bool
     {
@@ -431,13 +432,94 @@ trait HasEmailLimits
     }
 
     /**
+     * Complimentary sends follow a stored gap: slow at the start, longer after a bounce, never faster than the cap.
+     */
+    public function usesAdaptiveMailerPace(): bool
+    {
+        return $this->hasComplimentaryPlanAccess();
+    }
+
+    public function mailerAdaptiveFloorSeconds(): int
+    {
+        return max(1, (int) config('services.email.delay.adaptive_min_seconds', 12));
+    }
+
+    public function mailerAdaptiveCeilingSeconds(): int
+    {
+        return max($this->mailerAdaptiveFloorSeconds(), (int) config('services.email.delay.adaptive_max_seconds', 900));
+    }
+
+    public function mailerAdaptiveSpacingSeconds(): int
+    {
+        $stored = $this->getSetting('mailer_adaptive_spacing_seconds');
+        $start = max(
+            $this->mailerAdaptiveFloorSeconds(),
+            (int) config('services.email.delay.adaptive_start_seconds', 30),
+        );
+        $seconds = ($stored === null || $stored === '') ? $start : (int) $stored;
+
+        return min($this->mailerAdaptiveCeilingSeconds(), max($this->mailerAdaptiveFloorSeconds(), $seconds));
+    }
+
+    public function noteAdaptiveMailerBounce(): int
+    {
+        $this->storeAdaptiveMailerCounter(0);
+        $current = $this->mailerAdaptiveSpacingSeconds();
+        $factor = max(2, (int) config('services.email.delay.adaptive_bounce_factor', 2));
+        $next = min($this->mailerAdaptiveCeilingSeconds(), $current * $factor);
+        if ($next === $current)
+        {
+            return $current;
+        }
+
+        $this->storeAdaptiveMailerPace($next);
+        $this->reflowAdaptiveMailerPace();
+
+        return $next;
+    }
+
+    public function noteAdaptiveMailerSuccess(): int
+    {
+        $current = $this->mailerAdaptiveSpacingSeconds();
+        if ($current <= $this->mailerAdaptiveFloorSeconds())
+        {
+            $this->storeAdaptiveMailerCounter(0);
+
+            return $current;
+        }
+
+        $streak = (int) $this->getSetting('mailer_adaptive_success_streak', 0) + 1;
+        $needed = max(1, (int) config('services.email.delay.adaptive_success_streak', 10));
+        if ($streak < $needed)
+        {
+            $this->storeAdaptiveMailerCounter($streak);
+
+            return $current;
+        }
+
+        $factor = (float) config('services.email.delay.adaptive_success_factor', 0.8);
+        $next = (int) round($current * ($factor > 0 && $factor < 1 ? $factor : 0.8));
+        $next = min($this->mailerAdaptiveCeilingSeconds(), max($this->mailerAdaptiveFloorSeconds(), $next));
+        $this->storeAdaptiveMailerCounter(0);
+        if ($next === $current)
+        {
+            return $current;
+        }
+
+        $this->storeAdaptiveMailerPace($next);
+        $this->reflowAdaptiveMailerPace();
+
+        return $next;
+    }
+
+    /**
      * Gap before the next fast-plan send. The first sends of a start or resume wait longer.
      */
     public function mailerFastGapSeconds(int $index): int
     {
-        if ($this->hasComplimentaryPlanAccess())
+        if ($this->usesAdaptiveMailerPace())
         {
-            return 0;
+            return $this->mailerAdaptiveSpacingSeconds();
         }
 
         $steady = max(1, (int) round($this->mailerSpacingSecondsForContact(false)));
@@ -500,9 +582,9 @@ trait HasEmailLimits
 
     public function mailerSendPaceText(): string
     {
-        if ($this->hasComplimentaryPlanAccess())
+        if ($this->usesAdaptiveMailerPace())
         {
-            return 'Inmediata';
+            return $this->mailerPaceTextForSpacing($this->mailerAdaptiveSpacingSeconds());
         }
 
         if ($this->sendsMailerWithoutSpacing())
@@ -610,9 +692,11 @@ trait HasEmailLimits
 
     public function mailerDispatchBatch(): int
     {
-        if ($this->hasComplimentaryPlanAccess())
+        if ($this->usesAdaptiveMailerPace())
         {
-            return (int) config('services.email.processing.fast_deliveries_per_send_run', 1000);
+            $spacing = max(1, $this->mailerAdaptiveSpacingSeconds());
+
+            return max(1, (int) floor(60 / $spacing));
         }
 
         if ($this->sendsMailerWithoutSpacing())
@@ -623,6 +707,35 @@ trait HasEmailLimits
         }
 
         return $this->getEmailPlan()->sendDispatchBatch();
+    }
+
+    private function storeAdaptiveMailerPace(int $seconds): void
+    {
+        $this->setSetting('mailer_adaptive_spacing_seconds', $seconds, [
+            'type' => 'integer',
+            'group' => 'mailer',
+        ]);
+    }
+
+    private function storeAdaptiveMailerCounter(int $streak): void
+    {
+        $this->setSetting('mailer_adaptive_success_streak', $streak, [
+            'type' => 'integer',
+            'group' => 'mailer',
+        ]);
+    }
+
+    private function reflowAdaptiveMailerPace(): void
+    {
+        Message::withoutGlobalScopes()
+            ->where('team_id', $this->id)
+            ->where('status_id', 1)
+            ->orderBy('id')
+            ->get()
+            ->each(function (Message $message): void
+            {
+                $message->reschedulePendingDeliveries();
+            });
     }
 
     /**

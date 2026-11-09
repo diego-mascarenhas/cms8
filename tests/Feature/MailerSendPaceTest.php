@@ -180,13 +180,132 @@ class MailerSendPaceTest extends TestCase
         $times = $this->scheduledTimes($message->id);
 
         $this->assertCount(2, $times);
-        $this->assertSame(0, (int) $times[0]->diffInSeconds($times[1]));
-        $this->assertSame(
-            $message->started_at->format('Y-m-d H:i:s'),
-            $times[0]->format('Y-m-d H:i:s'),
-        );
-        $this->assertSame(1000, $message->team->fresh()->mailerDispatchBatch());
-        $this->assertSame('Inmediata', $message->team->fresh()->mailerSendPaceText());
+        $this->assertSame(30, (int) $times[0]->diffInSeconds($times[1]));
+        $this->assertSame(30, (int) $message->started_at->diffInSeconds($times[0]));
+        $this->assertSame(2, $message->team->fresh()->mailerDispatchBatch());
+        $this->assertSame('120 envíos por hora', $message->team->fresh()->mailerSendPaceText());
+    }
+
+    public function test_a_bounce_lengthens_the_pause_and_accepted_sends_recover_up_to_the_cap(): void
+    {
+        config([
+            'services.email.delay.adaptive_start_seconds' => 300,
+            'services.email.delay.adaptive_min_seconds' => 120,
+            'services.email.delay.adaptive_max_seconds' => 900,
+            'services.email.delay.adaptive_success_factor' => 0.8,
+            'services.email.delay.adaptive_success_streak' => 1,
+        ]);
+
+        $message = $this->messageWithContacts(EmailPlan::FREE, 'adaptive');
+        config(['humano_pricing.plan_access_team_ids' => [(int) $message->team_id]]);
+        $contacts = Contact::query()->where('team_id', $message->team_id)->orderBy('id')->get();
+        $bounce = MessageDelivery::query()->create([
+            'team_id' => $message->team_id,
+            'message_id' => $message->id,
+            'contact_id' => $contacts[0]->id,
+            'status_id' => 2,
+            'scheduled_for' => now()->subMinute(),
+        ]);
+        $pending = MessageDelivery::query()->create([
+            'team_id' => $message->team_id,
+            'message_id' => $message->id,
+            'contact_id' => $contacts[1]->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->subMinute(),
+        ]);
+
+        $this->assertSame(300, $message->team->mailerAdaptiveSpacingSeconds());
+
+        $bounce->markAsError('550 5.1.1 The email account that you tried to reach does not exist.');
+
+        $this->assertSame(600, $message->team->fresh()->mailerAdaptiveSpacingSeconds());
+        $this->assertTrue((bool) $message->fresh()->status_id);
+        $this->assertTrue($pending->fresh()->scheduled_for->greaterThan(now()->addSeconds(580)));
+
+        $bounce->fresh()->markAsError('550 5.1.1 The email account that you tried to reach does not exist.');
+        $this->assertSame(600, $message->team->fresh()->mailerAdaptiveSpacingSeconds());
+
+        $message->team->fresh()->noteAdaptiveMailerBounce();
+        $this->assertSame(900, $message->team->fresh()->mailerAdaptiveSpacingSeconds());
+        $message->team->fresh()->noteAdaptiveMailerBounce();
+        $this->assertSame(900, $message->team->fresh()->mailerAdaptiveSpacingSeconds());
+
+        $pending->fresh()->reactMailerPace('success');
+        $this->assertSame(720, $message->team->fresh()->mailerAdaptiveSpacingSeconds());
+
+        $team = $message->team->fresh();
+        while ($team->mailerAdaptiveSpacingSeconds() > 120)
+        {
+            $team->noteAdaptiveMailerSuccess();
+            $team = $message->team->fresh();
+        }
+
+        $this->assertSame(120, $team->mailerAdaptiveSpacingSeconds());
+        $this->assertSame('30 envíos por hora', $team->mailerSendPaceText());
+
+        $message->team->fresh()->noteAdaptiveMailerSuccess();
+        $this->assertSame(120, $message->team->fresh()->mailerAdaptiveSpacingSeconds());
+    }
+
+    public function test_a_recipient_bounce_does_not_change_a_plan_pace(): void
+    {
+        $message = $this->messageWithContacts(EmailPlan::BASIC, 'plan-bounce');
+        $contact = Contact::query()->where('team_id', $message->team_id)->first();
+        $delivery = MessageDelivery::query()->create([
+            'team_id' => $message->team_id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 2,
+            'scheduled_for' => now()->subMinute(),
+        ]);
+
+        $delivery->markAsError('550 5.1.1 The email account that you tried to reach does not exist.');
+
+        $this->assertNull($message->team->fresh()->getSetting('mailer_adaptive_spacing_seconds'));
+        $this->assertSame('124 envíos por hora', $message->team->fresh()->mailerSendPaceText());
+    }
+
+    public function test_provider_spam_lengthens_the_complimentary_pause(): void
+    {
+        config([
+            'services.email.delay.adaptive_start_seconds' => 300,
+            'services.email.delay.adaptive_max_seconds' => 900,
+        ]);
+        $message = $this->messageWithContacts(EmailPlan::FREE, 'spam-pace');
+        config(['humano_pricing.plan_access_team_ids' => [(int) $message->team_id]]);
+        $contact = Contact::query()->where('team_id', $message->team_id)->first();
+        $delivery = MessageDelivery::query()->create([
+            'team_id' => $message->team_id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 2,
+            'scheduled_for' => now()->subMinute(),
+        ]);
+
+        $delivery->markAsError('550 This message was classified as rSPAM and may not be delivered');
+
+        $this->assertSame(600, $message->team->fresh()->mailerAdaptiveSpacingSeconds());
+        $this->assertFalse((bool) $message->fresh()->status_id);
+    }
+
+    public function test_a_connection_timeout_does_not_lengthen_the_adaptive_pause(): void
+    {
+        config(['services.email.delay.adaptive_start_seconds' => 300]);
+        $message = $this->messageWithContacts(EmailPlan::FREE, 'timeout-pace');
+        config(['humano_pricing.plan_access_team_ids' => [(int) $message->team_id]]);
+        $contact = Contact::query()->where('team_id', $message->team_id)->first();
+        $delivery = MessageDelivery::query()->create([
+            'team_id' => $message->team_id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 2,
+            'scheduled_for' => now()->subMinute(),
+        ]);
+
+        $delivery->markAsError('Connection to "relay.outboundspamprotection.com:587" timed out.');
+
+        $this->assertSame(300, $message->team->fresh()->mailerAdaptiveSpacingSeconds());
+        $this->assertTrue((bool) $message->fresh()->status_id);
     }
 
     public function test_resume_recalculates_pending_sends_for_new_addresses(): void
