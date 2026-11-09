@@ -252,8 +252,11 @@ class MailerProspectController extends Controller
             'q_organization_domains_list.*' => 'string|max:255',
             'q_keywords' => 'nullable|string|max:500',
             'category_id' => 'nullable|integer',
+            'channels' => 'nullable|array',
+            'channels.*' => 'in:email,phone,rest',
         ]);
 
+        $channels = array_values(array_unique($validated['channels'] ?? []));
         $filters = array_filter([
             'person_titles' => $validated['person_titles'] ?? null,
             'person_locations' => $validated['person_locations'] ?? null,
@@ -261,6 +264,7 @@ class MailerProspectController extends Controller
             'organization_locations' => $validated['organization_locations'] ?? null,
             'q_organization_domains_list' => $validated['q_organization_domains_list'] ?? null,
             'q_keywords' => $validated['q_keywords'] ?? null,
+            'channels' => $channels === [] ? null : $channels,
         ], fn ($value) => $value !== null && $value !== '' && $value !== []);
 
         if ($filters === [])

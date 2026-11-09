@@ -78,19 +78,21 @@ class ImportApolloProspectsJob implements ShouldQueue
         }
 
         $perPage = 25;
-        $result = $apollo->searchPeople($this->filters, $this->page, $perPage);
+        $apolloFilters = $this->filters;
+        unset($apolloFilters['channels']);
+        $result = $apollo->searchPeople($apolloFilters, $this->page, $perPage);
         $people = is_array($result['people'] ?? null) ? $result['people'] : [];
         $total = (int) ($result['total_entries'] ?? 0);
 
         if ($people === [])
         {
-            ProspectImport::query()->find($this->importId)?->noteQueued(0, $total, true);
+            ProspectImport::query()->find($this->importId)?->noteQueued(0, $this->reportedTotal(0, $total), true);
             $this->releaseLock();
 
             return;
         }
 
-        $search = $directory->recordSearch($team, $this->userId, $this->filters, $this->page, $perPage, $people);
+        $search = $directory->recordSearch($team, $this->userId, $apolloFilters, $this->page, $perPage, $people);
         $queued = 0;
 
         foreach ($people as $person)
@@ -101,7 +103,7 @@ class ImportApolloProspectsJob implements ShouldQueue
             }
 
             $apolloId = trim((string) ($person['id'] ?? ''));
-            if ($apolloId === '')
+            if ($apolloId === '' || ! self::personMatchesChannels($person, $this->filters))
             {
                 continue;
             }
@@ -127,7 +129,11 @@ class ImportApolloProspectsJob implements ShouldQueue
             'import_id' => $this->importId,
         ]);
 
-        ProspectImport::query()->find($this->importId)?->noteQueued($queued, $total, $this->page * $perPage >= $total);
+        ProspectImport::query()->find($this->importId)?->noteQueued(
+            $queued,
+            $this->reportedTotal($queued, $total),
+            $this->page * $perPage >= $total,
+        );
 
         if ($this->page * $perPage < $total)
         {
@@ -145,6 +151,57 @@ class ImportApolloProspectsJob implements ShouldQueue
         }
 
         $this->releaseLock();
+    }
+
+    /**
+     * @param  array<string, mixed>  $person
+     * @param  array<string, mixed>  $filters
+     */
+    public static function personMatchesChannels(array $person, array $filters): bool
+    {
+        $channels = $filters['channels'] ?? null;
+        if (! is_array($channels) || $channels === [])
+        {
+            return true;
+        }
+
+        $hasEmail = (bool) ($person['has_email'] ?? false);
+        $hasPhone = (bool) ($person['has_phone'] ?? false);
+        $wantsEmail = in_array('email', $channels, true);
+        $wantsPhone = in_array('phone', $channels, true);
+        $wantsRest = in_array('rest', $channels, true);
+
+        if ($wantsEmail && $wantsPhone && $wantsRest)
+        {
+            return true;
+        }
+
+        return ($wantsEmail && $hasEmail)
+            || ($wantsPhone && $hasPhone)
+            || ($wantsRest && ! $hasEmail && ! $hasPhone);
+    }
+
+    private function reportedTotal(int $queued, int $apolloTotal): int
+    {
+        if (! $this->limitsChannels())
+        {
+            return $apolloTotal;
+        }
+
+        $already = (int) (ProspectImport::query()->find($this->importId)?->queued ?? 0);
+
+        return $already + $queued;
+    }
+
+    private function limitsChannels(): bool
+    {
+        $channels = $this->filters['channels'] ?? null;
+        if (! is_array($channels) || $channels === [])
+        {
+            return false;
+        }
+
+        return count(array_intersect(['email', 'phone', 'rest'], $channels)) < 3;
     }
 
     public function failed(Throwable $exception): void
