@@ -13,6 +13,7 @@ use Database\Seeders\LanguageSeeder;
 use Database\Seeders\MessageTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class CampaignSpamPauseTest extends TestCase
@@ -192,6 +193,185 @@ class CampaignSpamPauseTest extends TestCase
             SendMessageCampaignJob::class,
             fn (SendMessageCampaignJob $job): bool => (int) $job->messageDelivery->id === (int) $activeDelivery->id,
         );
+    }
+
+    public function test_a_spam_pause_probes_one_delivery_per_hour(): void
+    {
+        Bus::fake();
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $message = $this->spamPausedMessage($team->id);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $this->contact($user, 'rejected-person@acme.test')->id,
+            'status_id' => 4,
+            'sent_at' => now()->subHours(2),
+            'scheduled_for' => now()->subHours(2),
+        ]);
+        $first = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $this->contact($user, 'first-person@acme.test')->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->subHour(),
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $this->contact($user, 'second-person@acme.test')->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->subMinutes(30),
+        ]);
+
+        $this->artisan('campaigns:probe-spam-pause')->assertSuccessful();
+        $this->artisan('campaigns:probe-spam-pause')->assertSuccessful();
+
+        Bus::assertDispatchedTimes(SendMessageCampaignJob::class, 1);
+        Bus::assertDispatched(SendMessageCampaignJob::class, function (SendMessageCampaignJob $job) use ($first): bool
+        {
+            return $job->spamProbe === true
+                && $job->manualResend === false
+                && (int) $job->messageDelivery->id === (int) $first->id
+                && $job->queue === 'track';
+        });
+        $this->assertFalse((bool) $message->fresh()->status_id);
+        $this->assertSame(Message::PAUSE_REASON_SPAM, $message->fresh()->pause_reason);
+        $this->assertStringContainsString(
+            'Se prueba un envío por hora',
+            (string) $message->fresh()->pauseReasonText(),
+        );
+    }
+
+    public function test_a_recent_spam_rejection_waits_an_hour_before_the_probe(): void
+    {
+        Bus::fake();
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $message = $this->spamPausedMessage($team->id);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $this->contact($user, 'rejected-person@acme.test')->id,
+            'status_id' => 4,
+            'sent_at' => now()->subMinutes(20),
+            'scheduled_for' => now()->subMinutes(20),
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $this->contact($user, 'waiting-person@acme.test')->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->subMinute(),
+        ]);
+
+        $this->artisan('campaigns:probe-spam-pause')->assertSuccessful();
+
+        Bus::assertNotDispatched(SendMessageCampaignJob::class);
+    }
+
+    public function test_a_manual_pause_is_not_probed(): void
+    {
+        Bus::fake();
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $message = Message::withoutGlobalScopes()->create([
+            'name' => 'Manual',
+            'type_id' => 1,
+            'text' => 'Hello',
+            'mail_html' => '<p>Hi</p>',
+            'team_id' => $team->id,
+            'status_id' => 0,
+            'pause_reason' => Message::PAUSE_REASON_MANUAL,
+            'started_at' => now()->subHour(),
+            'min_hours_between_emails' => 0,
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $this->contact($user, 'manual-person@acme.test')->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->subHour(),
+        ]);
+
+        $this->artisan('campaigns:probe-spam-pause')->assertSuccessful();
+
+        Bus::assertNotDispatched(SendMessageCampaignJob::class);
+    }
+
+    public function test_an_accepted_probe_resumes_the_campaign_and_reschedules_the_queue(): void
+    {
+        Mail::fake();
+        config([
+            'services.mailbaby.enabled' => false,
+            'humano_pricing.plan_access_team_ids' => [],
+        ]);
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        config(['humano_pricing.plan_access_team_ids' => [(int) $team->id]]);
+        $message = $this->spamPausedMessage($team->id);
+        $probe = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $this->contact($user, 'probe-person@acme.test')->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->subMinute(),
+        ]);
+        $waiting = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $this->contact($user, 'queued-person@acme.test')->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->subMinute(),
+        ]);
+
+        $job = new SendMessageCampaignJob($probe, false, true);
+        $job->handle();
+
+        $message->refresh();
+        $waiting->refresh();
+        $this->assertTrue((bool) $message->status_id);
+        $this->assertNull($message->pause_reason);
+        $this->assertNotNull($probe->fresh()->sent_at);
+        $this->assertTrue($waiting->scheduled_for->greaterThan(now()->addSeconds(20)));
+        $this->assertTrue($waiting->scheduled_for->lessThan(now()->addMinutes(2)));
+    }
+
+    public function test_a_paused_campaign_does_not_send_without_the_probe_flag(): void
+    {
+        Mail::fake();
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $message = $this->spamPausedMessage($team->id);
+        $delivery = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $this->contact($user, 'held-person@acme.test')->id,
+            'status_id' => 1,
+            'scheduled_for' => now()->subMinute(),
+        ]);
+
+        $job = new SendMessageCampaignJob($delivery);
+        $job->handle();
+
+        Mail::assertNothingSent();
+        $this->assertFalse((bool) $message->fresh()->status_id);
+        $this->assertNull($delivery->fresh()->sent_at);
+    }
+
+    private function spamPausedMessage(int $teamId): Message
+    {
+        return Message::withoutGlobalScopes()->create([
+            'name' => 'Probe',
+            'type_id' => 1,
+            'text' => 'Hello',
+            'mail_html' => '<p>Hi</p>',
+            'team_id' => $teamId,
+            'status_id' => 0,
+            'pause_reason' => Message::PAUSE_REASON_SPAM,
+            'started_at' => now()->subHour(),
+            'min_hours_between_emails' => 0,
+        ]);
     }
 
     private function contact(User $user, string $email): Contact

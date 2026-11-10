@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Bus\Queueable;
@@ -44,12 +45,18 @@ class SendMessageCampaignJob implements ShouldQueue
     public bool $manualResend = false;
 
     /**
+     * Hourly send while the campaign stays paused for spam.
+     */
+    public bool $spamProbe = false;
+
+    /**
      * Create a new job instance.
      */
-    public function __construct(MessageDelivery $messageDelivery, bool $manualResend = false)
+    public function __construct(MessageDelivery $messageDelivery, bool $manualResend = false, bool $spamProbe = false)
     {
         $this->messageDelivery = $messageDelivery;
         $this->manualResend = $manualResend;
+        $this->spamProbe = $spamProbe;
 
         $fallback = config('message_delivery_dispatch.fallback_queue');
         if (is_string($fallback) && $fallback !== '')
@@ -82,7 +89,7 @@ class SendMessageCampaignJob implements ShouldQueue
             }
 
             $this->messageDelivery->message?->refresh();
-            if (! $this->manualResend && ! $this->messageDelivery->message?->status_id)
+            if (! $this->sendWhilePausedIsAllowed() && ! $this->messageDelivery->message?->status_id)
             {
                 return;
             }
@@ -121,7 +128,7 @@ class SendMessageCampaignJob implements ShouldQueue
             return false;
         }
 
-        if (! $this->manualResend && ! $this->messageDelivery->message->status_id)
+        if (! $this->sendWhilePausedIsAllowed() && ! $this->messageDelivery->message->status_id)
         {
             return false;
         }
@@ -238,6 +245,7 @@ class SendMessageCampaignJob implements ShouldQueue
         $this->messageDelivery->team->recordSuccessfulMailerSend();
         $this->messageDelivery->reactMailerPace('success');
         $this->recordEmailAttempt('sent');
+        $this->resumeSpamProbeIfAccepted();
     }
 
     /**
@@ -269,6 +277,7 @@ class SendMessageCampaignJob implements ShouldQueue
         $this->messageDelivery->team->recordSuccessfulMailerSend();
         $this->messageDelivery->reactMailerPace('success');
         $this->recordEmailAttempt('sent');
+        $this->resumeSpamProbeIfAccepted();
     }
 
     private function recordEmailAttempt(string $status): void
@@ -309,6 +318,28 @@ class SendMessageCampaignJob implements ShouldQueue
         }
 
         return $sender;
+    }
+
+    private function sendWhilePausedIsAllowed(): bool
+    {
+        if ($this->manualResend)
+        {
+            return true;
+        }
+
+        return $this->spamProbe
+            && $this->messageDelivery->message?->pause_reason === Message::PAUSE_REASON_SPAM;
+    }
+
+    private function resumeSpamProbeIfAccepted(): void
+    {
+        if (! $this->spamProbe)
+        {
+            return;
+        }
+
+        $this->messageDelivery->message?->refresh();
+        $this->messageDelivery->message?->resumeAfterAcceptedSpamProbe();
     }
 
     /**

@@ -189,6 +189,12 @@ Schedule::command('campaigns:send-scheduled')
     ->name('send-scheduled-deliveries')
     ->description('Send scheduled email deliveries (~20/min)');
 
+Schedule::command('campaigns:probe-spam-pause')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->name('probe-spam-paused-campaigns')
+    ->description('Send one email per hour from a campaign paused as spam');
+
 Schedule::command('wordpress:sync')
     ->hourly()
     ->name('wordpress-sync')

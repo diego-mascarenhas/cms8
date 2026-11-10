@@ -257,6 +257,7 @@ class MessageApiWriteTest extends TestCase
         $this->assertTrue((bool) $message->status_id);
         $this->assertNull($message->pause_reason);
         Bus::assertDispatched(ResumeMessageCampaign::class);
+        Bus::assertNotDispatchedAfterResponse(ResumeMessageCampaign::class);
     }
 
     public function test_start_stays_paused_when_the_subscriber_cap_is_exceeded(): void
@@ -327,6 +328,7 @@ class MessageApiWriteTest extends TestCase
         $this->assertTrue((bool) $message->status_id);
         $this->assertNull($message->pause_reason);
         Bus::assertDispatched(ResumeMessageCampaign::class);
+        Bus::assertNotDispatchedAfterResponse(ResumeMessageCampaign::class);
     }
 
     public function test_test_send_requires_email_and_sends_mail(): void

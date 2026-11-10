@@ -98,6 +98,9 @@ return [
             'deliveries_per_send_run' => (int) env('EMAIL_DELIVERIES_PER_SEND_RUN', 20),
             'fast_deliveries_per_campaign_run' => (int) env('EMAIL_FAST_DELIVERIES_PER_CAMPAIGN_RUN', 1000),
             'fast_deliveries_per_send_run' => (int) env('EMAIL_FAST_DELIVERIES_PER_SEND_RUN', 1000),
+            'resume_schedule_chunk' => (int) env('EMAIL_RESUME_SCHEDULE_CHUNK', 100),
+            'spam_probe_seconds' => (int) env('EMAIL_SPAM_PROBE_SECONDS', 3600),
+            'spam_probe_queue' => env('EMAIL_SPAM_PROBE_QUEUE', 'track'),
         ],
     ],
 

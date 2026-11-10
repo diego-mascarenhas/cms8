@@ -57,7 +57,8 @@ class MessageCampaignActivationService
 
             $message->update($updateData);
 
-            ResumeMessageCampaign::dispatch($message->id)->afterResponse();
+            // The queue worker runs this. afterResponse() kept it in php-fpm, which dies at 30 seconds.
+            ResumeMessageCampaign::dispatch($message->id);
 
             $message->load('campaigns');
             foreach ($message->campaigns as $campaign)
