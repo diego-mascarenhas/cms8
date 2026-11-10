@@ -617,6 +617,11 @@ trait HasEmailLimits
             ?? (int) config('mailer.campaigns.default_min_hours_between_emails', 48);
     }
 
+    public function mailerGapRespectsSender(): bool
+    {
+        return $this->mailerPreference('mailer_gap_by_sender', true);
+    }
+
     public function mailerTracksOpens(): bool
     {
         return $this->mailerPreference('mailer_enable_open_tracking', true);

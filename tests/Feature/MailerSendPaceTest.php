@@ -762,6 +762,38 @@ class MailerSendPaceTest extends TestCase
         $this->assertTrue($urgentAt->lessThan($sentAt->copy()->addHours(2)));
     }
 
+    public function test_the_hours_between_news_follow_the_sender_when_that_option_is_on(): void
+    {
+        [, $team, $contact, $sentAt] = $this->senderGapFixture();
+        $other = $this->gapMessage($team->id, 'Hola', 'hola@acme.test');
+        $same = $this->gapMessage($team->id, 'Otro', 'otro@acme.test');
+
+        Artisan::call('campaigns:process-active', ['--message' => $other->id]);
+        Artisan::call('campaigns:process-active', ['--message' => $same->id]);
+
+        $otherAt = MessageDelivery::query()->where('message_id', $other->id)->where('contact_id', $contact->id)->first()->scheduled_for;
+        $sameAt = MessageDelivery::query()->where('message_id', $same->id)->where('contact_id', $contact->id)->first()->scheduled_for;
+
+        $this->assertTrue($other->fresh()->canSendToContact($contact));
+        $this->assertFalse($same->fresh()->canSendToContact($contact));
+        $this->assertTrue($otherAt->lessThan(now()->addMinutes(5)));
+        $this->assertTrue($sameAt->greaterThanOrEqualTo($sentAt->copy()->addHours(48)));
+    }
+
+    public function test_the_hours_between_news_ignore_the_sender_when_that_option_is_off(): void
+    {
+        [, $team, $contact, $sentAt] = $this->senderGapFixture();
+        $team->setSetting('mailer_gap_by_sender', '0', ['type' => 'boolean', 'group' => 'mailer']);
+        $other = $this->gapMessage($team->id, 'Hola', 'hola@acme.test');
+
+        Artisan::call('campaigns:process-active', ['--message' => $other->id]);
+
+        $otherAt = MessageDelivery::query()->where('message_id', $other->id)->where('contact_id', $contact->id)->first()->scheduled_for;
+
+        $this->assertFalse($other->fresh()->canSendToContact($contact));
+        $this->assertTrue($otherAt->greaterThanOrEqualTo($sentAt->copy()->addHours(48)));
+    }
+
     public function test_a_two_hour_gap_is_pulled_up_to_about_five_minutes(): void
     {
         config([
@@ -949,6 +981,63 @@ class MailerSendPaceTest extends TestCase
                 && $next->waitingSkip === 0
                 && $next->scheduleOrigin !== null;
         });
+    }
+
+    /**
+     * @return array{0: User, 1: \App\Models\Team, 2: Contact, 3: \Illuminate\Support\Carbon}
+     */
+    private function senderGapFixture(): array
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->assignEmailPlan(EmailPlan::SCALE);
+        $team->setSetting('mailer_from_name', 'Equipo', ['type' => 'string', 'group' => 'mailer']);
+        $team->setSetting('mailer_from_address', 'equipo@acme.test', ['type' => 'string', 'group' => 'mailer']);
+        $team->setSetting('mailer_min_hours_between_emails', 48, ['type' => 'integer', 'group' => 'mailer']);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'email' => 'gap-person@example.test',
+        ]);
+        $sentAt = now()->subHour()->startOfSecond();
+        $prior = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Prior',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+            'from_name' => 'Otro',
+            'from_address' => 'otro@acme.test',
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $prior->id,
+            'contact_id' => $contact->id,
+            'status_id' => 2,
+            'sent_at' => $sentAt,
+            'scheduled_for' => $sentAt,
+        ]);
+
+        return [$user, $team, $contact, $sentAt];
+    }
+
+    private function gapMessage(int $teamId, string $fromName, string $fromAddress): Message
+    {
+        return Message::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => $fromAddress,
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 1,
+            'mail_html' => '<p>Hi</p>',
+            'from_name' => $fromName,
+            'from_address' => $fromAddress,
+            'min_hours_between_emails' => 48,
+            'started_at' => now(),
+        ]);
     }
 
     private function scheduledTimes(int $messageId)

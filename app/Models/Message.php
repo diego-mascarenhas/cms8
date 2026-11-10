@@ -18,6 +18,13 @@ class Message extends Model
 
     protected $table = 'messages';
 
+    /**
+     * Message ids that share this From, cached for the gap queries.
+     *
+     * @var list<int>|null
+     */
+    private ?array $sameSenderMessageIdCache = null;
+
     public const PAUSE_REASON_SPAM = 'Se pausó porque el proveedor marcó el mensaje como spam.';
 
     public const PAUSE_REASON_ERRORS = 'Se pausó por errores seguidos al enviar.';
@@ -82,6 +89,73 @@ class Message extends Model
         }
 
         return $team->getMailerEmailSender();
+    }
+
+    public function mailerFromAddress(): string
+    {
+        $this->loadMissing('team');
+        if (! $this->team)
+        {
+            return mb_strtolower(trim((string) $this->from_address));
+        }
+
+        return mb_strtolower(trim($this->resolvedMailerSender($this->team)['from_address']));
+    }
+
+    public function gapRespectsSender(): bool
+    {
+        $this->loadMissing('team');
+
+        return $this->team?->mailerGapRespectsSender() ?? true;
+    }
+
+    /**
+     * Ids of this team's messages that send as the same From. Null keeps the wait across every sender.
+     *
+     * @return list<int>|null
+     */
+    public function sameSenderMessageIds(): ?array
+    {
+        if (! $this->gapRespectsSender())
+        {
+            return null;
+        }
+
+        if ($this->sameSenderMessageIdCache !== null)
+        {
+            return $this->sameSenderMessageIdCache;
+        }
+
+        $this->loadMissing('team');
+        $team = $this->team;
+        $team?->loadMissing('settings');
+        $address = $this->mailerFromAddress();
+
+        $ids = self::withoutGlobalScopes()
+            ->where('team_id', $this->team_id)
+            ->get(['id', 'from_name', 'from_address', 'team_id'])
+            ->filter(function (Message $message) use ($team, $address): bool
+            {
+                if ($team)
+                {
+                    $message->setRelation('team', $team);
+                }
+
+                return $message->mailerFromAddress() === $address;
+            })
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+
+        if (! in_array((int) $this->id, $ids, true))
+        {
+            $ids[] = (int) $this->id;
+        }
+
+        $this->sameSenderMessageIdCache = $ids;
+
+        return $ids;
     }
 
     public function type()
@@ -715,10 +789,12 @@ class Message extends Model
         $latest = [];
         foreach (array_chunk($contactIds, 1000) as $chunk)
         {
-            $sentRows = MessageDelivery::query()
-                ->where('team_id', $this->team_id)
-                ->whereIn('contact_id', $chunk)
-                ->whereNotNull('sent_at')
+            $sentRows = $this->restrictGapToSameSender(
+                MessageDelivery::query()
+                    ->where('team_id', $this->team_id)
+                    ->whereIn('contact_id', $chunk)
+                    ->whereNotNull('sent_at'),
+            )
                 ->groupBy('contact_id')
                 ->selectRaw('contact_id, max(sent_at) as moment')
                 ->get();
@@ -727,16 +803,18 @@ class Message extends Model
                 $latest[(int) $row->contact_id] = Carbon::parse($row->moment);
             }
 
-            $scheduledRows = MessageDelivery::query()
-                ->where('team_id', $this->team_id)
-                ->whereIn('contact_id', $chunk)
-                ->where('message_id', '<', $this->id)
-                ->whereNull('sent_at')
-                ->whereNotNull('scheduled_for')
-                ->whereHas('message', function ($query): void
-                {
-                    $query->where('status_id', true);
-                })
+            $scheduledRows = $this->restrictGapToSameSender(
+                MessageDelivery::query()
+                    ->where('team_id', $this->team_id)
+                    ->whereIn('contact_id', $chunk)
+                    ->where('message_id', '<', $this->id)
+                    ->whereNull('sent_at')
+                    ->whereNotNull('scheduled_for')
+                    ->whereHas('message', function ($query): void
+                    {
+                        $query->where('status_id', true);
+                    }),
+            )
                 ->groupBy('contact_id')
                 ->selectRaw('contact_id, max(scheduled_for) as moment')
                 ->get();
@@ -805,11 +883,13 @@ class Message extends Model
         }
 
         $next = null;
-        $lastSent = MessageDelivery::query()
-            ->where('contact_id', $delivery->contact_id)
-            ->where('team_id', $this->team_id)
-            ->where('id', '!=', $delivery->id)
-            ->whereNotNull('sent_at')
+        $lastSent = $this->restrictGapToSameSender(
+            MessageDelivery::query()
+                ->where('contact_id', $delivery->contact_id)
+                ->where('team_id', $this->team_id)
+                ->where('id', '!=', $delivery->id)
+                ->whereNotNull('sent_at'),
+        )
             ->orderByDesc('sent_at')
             ->value('sent_at');
 
@@ -822,16 +902,18 @@ class Message extends Model
             }
         }
 
-        $earlier = MessageDelivery::query()
-            ->where('contact_id', $delivery->contact_id)
-            ->where('team_id', $this->team_id)
-            ->where('id', '!=', $delivery->id)
-            ->whereNull('sent_at')
-            ->where('status_id', 1)
-            ->whereHas('message', function ($query): void
-            {
-                $query->where('status_id', true);
-            })
+        $earlier = $this->restrictGapToSameSender(
+            MessageDelivery::query()
+                ->where('contact_id', $delivery->contact_id)
+                ->where('team_id', $this->team_id)
+                ->where('id', '!=', $delivery->id)
+                ->whereNull('sent_at')
+                ->where('status_id', 1)
+                ->whereHas('message', function ($query): void
+                {
+                    $query->where('status_id', true);
+                }),
+        )
             ->where(function ($query) use ($delivery): void
             {
                 $query->where('scheduled_for', '<', $delivery->scheduled_for)
@@ -880,23 +962,27 @@ class Message extends Model
      */
     public function latestMailMomentForContact(\App\Models\Contact $contact): ?Carbon
     {
-        $sentAt = MessageDelivery::query()
-            ->where('contact_id', $contact->id)
-            ->where('team_id', $this->team_id)
-            ->whereNotNull('sent_at')
+        $sentAt = $this->restrictGapToSameSender(
+            MessageDelivery::query()
+                ->where('contact_id', $contact->id)
+                ->where('team_id', $this->team_id)
+                ->whereNotNull('sent_at'),
+        )
             ->orderByDesc('sent_at')
             ->value('sent_at');
 
-        $scheduledFor = MessageDelivery::query()
-            ->where('contact_id', $contact->id)
-            ->where('team_id', $this->team_id)
-            ->where('message_id', '<', $this->id)
-            ->whereNull('sent_at')
-            ->whereNotNull('scheduled_for')
-            ->whereHas('message', function ($query): void
-            {
-                $query->where('status_id', true);
-            })
+        $scheduledFor = $this->restrictGapToSameSender(
+            MessageDelivery::query()
+                ->where('contact_id', $contact->id)
+                ->where('team_id', $this->team_id)
+                ->where('message_id', '<', $this->id)
+                ->whereNull('sent_at')
+                ->whereNotNull('scheduled_for')
+                ->whereHas('message', function ($query): void
+                {
+                    $query->where('status_id', true);
+                }),
+        )
             ->orderByDesc('scheduled_for')
             ->value('scheduled_for');
 
@@ -915,6 +1001,17 @@ class Message extends Model
         }
 
         return collect($moments)->sortBy(fn (Carbon $moment): int => $moment->getTimestamp())->last();
+    }
+
+    private function restrictGapToSameSender(Builder $query): Builder
+    {
+        $ids = $this->sameSenderMessageIds();
+        if ($ids !== null)
+        {
+            $query->whereIn('message_id', $ids);
+        }
+
+        return $query;
     }
 
     private function allowsMailerFlag(string $settingKey, string $column, bool $default): bool
