@@ -143,6 +143,67 @@ class HostingApiTest extends TestCase
         $this->assertDatabaseMissing('domains', ['domain' => 'rechazado.test']);
     }
 
+    public function test_admin_opens_a_team_hosting_account(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::query()->create([
+            'name' => 'Odin',
+            'server_url' => 'https://odin.test:2083',
+            'username' => 'revision',
+            'control_panel' => 'cpanel',
+            'success' => true,
+            'status_id' => ServerStatus::Active,
+            'team_id' => $team->id,
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+            'plan' => 'revision_flex',
+            'site_type' => 'WordPress',
+            'php_version' => '8.3',
+            'suspended' => false,
+            'data' => [
+                'email' => 'info@lizama.test',
+                'email_accounts' => [
+                    ['email' => 'info@lizama.test'],
+                ],
+            ],
+        ]);
+        $otherTeam = Team::factory()->create();
+        $otherServer = Server::query()->create([
+            'name' => 'Ajeno',
+            'server_url' => 'https://ajeno.test:2083',
+            'username' => 'revision',
+            'control_panel' => 'cpanel',
+            'success' => true,
+            'status_id' => ServerStatus::Active,
+            'team_id' => $otherTeam->id,
+        ]);
+        $other = Domain::query()->create([
+            'domain' => 'ajeno.test',
+            'server_id' => $otherServer->id,
+            'username' => 'ajeno',
+        ]);
+
+        $token = $user->createToken('hosting')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/hosting/'.$domain->id)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.domain', 'lizama.test')
+            ->assertJsonPath('data.plan', 'revision_flex')
+            ->assertJsonPath('data.site_type', 'WordPress')
+            ->assertJsonPath('data.php_version', '8.3')
+            ->assertJsonPath('data.contact_email', 'info@lizama.test')
+            ->assertJsonPath('data.emails.0.email', 'info@lizama.test');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/hosting/'.$other->id)
+            ->assertNotFound();
+    }
+
     public function test_collaborator_cannot_list_hosting(): void
     {
         $user = User::factory()->create();

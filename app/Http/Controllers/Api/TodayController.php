@@ -23,14 +23,6 @@ class TodayController extends Controller
             return $team;
         }
 
-        if (! $team->hasModule('today') && ! $team->hasModule('calendar'))
-        {
-            return response()->json([
-                'success' => false,
-                'message' => __('Este módulo no está disponible en tu plan.'),
-            ], 403);
-        }
-
         $user = $request->user();
 
         $dateInput = $request->query('date');

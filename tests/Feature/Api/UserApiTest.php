@@ -109,6 +109,46 @@ class UserApiTest extends TestCase
         );
     }
 
+    public function test_user_list_reports_the_team_role_when_the_client_is_admin_elsewhere(): void
+    {
+        [$admin, $team, $token] = $this->adminWithToken();
+
+        $client = User::factory()->create(['name' => 'Beachwear S.A.']);
+        $team->users()->attach($client, ['role' => 'client']);
+        $client->assignRole('admin');
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/users');
+
+        $response->assertOk();
+        $row = collect($response->json('users'))->firstWhere('id', $client->id);
+
+        $this->assertNotNull($row);
+        $this->assertSame('client', $row['role']);
+        $this->assertNotSame($admin->id, $client->id);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/users/'.$client->id, [
+                'name' => 'Beachwear S.A.',
+                'email' => $client->email,
+                'role' => 'admin',
+            ])
+            ->assertStatus(422);
+
+        $client->refresh();
+        $this->assertTrue($client->hasRole('admin'));
+        $this->assertSame(
+            'client',
+            $client->teams()->where('teams.id', $team->id)->first()?->pivot?->role,
+        );
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/users/'.$client->id)
+            ->assertStatus(422);
+
+        $this->assertTrue($client->fresh()->teams->contains('id', $team->id));
+    }
+
     public function test_admins_filter_excludes_clients_with_stale_spatie_admin(): void
     {
         [$admin, $team, $token] = $this->adminWithToken();

@@ -258,6 +258,29 @@ class MobileAssistantApiTest extends TestCase
         $dated->assertJsonPath('date', now()->toDateString());
     }
 
+    public function test_today_endpoint_returns_the_agenda_when_the_module_is_off(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+
+        $team->disableModule('today');
+        $team->disableModule('calendar');
+
+        CalendarEvent::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'title' => 'Client call',
+            'start' => now()->setTime(11, 0),
+            'end' => now()->setTime(11, 30),
+            'all_day' => false,
+            'label' => 'Business',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/today')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('events.0.title', 'Client call');
+    }
+
     public function test_clients_endpoint_requires_clients_module(): void
     {
         [$user, $team, $token] = $this->assistantUserWithToken();

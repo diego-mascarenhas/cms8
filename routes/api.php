@@ -884,6 +884,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
     Route::get('subscriptions', [ApiSubscriptionController::class, 'index']);
     Route::get('hosting', [\App\Http\Controllers\Api\HostingController::class, 'index']);
+    Route::get('hosting/{domain}', [\App\Http\Controllers\Api\HostingController::class, 'show'])->whereNumber('domain');
     Route::post('hosting', [\App\Http\Controllers\Api\HostingController::class, 'store']);
     Route::get('subscriptions/{id}', [ApiSubscriptionController::class, 'show'])->whereNumber('id');
     Route::get('search', [WebContactController::class, 'search']);

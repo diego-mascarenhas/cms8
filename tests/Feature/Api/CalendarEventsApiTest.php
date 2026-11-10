@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\CalendarEvent;
+use App\Models\Message;
 use App\Models\Team;
 use App\Models\User;
 use Carbon\Carbon;
@@ -45,5 +46,54 @@ class CalendarEventsApiTest extends TestCase
             ])
             ->assertJsonPath('0.extendedProps.calendar', 'Business')
             ->assertJsonPath('0.extendedProps.description', 'Plan del día');
+    }
+
+    public function test_calendar_events_include_the_day_an_email_campaign_started(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Campaña de noviembre',
+            'type_id' => 1,
+            'text' => 'Asunto',
+            'started_at' => Carbon::parse('2026-11-07 09:30:00', 'Europe/Madrid')->utc(),
+        ]);
+
+        Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Campaña de octubre',
+            'type_id' => 1,
+            'text' => 'Asunto',
+            'started_at' => Carbon::parse('2026-10-02 09:30:00', 'Europe/Madrid')->utc(),
+        ]);
+
+        Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'WhatsApp de noviembre',
+            'type_id' => 2,
+            'text' => 'Hola',
+            'started_at' => Carbon::parse('2026-11-07 11:00:00', 'Europe/Madrid')->utc(),
+        ]);
+
+        $token = $user->createToken('calendar')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/calendar/events?start=2026-11-07 00:00:00&end=2026-11-08 00:00:00')
+            ->assertOk()
+            ->assertJsonFragment([
+                'title' => 'Campaña de noviembre',
+                'start' => '2026-11-07',
+                'allDay' => true,
+            ])
+            ->assertJsonPath('0.extendedProps.calendar', 'Email Marketing')
+            ->assertJsonMissing(['title' => 'Campaña de octubre'])
+            ->assertJsonMissing(['title' => 'WhatsApp de noviembre']);
     }
 }

@@ -7,6 +7,7 @@ use App\Http\Requests\StoreApiHostingRequest;
 use App\Models\Domain;
 use App\Models\Server;
 use App\Services\Hosting\FlexHostingProvisioner;
+use App\Support\HostingAccountPresenter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -70,6 +71,32 @@ class HostingController extends Controller
                 'suspended' => (bool) $domain->suspended,
                 'server' => $domain->server?->name,
             ]),
+        ]);
+    }
+
+    public function show(Request $request, Domain $domain): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user === null || ! $user->canAccessInfrastructure())
+        {
+            abort(403);
+        }
+
+        $domain->load('server');
+        $teamId = $user->currentTeam?->id;
+
+        if ($teamId === null || (int) $domain->server?->team_id !== (int) $teamId)
+        {
+            abort(404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => HostingAccountPresenter::forDomain(
+                $domain,
+                (bool) data_get($domain->data, 'auto_suspend', false),
+            ),
         ]);
     }
 

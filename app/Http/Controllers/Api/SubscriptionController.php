@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Helpers\DnsHelper;
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Models\Domain;
 use App\Models\Enterprise;
 use App\Models\Service;
 use App\Models\ServiceSync;
+use App\Support\HostingAccountPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -548,134 +548,10 @@ class SubscriptionController extends Controller
             return null;
         }
 
-        $display = $domain->getCachedDisplayInfo();
-        $server = $domain->server;
-        $requiredNameservers = $server?->getProvisioningNameservers()
-            ?: config('humano_hosting.default_nameservers', []);
-        $currentNameservers = $display['nameservers'] ?? [];
-        $spf = $domain->getCachedPublicSpfCheck();
-        $ssl = is_array($display['ssl_status'] ?? null) ? $display['ssl_status'] : null;
-
-        return [
-            'id' => $domain->id,
-            'domain' => $domain->domain,
-            'suspended' => (bool) $domain->suspended,
-            'needs_update' => (bool) $domain->needs_update,
-            'is_working' => (bool) $domain->is_working,
-            'username' => $domain->username,
-            'plan' => $domain->plan,
-            'site_type' => $domain->site_type,
-            'php_version' => $domain->php_version,
-            'notes' => $domain->notes,
-            'contact_email' => data_get($domain->data, 'email'),
-            'auto_suspend' => (bool) data_get($sync->data, 'metadata.auto_suspend', data_get($sync->raw_payload, 'metadata.auto_suspend', false)),
-            'web_ip' => $display['web_ip'] ?? null,
-            'mail_ip' => $display['mail_ip'] ?? null,
-            'server' => $server?->server_url,
-            'control_panel' => $server?->control_panel,
-            'cpanel_url' => $server?->getCpanelUrl(),
-            'webmail_url' => $server?->getWebmailUrl(),
-            'disk' => $this->hostingDisk($domain),
-            'ssl' => [
-                'valid' => ($ssl['valid'] ?? false) === true,
-                'expires' => $ssl['expires'] ?? null,
-            ],
-            'emails' => array_values($domain->getCachedEmailAccounts()),
-            'mx_records' => array_values($domain->getCachedMxRecords()),
-            'nameservers' => [
-                'current' => array_values($currentNameservers),
-                'required' => array_values($requiredNameservers),
-                'match' => $this->nameserversMatch($currentNameservers, $requiredNameservers),
-            ],
-            'spf' => [
-                'exists' => (bool) ($spf['exists'] ?? false),
-                'has_mailbaby' => (bool) ($spf['has_mailbaby'] ?? false),
-                'record' => $spf['record'] ?? null,
-                'recommended' => $server?->getProvisioningSpfRecord() ?: DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT,
-            ],
-            'updated_at' => $domain->updated_at?->toIso8601String(),
-        ];
-    }
-
-    /**
-     * @return array{used_mb: float, limit_mb: float|null, unlimited: bool, usage_percent: int}|null
-     */
-    private function hostingDisk(Domain $domain): ?array
-    {
-        $cached = $domain->getCachedAccountDisk();
-        if ($cached !== null)
-        {
-            return $cached;
-        }
-
-        $used = $this->megabytes(data_get($domain->data, 'disk_used'));
-        $limitRaw = data_get($domain->data, 'disk_limit');
-        if ($used === null && ($limitRaw === null || $limitRaw === ''))
-        {
-            return null;
-        }
-
-        $unlimited = is_string($limitRaw) && strtolower(trim($limitRaw)) === 'unlimited';
-        $limit = $unlimited ? null : $this->megabytes($limitRaw);
-        $percent = ! $unlimited && $limit
-            ? (int) min(100, round(($used ?? 0) / $limit * 100))
-            : 0;
-
-        return [
-            'used_mb' => round($used ?? 0, 1),
-            'limit_mb' => $limit === null ? null : round($limit, 1),
-            'unlimited' => $unlimited,
-            'usage_percent' => $percent,
-        ];
-    }
-
-    private function megabytes(mixed $value): ?float
-    {
-        if (! is_string($value) && ! is_numeric($value))
-        {
-            return null;
-        }
-
-        $value = trim((string) $value);
-        if ($value === '' || strtolower($value) === 'unlimited')
-        {
-            return null;
-        }
-
-        if (preg_match('/^(\d+(?:\.\d+)?)\s*([KMGT])?/i', $value, $matches) !== 1)
-        {
-            return null;
-        }
-
-        $amount = (float) $matches[1];
-
-        return match (strtoupper($matches[2] ?? 'M'))
-        {
-            'K' => $amount / 1024,
-            'G' => $amount * 1024,
-            'T' => $amount * 1024 * 1024,
-            default => $amount,
-        };
-    }
-
-    /**
-     * @param  array<int, string>  $current
-     * @param  array<int, string>  $required
-     */
-    private function nameserversMatch(array $current, array $required): bool
-    {
-        if ($required === [] || $current === [])
-        {
-            return false;
-        }
-
-        $normalize = static fn (array $nameservers): array => collect($nameservers)
-            ->map(fn ($nameserver) => strtolower(rtrim((string) $nameserver, '.')))
-            ->sort()
-            ->values()
-            ->all();
-
-        return $normalize($current) === $normalize($required);
+        return HostingAccountPresenter::forDomain(
+            $domain,
+            (bool) data_get($sync->data, 'metadata.auto_suspend', data_get($sync->raw_payload, 'metadata.auto_suspend', false)),
+        );
     }
 
     /**
