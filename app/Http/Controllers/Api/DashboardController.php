@@ -24,6 +24,7 @@ use App\Models\TeamUsageInvoice;
 use App\Models\Time;
 use App\Models\User;
 use App\Services\ContactDailySentimentService;
+use App\Services\DashboardAnalyticsService;
 use App\Services\Finance\PaymentReportingCurrencyService;
 use App\Services\Mail\CampaignMessageApiService;
 use App\Services\Mail\MailInboxService;
@@ -203,6 +204,7 @@ class DashboardController extends Controller
             'meetings' => $this->meetingWidgets($team),
             'ads' => $this->adsWidget($team),
             'income' => $this->incomeWidget($team),
+            'analytics' => app(DashboardAnalyticsService::class)->forTeam($team),
             'expiring' => $this->expiringWidgets($team),
             'payments' => $this->paymentWidgets($team),
             'drafts' => $this->draftWidgets($user),
@@ -471,7 +473,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * @return array{labels: list<string>, amounts: list<float>, total: float, currency: string, period_label: string}
+     * @return array{labels: list<string>, amounts: list<float>, expenses: list<float>, total: float, expense_total: float, currency: string, period_label: string}
      */
     private function incomeWidget(Team $team): array
     {
@@ -479,31 +481,35 @@ class DashboardController extends Controller
         $currency = $service->reportingCurrencyForTeam($team);
         $labels = [];
         $amounts = [];
+        $expenses = [];
         $total = 0.0;
+        $expenseTotal = 0.0;
 
         for ($i = 7; $i >= 0; $i--)
         {
             $month = now()->startOfMonth()->subMonths($i);
             $labels[] = $this->monthLabel($month);
-            $amount = $service->sumApprovedPaymentsConverted(
-                TransactionType::INCOME,
-                $currency,
-                function ($query) use ($month): void
-                {
-                    $query->whereBetween('payments.date', [
-                        $month->toDateString(),
-                        $month->copy()->endOfMonth()->toDateString(),
-                    ]);
-                },
-            );
-            $amounts[] = round($amount, 2);
-            $total += $amount;
+            $scope = function ($query) use ($month): void
+            {
+                $query->whereBetween('payments.date', [
+                    $month->toDateString(),
+                    $month->copy()->endOfMonth()->toDateString(),
+                ]);
+            };
+            $income = $service->sumApprovedPaymentsConverted(TransactionType::INCOME, $currency, $scope);
+            $expense = $service->sumApprovedPaymentsConverted(TransactionType::EXPENSE, $currency, $scope);
+            $amounts[] = round($income, 2);
+            $expenses[] = round($expense, 2);
+            $total += $income;
+            $expenseTotal += $expense;
         }
 
         return [
             'labels' => $labels,
             'amounts' => $amounts,
+            'expenses' => $expenses,
             'total' => round($total, 2),
+            'expense_total' => round($expenseTotal, 2),
             'currency' => $currency,
             'period_label' => 'Últimos 8 meses',
         ];
@@ -637,7 +643,7 @@ class DashboardController extends Controller
     /**
      * Contacts grouped by status: leads, follow-up, clients and the rest.
      *
-     * @return list<array{name: string, count: int}>
+     * @return list<array{name: string, count: int, label_class: string}>
      */
     private function audienceWidgets(User $user, Team $team): array
     {
@@ -657,12 +663,13 @@ class DashboardController extends Controller
 
         return ContactStatus::query()
             ->orderBy('id')
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'label_class'])
             ->map(function (ContactStatus $status) use ($counts): array
             {
                 return [
                     'name' => $status->name,
                     'count' => (int) ($counts[$status->id] ?? 0),
+                    'label_class' => (string) $status->label_class,
                 ];
             })
             ->filter(fn (array $row): bool => $row['count'] > 0)

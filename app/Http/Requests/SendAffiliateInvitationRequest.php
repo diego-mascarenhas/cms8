@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\AffiliateReferralLinkBuilder;
 use App\Support\HumanoPricingCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -22,24 +23,7 @@ class SendAffiliateInvitationRequest extends FormRequest
     {
         $catalog = HumanoPricingCatalog::normalize((string) $this->input('catalog', ''));
 
-        $planIds = collect(config('humano_pricing.plans', []))
-            ->filter(function (mixed $plan) use ($catalog): bool
-            {
-                if (! is_array($plan))
-                {
-                    return false;
-                }
-
-                $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
-                $planCatalog = strtolower(trim((string) ($plan['catalog'] ?? 'assistant')));
-
-                if ($checkoutUrl === '' || ! (bool) ($plan['checkout_available'] ?? false))
-                {
-                    return false;
-                }
-
-                return $catalog === null || $planCatalog === $catalog;
-            })
+        $planIds = collect(app(AffiliateReferralLinkBuilder::class)->availablePlans($catalog))
             ->pluck('id')
             ->map(fn (mixed $id): string => (string) $id)
             ->all();

@@ -672,6 +672,7 @@
 								<thead>
 									<tr>
 										<th>Plan</th>
+										<th>Precio</th>
 										<th>Enlace de referido</th>
 										<th></th>
 									</tr>
@@ -680,6 +681,18 @@
 									@foreach($affiliateReferralPlans as $plan)
 										<tr>
 											<td class="align-middle">{{ $plan['name'] }}</td>
+											<td class="align-middle text-nowrap">
+												@php
+													$affiliateMonthly = trim((string) ($plan['monthly_amount'] ?? ''));
+												@endphp
+												@if($affiliateMonthly === '')
+													<span class="text-muted">—</span>
+												@elseif((float) $affiliateMonthly <= 0)
+													Gratis
+												@else
+													{{ number_format((float) $affiliateMonthly, 2, ',', '.') }} USD
+												@endif
+											</td>
 											<td class="align-middle">
 												@if($plan['referral_url'])
 													<input type="text" class="form-control form-control-sm affiliate-plan-link" readonly value="{{ $plan['referral_url'] }}">
@@ -713,7 +726,23 @@
 							</div>
 							<div class="col-md-4">
 								@php
-									$invitePlanOptions = collect($affiliateReferralPlans)->pluck('name', 'id')->all();
+									$invitePlanOptions = collect($affiliateReferralPlans)
+										->mapWithKeys(function (array $plan): array {
+											$amount = trim((string) ($plan['monthly_amount'] ?? ''));
+											$label = (string) $plan['name'];
+
+											if ($amount !== '' && (float) $amount > 0)
+											{
+												$label .= ' · '.number_format((float) $amount, 2, ',', '.').' USD';
+											}
+											elseif ($amount !== '')
+											{
+												$label .= ' · Gratis';
+											}
+
+											return [(string) $plan['id'] => $label];
+										})
+										->all();
 								@endphp
 								<x-input-select
 									id="invite_plan"

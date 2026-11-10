@@ -10,4 +10,8 @@ return [
         'HOSTING_DEFAULT_SPF_RECORD',
         'v=spf1 include:spf.revisionalpha.com -all',
     ),
+
+    'flex_plan_name' => 'Flex',
+
+    'flex_package' => (string) env('HOSTING_FLEX_PACKAGE', 'revision_flex'),
 ];

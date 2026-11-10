@@ -323,6 +323,7 @@ Route::get('reunion/{token}', [MeetingTranscriptController::class, 'publicShow']
 Route::get('/affiliate-invite/track/{token}/open', [AffiliateInvitationTrackingController::class, 'trackOpen'])->name('affiliate-invite.track.open');
 Route::get('/affiliate-invite/track/{token}/click', [AffiliateInvitationTrackingController::class, 'trackClick'])->name('affiliate-invite.track.click');
 Route::get('/affiliate/capture', [AffiliateReferralCaptureController::class, 'capture'])->name('affiliate.referral.capture');
+Route::get('/affiliate/checkout/{plan}', \App\Http\Controllers\AffiliatePlanCheckoutController::class)->name('affiliate.plan-checkout');
 Route::get('/notification/{notification}/stats', [NotificationTrackingController::class, 'getStats'])->name('notification.stats')->middleware('auth');
 
 // Authenticated routes

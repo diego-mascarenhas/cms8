@@ -21,20 +21,17 @@ use App\Models\UserContactAction;
 use App\Services\ContactDailySentimentService;
 use App\Services\ContactInteractionChartDataService;
 use App\Services\DailyTeamDigestMetricsCollector;
+use App\Services\DashboardAnalyticsService;
 use App\Services\UserDailyPerformanceInsightService;
 use App\Services\WeeklyWorkPlanService;
 use App\Support\ApplicationDateTime;
 use App\Support\DemoTeam;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
-use Spatie\Analytics\Facades\Analytics;
-use Spatie\Analytics\Period;
 
 class DashboardController extends Controller
 {
     private const AGGREGATES_CACHE_SECONDS = 600;
-
-    private const ANALYTICS_CACHE_SECONDS = 3600;
 
     public function __construct(
         private readonly ContactDailySentimentService $contactDailySentimentService,
@@ -120,7 +117,7 @@ class DashboardController extends Controller
             'mentoringMessage' => $mentoringMessage,
         ] = $this->resolveSubscriptionPresentation($activeTeam, $hasProjects);
 
-        $analyticsChartData = $this->cachedAnalyticsChartData($activeTeam);
+        $analyticsChartData = app(DashboardAnalyticsService::class)->forTeam($activeTeam);
 
         $dailyPerformanceInsight = null;
         $performanceInsightActions = [];
@@ -814,145 +811,6 @@ class DashboardController extends Controller
         }
 
         return [__('Borrador'), 'bg-label-warning', false];
-    }
-
-    /**
-     * @return array{dates: list<mixed>, visitors: list<mixed>, pageViews: list<mixed>}|null
-     */
-    private function cachedAnalyticsChartData($activeTeam): ?array
-    {
-        $propertyId = $activeTeam->getSetting('analytics_property_id');
-        $credentialsJson = $activeTeam->getSetting('analytics_credentials_json');
-
-        if (! $propertyId || ! $credentialsJson)
-        {
-            return null;
-        }
-
-        return Cache::remember(
-            "dashboard.analytics.v4.{$activeTeam->id}",
-            self::ANALYTICS_CACHE_SECONDS,
-            function () use ($propertyId, $credentialsJson)
-            {
-                $credentials = is_string($credentialsJson) ? json_decode($credentialsJson, true) : $credentialsJson;
-                if (! is_array($credentials))
-                {
-                    return null;
-                }
-
-                config([
-                    'analytics.property_id' => $propertyId,
-                    'analytics.service_account_credentials_json' => $credentials,
-                ]);
-
-                try
-                {
-                    $period = Period::days(30);
-                    $collection = Analytics::fetchTotalVisitorsAndPageViews($period, 30)
-                        ->sortBy(fn ($row) => ($row['date'] ?? null) instanceof Carbon
-                            ? $row['date']->timestamp
-                            : strtotime((string) ($row['date'] ?? '')))
-                        ->values();
-
-                    $dates = $collection->pluck('date')->map(fn ($d) => $d instanceof Carbon ? $d->format('Y-m-d') : $d)->values()->all();
-                    $visitors = $collection->pluck('activeUsers')->map(fn ($v) => (int) $v)->values()->all();
-                    $pageViews = $collection->pluck('screenPageViews')->map(fn ($v) => (int) $v)->values()->all();
-
-                    $totalVisitors = array_sum($visitors);
-                    $totalPageViews = array_sum($pageViews);
-                    $userTypes = $this->analyticsUserTypeCounts($period);
-
-                    return [
-                        'dates' => $dates,
-                        'visitors' => $visitors,
-                        'pageViews' => $pageViews,
-                        'totals' => [
-                            'visitors' => $totalVisitors,
-                            'page_views' => $totalPageViews,
-                            'new_users' => $userTypes['new'],
-                            'returning_users' => $userTypes['returning'],
-                        ],
-                        'top_pages' => $this->analyticsTopPages($period, 5),
-                        'top_countries' => $this->analyticsTopCountries($period, 5),
-                    ];
-                } catch (\Throwable $e)
-                {
-                    \Log::warning('Dashboard Google Analytics fetch failed: '.$e->getMessage());
-
-                    return null;
-                }
-            },
-        );
-    }
-
-    /**
-     * @return list<array{title: string, url: string, views: int}>
-     */
-    private function analyticsTopPages(Period $period, int $limit = 5): array
-    {
-        try
-        {
-            return Analytics::fetchMostVisitedPages($period, $limit)
-                ->map(fn ($row): array => [
-                    'title' => (string) ($row['pageTitle'] ?? __('Sin título')),
-                    'url' => (string) ($row['fullPageUrl'] ?? ''),
-                    'views' => (int) ($row['screenPageViews'] ?? 0),
-                ])
-                ->values()
-                ->all();
-        } catch (\Throwable $e)
-        {
-            \Log::warning('Dashboard GA top pages failed: '.$e->getMessage());
-
-            return [];
-        }
-    }
-
-    /**
-     * @return list<array{country: string, views: int}>
-     */
-    private function analyticsTopCountries(Period $period, int $limit = 5): array
-    {
-        try
-        {
-            return Analytics::fetchTopCountries($period, $limit)
-                ->map(fn ($row): array => [
-                    'country' => (string) ($row['country'] ?? __('Desconocido')),
-                    'views' => (int) ($row['screenPageViews'] ?? 0),
-                ])
-                ->values()
-                ->all();
-        } catch (\Throwable $e)
-        {
-            \Log::warning('Dashboard GA top countries failed: '.$e->getMessage());
-
-            return [];
-        }
-    }
-
-    /**
-     * @return array{new: int, returning: int}
-     */
-    private function analyticsUserTypeCounts(Period $period): array
-    {
-        $counts = ['new' => 0, 'returning' => 0];
-
-        try
-        {
-            foreach (Analytics::fetchUserTypes($period) as $row)
-            {
-                $type = strtolower((string) ($row['newVsReturning'] ?? ''));
-                if (array_key_exists($type, $counts))
-                {
-                    $counts[$type] = (int) ($row['activeUsers'] ?? 0);
-                }
-            }
-        } catch (\Throwable $e)
-        {
-            \Log::warning('Dashboard GA user types failed: '.$e->getMessage());
-        }
-
-        return $counts;
     }
 
     /**

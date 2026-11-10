@@ -883,6 +883,8 @@ Route::middleware('auth.api')->group(function ()
     Route::delete('enterprises/{id}/contacts/{contactId}', [\App\Http\Controllers\Api\EnterpriseController::class, 'detachContact'])->whereNumber(['id', 'contactId']);
     Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
     Route::get('subscriptions', [ApiSubscriptionController::class, 'index']);
+    Route::get('hosting', [\App\Http\Controllers\Api\HostingController::class, 'index']);
+    Route::post('hosting', [\App\Http\Controllers\Api\HostingController::class, 'store']);
     Route::get('subscriptions/{id}', [ApiSubscriptionController::class, 'show'])->whereNumber('id');
     Route::get('search', [WebContactController::class, 'search']);
 

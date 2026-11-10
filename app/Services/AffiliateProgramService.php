@@ -85,10 +85,9 @@ class AffiliateProgramService
         $plans = [];
         foreach ($this->linkBuilder->availablePlans($catalog) as $plan)
         {
-            $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
             $plans[] = array_merge($plan, [
-                'referral_url' => $referralCode !== null && $checkoutUrl !== ''
-                    ? $this->linkBuilder->buildCaptureRedirectLink($checkoutUrl, $referralCode)
+                'referral_url' => $referralCode !== null
+                    ? $this->linkBuilder->referralUrl($plan, $referralCode)
                     : null,
             ]);
         }
@@ -178,15 +177,15 @@ class AffiliateProgramService
         $planId = (string) $data['invite_plan'];
         $plan = collect($this->linkBuilder->availablePlans($data['catalog'] ?? null))->firstWhere('id', $planId);
 
-        if ($plan === null || trim((string) ($plan['checkout_url'] ?? '')) === '')
+        if ($plan === null)
         {
             throw ValidationException::withMessages([
                 'invite_plan' => __('The selected plan is not available.'),
             ]);
         }
 
-        $checkoutUrl = $this->linkBuilder->buildCaptureRedirectLink(
-            $plan['checkout_url'],
+        $checkoutUrl = $this->linkBuilder->referralUrl(
+            $plan,
             $referralCode,
             (string) $data['invite_email'],
         );

@@ -25,7 +25,7 @@ class AffiliateReferralLinkBuilder
     }
 
     /**
-     * @return list<array{id: string, name: string, checkout_url: string, catalog: string}>
+     * @return list<array{id: string, name: string, checkout_url: string, catalog: string, monthly_amount: string, yearly_amount: string, currency: string}>
      */
     public function availablePlans(?string $catalog = null): array
     {
@@ -39,11 +39,10 @@ class AffiliateReferralLinkBuilder
                 continue;
             }
 
-            $available = (bool) ($plan['checkout_available'] ?? false);
             $planId = (string) ($plan['id'] ?? '');
             $planCatalog = strtolower(trim((string) ($plan['catalog'] ?? 'assistant')));
 
-            if ($planId === '' || ! $available)
+            if ($planId === '' || $planId === 'innovation')
             {
                 continue;
             }
@@ -53,17 +52,14 @@ class AffiliateReferralLinkBuilder
                 continue;
             }
 
-            $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
-            if ($catalog === null && $checkoutUrl === '')
-            {
-                continue;
-            }
-
             $plans[] = [
                 'id' => $planId,
                 'name' => (string) __("humano_pricing.plans.{$planId}.name"),
-                'checkout_url' => $checkoutUrl,
+                'checkout_url' => trim((string) ($plan['checkout_url'] ?? '')),
                 'catalog' => $planCatalog,
+                'monthly_amount' => trim((string) ($plan['monthly_amount'] ?? '')),
+                'yearly_amount' => trim((string) ($plan['yearly_amount'] ?? '')),
+                'currency' => 'usd',
             ];
         }
 
@@ -92,6 +88,31 @@ class AffiliateReferralLinkBuilder
             'ref' => $referralCode,
             'url' => $this->buildLink($checkoutUrl, $referralCode, $prefilledEmail),
         ]);
+    }
+
+    /**
+     * Shareable checkout for a plan. Payment Links keep their Stripe URL.
+     * Every other plan gets a link that opens checkout with the referrer.
+     *
+     * @param  array<string, mixed>  $plan
+     */
+    public function referralUrl(array $plan, string $referralCode, ?string $prefilledEmail = null): string
+    {
+        $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
+
+        if ($checkoutUrl !== '')
+        {
+            return $this->buildCaptureRedirectLink($checkoutUrl, $referralCode, $prefilledEmail);
+        }
+
+        $query = ['ref' => $referralCode];
+
+        if ($prefilledEmail !== null && $prefilledEmail !== '')
+        {
+            $query['prefilled_email'] = $prefilledEmail;
+        }
+
+        return route('affiliate.plan-checkout', ['plan' => $plan['id']]).'?'.http_build_query($query);
     }
 
     /**
