@@ -1493,6 +1493,34 @@ class MessageApiWriteTest extends TestCase
         [, , $token] = $this->adminWithToken();
 
         $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/preferences')
+            ->assertOk()
+            ->assertJsonPath('data.gap_by_sender', true);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/mailer/preferences', [
+                'min_hours_between_emails' => 72,
+                'enable_open_tracking' => false,
+                'enable_click_tracking' => true,
+                'show_unsubscribe' => false,
+                'skip_weekends' => true,
+                'use_contact_business_hours' => true,
+                'gap_by_sender' => false,
+                'business_hours_start' => '09:00',
+                'business_hours_end' => '16:00',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.min_hours_between_emails', 72)
+            ->assertJsonPath('data.gap_by_sender', false)
+            ->assertJsonPath('data.enable_open_tracking', false)
+            ->assertJsonPath('data.enable_click_tracking', true)
+            ->assertJsonPath('data.show_unsubscribe', false)
+            ->assertJsonPath('data.skip_weekends', true)
+            ->assertJsonPath('data.use_contact_business_hours', true)
+            ->assertJsonPath('data.business_hours_start', '09:00')
+            ->assertJsonPath('data.business_hours_end', '16:00');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
             ->putJson('/api/mailer/preferences', [
                 'min_hours_between_emails' => 72,
                 'enable_open_tracking' => false,
@@ -1504,14 +1532,7 @@ class MessageApiWriteTest extends TestCase
                 'business_hours_end' => '16:00',
             ])
             ->assertOk()
-            ->assertJsonPath('data.min_hours_between_emails', 72)
-            ->assertJsonPath('data.enable_open_tracking', false)
-            ->assertJsonPath('data.enable_click_tracking', true)
-            ->assertJsonPath('data.show_unsubscribe', false)
-            ->assertJsonPath('data.skip_weekends', true)
-            ->assertJsonPath('data.use_contact_business_hours', true)
-            ->assertJsonPath('data.business_hours_start', '09:00')
-            ->assertJsonPath('data.business_hours_end', '16:00');
+            ->assertJsonPath('data.gap_by_sender', false);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/mailer/preferences')

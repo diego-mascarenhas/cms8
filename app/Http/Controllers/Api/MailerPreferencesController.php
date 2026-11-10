@@ -76,6 +76,15 @@ class MailerPreferencesController extends Controller
             ]);
         }
 
+        if ($request->exists('gap_by_sender'))
+        {
+            $team->setSetting('mailer_gap_by_sender', $request->boolean('gap_by_sender') ? '1' : '0', [
+                'group' => 'mailer',
+                'type' => 'boolean',
+                'is_encrypted' => false,
+            ]);
+        }
+
         $team->setSetting('mailer_business_hours_start', (string) $validated['business_hours_start'], [
             'group' => 'mailer',
             'type' => 'string',
@@ -105,6 +114,7 @@ class MailerPreferencesController extends Controller
      *     show_unsubscribe: bool,
      *     skip_weekends: bool,
      *     use_contact_business_hours: bool,
+     *     gap_by_sender: bool,
      *     business_hours_start: string,
      *     business_hours_end: string,
      *     can_update: bool
@@ -124,6 +134,7 @@ class MailerPreferencesController extends Controller
             'show_unsubscribe' => $team->mailerShowsUnsubscribe(),
             'skip_weekends' => $team->mailerSkipsWeekends(),
             'use_contact_business_hours' => $team->mailerUsesContactBusinessHours(),
+            'gap_by_sender' => $team->mailerGapRespectsSender(),
             'business_hours_start' => $team->mailerBusinessHoursStart(),
             'business_hours_end' => $team->mailerBusinessHoursEnd(),
             'can_update' => (bool) $request->user()?->can('update', $team),

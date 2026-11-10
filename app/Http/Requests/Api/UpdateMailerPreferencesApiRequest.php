@@ -23,6 +23,7 @@ class UpdateMailerPreferencesApiRequest extends FormRequest
             'show_unsubscribe' => ['required', 'boolean'],
             'skip_weekends' => ['required', 'boolean'],
             'use_contact_business_hours' => ['required', 'boolean'],
+            'gap_by_sender' => ['sometimes', 'boolean'],
             'business_hours_start' => ['required', 'date_format:H:i'],
             'business_hours_end' => ['required', 'date_format:H:i', 'after:business_hours_start'],
         ];
