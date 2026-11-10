@@ -349,7 +349,7 @@ class CampaignMessageApiService
             'send_window_start' => $message->send_window_start,
             'send_window_end' => $message->send_window_end,
             'status' => $status,
-            'pause_reason' => $status['key'] === 'paused' ? ($message->pause_reason ?: null) : null,
+            'pause_reason' => $status['key'] === 'paused' ? $message->pauseReasonText() : null,
             'contact_categories' => $this->formatContactCategories($message),
             'contact_categories_label' => $message->contactCategoriesLabel(),
             'contact_status' => $message->contactStatus ? [

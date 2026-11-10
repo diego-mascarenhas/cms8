@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\EmailPlan;
+use App\Jobs\ResumeMessageCampaign;
 use App\Jobs\SendMessageCampaignJob;
 use App\Models\Contact;
 use App\Models\Message;
@@ -902,6 +903,54 @@ class MailerSendPaceTest extends TestCase
     /**
      * @return \Illuminate\Support\Collection<int, \Illuminate\Support\Carbon>
      */
+    public function test_a_resume_slice_keeps_the_adaptive_gap_across_chunks(): void
+    {
+        $message = $this->messageWithContacts(EmailPlan::FREE, 'slice');
+        config(['humano_pricing.plan_access_team_ids' => [(int) $message->team_id]]);
+        Artisan::call('campaigns:process-active', ['--message' => $message->id]);
+
+        MessageDelivery::query()
+            ->where('message_id', $message->id)
+            ->update(['scheduled_for' => now()]);
+
+        $origin = now();
+        $next = $message->fresh()->reschedulePendingSlice(0, 0, 1, $origin);
+
+        $this->assertNotNull($next);
+        $this->assertSame(1, $next['ready']);
+        $this->assertSame(0, $next['waiting']);
+
+        $done = $message->fresh()->reschedulePendingSlice($next['ready'], $next['waiting'], 1, $origin);
+
+        $this->assertNull($done);
+        $times = $this->scheduledTimes($message->id);
+        $this->assertCount(2, $times);
+        $this->assertSame(30, (int) $times[0]->diffInSeconds($times[1]));
+    }
+
+    public function test_resume_job_queues_the_next_slice_instead_of_running_it_inline(): void
+    {
+        Bus::fake([ResumeMessageCampaign::class]);
+        $message = $this->messageWithContacts(EmailPlan::FREE, 'resumejob');
+        config([
+            'humano_pricing.plan_access_team_ids' => [(int) $message->team_id],
+            'services.email.processing.resume_schedule_chunk' => 1,
+        ]);
+        Artisan::call('campaigns:process-active', ['--message' => $message->id]);
+
+        $job = new ResumeMessageCampaign($message->id);
+        $job->handle();
+
+        Bus::assertNotDispatchedAfterResponse(ResumeMessageCampaign::class);
+        Bus::assertDispatched(ResumeMessageCampaign::class, function (ResumeMessageCampaign $next) use ($message): bool
+        {
+            return $next->messageId === $message->id
+                && $next->readySkip === 1
+                && $next->waitingSkip === 0
+                && $next->scheduleOrigin !== null;
+        });
+    }
+
     private function scheduledTimes(int $messageId)
     {
         return MessageDelivery::query()

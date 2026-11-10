@@ -16,7 +16,8 @@ class ProcessActiveCampaigns extends Command
      * @var string
      */
     protected $signature = 'campaigns:process-active
-                            {--message= : Process only this message ID}';
+                            {--message= : Process only this message ID}
+                            {--skip-reflow : Leave existing send times for a later reschedule}';
 
     /**
      * The console command description.
@@ -59,7 +60,7 @@ class ProcessActiveCampaigns extends Command
         {
             $this->info("📧 Processing campaign: {$message->name} (ID: {$message->id})");
 
-            $created = $this->processMessageCampaign($message);
+            $created = $this->processMessageCampaign($message, (bool) $this->option('skip-reflow'));
             $totalCreated += $created;
             $totalProcessed++;
 
@@ -85,7 +86,7 @@ class ProcessActiveCampaigns extends Command
     /**
      * Process a single message campaign (Dynamic: adds new, removes invalid)
      */
-    private function processMessageCampaign(Message $message): int
+    private function processMessageCampaign(Message $message, bool $skipReflow = false): int
     {
         // Get contacts that SHOULD receive this message based on current criteria
         $validContacts = $this->getContactsForMessage($message);
@@ -158,16 +159,28 @@ class ProcessActiveCampaigns extends Command
             }
         }
 
+        $existingByContact = collect();
+        if ($validContactIds !== [])
+        {
+            $existingByContact = MessageDelivery::query()
+                ->where('message_id', $message->id)
+                ->whereNull('campaign_id')
+                ->whereIn('contact_id', $validContactIds)
+                ->get()
+                ->keyBy('contact_id');
+        }
+
         foreach ($validContacts as $contact)
         {
-            // Check if delivery already exists
-            $existingDelivery = MessageDelivery::where('message_id', $message->id)
-                ->whereNull('campaign_id')
-                ->where('contact_id', $contact->id)
-                ->first();
+            $existingDelivery = $existingByContact->get($contact->id);
 
             if ($existingDelivery)
             {
+                if ($skipReflow)
+                {
+                    continue;
+                }
+
                 if ($existingDelivery->sent_at === null && (int) $existingDelivery->status_id === 1)
                 {
                     $nextAvailableTime = $message->getNextAvailableTimeForContact($contact);
@@ -236,7 +249,10 @@ class ProcessActiveCampaigns extends Command
             }
         }
 
-        $message->reflowPendingSendTimes();
+        if (! $skipReflow)
+        {
+            $message->reflowPendingSendTimes();
+        }
 
         return $createdCount;
     }

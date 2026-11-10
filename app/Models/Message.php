@@ -364,10 +364,107 @@ class Message extends Model
     }
 
     /**
+     * Place the next slice of a forced reschedule. Null means the pending queue is done.
+     * The same origin keeps later slices on the clock started by the first slice.
+     *
+     * @return array{ready: int, waiting: int}|null
+     */
+    public function reschedulePendingSlice(int $readySkip, int $waitingSkip, int $limit, Carbon $origin): ?array
+    {
+        $groups = $this->pendingScheduleGroups();
+        if ($groups === null)
+        {
+            return null;
+        }
+
+        $remaining = max(1, $limit);
+        $readyNext = $this->placeScheduleGroup(
+            $groups['ready'],
+            $origin,
+            true,
+            $groups['fast'],
+            true,
+            $groups['spacingSeconds'],
+            $groups['spacingCap'],
+            $groups['slowSteps'],
+            $readySkip,
+            $remaining,
+        );
+        if ($readyNext !== null)
+        {
+            return [
+                'ready' => $readyNext,
+                'waiting' => $waitingSkip,
+            ];
+        }
+
+        $waitingNext = $this->placeScheduleGroup(
+            $groups['waiting'],
+            $origin,
+            true,
+            $groups['fast'],
+            false,
+            $groups['spacingSeconds'],
+            $groups['spacingCap'],
+            $groups['slowSteps'],
+            $waitingSkip,
+            $remaining,
+        );
+        if ($waitingNext !== null)
+        {
+            return [
+                'ready' => count($groups['ready']),
+                'waiting' => $waitingNext,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
      * Ready contacts keep the live drip. A contact still inside the hours-between-news
      * wait is scheduled on their own clock and does not push the live drip forward.
      */
     public function reflowPendingSendTimes(bool $force = false): void
+    {
+        $origin = $force ? now() : $this->pendingScheduleOrigin();
+        $groups = $this->pendingScheduleGroups();
+        if ($groups === null)
+        {
+            return;
+        }
+
+        $remaining = null;
+        $this->placeScheduleGroup(
+            $groups['ready'],
+            $origin,
+            $force,
+            $groups['fast'],
+            true,
+            $groups['spacingSeconds'],
+            $groups['spacingCap'],
+            $groups['slowSteps'],
+            0,
+            $remaining,
+        );
+        $this->placeScheduleGroup(
+            $groups['waiting'],
+            $origin,
+            $force,
+            $groups['fast'],
+            false,
+            $groups['spacingSeconds'],
+            $groups['spacingCap'],
+            $groups['slowSteps'],
+            0,
+            $remaining,
+        );
+    }
+
+    /**
+     * @return array{ready: list<array{delivery: MessageDelivery, not_before: Carbon}>, waiting: list<array{delivery: MessageDelivery, not_before: Carbon}>, fast: bool, spacingSeconds: float, spacingCap: int, slowSteps: bool}|null
+     */
+    private function pendingScheduleGroups(): ?array
     {
         $this->loadMissing('team');
         $pending = MessageDelivery::query()
@@ -380,7 +477,7 @@ class Message extends Model
 
         if ($pending->isEmpty())
         {
-            return;
+            return null;
         }
 
         $team = $this->team;
@@ -392,14 +489,17 @@ class Message extends Model
         $reached = $fast
             ? $this->previouslyReachedContactIds($pending->pluck('contact_id')->map(fn ($id): int => (int) $id)->all())
             : [];
-        $origin = $force ? now() : $this->pendingScheduleOrigin();
+        $available = $this->nextAvailableByContactId(
+            $pending->pluck('contact_id')->map(fn ($id): int => (int) $id)->unique()->values()->all(),
+        );
 
         $ready = [];
         $waiting = [];
         foreach ($pending as $delivery)
         {
+            $contactId = (int) $delivery->contact_id;
             $notBefore = $delivery->contact
-                ? $this->getNextAvailableTimeForContact($delivery->contact)
+                ? ($available[$contactId] ?? now())->copy()
                 : now();
             $item = ['delivery' => $delivery, 'not_before' => $notBefore];
             if ($notBefore->lte(now()))
@@ -436,8 +536,14 @@ class Message extends Model
             return $left['delivery']->id <=> $right['delivery']->id;
         });
 
-        $this->placeScheduleGroup($ready, $origin, $force, $fast, true, $spacingSeconds, $spacingCap, $slowSteps);
-        $this->placeScheduleGroup($waiting, $origin, $force, $fast, false, $spacingSeconds, $spacingCap, $slowSteps);
+        return [
+            'ready' => $ready,
+            'waiting' => $waiting,
+            'fast' => $fast,
+            'spacingSeconds' => $spacingSeconds,
+            'spacingCap' => $spacingCap,
+            'slowSteps' => $slowSteps,
+        ];
     }
 
     private function pendingScheduleOrigin(): Carbon
@@ -468,12 +574,29 @@ class Message extends Model
         float $spacingSeconds,
         int $spacingCap,
         bool $slowSteps,
-    ): void {
+        int $skip = 0,
+        ?int &$remaining = null,
+    ): ?int {
         $team = $this->team;
         $cursor = $origin->copy();
 
         foreach ($group as $index => $item)
         {
+            if ($index < $skip)
+            {
+                if ($item['delivery']->scheduled_for !== null)
+                {
+                    $cursor = $item['delivery']->scheduled_for->copy();
+                }
+
+                continue;
+            }
+
+            if ($remaining !== null && $remaining <= 0)
+            {
+                return $index;
+            }
+
             if ($fast)
             {
                 $gap = $team?->mailerFastGapSeconds($index) ?? 60;
@@ -518,7 +641,14 @@ class Message extends Model
             {
                 $cursor = $current->copy();
             }
+
+            if ($remaining !== null)
+            {
+                $remaining--;
+            }
         }
+
+        return null;
     }
 
     /**
@@ -559,6 +689,74 @@ class Message extends Model
         }
 
         return $anchor->copy()->addHours($hours);
+    }
+
+    /**
+     * One grouped lookup per contact, instead of two queries each.
+     *
+     * @param  list<int>  $contactIds
+     * @return array<int, Carbon>
+     */
+    private function nextAvailableByContactId(array $contactIds): array
+    {
+        $now = now();
+        $available = [];
+        foreach ($contactIds as $contactId)
+        {
+            $available[$contactId] = $now->copy();
+        }
+
+        $hours = $this->gapHours();
+        if ($hours <= 0 || $contactIds === [])
+        {
+            return $available;
+        }
+
+        $latest = [];
+        foreach (array_chunk($contactIds, 1000) as $chunk)
+        {
+            $sentRows = MessageDelivery::query()
+                ->where('team_id', $this->team_id)
+                ->whereIn('contact_id', $chunk)
+                ->whereNotNull('sent_at')
+                ->groupBy('contact_id')
+                ->selectRaw('contact_id, max(sent_at) as moment')
+                ->get();
+            foreach ($sentRows as $row)
+            {
+                $latest[(int) $row->contact_id] = Carbon::parse($row->moment);
+            }
+
+            $scheduledRows = MessageDelivery::query()
+                ->where('team_id', $this->team_id)
+                ->whereIn('contact_id', $chunk)
+                ->where('message_id', '<', $this->id)
+                ->whereNull('sent_at')
+                ->whereNotNull('scheduled_for')
+                ->whereHas('message', function ($query): void
+                {
+                    $query->where('status_id', true);
+                })
+                ->groupBy('contact_id')
+                ->selectRaw('contact_id, max(scheduled_for) as moment')
+                ->get();
+            foreach ($scheduledRows as $row)
+            {
+                $contactId = (int) $row->contact_id;
+                $moment = Carbon::parse($row->moment);
+                if (! isset($latest[$contactId]) || $moment->gt($latest[$contactId]))
+                {
+                    $latest[$contactId] = $moment;
+                }
+            }
+        }
+
+        foreach ($latest as $contactId => $moment)
+        {
+            $available[$contactId] = $moment->copy()->addHours($hours);
+        }
+
+        return $available;
     }
 
     /**
@@ -997,7 +1195,8 @@ class Message extends Model
     }
 
     /**
-     * The relay rejected this message as spam. One hit is enough to stop the campaign.
+     * The relay rejected this message as spam. One hit pauses the burst.
+     * An hourly probe then tries a single send, and an accepted probe resumes the queue.
      * A connection error that only names the relay host is not a spam verdict.
      */
     public static function isProviderSpamRejection(string $errorMessage): bool
@@ -1039,6 +1238,43 @@ class Message extends Model
             'status_id' => 0,
             'pause_reason' => $reason,
         ]);
+    }
+
+    /**
+     * Text shown while paused. A spam pause keeps probing one send per hour.
+     */
+    public function pauseReasonText(): ?string
+    {
+        $reason = $this->pause_reason;
+        if (! is_string($reason) || $reason === '')
+        {
+            return null;
+        }
+
+        if ($reason === self::PAUSE_REASON_SPAM)
+        {
+            return $reason.' Se prueba un envío por hora y, si el proveedor lo acepta, se reanuda.';
+        }
+
+        return $reason;
+    }
+
+    /**
+     * The provider accepted the hourly probe. Resume and rebuild the pending queue at the current pace.
+     */
+    public function resumeAfterAcceptedSpamProbe(): void
+    {
+        if ($this->pause_reason !== self::PAUSE_REASON_SPAM)
+        {
+            return;
+        }
+
+        $this->update([
+            'status_id' => 1,
+            'pause_reason' => null,
+        ]);
+
+        \App\Jobs\ResumeMessageCampaign::dispatch($this->id);
     }
 
     public function pauseForErrors(string $reason = self::PAUSE_REASON_ERRORS): void
