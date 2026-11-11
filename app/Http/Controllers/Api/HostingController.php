@@ -208,7 +208,10 @@ class HostingController extends Controller
 
         if ($server === null)
         {
-            $message = 'No hay un servidor cPanel configurado para el equipo.';
+            $wanted = trim((string) config('humano_hosting.provision_server', 'odin'));
+            $message = $wanted !== ''
+                ? 'No hay un servidor '.$wanted.' listo para crear el hosting.'
+                : 'No hay un servidor cPanel configurado para el equipo.';
             $failures->report($message, $context);
 
             return response()->json([
@@ -308,11 +311,27 @@ class HostingController extends Controller
 
     private function provisioningServer(): ?Server
     {
-        return Server::query()
+        $servers = Server::query()
             ->where('control_panel', 'cpanel')
             ->orderBy('id')
             ->get()
-            ->first(fn (Server $server) => $server->hasToken());
+            ->filter(fn (Server $server) => $server->hasToken())
+            ->values();
+
+        $wanted = strtolower(trim((string) config('humano_hosting.provision_server', 'odin')));
+
+        if ($wanted === '')
+        {
+            return $servers->first();
+        }
+
+        return $servers->first(function (Server $server) use ($wanted)
+        {
+            $name = strtolower(trim($server->name));
+            $host = strtolower((string) $server->hostname);
+
+            return $name === $wanted || $host === $wanted || str_starts_with($host, $wanted.'.');
+        });
     }
 
     /**

@@ -66,6 +66,15 @@ class HostingApiTest extends TestCase
         [$user, $team] = $this->adminTeam();
         Server::factory()->create([
             'team_id' => $team->id,
+            'name' => 'Huggin',
+            'server_url' => 'huginn.revisionalpha.cloud',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+        ]);
+        $odin = Server::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Odin',
+            'server_url' => 'odin.revisionalpha.cloud',
             'control_panel' => 'cpanel',
             'encrypted_token' => 'test-token',
         ]);
@@ -73,9 +82,9 @@ class HostingApiTest extends TestCase
         $connector = \Mockery::mock(ControlPanelConnector::class);
         $connector->shouldReceive('createAccount')
             ->once()
-            ->withArgs(function (Server $server, string $username, string $domain, string $plan): bool
+            ->withArgs(function (Server $server, string $username, string $domain, string $plan) use ($odin): bool
             {
-                return $username === 'cliente' && $domain === 'cliente.test' && $plan === 'revision_flex';
+                return $server->is($odin) && $username === 'cliente' && $domain === 'cliente.test' && $plan === 'revision_flex';
             })
             ->andReturn(['success' => true]);
         $connector->shouldReceive('ensureSpfRecord')->once()->andReturn(['success' => true]);
@@ -109,6 +118,7 @@ class HostingApiTest extends TestCase
             'domain' => 'cliente.test',
             'username' => 'cliente',
             'plan' => 'revision_flex',
+            'server_id' => $odin->id,
         ]);
     }
 
@@ -117,6 +127,8 @@ class HostingApiTest extends TestCase
         [$user, $team] = $this->adminTeam();
         Server::factory()->create([
             'team_id' => $team->id,
+            'name' => 'Odin',
+            'server_url' => 'odin.revisionalpha.cloud',
             'control_panel' => 'cpanel',
             'encrypted_token' => 'test-token',
         ]);
@@ -159,6 +171,9 @@ class HostingApiTest extends TestCase
         [$user, $team] = $this->adminTeam();
         Server::factory()->create([
             'team_id' => $team->id,
+            'name' => 'Odin',
+            'server_url' => 'odin.revisionalpha.cloud',
+            'control_panel' => 'cpanel',
             'encrypted_token' => 'test-token',
         ]);
         $enterprise = $this->enterprise($team);

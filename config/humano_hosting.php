@@ -16,4 +16,6 @@ return [
     'flex_package' => (string) env('HOSTING_FLEX_PACKAGE', 'revision_flex'),
 
     'error_notify' => (string) env('HOSTING_ERROR_NOTIFY', 'webmaster@revisionalpha.cloud'),
+
+    'provision_server' => (string) env('HOSTING_PROVISION_SERVER', 'odin'),
 ];
