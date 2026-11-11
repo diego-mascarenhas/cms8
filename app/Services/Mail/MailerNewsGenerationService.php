@@ -19,7 +19,7 @@ class MailerNewsGenerationService
      * @param  array<string, mixed>  $brief
      * @return array{name: string, text: string, html: string, css: string}
      */
-    public function generate(Team $team, array $brief): array
+    public function generate(Team $team, array $brief, bool $withImage = true): array
     {
         $userMessage = $this->userMessage($brief);
         $brand = app(BusinessProfileService::class)->promptAppendix($team);
@@ -31,7 +31,7 @@ class MailerNewsGenerationService
         try
         {
             $agent = agent(
-                instructions: $this->instructions(),
+                instructions: $this->instructions($withImage),
                 messages: [],
                 tools: [],
             );
@@ -55,11 +55,35 @@ class MailerNewsGenerationService
             outputSize: strlen($text),
         );
 
-        $parsed = $this->parse($text);
+        return $this->applyImages($this->parse($text), $brief, $withImage);
+    }
+
+    /**
+     * @param  array{name: string, text: string, html: string, css: string}  $parsed
+     * @param  array<string, mixed>  $brief
+     * @return array{name: string, text: string, html: string, css: string}
+     */
+    public function applyImages(array $parsed, array $brief, bool $withImage): array
+    {
+        if (! $withImage)
+        {
+            $parsed['html'] = $this->stripImages($parsed['html']);
+
+            return $parsed;
+        }
+
         $topic = trim((string) ($brief['goal_type'] ?? '').' '.(string) ($brief['goal'] ?? '').' '.$parsed['name']);
         $parsed['html'] = MailerStockImages::ensureHero($parsed['html'], $topic);
 
         return $parsed;
+    }
+
+    private function stripImages(string $html): string
+    {
+        $html = preg_replace('/<img\b[^>]*>/i', '', $html) ?? $html;
+        $html = preg_replace('/<p>\s*<\/p>/i', '', $html) ?? $html;
+
+        return trim($html);
     }
 
     /**
@@ -132,18 +156,20 @@ class MailerNewsGenerationService
         return trim($css);
     }
 
-    private function instructions(): string
+    private function instructions(bool $withImage): string
     {
-        return <<<'PROMPT'
+        $imageRules = $withImage
+            ? "- html: SOLO el cuerpo (sin doctype, html, head ni body). HTML simple para TipTap: h2, p, ul/li, strong, em, a, br, img.\n- Incluí UNA imagen de cabecera al inicio: <img src=\"https://images.unsplash.com/...\" alt=\"...\" width=\"600\" style=\"width:100%;max-width:600px;height:auto;border:0;display:block;\">\n- Usá solo URLs públicas de images.unsplash.com o picsum.photos. Nada de data URI ni dominios desconocidos."
+            : "- html: SOLO el cuerpo (sin doctype, html, head ni body). HTML simple para TipTap: h2, p, ul/li, strong, em, a, br.\n- No incluyas imágenes, etiquetas img ni URLs de fotos.";
+
+        return <<<PROMPT
 Sos copywriter y planner de una agencia de email marketing. Respondé SOLO un JSON válido, sin markdown, con esta forma:
 {"name":"","text":"","html":"","css":""}
 
 Reglas:
 - name: asunto del correo, máximo 50 caracteres, sin clickbait vacío, en el idioma del brief (español por defecto).
 - text: texto de vista previa de bandeja de entrada, máximo 255 caracteres, complementa el asunto (no lo repitas).
-- html: SOLO el cuerpo (sin doctype, html, head ni body). HTML simple para TipTap: h2, p, ul/li, strong, em, a, br, img.
-- Incluí UNA imagen de cabecera al inicio: <img src="https://images.unsplash.com/..." alt="..." width="600" style="width:100%;max-width:600px;height:auto;border:0;display:block;">
-- Usá solo URLs públicas de images.unsplash.com o picsum.photos. Nada de data URI ni dominios desconocidos.
+{$imageRules}
 - Incluí merge tags cuando sumen: {{name}}, {{nombre}}, {{email}}, {{phone}}.
 - Empezá con un saludo personalizado (Hola {{name}}) salvo que el brief pida otra cosa.
 - Un solo mensaje principal. Un llamado a la acción claro (enlace <a>).

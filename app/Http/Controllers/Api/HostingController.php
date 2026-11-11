@@ -16,6 +16,7 @@ use App\Services\Hosting\DomainMailboxQuotaService;
 use App\Services\Hosting\DomainRuntimeDetector;
 use App\Services\Hosting\FlexHostingProvisioner;
 use App\Services\Hosting\HostingPlanCatalog;
+use App\Services\Hosting\HostingSubscriptionSync;
 use App\Support\HostingAccountPresenter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -94,7 +95,7 @@ class HostingController extends Controller
         ]);
     }
 
-    public function updatePlan(ChangeHostingPlanRequest $request, Domain $domain, HostingPlanCatalog $plans): JsonResponse
+    public function updatePlan(ChangeHostingPlanRequest $request, Domain $domain, HostingPlanCatalog $plans, HostingSubscriptionSync $subscriptions): JsonResponse
     {
         $domain = $this->teamDomain($request, $domain);
         $result = $plans->change($domain, (string) $request->validated('plan'));
@@ -107,10 +108,14 @@ class HostingController extends Controller
             ], 422);
         }
 
+        $domain = $domain->fresh();
+        $note = $subscriptions->afterPlanChange($request->user()->currentTeam, $domain);
+        $message = trim($result['message'].($note !== '' ? ' '.$note : ''));
+
         return response()->json([
             'success' => true,
-            'message' => $result['message'],
-            'data' => $this->account($domain->fresh(), $plans),
+            'message' => $message,
+            'data' => $this->account($domain, $plans),
         ]);
     }
 

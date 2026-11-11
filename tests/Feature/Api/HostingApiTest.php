@@ -11,6 +11,7 @@ use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\ControlPanel\ControlPanelManager;
+use App\Services\Hosting\StripeHostingPlanGateway;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -391,6 +392,8 @@ class HostingApiTest extends TestCase
             ['name' => 'rs-s3', 'quota_mb' => 1024, 'unlimited' => false],
         ];
         $connector = \Mockery::mock(ControlPanelConnector::class);
+        $connector->shouldReceive('phpVersion')->andReturn(['version' => null]);
+        $connector->shouldReceive('siteType')->andReturn(['site_type' => null]);
         $connector->shouldReceive('listPlans')->andReturn([
             'success' => true,
             'plans' => ['rs-s7', 'rs-s1', 'rs-s3'],
@@ -433,6 +436,117 @@ class HostingApiTest extends TestCase
             ->assertJsonPath('data.plan', 'rs-s3');
 
         $this->assertSame('rs-s3', $domain->fresh()->plan);
+    }
+
+    public function test_plan_change_updates_the_stripe_subscription(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::factory()->create([
+            'team_id' => $team->id,
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+            'plan' => 'rs-s7',
+            'data' => [
+                'account_disk' => [
+                    'used_mb' => 10,
+                    'limit_mb' => 1024000,
+                    'unlimited' => false,
+                ],
+            ],
+        ]);
+        $sync = ServiceSync::query()->create([
+            'stripe_id' => 'sub_lizama',
+            'team_id' => $team->id,
+            'status' => 'active',
+            'plan_name' => 'Hosting S7',
+            'amount_total' => 19.9,
+            'price_currency' => 'eur',
+            'plan_interval' => 'month',
+            'plan_interval_count' => 1,
+            'data' => [
+                'category' => 'hosting',
+                'domain' => 'lizama.test',
+                'metadata' => ['category' => 'hosting', 'domain' => 'lizama.test', 'plan' => 'rs-s7'],
+            ],
+        ]);
+        $connector = \Mockery::mock(ControlPanelConnector::class);
+        $connector->shouldReceive('listPlans')->andReturn([
+            'success' => true,
+            'plans' => ['rs-s7', 'rs-s3'],
+            'packages' => [
+                ['name' => 'rs-s7', 'quota_mb' => 1024000, 'unlimited' => false],
+                ['name' => 'rs-s3', 'quota_mb' => 10240, 'unlimited' => false],
+            ],
+        ]);
+        $connector->shouldReceive('changePlan')->once()->andReturn(['success' => true]);
+        $this->mock(ControlPanelManager::class, function ($mock) use ($connector)
+        {
+            $mock->shouldReceive('supports')->andReturn(true);
+            $mock->shouldReceive('forServer')->andReturn($connector);
+        });
+        $gateway = new class extends StripeHostingPlanGateway
+        {
+            /** @var list<array{0: string, 1: string, 2: string}> */
+            public array $swaps = [];
+
+            /** @var array<string, string> */
+            public array $metadata = [];
+
+            public function catalog(Team $team): array
+            {
+                return [[
+                    'price_id' => 'price_s3',
+                    'product_name' => 'Hosting S3',
+                    'plan' => 'rs-s3',
+                    'currency' => 'eur',
+                    'interval' => 'month',
+                    'interval_count' => 1,
+                    'unit_amount' => 990,
+                    'whm_package' => 'rs-s3',
+                ]];
+            }
+
+            public function currentItem(Team $team, string $subscriptionId): ?array
+            {
+                return [
+                    'item_id' => 'si_current',
+                    'price_id' => 'price_s7',
+                    'currency' => 'eur',
+                    'interval' => 'month',
+                    'interval_count' => 1,
+                ];
+            }
+
+            public function swap(Team $team, string $subscriptionId, string $itemId, string $priceId): void
+            {
+                $this->swaps[] = [$subscriptionId, $itemId, $priceId];
+            }
+
+            public function replaceMetadata(Team $team, string $subscriptionId, array $metadata): bool
+            {
+                $this->metadata = $metadata;
+
+                return true;
+            }
+        };
+        $this->app->instance(StripeHostingPlanGateway::class, $gateway);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('hosting')->plainTextToken)
+            ->postJson('/api/hosting/'.$domain->id.'/plan', ['plan' => 'rs-s3'])
+            ->assertOk()
+            ->assertJsonPath('data.plan', 'rs-s3');
+
+        $sync->refresh();
+        $this->assertSame([['sub_lizama', 'si_current', 'price_s3']], $gateway->swaps);
+        $this->assertSame('rs-s3', $gateway->metadata['plan']);
+        $this->assertSame('hosting', $gateway->metadata['type']);
+        $this->assertSame('lizama.test', $sync->data['domain']);
+        $this->assertSame('9.90', $sync->amount_total);
     }
 
     public function test_mailbox_quota_can_only_increase(): void

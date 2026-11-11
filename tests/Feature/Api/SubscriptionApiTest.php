@@ -11,6 +11,7 @@ use App\Models\Service;
 use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Hosting\StripeHostingPlanGateway;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
@@ -221,5 +222,63 @@ class SubscriptionApiTest extends TestCase
         $this->assertSame($byName->id, $rows->firstWhere('id', $named->id)['enterprise']['id']);
         $this->assertSame($byEmail->id, $rows->firstWhere('id', $emailed->id)['enterprise']['id']);
         $this->assertSame($byContact->id, $rows->firstWhere('id', $person->id)['enterprise']['id']);
+    }
+
+    public function test_subscription_metadata_can_be_changed_and_marks_the_kind(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $sync = ServiceSync::query()->create([
+            'stripe_id' => 'sub_metadata_edit',
+            'team_id' => $team->id,
+            'status' => 'active',
+            'plan_name' => 'Mantenimiento',
+            'data' => [
+                'category' => 'hosting',
+                'metadata' => [
+                    'category' => 'hosting',
+                    'domain' => 'lizama.test',
+                    'auto_suspend' => 'true',
+                ],
+            ],
+        ]);
+        $gateway = new class extends StripeHostingPlanGateway
+        {
+            /** @var array<string, string> */
+            public array $metadata = [];
+
+            public function replaceMetadata(Team $team, string $subscriptionId, array $metadata): bool
+            {
+                $this->metadata = $metadata;
+
+                return true;
+            }
+        };
+        $this->app->instance(StripeHostingPlanGateway::class, $gateway);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('subscriptions')->plainTextToken)
+            ->patchJson('/api/subscriptions/'.$sync->id.'/metadata', [
+                'kind' => 'service',
+                'metadata' => [
+                    'domain' => 'lizama.test',
+                    'note' => 'Mantenimiento web',
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.kind', 'service')
+            ->assertJsonPath('data.metadata.type', 'service')
+            ->assertJsonPath('data.metadata.category', 'service')
+            ->assertJsonPath('data.metadata.note', 'Mantenimiento web');
+
+        $sync->refresh();
+        $this->assertSame('', $gateway->metadata['auto_suspend']);
+        $this->assertSame('service', $sync->data['category']);
+        $this->assertSame('Mantenimiento web', $sync->data['metadata']['note']);
     }
 }

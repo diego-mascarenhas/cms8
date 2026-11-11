@@ -3,15 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\UpdateSubscriptionMetadataRequest;
 use App\Models\Contact;
 use App\Models\Domain;
 use App\Models\Enterprise;
 use App\Models\Service;
 use App\Models\ServiceSync;
+use App\Services\Hosting\HostingSubscriptionSync;
+use App\Services\Hosting\StripeHostingPlanGateway;
 use App\Support\HostingAccountPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use RuntimeException;
 
 class SubscriptionController extends Controller
 {
@@ -130,6 +134,60 @@ class SubscriptionController extends Controller
 
         return response()->json([
             'success' => true,
+            'data' => $this->present($sync, true),
+        ]);
+    }
+
+    public function updateMetadata(
+        UpdateSubscriptionMetadataRequest $request,
+        string $id,
+        HostingSubscriptionSync $store,
+        StripeHostingPlanGateway $stripe,
+    ): JsonResponse {
+        $sync = $this->findForUser($request, $id);
+
+        if ($sync instanceof JsonResponse)
+        {
+            return $sync;
+        }
+
+        $kind = (string) $request->validated('kind');
+        $metadata = $store->strings($request->validated('metadata'));
+        $metadata['type'] = $kind;
+        $metadata['category'] = $kind === 'hosting'
+            ? 'hosting'
+            : (($metadata['category'] ?? '') !== '' && $metadata['category'] !== 'hosting' ? $metadata['category'] : 'service');
+
+        try
+        {
+            $written = $stripe->replaceMetadata(
+                $request->user()->currentTeam,
+                (string) $sync->stripe_id,
+                $store->replacement($metadata, $store->strings($this->metadata($sync))),
+            );
+        } catch (RuntimeException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
+        if (! $written)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Stripe no está configurado en el equipo.',
+            ], 422);
+        }
+
+        $store->remember($sync, $metadata);
+        $sync = $sync->fresh()->load('enterprise:id,name,code');
+        $this->hydrateClientEnterprises(collect([$sync]));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'La metadata quedó actualizada.',
             'data' => $this->present($sync, true),
         ]);
     }
@@ -514,6 +572,7 @@ class SubscriptionController extends Controller
             'current_period_end' => $sync->current_period_end?->toDateString(),
             'cancel_at_period_end' => (bool) $sync->cancel_at_period_end,
             'category' => $sync->clientCategoryLabel(),
+            'kind' => $sync->clientKind(),
         ];
 
         if ($withMetadata)

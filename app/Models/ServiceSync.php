@@ -176,6 +176,11 @@ class ServiceSync extends Model
     /**
      * Hosting plans open the hosting account. Metadata category wins; otherwise the client-facing name starts with Hosting.
      */
+    public function clientKind(): string
+    {
+        return $this->isClientHosting() ? 'hosting' : 'service';
+    }
+
     public function isClientHosting(): bool
     {
         $category = strtolower(trim((string) data_get($this->data, 'category', data_get($this->data, 'type'))));
