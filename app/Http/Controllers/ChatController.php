@@ -3357,7 +3357,10 @@ class ChatController extends Controller
                     TeamWhatsAppConnectionSync::syncLinkedNumberFromGatewayStatus($team, $connectionStatus);
                 }
                 $status = is_array($connectionStatus) ? (string) ($connectionStatus['status'] ?? '') : '';
-                if (! in_array($status, ['connected', 'open'], true))
+                $linkedNumber = $team?->getWhatsAppFrom();
+                $linked = is_string($linkedNumber) && $linkedNumber !== '';
+                $canSend = in_array($status, ['connected', 'open'], true) || ($status === 'unreachable' && $linked);
+                if (! $canSend)
                 {
                     return response()->json([
                         'success' => false,

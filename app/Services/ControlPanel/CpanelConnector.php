@@ -223,9 +223,12 @@ class CpanelConnector implements ControlPanelConnector
                 ];
             }
 
+            $packages = $this->packageCatalog($response->json());
+
             return [
                 'success' => true,
-                'plans' => $this->parseListPkgsResponse($response->json()),
+                'plans' => array_column($packages, 'name'),
+                'packages' => $packages,
                 'reseller_limited' => false,
             ];
         } catch (\Exception $e)
@@ -250,13 +253,14 @@ class CpanelConnector implements ControlPanelConnector
 
             if ($response->successful())
             {
-                $plans = $this->parseListPkgsResponse($response->json());
+                $packages = $this->packageCatalog($response->json());
 
-                if ($plans !== [])
+                if ($packages !== [])
                 {
                     return [
                         'success' => true,
-                        'plans' => $plans,
+                        'plans' => array_column($packages, 'name'),
+                        'packages' => $packages,
                         'reseller_limited' => false,
                     ];
                 }
@@ -280,35 +284,59 @@ class CpanelConnector implements ControlPanelConnector
         return [
             'success' => true,
             'plans' => $plan ? [$plan] : [],
+            'packages' => $plan ? [[
+                'name' => (string) $plan,
+                'quota_mb' => null,
+                'unlimited' => false,
+            ]] : [],
             'reseller_limited' => true,
         ];
     }
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array<int, string>
+     * @return list<array{name: string, quota_mb: int|null, unlimited: bool}>
      */
-    private function parseListPkgsResponse(array $payload): array
+    private function packageCatalog(array $payload): array
     {
-        if (! empty($payload['package']))
+        $rows = [];
+
+        if (! empty($payload['package']) && is_array($payload['package']))
         {
-            return collect($payload['package'])
-                ->pluck('name')
-                ->filter()
-                ->values()
-                ->all();
+            $rows = $payload['package'];
+        } elseif (! empty($payload['data']['pkg']) && is_array($payload['data']['pkg']))
+        {
+            $rows = $payload['data']['pkg'];
         }
 
-        if (! empty($payload['data']['pkg']))
+        $packages = [];
+
+        foreach ($rows as $row)
         {
-            return collect($payload['data']['pkg'])
-                ->pluck('name')
-                ->filter()
-                ->values()
-                ->all();
+            if (! is_array($row))
+            {
+                continue;
+            }
+
+            $name = trim((string) ($row['name'] ?? ''));
+
+            if ($name === '')
+            {
+                continue;
+            }
+
+            $quota = $row['QUOTA'] ?? $row['quota'] ?? null;
+            $unlimited = is_string($quota) && strtolower(trim($quota)) === 'unlimited';
+            $quotaMb = is_numeric($quota) ? (int) $quota : null;
+
+            $packages[] = [
+                'name' => $name,
+                'quota_mb' => $unlimited ? null : $quotaMb,
+                'unlimited' => $unlimited,
+            ];
         }
 
-        return [];
+        return $packages;
     }
 
     public function createAccount(
@@ -854,6 +882,223 @@ class CpanelConnector implements ControlPanelConnector
             'domain' => $domain->domain,
             'password' => $password,
         ], expectData: false);
+    }
+
+    public function changeEmailQuota(Server $server, Domain $domain, string $email, int $quotaMb): array
+    {
+        $localPart = str_contains($email, '@') ? explode('@', $email, 2)[0] : $email;
+
+        return $this->uapiRequest($server, $domain, 'Email', 'edit_pop_quota', [
+            'email' => $localPart,
+            'domain' => $domain->domain,
+            'quota' => $quotaMb,
+        ], expectData: false);
+    }
+
+    public function phpVersion(Server $server, Domain $domain): array
+    {
+        if (! $this->supports($server) || ! $server->hasToken())
+        {
+            return [
+                'success' => false,
+                'error' => 'Server is not configured for cPanel or missing token',
+            ];
+        }
+
+        try
+        {
+            $response = $this->whmRequest($server, '/json-api/php_get_vhost_versions', [
+                'api.version' => 1,
+                'api.filter.enable' => 1,
+                'api.filter.a.field' => 'vhost',
+                'api.filter.a.arg0' => $domain->domain,
+            ]);
+
+            if (! $response->successful())
+            {
+                return [
+                    'success' => false,
+                    'error' => 'API request failed: '.$response->body(),
+                ];
+            }
+
+            $version = $this->interpretPhpVersionPayload($response->json() ?? [], (string) $domain->domain);
+
+            if ($version === null)
+            {
+                return [
+                    'success' => false,
+                    'error' => 'No se detectó la versión PHP.',
+                ];
+            }
+
+            return [
+                'success' => true,
+                'version' => $version,
+            ];
+        } catch (\Exception $e)
+        {
+            return [
+                'success' => false,
+                'error' => 'Connection error: '.$e->getMessage(),
+            ];
+        }
+    }
+
+    public function siteType(Server $server, Domain $domain): array
+    {
+        $listed = $this->uapiRequest($server, $domain, 'Fileman', 'list_files', [
+            'dir' => 'public_html',
+            'types' => 'file|dir',
+        ]);
+
+        if (! ($listed['success'] ?? false))
+        {
+            return $listed;
+        }
+
+        $rows = $listed['data'] ?? [];
+
+        if (isset($rows['files']) && is_array($rows['files']))
+        {
+            $rows = $rows['files'];
+        }
+
+        $type = $this->interpretSiteFiles($this->fileNames(is_array($rows) ? $rows : []));
+
+        if ($type === null)
+        {
+            return [
+                'success' => false,
+                'error' => 'No se detectó el tipo de sitio.',
+            ];
+        }
+
+        return [
+            'success' => true,
+            'site_type' => $type,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function interpretPhpVersionPayload(array $payload, string $domain): ?string
+    {
+        $rows = $payload['data']['versions']
+            ?? $payload['data']['vhosts']
+            ?? $payload['data']['result']
+            ?? $payload['versions']
+            ?? [];
+
+        if (! is_array($rows))
+        {
+            return null;
+        }
+
+        $match = null;
+
+        foreach ($rows as $row)
+        {
+            if (! is_array($row))
+            {
+                continue;
+            }
+
+            $vhost = strtolower((string) ($row['vhost'] ?? $row['domain'] ?? ''));
+
+            if ($vhost === strtolower($domain))
+            {
+                $match = $row;
+                break;
+            }
+
+            $match ??= $row;
+        }
+
+        $version = is_array($match) ? ($match['version'] ?? null) : null;
+
+        return is_string($version) ? $this->interpretPhpVersion($version) : null;
+    }
+
+    public function interpretPhpVersion(string $version): ?string
+    {
+        $version = trim($version);
+
+        if ($version === '')
+        {
+            return null;
+        }
+
+        if (preg_match('/php\D*(\d)(\d)/i', $version, $matches) === 1)
+        {
+            return $matches[1].'.'.$matches[2];
+        }
+
+        if (preg_match('/(\d+\.\d+)/', $version, $matches) === 1)
+        {
+            return $matches[1];
+        }
+
+        return $version;
+    }
+
+    /**
+     * @param  list<string>  $names
+     */
+    public function interpretSiteFiles(array $names): ?string
+    {
+        $normalized = array_map(fn (string $name): string => strtolower(basename($name)), $names);
+
+        if (in_array('wp-config.php', $normalized, true) || in_array('wp-includes', $normalized, true))
+        {
+            return 'WordPress';
+        }
+
+        if (in_array('artisan', $normalized, true))
+        {
+            return 'Laravel';
+        }
+
+        if (in_array('index.html', $normalized, true) && ! in_array('index.php', $normalized, true))
+        {
+            return 'HTML estático';
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<int|string, mixed>  $rows
+     * @return list<string>
+     */
+    private function fileNames(array $rows): array
+    {
+        $names = [];
+
+        foreach ($rows as $row)
+        {
+            if (is_string($row) && $row !== '')
+            {
+                $names[] = $row;
+
+                continue;
+            }
+
+            if (! is_array($row))
+            {
+                continue;
+            }
+
+            $name = $row['file'] ?? $row['name'] ?? $row['path'] ?? null;
+
+            if (is_string($name) && $name !== '')
+            {
+                $names[] = $name;
+            }
+        }
+
+        return $names;
     }
 
     public function createEmailAccount(

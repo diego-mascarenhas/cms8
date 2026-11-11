@@ -74,6 +74,21 @@ interface ControlPanelConnector
     /**
      * @return array{success: bool, error?: string}
      */
+    public function changeEmailQuota(Server $server, Domain $domain, string $email, int $quotaMb): array;
+
+    /**
+     * @return array{success: bool, error?: string, version?: string}
+     */
+    public function phpVersion(Server $server, Domain $domain): array;
+
+    /**
+     * @return array{success: bool, error?: string, site_type?: string}
+     */
+    public function siteType(Server $server, Domain $domain): array;
+
+    /**
+     * @return array{success: bool, error?: string}
+     */
     public function createEmailAccount(
         Server $server,
         Domain $domain,

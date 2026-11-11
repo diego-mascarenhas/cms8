@@ -7,6 +7,7 @@ use App\Enums\ServerStatus;
 use App\Models\Domain;
 use App\Models\Enterprise;
 use App\Models\Server;
+use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\ControlPanel\ControlPanelManager;
@@ -204,6 +205,108 @@ class HostingApiTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_hosting_detail_links_the_client_and_subscription(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::query()->create([
+            'name' => 'Odin',
+            'server_url' => 'https://odin.test:2083',
+            'username' => 'revision',
+            'control_panel' => 'cpanel',
+            'success' => true,
+            'status_id' => ServerStatus::Active,
+            'team_id' => $team->id,
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+        ]);
+        $enterprise = $this->enterprise($team);
+        $enterprise->forceFill(['code' => 'cus_lizama'])->save();
+        $sync = ServiceSync::query()->create([
+            'stripe_id' => 'sub_lizama_hosting',
+            'team_id' => $team->id,
+            'customer_id' => 'cus_lizama',
+            'status' => 'active',
+            'plan_name' => 'Hosting lizama.test',
+            'amount_total' => 19.9,
+            'price_currency' => 'eur',
+            'plan_interval' => 'month',
+            'plan_interval_count' => 1,
+            'data' => [
+                'category' => 'hosting',
+                'domain' => 'lizama.test',
+            ],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('hosting')->plainTextToken)
+            ->getJson('/api/hosting/'.$domain->id)
+            ->assertOk()
+            ->assertJsonPath('data.enterprise.id', $enterprise->id)
+            ->assertJsonPath('data.subscription.id', $sync->id)
+            ->assertJsonPath('data.subscription.name', 'Hosting lizama.test')
+            ->assertJsonPath('data.subscription.amount', 19.9)
+            ->assertJsonPath('data.subscription.currency', 'eur')
+            ->assertJsonPath('data.subscription.interval', '1 mes')
+            ->assertJsonPath('data.subscription.status', 'active');
+    }
+
+    public function test_admin_changes_the_account_and_mailbox_passwords(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::factory()->create([
+            'team_id' => $team->id,
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+            'suspended' => false,
+        ]);
+        $connector = \Mockery::mock(ControlPanelConnector::class);
+        $connector->shouldReceive('changeAccountPassword')
+            ->once()
+            ->withArgs(fn (Server $server, Domain $account, string $password): bool => $password === 'Nueva-Clave-12!')
+            ->andReturn(['success' => true]);
+        $connector->shouldReceive('changeEmailPassword')
+            ->once()
+            ->withArgs(fn (Server $server, Domain $account, string $email, string $password): bool => $email === 'info@lizama.test' && $password === 'Otra-Clave-12!')
+            ->andReturn(['success' => true]);
+        $this->mock(ControlPanelManager::class, function ($mock) use ($connector)
+        {
+            $mock->shouldReceive('forServer')->andReturn($connector);
+        });
+
+        $token = $user->createToken('hosting')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/hosting/'.$domain->id.'/password', [
+                'password' => 'Nueva-Clave-12!',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('password', 'Nueva-Clave-12!');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/hosting/'.$domain->id.'/email-password', [
+                'email' => 'info@lizama.test',
+                'password' => 'Otra-Clave-12!',
+            ])
+            ->assertOk()
+            ->assertJsonPath('password', 'Otra-Clave-12!');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/hosting/'.$domain->id.'/email-password', [
+                'email' => 'otro@otro.test',
+                'password' => 'Otra-Clave-12!',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Esa cuenta no pertenece a este dominio.');
+    }
+
     public function test_collaborator_cannot_list_hosting(): void
     {
         $user = User::factory()->create();
@@ -224,6 +327,203 @@ class HostingApiTest extends TestCase
                 'mailboxes' => [],
             ])
             ->assertForbidden();
+    }
+
+    public function test_flex_hosting_cannot_change_plan(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::query()->create([
+            'name' => 'Odin',
+            'server_url' => 'https://odin.test:2083',
+            'username' => 'revision',
+            'control_panel' => 'cpanel',
+            'success' => true,
+            'status_id' => ServerStatus::Active,
+            'team_id' => $team->id,
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+            'plan' => 'revision_flex',
+        ]);
+        $token = $user->createToken('hosting')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/hosting/'.$domain->id)
+            ->assertOk()
+            ->assertJsonPath('data.can_change_plan', false)
+            ->assertJsonPath('data.plans', []);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/hosting/'.$domain->id.'/plan', [
+                'plan' => 'rs-s3',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Flex no cambia de plan.');
+    }
+
+    public function test_plan_downgrade_requires_the_usage_to_fit(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::factory()->create([
+            'team_id' => $team->id,
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+            'plan' => 'rs-s7',
+            'data' => [
+                'account_disk' => [
+                    'used_mb' => 125,
+                    'limit_mb' => 1024000,
+                    'unlimited' => false,
+                    'usage_percent' => 1,
+                ],
+            ],
+        ]);
+        $packages = [
+            ['name' => 'rs-s7', 'quota_mb' => 1024000, 'unlimited' => false],
+            ['name' => 'rs-s1', 'quota_mb' => 100, 'unlimited' => false],
+            ['name' => 'rs-s3', 'quota_mb' => 1024, 'unlimited' => false],
+        ];
+        $connector = \Mockery::mock(ControlPanelConnector::class);
+        $connector->shouldReceive('listPlans')->andReturn([
+            'success' => true,
+            'plans' => ['rs-s7', 'rs-s1', 'rs-s3'],
+            'packages' => $packages,
+        ]);
+        $connector->shouldReceive('changePlan')
+            ->once()
+            ->withArgs(fn (Server $called, Domain $account, string $plan): bool => $plan === 'rs-s3')
+            ->andReturn(['success' => true]);
+        $this->mock(ControlPanelManager::class, function ($mock) use ($connector)
+        {
+            $mock->shouldReceive('supports')->andReturn(true);
+            $mock->shouldReceive('forServer')->andReturn($connector);
+        });
+
+        $token = $user->createToken('hosting')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/hosting/'.$domain->id)
+            ->assertOk()
+            ->assertJsonPath('data.can_change_plan', true)
+            ->assertJsonPath('data.plans.1.name', 'rs-s1')
+            ->assertJsonPath('data.plans.1.allowed', false)
+            ->assertJsonPath('data.plans.2.name', 'rs-s3')
+            ->assertJsonPath('data.plans.2.allowed', true);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/hosting/'.$domain->id.'/plan', [
+                'plan' => 'rs-s1',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'El uso actual no entra en la capacidad de ese plan.');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/hosting/'.$domain->id.'/plan', [
+                'plan' => 'rs-s3',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.plan', 'rs-s3');
+
+        $this->assertSame('rs-s3', $domain->fresh()->plan);
+    }
+
+    public function test_mailbox_quota_can_only_increase(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::factory()->create([
+            'team_id' => $team->id,
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+            'suspended' => false,
+            'data' => [
+                'email_accounts' => [[
+                    'email' => 'info@lizama.test',
+                    'diskused_mb' => 4.3,
+                    'diskquota_mb' => 50,
+                    'unlimited' => false,
+                ]],
+            ],
+        ]);
+        $connector = \Mockery::mock(ControlPanelConnector::class);
+        $connector->shouldReceive('changeEmailQuota')
+            ->once()
+            ->withArgs(fn (Server $called, Domain $account, string $email, int $quota): bool => $email === 'info@lizama.test' && $quota === 100)
+            ->andReturn(['success' => true]);
+        $this->mock(ControlPanelManager::class, function ($mock) use ($connector)
+        {
+            $mock->shouldReceive('forServer')->andReturn($connector);
+        });
+
+        $token = $user->createToken('hosting')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/hosting/'.$domain->id.'/email-quota', [
+                'email' => 'info@lizama.test',
+                'quota_mb' => 40,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'La nueva cuota tiene que ser mayor que la actual.');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/hosting/'.$domain->id.'/email-quota', [
+                'email' => 'info@lizama.test',
+                'quota_mb' => 100,
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $saved = $domain->fresh()->getCachedEmailAccounts()[0];
+        $this->assertSame(100, $saved['diskquota_mb']);
+        $this->assertFalse($saved['unlimited']);
+    }
+
+    public function test_hosting_detail_detects_php_and_site_type_when_they_are_missing(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::factory()->create([
+            'team_id' => $team->id,
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+            'site_type' => null,
+            'php_version' => null,
+        ]);
+        $connector = \Mockery::mock(ControlPanelConnector::class);
+        $connector->shouldReceive('phpVersion')->once()->andReturn(['success' => true, 'version' => '8.2']);
+        $connector->shouldReceive('siteType')->once()->andReturn(['success' => true, 'site_type' => 'WordPress']);
+        $connector->shouldReceive('listPlans')->andReturn(['success' => true, 'plans' => [], 'packages' => []]);
+        $this->mock(ControlPanelManager::class, function ($mock) use ($connector)
+        {
+            $mock->shouldReceive('supports')->andReturn(true);
+            $mock->shouldReceive('forServer')->andReturn($connector);
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('hosting')->plainTextToken)
+            ->getJson('/api/hosting/'.$domain->id)
+            ->assertOk()
+            ->assertJsonPath('data.php_version', '8.2')
+            ->assertJsonPath('data.site_type', 'WordPress');
+
+        $saved = $domain->fresh();
+        $this->assertSame('8.2', $saved->php_version);
+        $this->assertSame('WordPress', $saved->site_type);
     }
 
     private function enterprise(Team $team): Enterprise

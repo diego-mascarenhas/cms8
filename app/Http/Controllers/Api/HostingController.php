@@ -3,10 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ChangeHostingPlanRequest;
 use App\Http\Requests\StoreApiHostingRequest;
+use App\Http\Requests\UpdateHostingEmailPasswordRequest;
+use App\Http\Requests\UpdateHostingEmailQuotaRequest;
+use App\Http\Requests\UpdateHostingPasswordRequest;
 use App\Models\Domain;
 use App\Models\Server;
+use App\Services\Hosting\DomainCpanelPasswordService;
+use App\Services\Hosting\DomainMailboxPasswordService;
+use App\Services\Hosting\DomainMailboxQuotaService;
+use App\Services\Hosting\DomainRuntimeDetector;
 use App\Services\Hosting\FlexHostingProvisioner;
+use App\Services\Hosting\HostingPlanCatalog;
 use App\Support\HostingAccountPresenter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -74,29 +83,110 @@ class HostingController extends Controller
         ]);
     }
 
-    public function show(Request $request, Domain $domain): JsonResponse
+    public function show(Request $request, Domain $domain, HostingPlanCatalog $plans, DomainRuntimeDetector $runtime): JsonResponse
     {
-        $user = $request->user();
+        $domain = $this->teamDomain($request, $domain);
+        $runtime->fillMissing($domain);
 
-        if ($user === null || ! $user->canAccessInfrastructure())
+        return response()->json([
+            'success' => true,
+            'data' => $this->account($domain, $plans),
+        ]);
+    }
+
+    public function updatePlan(ChangeHostingPlanRequest $request, Domain $domain, HostingPlanCatalog $plans): JsonResponse
+    {
+        $domain = $this->teamDomain($request, $domain);
+        $result = $plans->change($domain, (string) $request->validated('plan'));
+
+        if (! $result['success'])
         {
-            abort(403);
-        }
-
-        $domain->load('server');
-        $teamId = $user->currentTeam?->id;
-
-        if ($teamId === null || (int) $domain->server?->team_id !== (int) $teamId)
-        {
-            abort(404);
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+            ], 422);
         }
 
         return response()->json([
             'success' => true,
-            'data' => HostingAccountPresenter::forDomain(
-                $domain,
-                (bool) data_get($domain->data, 'auto_suspend', false),
-            ),
+            'message' => $result['message'],
+            'data' => $this->account($domain->fresh(), $plans),
+        ]);
+    }
+
+    public function updatePassword(UpdateHostingPasswordRequest $request, Domain $domain, DomainCpanelPasswordService $passwords): JsonResponse
+    {
+        $domain = $this->teamDomain($request, $domain);
+        $result = $passwords->resetAndOptionallyNotify(
+            $request->user(),
+            $domain,
+            null,
+            DomainCpanelPasswordService::NOTIFY_NONE,
+            (string) $request->validated('password'),
+        );
+
+        return $this->passwordResponse($result);
+    }
+
+    public function updateEmailPassword(UpdateHostingEmailPasswordRequest $request, Domain $domain, DomainMailboxPasswordService $mailboxes): JsonResponse
+    {
+        $domain = $this->teamDomain($request, $domain);
+        $email = (string) $request->validated('email');
+        $suffix = '@'.strtolower((string) $domain->domain);
+
+        if (! str_ends_with($email, $suffix))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esa cuenta no pertenece a este dominio.',
+            ], 422);
+        }
+
+        $result = $mailboxes->resetAndOptionallyNotify(
+            $request->user(),
+            $domain,
+            $email,
+            null,
+            DomainCpanelPasswordService::NOTIFY_NONE,
+            (string) $request->validated('password'),
+        );
+
+        return $this->passwordResponse($result);
+    }
+
+    public function updateEmailQuota(UpdateHostingEmailQuotaRequest $request, Domain $domain, DomainMailboxQuotaService $quotas): JsonResponse
+    {
+        $domain = $this->teamDomain($request, $domain);
+        $email = (string) $request->validated('email');
+        $suffix = '@'.strtolower((string) $domain->domain);
+
+        if (! str_ends_with($email, $suffix))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esa cuenta no pertenece a este dominio.',
+            ], 422);
+        }
+
+        $quota = $request->validated('quota_mb');
+        $result = $quotas->increase(
+            $domain,
+            $email,
+            is_numeric($quota) ? (int) $quota : null,
+            (bool) $request->boolean('unlimited'),
+        );
+
+        if (! $result['success'])
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'],
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $result['message'],
         ]);
     }
 
@@ -148,6 +238,21 @@ class HostingController extends Controller
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function account(Domain $domain, HostingPlanCatalog $plans): array
+    {
+        $data = HostingAccountPresenter::forDomain(
+            $domain,
+            (bool) data_get($domain->data, 'auto_suspend', false),
+        );
+        $data['can_change_plan'] = ! $plans->isFlex($domain->plan);
+        $data['plans'] = $data['can_change_plan'] ? $plans->options($domain) : [];
+
+        return $data;
+    }
+
+    /**
      * @return list<string>
      */
     private function provisioningNameservers(): array
@@ -164,6 +269,45 @@ class HostingController extends Controller
             ->orderBy('id')
             ->get()
             ->first(fn (Server $server) => $server->hasToken());
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     */
+    private function passwordResponse(array $result): JsonResponse
+    {
+        if (! ($result['success'] ?? false))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'No se pudo actualizar la contraseña.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'password' => $result['password'] ?? null,
+        ]);
+    }
+
+    private function teamDomain(Request $request, Domain $domain): Domain
+    {
+        $user = $request->user();
+
+        if ($user === null || ! $user->canAccessInfrastructure())
+        {
+            abort(403);
+        }
+
+        $domain->load('server');
+        $teamId = $user->currentTeam?->id;
+
+        if ($teamId === null || (int) $domain->server?->team_id !== (int) $teamId)
+        {
+            abort(404);
+        }
+
+        return $domain;
     }
 
     private function teamAccounts(Request $request): Builder

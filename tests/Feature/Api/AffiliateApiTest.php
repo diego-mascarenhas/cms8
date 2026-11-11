@@ -5,10 +5,13 @@ namespace Tests\Feature\Api;
 use App\Mail\AffiliatePurchaseInvitationMail;
 use App\Models\AffiliateInvitation;
 use App\Models\BillingAffiliateCommission;
+use App\Models\Enterprise;
 use App\Models\Module;
 use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\User;
+use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Jetstream\Features;
@@ -126,6 +129,67 @@ class AffiliateApiTest extends TestCase
 
         $this->assertNotNull($response->json('data.referrals.0.opened_at'));
         $this->assertNotEmpty($response->json('data.commissions_as_referrer'));
+        $this->assertNull($response->json('data.referrals.0.enterprise_id'));
+    }
+
+    public function test_dashboard_links_a_referral_to_the_team_enterprise(): void
+    {
+        [$user, $team, $token] = $this->adminWithAffiliatesModule([
+            'stripe_id' => 'cus_linked_referrer',
+            'referred_by' => null,
+        ]);
+
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+        ]);
+
+        $payingOwner = User::factory()->create([
+            'email' => 'cliente.vinculado@example.com',
+        ]);
+        $payingTeam = Team::factory()->create([
+            'user_id' => $payingOwner->id,
+            'name' => 'Cliente Vinculado',
+            'stripe_id' => 'cus_linked_paying',
+            'referred_by' => 'cus_linked_referrer',
+        ]);
+
+        $enterprise = Enterprise::withoutEvents(fn () => Enterprise::factory()->forTeam($team->id)->create([
+            'name' => 'Cliente Vinculado',
+            'code' => 'cus_linked_paying',
+            'email' => 'cliente.vinculado@example.com',
+            'type_id' => 1,
+            'status_id' => 1,
+            'payment_type_id' => null,
+            'invoice_type_id' => null,
+        ]));
+
+        Enterprise::withoutEvents(fn () => Enterprise::factory()->forTeam($payingTeam->id)->create([
+            'name' => 'Otra ficha',
+            'code' => 'cus_linked_paying',
+            'type_id' => 1,
+            'status_id' => 1,
+            'payment_type_id' => null,
+            'invoice_type_id' => null,
+        ]));
+
+        BillingAffiliateCommission::query()->create([
+            'paying_team_id' => $payingTeam->id,
+            'referrer_team_id' => $team->id,
+            'stripe_invoice_id' => 'in_linked_aff',
+            'amount_paid_cents' => 5000,
+            'currency' => 'eur',
+            'commission_percent' => 30,
+            'commission_amount_cents' => 1500,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/affiliates/dashboard');
+
+        $response->assertOk()
+            ->assertJsonPath('data.referrals.0.enterprise_id', $enterprise->id)
+            ->assertJsonPath('data.commissions_as_referrer.0.enterprise_id', $enterprise->id);
     }
 
     public function test_dashboard_includes_referred_subscription_services(): void

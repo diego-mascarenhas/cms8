@@ -4,6 +4,8 @@ namespace App\Support;
 
 use App\Helpers\DnsHelper;
 use App\Models\Domain;
+use App\Models\Enterprise;
+use App\Models\ServiceSync;
 
 class HostingAccountPresenter
 {
@@ -21,6 +23,7 @@ class HostingAccountPresenter
         $currentNameservers = $display['nameservers'] ?? [];
         $spf = $domain->getCachedPublicSpfCheck();
         $ssl = is_array($display['ssl_status'] ?? null) ? $display['ssl_status'] : null;
+        $owner = self::owner($domain);
 
         return [
             'id' => $domain->id,
@@ -59,8 +62,77 @@ class HostingAccountPresenter
                 'record' => $spf['record'] ?? null,
                 'recommended' => $server?->getProvisioningSpfRecord() ?: DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT,
             ],
+            'enterprise' => $owner['enterprise'],
+            'subscription' => $owner['subscription'],
             'updated_at' => $domain->updated_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * @return array{enterprise: array{id: int, name: string}|null, subscription: array{id: int, name: string, amount: float|null, currency: string|null, interval: string|null, status: string|null}|null}
+     */
+    private static function owner(Domain $domain): array
+    {
+        $domain->loadMissing(['server', 'service.enterprise', 'service.serviceSync']);
+
+        $enterprise = $domain->service?->enterprise;
+        $sync = $domain->service?->serviceSync;
+
+        if (! $enterprise instanceof Enterprise || ! $sync instanceof ServiceSync)
+        {
+            $matched = self::hostingSubscription($domain);
+            $sync = $sync instanceof ServiceSync ? $sync : $matched;
+
+            if (! $enterprise instanceof Enterprise && $matched instanceof ServiceSync && filled($matched->customer_id))
+            {
+                $enterprise = Enterprise::query()
+                    ->where('team_id', $domain->server?->team_id)
+                    ->where('code', $matched->customer_id)
+                    ->first();
+            }
+        }
+
+        return [
+            'enterprise' => $enterprise instanceof Enterprise
+                ? ['id' => (int) $enterprise->id, 'name' => (string) $enterprise->name]
+                : null,
+            'subscription' => $sync instanceof ServiceSync
+                ? [
+                    'id' => (int) $sync->id,
+                    'name' => filled($sync->plan_name) ? (string) $sync->plan_name : (string) $domain->domain,
+                    'amount' => $sync->amount_total !== null ? round((float) $sync->amount_total, 2) : null,
+                    'currency' => filled($sync->price_currency) ? (string) $sync->price_currency : null,
+                    'interval' => $sync->billing_frequency,
+                    'status' => filled($sync->status) ? (string) $sync->status : null,
+                ]
+                : null,
+        ];
+    }
+
+    private static function hostingSubscription(Domain $domain): ?ServiceSync
+    {
+        $teamId = $domain->server?->team_id;
+        $domainName = strtolower(trim((string) $domain->domain));
+
+        if ($teamId === null || $domainName === '')
+        {
+            return null;
+        }
+
+        $like = '%'.addcslashes($domainName, '%_\\').'%';
+
+        return ServiceSync::query()
+            ->where('team_id', $teamId)
+            ->where(function ($query) use ($domainName, $like): void
+            {
+                $query->whereRaw('LOWER(plan_name) LIKE ?', [$like])
+                    ->orWhere('raw_payload->description', 'like', $like)
+                    ->orWhere('data->domain', $domainName);
+            })
+            ->get()
+            ->filter(fn (ServiceSync $sync): bool => $sync->isClientHosting() && $sync->hostingDomainCandidate() === $domainName)
+            ->sortBy(fn (ServiceSync $sync): int => strtolower((string) $sync->status) === 'active' ? 0 : 1)
+            ->first();
     }
 
     /**

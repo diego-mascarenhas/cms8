@@ -88,4 +88,30 @@ class ChatSendWhatsAppConnectionTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('success', true);
     }
+
+    public function test_chat_send_proceeds_when_the_status_probe_is_unreachable_but_the_number_is_linked(): void
+    {
+        config(['whatsapp.driver' => 'local']);
+        config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+        config(['whatsapp.customer_service_window.enabled' => false]);
+
+        Http::fake([
+            'http://127.0.0.1:3000/status*' => Http::response('down', 503),
+            'http://127.0.0.1:3000/send-message' => Http::response(['id' => 'wa-test-unreachable', 'success' => true], 200),
+        ]);
+
+        $user = $this->userWithTeam();
+        $team = $user->currentTeam;
+        $this->assertInstanceOf(Team::class, $team);
+        $team->setSetting('whatsapp_from', '34613194131');
+
+        $response = $this->actingAs($user)->postJson(route('chat.send'), [
+            'to' => '5491199988877',
+            'message' => 'Hola desde Humano',
+            'use_ai' => false,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+    }
 }

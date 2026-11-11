@@ -84,6 +84,21 @@ class PleskConnector implements ControlPanelConnector
         return $this->notImplemented();
     }
 
+    public function changeEmailQuota(Server $server, Domain $domain, string $email, int $quotaMb): array
+    {
+        return $this->notImplemented();
+    }
+
+    public function phpVersion(Server $server, Domain $domain): array
+    {
+        return $this->notImplemented();
+    }
+
+    public function siteType(Server $server, Domain $domain): array
+    {
+        return $this->notImplemented();
+    }
+
     public function createEmailAccount(
         Server $server,
         Domain $domain,
