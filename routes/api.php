@@ -890,6 +890,8 @@ Route::middleware('auth.api')->group(function ()
     Route::post('hosting/{domain}/email-password', [\App\Http\Controllers\Api\HostingController::class, 'updateEmailPassword'])->whereNumber('domain');
     Route::post('hosting/{domain}/email-quota', [\App\Http\Controllers\Api\HostingController::class, 'updateEmailQuota'])->whereNumber('domain');
     Route::post('hosting', [\App\Http\Controllers\Api\HostingController::class, 'store']);
+    Route::post('domains/check', [\App\Http\Controllers\Api\DomainRegistrationController::class, 'check']);
+    Route::post('domains/register', [\App\Http\Controllers\Api\DomainRegistrationController::class, 'register']);
     Route::get('subscriptions/{id}', [ApiSubscriptionController::class, 'show'])->whereNumber('id');
     Route::patch('subscriptions/{id}/metadata', [ApiSubscriptionController::class, 'updateMetadata'])->whereNumber('id');
     Route::get('search', [WebContactController::class, 'search']);
