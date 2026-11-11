@@ -108,6 +108,34 @@ class ApiAuthProfilePhotoTest extends TestCase
         Storage::disk('public')->assertMissing($path);
     }
 
+    public function test_the_user_can_upload_and_remove_a_cover_photo(): void
+    {
+        Storage::fake('public');
+        [$user, $token] = $this->signedIn();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/auth/cover-photo', [
+                'photo' => UploadedFile::fake()->image('banner.jpg', 1200, 400),
+            ], ['Accept' => 'application/json'])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $user->refresh();
+        $this->assertNotEmpty($user->cover_photo_path);
+        Storage::disk('public')->assertExists($user->cover_photo_path);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->get('/api/auth/cover-photo')
+            ->assertOk();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/auth/cover-photo')
+            ->assertOk()
+            ->assertJsonPath('user.cover_photo_url', null);
+
+        $this->assertNull($user->fresh()->cover_photo_path);
+    }
+
     /**
      * @return array{0: User, 1: string}
      */

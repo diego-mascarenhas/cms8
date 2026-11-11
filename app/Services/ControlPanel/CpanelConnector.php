@@ -521,6 +521,102 @@ class CpanelConnector implements ControlPanelConnector
         }
     }
 
+    /**
+     * One-time WHM login URL for the account's cPanel or Webmail.
+     *
+     * @return array{success: bool, error?: string, url?: string}
+     */
+    public function createUserSession(Server $server, string $username, string $service): array
+    {
+        if (! $this->supports($server) || ! $server->hasToken())
+        {
+            return [
+                'success' => false,
+                'error' => 'Server is not configured for cPanel or missing token',
+            ];
+        }
+
+        $username = trim($username);
+
+        if ($username === '')
+        {
+            return [
+                'success' => false,
+                'error' => 'Domain does not have a cPanel username.',
+            ];
+        }
+
+        if (! in_array($service, ['cpaneld', 'webmaild'], true))
+        {
+            return [
+                'success' => false,
+                'error' => 'Unsupported session service.',
+            ];
+        }
+
+        $params = [
+            'api.version' => 1,
+            'user' => $username,
+            'service' => $service,
+        ];
+
+        try
+        {
+            $response = $server->usesCpanelAccountAuth()
+                ? $this->whmBasicAuthRequest($server, '/json-api/create_user_session', $params)
+                : $this->whmRequest($server, '/json-api/create_user_session', $params);
+
+            if (! $response->successful())
+            {
+                $payload = $response->json();
+
+                return [
+                    'success' => false,
+                    'error' => $this->safeSessionError($this->extractWhmErrorMessage(
+                        is_array($payload) ? $payload : [],
+                    )),
+                ];
+            }
+
+            $payload = $response->json();
+
+            if (! is_array($payload) || ! $this->isWhmJsonApiSuccessful($payload))
+            {
+                return [
+                    'success' => false,
+                    'error' => $this->safeSessionError($this->extractWhmErrorMessage(is_array($payload) ? $payload : [])),
+                ];
+            }
+
+            $url = $payload['data']['url'] ?? null;
+
+            if (! is_string($url) || ! $this->isTrustedSessionUrl($server, $url))
+            {
+                return [
+                    'success' => false,
+                    'error' => 'WHM no devolvió una URL de acceso válida.',
+                ];
+            }
+
+            return [
+                'success' => true,
+                'url' => $url,
+            ];
+        } catch (\Exception $e)
+        {
+            Log::error('cPanel create_user_session failed: '.$e->getMessage(), [
+                'server_id' => $server->id,
+                'username' => $username,
+                'service' => $service,
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Connection error: '.$e->getMessage(),
+            ];
+        }
+    }
+
     public function setAccountSuspended(Server $server, Domain $domain, bool $suspended): array
     {
         if (! $this->supports($server) || ! $server->hasToken())
@@ -1754,6 +1850,38 @@ class CpanelConnector implements ControlPanelConnector
     private function whmBaseUrl(Server $server): string
     {
         return 'https://'.$server->hostname.':'.self::WHM_PORT;
+    }
+
+    private function isTrustedSessionUrl(Server $server, string $url): bool
+    {
+        $parts = parse_url($url);
+
+        if (! is_array($parts) || ($parts['scheme'] ?? '') !== 'https' || isset($parts['user']) || isset($parts['pass']))
+        {
+            return false;
+        }
+
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        $expected = strtolower((string) $server->hostname);
+
+        if ($host === '' || $expected === '' || $host !== $expected)
+        {
+            return false;
+        }
+
+        $port = $parts['port'] ?? null;
+
+        return $port === null || in_array((int) $port, [self::CPANEL_PORT, 2096], true);
+    }
+
+    private function safeSessionError(string $error): string
+    {
+        if ($error === '' || str_contains($error, 'session=') || str_contains(strtolower($error), 'cpsess'))
+        {
+            return 'No se pudo abrir la sesión en el servidor.';
+        }
+
+        return $error;
     }
 
     /**

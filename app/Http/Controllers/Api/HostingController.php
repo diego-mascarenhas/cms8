@@ -2,14 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\DnsHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangeHostingPlanRequest;
+use App\Http\Requests\CreateHostingSessionRequest;
 use App\Http\Requests\StoreApiHostingRequest;
+use App\Http\Requests\StoreHostingEmailRequest;
 use App\Http\Requests\UpdateHostingEmailPasswordRequest;
 use App\Http\Requests\UpdateHostingEmailQuotaRequest;
 use App\Http\Requests\UpdateHostingPasswordRequest;
+use App\Jobs\RefreshDomainDataJob;
 use App\Models\Domain;
 use App\Models\Server;
+use App\Services\ControlPanel\ControlPanelManager;
+use App\Services\ControlPanel\CpanelConnector;
 use App\Services\Hosting\DomainCpanelPasswordService;
 use App\Services\Hosting\DomainMailboxPasswordService;
 use App\Services\Hosting\DomainMailboxQuotaService;
@@ -135,6 +141,36 @@ class HostingController extends Controller
         return $this->passwordResponse($result);
     }
 
+    public function createSession(CreateHostingSessionRequest $request, Domain $domain, CpanelConnector $cpanel): JsonResponse
+    {
+        $domain = $this->teamDomain($request, $domain);
+        $server = $domain->server;
+
+        if ($server === null || $server->control_panel !== 'cpanel' || ! $server->hasToken())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este hosting no tiene cPanel configurado.',
+            ], 422);
+        }
+
+        $service = $request->validated('service') === 'webmail' ? 'webmaild' : 'cpaneld';
+        $result = $cpanel->createUserSession($server, (string) $domain->username, $service);
+
+        if (! ($result['success'] ?? false) || ! filled($result['url'] ?? null))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'No se pudo abrir la sesión.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'url' => $result['url'],
+        ]);
+    }
+
     public function updateEmailPassword(UpdateHostingEmailPasswordRequest $request, Domain $domain, DomainMailboxPasswordService $mailboxes): JsonResponse
     {
         $domain = $this->teamDomain($request, $domain);
@@ -194,6 +230,80 @@ class HostingController extends Controller
         return response()->json([
             'success' => true,
             'message' => $result['message'],
+        ]);
+    }
+
+    public function storeEmail(StoreHostingEmailRequest $request, Domain $domain, ControlPanelManager $panels): JsonResponse
+    {
+        $domain = $this->teamDomain($request, $domain);
+        $server = $domain->server;
+
+        if ($server === null || $server->control_panel !== 'cpanel' || ! $server->hasToken() || ! $panels->supports($server))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este hosting no tiene cPanel configurado.',
+            ], 422);
+        }
+
+        $local = (string) $request->validated('email');
+        $mailbox = $local.'@'.strtolower((string) $domain->domain);
+        $result = $panels->forServer($server)->createEmailAccount(
+            $server,
+            $domain,
+            $local,
+            (string) $request->validated('password'),
+        );
+
+        if (! ($result['success'] ?? false))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'No se pudo crear la cuenta de correo.',
+            ], 422);
+        }
+
+        $this->rememberMailbox($domain, $panels, $mailbox);
+        RefreshDomainDataJob::dispatch($domain->id)->afterResponse();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cuenta de correo creada.',
+            'email' => $mailbox,
+        ]);
+    }
+
+    public function ensureSpf(Request $request, Domain $domain, ControlPanelManager $panels): JsonResponse
+    {
+        $domain = $this->teamDomain($request, $domain);
+        $server = $domain->server;
+
+        if ($server === null || $server->control_panel !== 'cpanel' || ! $server->hasToken() || ! $panels->supports($server))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este hosting no tiene cPanel configurado.',
+            ], 422);
+        }
+
+        $spfRecord = $server->getProvisioningSpfRecord() ?: DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT;
+        $result = $panels->forServer($server)->ensureSpfRecord($server, $domain, $spfRecord);
+
+        if (! ($result['success'] ?? false))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'No se pudo agregar el include de SPF.',
+            ], 422);
+        }
+
+        $record = $this->rememberZoneSpf($domain, $panels);
+        RefreshDomainDataJob::dispatch($domain->id)->afterResponse();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'El include de Revision Alpha quedó en el SPF. El resto de mecanismos se mantiene.',
+            'record' => $record,
         ]);
     }
 
@@ -350,6 +460,70 @@ class HostingController extends Controller
         return response()->json([
             'success' => true,
             'password' => $result['password'] ?? null,
+        ]);
+    }
+
+    private function rememberZoneSpf(Domain $domain, ControlPanelManager $panels): ?string
+    {
+        $server = $domain->server;
+
+        if ($server === null)
+        {
+            return null;
+        }
+
+        $records = $panels->forServer($server)->getSpfRecords($server, $domain);
+        $text = is_array($records['records'][0] ?? null) ? (string) ($records['records'][0]['text'] ?? '') : '';
+
+        if ($text === '')
+        {
+            return null;
+        }
+
+        $domain->update([
+            'data' => array_merge($domain->data ?? [], [
+                'public_spf_check' => [
+                    'exists' => true,
+                    'has_mailbaby' => DnsHelper::spfIncludesRevisionAlpha($text),
+                    'record' => $text,
+                ],
+            ]),
+        ]);
+
+        return $text;
+    }
+
+    private function rememberMailbox(Domain $domain, ControlPanelManager $panels, string $mailbox): void
+    {
+        $server = $domain->server;
+
+        if ($server === null)
+        {
+            return;
+        }
+
+        $emailsResult = $panels->forServer($server)->listEmailAccounts($server, $domain);
+        $listedAccounts = ($emailsResult['success'] ?? false) ? ($emailsResult['emails'] ?? []) : [];
+        $emailAccounts = collect($listedAccounts !== [] ? $listedAccounts : ($domain->data['email_accounts'] ?? []));
+
+        if (! $emailAccounts->contains(fn ($account): bool => strtolower((string) (is_array($account) ? ($account['email'] ?? '') : '')) === $mailbox))
+        {
+            $emailAccounts->push([
+                'email' => $mailbox,
+                'diskused_mb' => 0.0,
+                'diskquota_mb' => null,
+                'unlimited' => true,
+                'usage_percent' => null,
+            ]);
+        }
+
+        $domain->update([
+            'data' => array_merge($domain->data ?? [], [
+                'email_accounts' => $emailAccounts
+                    ->sortBy(fn ($account): string => strtolower((string) (is_array($account) ? ($account['email'] ?? '') : '')))
+                    ->values()
+                    ->all(),
+            ]),
         ]);
     }
 

@@ -16,7 +16,9 @@ use App\Services\Hosting\StripeHostingPlanGateway;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -705,6 +707,238 @@ class HostingApiTest extends TestCase
         $saved = $domain->fresh();
         $this->assertSame('8.2', $saved->php_version);
         $this->assertSame('WordPress', $saved->site_type);
+    }
+
+    public function test_cpanel_session_returns_a_one_time_login_url(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::factory()->create([
+            'team_id' => $team->id,
+            'server_url' => 'cpanel.test',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+            'suspended' => false,
+        ]);
+        Http::fake([
+            'https://cpanel.test:2087/json-api/create_user_session*' => Http::response([
+                'metadata' => ['result' => 1, 'reason' => 'Created session'],
+                'data' => [
+                    'url' => 'https://cpanel.test:2083/cpsess123/login/?session=abc',
+                    'service' => 'cpaneld',
+                ],
+            ]),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('hosting')->plainTextToken)
+            ->postJson('/api/hosting/'.$domain->id.'/session', ['service' => 'cpanel'])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('url', 'https://cpanel.test:2083/cpsess123/login/?session=abc');
+
+        Http::assertSent(function ($request): bool
+        {
+            return str_contains($request->url(), '/json-api/create_user_session')
+                && ($request['user'] ?? null) === 'lizama'
+                && ($request['service'] ?? null) === 'cpaneld'
+                && (int) ($request['api.version'] ?? 0) === 1;
+        });
+    }
+
+    public function test_webmail_session_uses_the_webmail_service(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::factory()->create([
+            'team_id' => $team->id,
+            'server_url' => 'cpanel.test',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+        ]);
+        Http::fake([
+            'https://cpanel.test:2087/json-api/create_user_session*' => Http::response([
+                'metadata' => ['result' => 1, 'reason' => 'Created session'],
+                'data' => [
+                    'url' => 'https://cpanel.test:2096/cpsess123/login/?session=mail',
+                ],
+            ]),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('hosting')->plainTextToken)
+            ->postJson('/api/hosting/'.$domain->id.'/session', ['service' => 'webmail'])
+            ->assertOk()
+            ->assertJsonPath('url', 'https://cpanel.test:2096/cpsess123/login/?session=mail');
+
+        Http::assertSent(fn ($request): bool => ($request['service'] ?? null) === 'webmaild');
+    }
+
+    public function test_session_rejects_a_login_url_for_another_host(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::factory()->create([
+            'team_id' => $team->id,
+            'server_url' => 'cpanel.test',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+        ]);
+        Http::fake([
+            'https://cpanel.test:2087/json-api/create_user_session*' => Http::response([
+                'metadata' => ['result' => 1, 'reason' => 'Created session'],
+                'data' => [
+                    'url' => 'https://evil.test:2083/cpsess123/login/?session=abc',
+                ],
+            ]),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('hosting')->plainTextToken)
+            ->postJson('/api/hosting/'.$domain->id.'/session', ['service' => 'cpanel'])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonMissing(['url' => 'https://evil.test:2083/cpsess123/login/?session=abc']);
+    }
+
+    public function test_session_rejects_an_unknown_service_without_calling_whm(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::factory()->create([
+            'team_id' => $team->id,
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+        ]);
+        Http::fake();
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('hosting')->plainTextToken)
+            ->postJson('/api/hosting/'.$domain->id.'/session', ['service' => 'whm'])
+            ->assertStatus(422);
+
+        Http::assertNothingSent();
+    }
+
+    public function test_mailbox_can_be_created(): void
+    {
+        Queue::fake();
+        [$user, $team] = $this->adminTeam();
+        $server = Server::factory()->create([
+            'team_id' => $team->id,
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+            'suspended' => false,
+            'data' => [],
+        ]);
+        $connector = \Mockery::mock(ControlPanelConnector::class);
+        $connector->shouldReceive('createEmailAccount')
+            ->once()
+            ->withArgs(fn (Server $called, Domain $account, string $local): bool => $local === 'info')
+            ->andReturn(['success' => true]);
+        $connector->shouldReceive('listEmailAccounts')->once()->andReturn([
+            'success' => true,
+            'emails' => [[
+                'email' => 'info@lizama.test',
+                'diskused_mb' => 0,
+                'diskquota_mb' => 250,
+                'unlimited' => false,
+                'usage_percent' => 0,
+            ]],
+        ]);
+        $this->mock(ControlPanelManager::class, function ($mock) use ($connector)
+        {
+            $mock->shouldReceive('supports')->andReturn(true);
+            $mock->shouldReceive('forServer')->andReturn($connector);
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('hosting')->plainTextToken)
+            ->postJson('/api/hosting/'.$domain->id.'/emails', [
+                'email' => 'Info',
+                'password' => 'ClaveSegura1!',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('email', 'info@lizama.test');
+
+        $this->assertSame('info@lizama.test', $domain->fresh()->data['email_accounts'][0]['email']);
+        Queue::assertPushed(\App\Jobs\RefreshDomainDataJob::class);
+    }
+
+    public function test_spf_include_is_added_to_the_existing_record(): void
+    {
+        Queue::fake();
+        [$user, $team] = $this->adminTeam();
+        $server = Server::factory()->create([
+            'team_id' => $team->id,
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+            'data' => [
+                'provisioning_spf' => 'v=spf1 include:spf.revisionalpha.com -all',
+            ],
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+            'data' => [
+                'public_spf_check' => [
+                    'exists' => true,
+                    'has_mailbaby' => false,
+                    'record' => 'v=spf1 ip4:66.70.189.5 -all',
+                ],
+            ],
+        ]);
+        $merged = 'v=spf1 ip4:66.70.189.5 include:spf.revisionalpha.com -all';
+        $connector = \Mockery::mock(ControlPanelConnector::class);
+        $connector->shouldReceive('ensureSpfRecord')
+            ->once()
+            ->withArgs(function (Server $called, Domain $account, string $record) use ($server, $domain): bool
+            {
+                return $called->is($server)
+                    && $account->is($domain)
+                    && $record === 'v=spf1 include:spf.revisionalpha.com -all';
+            })
+            ->andReturn(['success' => true]);
+        $connector->shouldReceive('getSpfRecords')->once()->andReturn([
+            'success' => true,
+            'records' => [[
+                'line' => 12,
+                'text' => $merged,
+            ]],
+        ]);
+        $this->mock(ControlPanelManager::class, function ($mock) use ($connector)
+        {
+            $mock->shouldReceive('supports')->andReturn(true);
+            $mock->shouldReceive('forServer')->andReturn($connector);
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('hosting')->plainTextToken)
+            ->postJson('/api/hosting/'.$domain->id.'/spf')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('record', $merged);
+
+        $saved = $domain->fresh()->data['public_spf_check'];
+        $this->assertTrue($saved['has_mailbaby']);
+        $this->assertSame($merged, $saved['record']);
     }
 
     private function enterprise(Team $team): Enterprise

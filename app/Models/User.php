@@ -244,6 +244,69 @@ class User extends Authenticatable
         }
     }
 
+    public function updateCoverPhoto(UploadedFile $photo): void
+    {
+        $prepared = $this->cropCoverPhoto($photo);
+        $fileToStore = $prepared
+            ? new UploadedFile($prepared, $photo->getClientOriginalName(), 'image/jpeg', 0, true)
+            : $photo;
+
+        tap($this->cover_photo_path, function ($previous) use ($fileToStore)
+        {
+            $this->forceFill([
+                'cover_photo_path' => $fileToStore->storePublicly(
+                    'cover-photos',
+                    ['disk' => $this->profilePhotoDisk()],
+                ),
+            ])->save();
+
+            if ($previous)
+            {
+                Storage::disk($this->profilePhotoDisk())->delete($previous);
+            }
+        });
+
+        if ($prepared && file_exists($prepared))
+        {
+            @unlink($prepared);
+        }
+    }
+
+    public function deleteCoverPhoto(): void
+    {
+        if (! $this->cover_photo_path)
+        {
+            return;
+        }
+
+        Storage::disk($this->profilePhotoDisk())->delete($this->cover_photo_path);
+        $this->forceFill(['cover_photo_path' => null])->save();
+    }
+
+    protected function cropCoverPhoto(UploadedFile $photo): ?string
+    {
+        try
+        {
+            $tempPath = $photo->getRealPath();
+
+            if (! is_string($tempPath) || $tempPath === '')
+            {
+                return null;
+            }
+
+            $tempCropped = sys_get_temp_dir().'/cover_photo_'.uniqid().'.jpg';
+
+            Image::load($tempPath)
+                ->fit(Fit::Crop, 1600, 480)
+                ->save($tempCropped);
+
+            return $tempCropped;
+        } catch (\Throwable)
+        {
+            return null;
+        }
+    }
+
     /**
      * Crop the uploaded photo to a square (center crop). Returns path to temp file or null on failure.
      *
