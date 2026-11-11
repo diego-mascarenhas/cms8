@@ -37,6 +37,31 @@ class DomainRegistrationApiTest extends TestCase
             ->assertJsonPath('data.currency', 'USD');
     }
 
+    public function test_check_reads_the_nested_porkbun_quote(): void
+    {
+        $user = $this->admin();
+        config([
+            'services.porkbun.key' => 'pk_test',
+            'services.porkbun.secret' => 'sk_test',
+        ]);
+        Http::fake([
+            'https://api.porkbun.com/api/json/v3/domain/checkDomain/ejemplo.com' => Http::response([
+                'status' => 'SUCCESS',
+                'sandbox' => true,
+                'response' => [
+                    'avail' => 'yes',
+                    'price' => '11.81',
+                ],
+            ]),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('domains')->plainTextToken)
+            ->postJson('/api/domains/check', ['domain' => 'ejemplo.com'])
+            ->assertOk()
+            ->assertJsonPath('data.available', true)
+            ->assertJsonPath('data.price', 11.81);
+    }
+
     public function test_register_buys_the_domain_and_points_the_nameservers(): void
     {
         $user = $this->admin();
@@ -120,6 +145,47 @@ class DomainRegistrationApiTest extends TestCase
             ->assertJsonPath('message', 'Porkbun no está configurado. Faltan la API key y la secret API key.');
 
         Http::assertNothingSent();
+    }
+
+    public function test_check_translates_a_restricted_api_key(): void
+    {
+        $user = $this->admin();
+        config([
+            'services.porkbun.key' => 'pk_test',
+            'services.porkbun.secret' => 'sk_test',
+        ]);
+        Http::fake([
+            'https://api.porkbun.com/api/json/v3/domain/checkDomain/tester.com' => Http::response([
+                'status' => 'ERROR',
+                'code' => 'DOMAIN_NOT_ALLOWED',
+                'message' => 'This API key is restricted to specific domains and `tester.com` is not in the allowed list.',
+            ], 403),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('domains')->plainTextToken)
+            ->postJson('/api/domains/check', ['domain' => 'tester.com'])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Esta clave de API solo puede usarse en ciertos dominios y tester.com no está en la lista permitida.');
+    }
+
+    public function test_check_hides_an_unknown_english_error(): void
+    {
+        $user = $this->admin();
+        config([
+            'services.porkbun.key' => 'pk_test',
+            'services.porkbun.secret' => 'sk_test',
+        ]);
+        Http::fake([
+            'https://api.porkbun.com/api/json/v3/domain/checkDomain/tester.com' => Http::response([
+                'status' => 'ERROR',
+                'message' => 'Something unexpected happened on the registrar.',
+            ], 400),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('domains')->plainTextToken)
+            ->postJson('/api/domains/check', ['domain' => 'tester.com'])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Porkbun no pudo completar la operación.');
     }
 
     private function admin(): User

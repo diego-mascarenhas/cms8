@@ -16,11 +16,12 @@ class PorkbunRegistrar
     {
         $domain = $this->domain($domain);
         $payload = $this->post($team, 'domain/checkDomain/'.$domain);
+        $quote = is_array($payload['response'] ?? null) ? $payload['response'] : $payload;
 
         return [
             'domain' => $domain,
-            'available' => strtolower((string) ($payload['avail'] ?? '')) === 'yes',
-            'price' => isset($payload['price']) && is_numeric($payload['price']) ? round((float) $payload['price'], 2) : null,
+            'available' => strtolower((string) ($quote['avail'] ?? '')) === 'yes',
+            'price' => isset($quote['price']) && is_numeric($quote['price']) ? round((float) $quote['price'], 2) : null,
             'currency' => 'USD',
         ];
     }
@@ -127,14 +128,69 @@ class PorkbunRegistrar
     {
         $payload = $response->json();
 
-        if (! is_array($payload) || strtoupper((string) ($payload['status'] ?? 'SUCCESS')) === 'ERROR' || $response->failed())
+        if (! is_array($payload))
         {
-            $message = is_array($payload) ? trim((string) ($payload['message'] ?? '')) : '';
+            throw new RuntimeException('Porkbun no respondió.');
+        }
 
-            throw new RuntimeException($message !== '' ? $message : 'Porkbun no respondió.');
+        if (strtoupper((string) ($payload['status'] ?? 'SUCCESS')) === 'ERROR' || $response->failed())
+        {
+            throw new RuntimeException($this->spanishError(
+                strtoupper(trim((string) ($payload['code'] ?? ''))),
+                trim((string) ($payload['message'] ?? '')),
+            ));
         }
 
         return $payload;
+    }
+
+    private function spanishError(string $code, string $message): string
+    {
+        $domain = '';
+
+        if (preg_match('/`([^`]+)`/', $message, $matches) === 1)
+        {
+            $domain = $matches[1];
+        }
+
+        $restricted = $domain !== ''
+            ? 'Esta clave de API solo puede usarse en ciertos dominios y '.$domain.' no está en la lista permitida.'
+            : 'Esta clave de API solo puede usarse en ciertos dominios y este no está en la lista permitida.';
+
+        $known = [
+            'DOMAIN_NOT_ALLOWED' => $restricted,
+            'IP_NOT_ALLOWED' => 'Esta clave de API solo acepta peticiones desde ciertas direcciones IP.',
+            'INVALID_API_KEYS_001' => 'La clave de API de Porkbun no es válida.',
+            'INVALID_API_KEYS_002' => 'La clave secreta de Porkbun no coincide.',
+            'MISSING_SECRETAPIKEY' => 'Falta la clave secreta de Porkbun.',
+            'API_KEY_REQUIRED' => 'Falta la clave de API de Porkbun.',
+            'API_ACCESS_DISABLED' => 'Este dominio no tiene el acceso por API activado en Porkbun.',
+            'INSUFFICIENT_FUNDS' => 'No hay saldo suficiente en Porkbun para registrar el dominio.',
+            'COST_MISMATCH' => 'El precio del dominio cambió. Consultalo de nuevo antes de registrarlo.',
+            'INVALID_DOMAIN' => 'El dominio no es válido.',
+            'RATE_LIMIT_EXCEEDED' => 'Porkbun limitó las consultas. Esperá un momento y volvé a intentar.',
+            'INSUFFICIENT_SCOPE' => 'Esta clave de API no tiene permiso para esta operación.',
+            'TERMS_NOT_AGREED' => 'Hay que aceptar los términos de Porkbun para registrar el dominio.',
+            'ORDER_FAILED' => 'Porkbun no pudo crear el pedido. No se cobró nada.',
+            'VERIFICATION_REQUIRED' => 'Hay que verificar el correo y el teléfono de la cuenta de Porkbun antes de registrar.',
+            'ACCOUNT_VERIFICATION_REQUIRED' => 'Porkbun pide verificar la identidad de la cuenta antes de continuar.',
+            'ID_VERIFICATION_REQUIRED' => 'Porkbun pide verificar la identidad antes de registrar este dominio.',
+            'NEW_ACCOUNT_LIMIT' => 'La cuenta de Porkbun llegó al límite de registros de los primeros días.',
+            'MONTHLY_SPEND_LIMIT_EXCEEDED' => 'Este registro superaría el límite mensual de gasto en Porkbun.',
+            'DOMAIN_NOT_FOUND' => 'Ese dominio no está en la cuenta de Porkbun.',
+        ];
+
+        if (isset($known[$code]))
+        {
+            return $known[$code];
+        }
+
+        if (preg_match('/restricted to specific domains and `[^`]+` is not in the allowed list/i', $message) === 1)
+        {
+            return $restricted;
+        }
+
+        return 'Porkbun no pudo completar la operación.';
     }
 
     private function domain(string $value): string
