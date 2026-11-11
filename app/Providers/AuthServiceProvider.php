@@ -26,6 +26,7 @@ use App\Models\Prompt;
 use App\Models\Service;
 use App\Models\Software;
 use App\Models\Stylebook;
+use App\Models\Survey;
 use App\Models\TeamFile;
 use App\Models\TeamPassword;
 use App\Models\Ticket;
@@ -55,6 +56,7 @@ use App\Policies\PromptPolicy;
 use App\Policies\ServicePolicy;
 use App\Policies\SoftwarePolicy;
 use App\Policies\StyleBookPolicy;
+use App\Policies\SurveyPolicy;
 use App\Policies\TeamFilePolicy;
 use App\Policies\TeamPasswordPolicy;
 use App\Policies\TicketPolicy;
@@ -86,6 +88,7 @@ class AuthServiceProvider extends ServiceProvider
         PaidAdCampaign::class => PaidAdCampaignPolicy::class,
         PaidAdAudience::class => PaidAdAudiencePolicy::class,
         Software::class => SoftwarePolicy::class,
+        Survey::class => SurveyPolicy::class,
         Stylebook::class => StyleBookPolicy::class,
         Post::class => PostPolicy::class,
         Mailbox::class => MailboxPolicy::class,

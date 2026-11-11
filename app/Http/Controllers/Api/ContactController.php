@@ -12,8 +12,12 @@ use App\Models\ContactSentiment;
 use App\Models\ContactStatus;
 use App\Models\Country;
 use App\Models\Module;
+use App\Services\ApolloService;
+use App\Services\Contacts\ContactProfileBuilder;
 use App\Services\InboxContactAccessService;
 use App\Services\MailerAudienceCsvImportService;
+use App\Services\Prospecting\ProspectDirectory;
+use App\Services\WhatsApp\WhatsAppThreadCategoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -195,7 +199,7 @@ class ContactController extends Controller
                 'status:id,name,label_class',
                 'responsible:id,name',
                 'enterprises:id,name',
-                'categories:id,name',
+                'categories:id,name,color',
                 'currentSentiment.sentiment',
                 'currentSentiment.intent',
                 'list60:id,contact_id',
@@ -413,7 +417,7 @@ class ContactController extends Controller
         {
             // Find the contact first
             $contact = Contact::where('id', $id)
-                ->with(['status', 'creator', 'responsible', 'currentEnterprise'])
+                ->with(['status', 'creator', 'responsible', 'currentEnterprise', 'person.enrichments'])
                 ->firstOrFail();
 
             // Check if user can view this specific contact
@@ -425,17 +429,7 @@ class ContactController extends Controller
                 ], 403);
             }
 
-            // Return a plain array to avoid serialization errors (accessors, media, etc.)
-            $data = [
-                'id' => $contact->id,
-                'name' => $contact->name,
-                'surname' => $contact->surname,
-                'email' => $contact->email,
-                'phone' => $contact->phone,
-                'status' => $contact->status ? ['id' => $contact->status->id, 'name' => $contact->status->name] : null,
-                'responsible' => $contact->responsible ? ['id' => $contact->responsible->id, 'name' => $contact->responsible->name] : null,
-                'enterprise' => $contact->currentEnterprise ? ['id' => $contact->currentEnterprise->id, 'name' => $contact->currentEnterprise->name] : null,
-            ];
+            $data = app(ContactProfileBuilder::class)->build($contact);
 
             return response()->json([
                 'success' => true,
@@ -462,6 +456,97 @@ class ContactController extends Controller
                 'error' => 'Error interno del servidor',
             ], 500);
         }
+    }
+
+    public function enrich(Request $request, string $id, ApolloService $apollo, ProspectDirectory $directory, ContactProfileBuilder $profiles): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
+
+        $contact = Contact::query()
+            ->with(['currentEnterprise', 'person'])
+            ->whereKey($id)
+            ->first();
+
+        if (! $contact || ! $user->can('view', $contact))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Contacto no encontrado',
+            ], 404);
+        }
+
+        $organization = trim((string) ($contact->currentEnterprise?->name ?: $contact->person?->organization_name));
+        if (! $profiles->canEnrich($contact, $organization))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hace falta un email, o nombre, apellido y empresa, para enriquecer los datos.',
+            ], 422);
+        }
+
+        try
+        {
+            $person = $apollo->matchPerson([
+                'email' => $contact->email,
+                'first_name' => $contact->name,
+                'last_name' => $contact->surname,
+                'organization_name' => $organization,
+            ]);
+        } catch (\RuntimeException $exception)
+        {
+            report($exception);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No se pudieron enriquecer los datos.',
+            ], 422);
+        }
+
+        $apolloId = trim((string) ($person['id'] ?? ''));
+        if ($person === null || $apolloId === '')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró información de esta persona.',
+            ], 422);
+        }
+
+        $title = trim((string) ($person['title'] ?? ''));
+        if (trim((string) $contact->title) === '' && $title !== '')
+        {
+            $contact->title = mb_substr($title, 0, 255);
+        }
+
+        $foundOrganization = '';
+        if (is_array($person['organization'] ?? null))
+        {
+            $foundOrganization = trim((string) ($person['organization']['name'] ?? ''));
+        }
+
+        $directory->storeImportedContact(
+            $contact,
+            (int) $user->currentTeam->id,
+            ProspectDirectory::SOURCE_APOLLO,
+            $apolloId,
+            $person,
+            $foundOrganization !== '' ? $foundOrganization : ($organization !== '' ? $organization : null),
+            null,
+        );
+
+        $contact->refresh();
+
+        return response()->json([
+            'success' => true,
+            'data' => $profiles->build($contact),
+        ]);
     }
 
     private function numericFilter(Request $request, string $key): ?int
@@ -510,6 +595,7 @@ class ContactController extends Controller
             'categories' => $contact->categories->map(fn (Category $category): array => [
                 'id' => $category->id,
                 'name' => $category->name,
+                'color' => WhatsAppThreadCategoryService::normalizeColor($category->color),
             ])->values(),
             'status' => $contact->status ? [
                 'id' => $contact->status->id,

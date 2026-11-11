@@ -26,6 +26,9 @@
 /storage/framework/views/*
 /storage/logs/*
 /storage/app/originals
+/storage/app/survey-certificates
+/storage/app/cert-template-404.jpg
+/storage/app/survey-certificate-test.jpg
 /bootstrap/cache/*.php
 /vendor
 Homestead.json

@@ -3,6 +3,7 @@
 namespace App\Services\Domains;
 
 use App\Models\Team;
+use Illuminate\Http\Client\Pool;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -10,12 +11,33 @@ use RuntimeException;
 class PorkbunRegistrar
 {
     /**
-     * @return array{domain: string, available: bool, price: float|null, currency: string}
+     * @return array{domain: string, available: bool, price: float|null, currency: string, suggestions: list<array{domain: string, available: bool, price: float|null, currency: string}>}
      */
     public function check(Team $team, string $domain): array
     {
+        $quote = $this->quote($team, $domain);
+        $quote['suggestions'] = $quote['available'] ? [] : $this->suggestions($team, $quote['domain']);
+
+        return $quote;
+    }
+
+    /**
+     * @return array{domain: string, available: bool, price: float|null, currency: string}
+     */
+    private function quote(Team $team, string $domain): array
+    {
         $domain = $this->domain($domain);
         $payload = $this->post($team, 'domain/checkDomain/'.$domain);
+
+        return $this->quoteFrom($domain, $payload);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{domain: string, available: bool, price: float|null, currency: string}
+     */
+    private function quoteFrom(string $domain, array $payload): array
+    {
         $quote = is_array($payload['response'] ?? null) ? $payload['response'] : $payload;
 
         return [
@@ -24,6 +46,111 @@ class PorkbunRegistrar
             'price' => isset($quote['price']) && is_numeric($quote['price']) ? round((float) $quote['price'], 2) : null,
             'currency' => 'USD',
         ];
+    }
+
+    /**
+     * @return list<array{domain: string, available: bool, price: float|null, currency: string}>
+     */
+    private function suggestions(Team $team, string $domain): array
+    {
+        [$key, $secret] = $this->credentials($team);
+        $candidates = $this->candidates($domain);
+
+        if ($key === '' || $secret === '' || $candidates === [])
+        {
+            return [];
+        }
+
+        $responses = Http::pool(function (Pool $pool) use ($candidates, $key, $secret): array
+        {
+            $requests = [];
+
+            foreach ($candidates as $candidate)
+            {
+                $requests[] = $pool->as($candidate)
+                    ->acceptJson()
+                    ->asJson()
+                    ->timeout(20)
+                    ->withHeaders([
+                        'X-API-Key' => $key,
+                        'X-Secret-API-Key' => $secret,
+                    ])
+                    ->post('https://api.porkbun.com/api/json/v3/domain/checkDomain/'.$candidate);
+            }
+
+            return $requests;
+        });
+
+        $found = [];
+
+        foreach ($candidates as $candidate)
+        {
+            $response = $responses[$candidate] ?? null;
+
+            if (! $response instanceof Response)
+            {
+                continue;
+            }
+
+            try
+            {
+                $quote = $this->quoteFrom($candidate, $this->payload($response));
+            } catch (RuntimeException)
+            {
+                continue;
+            }
+
+            if ($quote['available'] && $quote['price'] !== null)
+            {
+                $found[] = $quote;
+            }
+
+            if (count($found) === 4)
+            {
+                break;
+            }
+        }
+
+        return $found;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function candidates(string $domain): array
+    {
+        $dot = strrpos($domain, '.');
+
+        if ($dot === false)
+        {
+            return [];
+        }
+
+        $name = substr($domain, 0, $dot);
+        $tld = substr($domain, $dot + 1);
+        $candidates = [];
+
+        foreach (['com', 'net', 'org', 'io', 'co', 'es', 'app'] as $other)
+        {
+            if ($other === $tld)
+            {
+                continue;
+            }
+
+            $candidates[] = $name.'.'.$other;
+        }
+
+        foreach (['get'.$name, $name.'app', 'my'.$name] as $variant)
+        {
+            if (preg_match('/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $variant) !== 1)
+            {
+                continue;
+            }
+
+            $candidates[] = $variant.'.com';
+        }
+
+        return array_values(array_slice(array_unique($candidates), 0, 6));
     }
 
     /**

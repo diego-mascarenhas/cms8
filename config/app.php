@@ -291,6 +291,16 @@ return [
     | read-only database user on production. Never enable outside local.
     |
     */
+    'cms_team_id' => (int) env('CMS_TEAM_ID', 2),
+
+    'cms_group' => (int) env('CMS_GROUP', 502),
+
+    'survey_team_name' => env('SURVEY_TEAM_NAME', 'OBA'),
+
+    'survey_empresa_id' => (int) env('SURVEY_EMPRESA_ID', 7437),
+
+    'legacy_media_base' => env('LEGACY_MEDIA_BASE', 'https://cms.revisionalpha.com/multimedia'),
+
     'allow_prod_read_toggle' => (bool) env('ALLOW_PROD_READ_TOGGLE', false),
 
     'prod_read_credentials_configured' => filled(env('DB_PROD_READ_HOST'))

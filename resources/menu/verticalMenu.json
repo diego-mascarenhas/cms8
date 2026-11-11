@@ -76,6 +76,13 @@
       "module_key": "tasks"
     },
     {
+      "url": "survey/list",
+      "name": "Encuestas",
+      "icon": "menu-icon tf-icons ti ti-clipboard-list",
+      "slug": "survey.index",
+      "module_key": "surveys"
+    },
+    {
       "url": "meeting",
       "name": "Reuniones",
       "icon": "menu-icon tf-icons ti ti-microphone",

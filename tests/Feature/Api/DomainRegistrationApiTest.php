@@ -34,7 +34,43 @@ class DomainRegistrationApiTest extends TestCase
             ->assertJsonPath('data.domain', 'ejemplo.com')
             ->assertJsonPath('data.available', true)
             ->assertJsonPath('data.price', 9.73)
-            ->assertJsonPath('data.currency', 'USD');
+            ->assertJsonPath('data.currency', 'USD')
+            ->assertJsonPath('data.suggestions', []);
+
+        Http::assertSentCount(1);
+    }
+
+    public function test_check_suggests_free_alternatives_when_the_domain_is_taken(): void
+    {
+        $user = $this->admin();
+        config([
+            'services.porkbun.key' => 'pk_test',
+            'services.porkbun.secret' => 'sk_test',
+        ]);
+        Http::fake([
+            'https://api.porkbun.com/api/json/v3/domain/checkDomain/ejemplo.com' => Http::response([
+                'status' => 'SUCCESS',
+                'avail' => 'no',
+            ]),
+            'https://api.porkbun.com/api/json/v3/domain/checkDomain/ejemplo.net' => Http::response([
+                'status' => 'SUCCESS',
+                'avail' => 'yes',
+                'price' => 12.5,
+            ]),
+            'https://api.porkbun.com/api/json/v3/domain/checkDomain/*' => Http::response([
+                'status' => 'SUCCESS',
+                'avail' => 'no',
+            ]),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('domains')->plainTextToken)
+            ->postJson('/api/domains/check', ['domain' => 'ejemplo.com'])
+            ->assertOk()
+            ->assertJsonPath('data.available', false)
+            ->assertJsonPath('data.suggestions.0.domain', 'ejemplo.net')
+            ->assertJsonPath('data.suggestions.0.available', true)
+            ->assertJsonPath('data.suggestions.0.price', 12.5)
+            ->assertJsonCount(1, 'data.suggestions');
     }
 
     public function test_check_reads_the_nested_porkbun_quote(): void

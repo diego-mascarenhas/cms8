@@ -19,16 +19,19 @@ class FlexHostingProvisioner
 
     /**
      * @param  list<string>  $mailboxes
+     * @param  list<array{priority: int, target: string}>  $mxRecords
      * @return array{
      *     domain: Domain,
      *     password: string,
      *     plan: string,
      *     nameservers: list<string>,
      *     spf_configured: bool,
-     *     mailboxes: list<array{email: string, password: string, created: bool, error: string|null}>
+     *     mailboxes: list<array{email: string, password: string, created: bool, error: string|null}>,
+     *     mail_dns_configured: bool|null,
+     *     mail_dns_error: string|null
      * }
      */
-    public function provision(User $user, Server $server, int $enterpriseId, string $domainName, string $username, array $mailboxes): array
+    public function provision(User $user, Server $server, int $enterpriseId, string $domainName, string $username, array $mailboxes, array $mxRecords = []): array
     {
         $package = (string) config('humano_hosting.flex_package', 'revision_flex');
         $password = Str::password(16, letters: true, numbers: true, symbols: true);
@@ -91,6 +94,25 @@ class FlexHostingProvisioner
             ];
         }
 
+        $mailDnsConfigured = null;
+        $mailDnsError = null;
+
+        if ($mxRecords !== [])
+        {
+            $mxResult = $connector->updateMxRecords($server, $domain, $mxRecords);
+            $mailDnsConfigured = (bool) ($mxResult['success'] ?? false);
+            $mailDnsError = $mailDnsConfigured ? null : ($mxResult['error'] ?? 'No se pudieron cambiar los MX.');
+
+            if ($mailDnsConfigured)
+            {
+                $domain->update([
+                    'data' => array_merge($domain->data ?? [], [
+                        'mx_records' => $mxRecords,
+                    ]),
+                ]);
+            }
+        }
+
         return [
             'domain' => $domain,
             'password' => $password,
@@ -98,6 +120,8 @@ class FlexHostingProvisioner
             'nameservers' => $server->getProvisioningNameservers(),
             'spf_configured' => $spfConfigured,
             'mailboxes' => $createdMailboxes,
+            'mail_dns_configured' => $mailDnsConfigured,
+            'mail_dns_error' => $mailDnsError,
         ];
     }
 

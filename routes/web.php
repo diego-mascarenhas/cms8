@@ -95,6 +95,8 @@ use App\Http\Controllers\StoreController;
 use App\Http\Controllers\StrategyController;
 use App\Http\Controllers\StylebookController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\SurveyCertificateController;
+use App\Http\Controllers\SurveyController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamFileController;
 use App\Http\Controllers\TeamInvitationConfirmController;
@@ -318,6 +320,9 @@ Route::get('misc-comingsoon', function ()
 // Public template view (no auth) – for sharing view links from assistant/WhatsApp
 Route::get('/template/public/{hashedId}', [TemplateController::class, 'showPublic'])->name('template.show-public');
 Route::get('reunion/{token}', [MeetingTranscriptController::class, 'publicShow'])->name('meeting.public');
+
+Route::get('/certificate/{survey}', [SurveyCertificateController::class, 'create'])->whereNumber('survey')->name('survey.certificate');
+Route::post('/certificate/{survey}', [SurveyCertificateController::class, 'download'])->whereNumber('survey')->name('survey.certificate.download');
 
 // Affiliate invitation tracking (no auth required)
 Route::get('/affiliate-invite/track/{token}/open', [AffiliateInvitationTrackingController::class, 'trackOpen'])->name('affiliate-invite.track.open');
@@ -1211,6 +1216,17 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/automation/{automation}', [AutomationController::class, 'show'])->name('automation.show');
     Route::put('/automation/{automation}', [AutomationController::class, 'update'])->name('automation.update');
     Route::delete('/automation/{automation}', [AutomationController::class, 'destroy'])->name('automation.destroy');
+
+    // Surveys
+    Route::get('/survey/list', [SurveyController::class, 'index'])->name('survey.index');
+    Route::get('/survey/create', [SurveyController::class, 'create'])->name('survey.create');
+    Route::post('/survey', [SurveyController::class, 'store'])->name('survey.store');
+    Route::get('/survey/{survey}/edit', [SurveyController::class, 'edit'])->name('survey.edit');
+    Route::get('/survey/{survey}/export', [SurveyController::class, 'export'])->name('survey.export');
+    Route::get('/survey/{survey}/certificate/{response}', [SurveyCertificateController::class, 'adminDownload'])->name('survey.certificate.admin');
+    Route::put('/survey/{survey}', [SurveyController::class, 'update'])->name('survey.update');
+    Route::delete('/survey/{survey}', [SurveyController::class, 'destroy'])->name('survey.destroy');
+    Route::get('/survey/{survey}', [SurveyController::class, 'show'])->name('survey.show');
 
     // Software Management
     Route::get('/software', [SoftwareController::class, 'index'])->name('software.index');

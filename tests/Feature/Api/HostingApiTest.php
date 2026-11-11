@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Contracts\ControlPanelConnector;
 use App\Enums\ServerStatus;
+use App\Mail\HostingFailureMail;
 use App\Models\Domain;
 use App\Models\Enterprise;
 use App\Models\Server;
@@ -15,6 +16,7 @@ use App\Services\Hosting\StripeHostingPlanGateway;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -110,6 +112,48 @@ class HostingApiTest extends TestCase
         ]);
     }
 
+    public function test_google_mail_replaces_mx_and_skips_local_mailboxes(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        Server::factory()->create([
+            'team_id' => $team->id,
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'test-token',
+        ]);
+        $enterprise = $this->enterprise($team);
+        $connector = \Mockery::mock(ControlPanelConnector::class);
+        $connector->shouldReceive('createAccount')->once()->andReturn(['success' => true]);
+        $connector->shouldReceive('ensureSpfRecord')->once()->andReturn(['success' => true]);
+        $connector->shouldReceive('createEmailAccount')->never();
+        $connector->shouldReceive('updateMxRecords')
+            ->once()
+            ->withArgs(function (Server $server, Domain $domain, array $records): bool
+            {
+                return $domain->domain === 'correo.test'
+                    && ($records[0]['target'] ?? '') === 'aspmx.l.google.com'
+                    && count($records) === 5;
+            })
+            ->andReturn(['success' => true]);
+        $this->mock(ControlPanelManager::class, function ($mock) use ($connector)
+        {
+            $mock->shouldReceive('forServer')->andReturn($connector);
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('hosting')->plainTextToken)
+            ->postJson('/api/hosting', [
+                'enterprise_id' => $enterprise->id,
+                'domain' => 'correo.test',
+                'username' => 'correo',
+                'mailboxes' => ['info'],
+                'mail_provider' => 'google',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.mailboxes', [])
+            ->assertJsonPath('data.mail_dns_configured', true);
+
+        $this->assertSame('aspmx.l.google.com', Domain::query()->where('domain', 'correo.test')->first()?->data['mx_records'][0]['target'] ?? null);
+    }
+
     public function test_provision_does_not_store_the_domain_when_cpanel_rejects_it(): void
     {
         [$user, $team] = $this->adminTeam();
@@ -121,7 +165,7 @@ class HostingApiTest extends TestCase
         $connector = \Mockery::mock(ControlPanelConnector::class);
         $connector->shouldReceive('createAccount')->once()->andReturn([
             'success' => false,
-            'error' => 'El paquete no existe.',
+            'error' => 'Sorry, unable to use package revision_flex. Verify that the package exists and that you have not exceeded your reseller restrictions.',
         ]);
         $connector->shouldReceive('ensureSpfRecord')->never();
         $connector->shouldReceive('createEmailAccount')->never();
@@ -129,6 +173,8 @@ class HostingApiTest extends TestCase
         {
             $mock->shouldReceive('forServer')->andReturn($connector);
         });
+
+        Mail::fake();
 
         $token = $user->createToken('hosting')->plainTextToken;
 
@@ -140,7 +186,13 @@ class HostingApiTest extends TestCase
                 'mailboxes' => [],
             ])
             ->assertStatus(422)
-            ->assertJsonPath('message', 'El paquete no existe.');
+            ->assertJsonPath('message', 'No pudimos crear el hosting. El plan todavía no está disponible en el servidor. Avisamos al equipo para resolverlo.');
+
+        Mail::assertSent(HostingFailureMail::class, function (HostingFailureMail $mail): bool
+        {
+            return $mail->hasTo('webmaster@revisionalpha.cloud')
+                && str_contains($mail->technical, 'unable to use package');
+        });
 
         $this->assertDatabaseMissing('domains', ['domain' => 'rechazado.test']);
     }

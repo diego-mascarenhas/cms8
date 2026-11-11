@@ -15,9 +15,11 @@ use App\Services\Hosting\DomainMailboxPasswordService;
 use App\Services\Hosting\DomainMailboxQuotaService;
 use App\Services\Hosting\DomainRuntimeDetector;
 use App\Services\Hosting\FlexHostingProvisioner;
+use App\Services\Hosting\HostingFailureNotice;
 use App\Services\Hosting\HostingPlanCatalog;
 use App\Services\Hosting\HostingSubscriptionSync;
 use App\Support\HostingAccountPresenter;
+use App\Support\MailExchange;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -195,19 +197,29 @@ class HostingController extends Controller
         ]);
     }
 
-    public function store(StoreApiHostingRequest $request, FlexHostingProvisioner $provisioner): JsonResponse
+    public function store(StoreApiHostingRequest $request, FlexHostingProvisioner $provisioner, HostingFailureNotice $failures): JsonResponse
     {
         $server = $this->provisioningServer();
+        $context = [
+            'domain' => (string) $request->validated('domain'),
+            'username' => (string) $request->validated('username'),
+            'user' => $request->user()?->email,
+        ];
 
         if ($server === null)
         {
+            $message = 'No hay un servidor cPanel configurado para el equipo.';
+            $failures->report($message, $context);
+
             return response()->json([
                 'success' => false,
-                'message' => 'No hay un servidor cPanel configurado para el equipo.',
+                'message' => $failures->userMessage($message),
             ], 422);
         }
 
-        $mailboxes = array_values($request->validated('mailboxes'));
+        $provider = (string) $request->validated('mail_provider');
+        $mxRecords = MailExchange::records($provider, (string) $request->validated('mail_exchange', ''));
+        $mailboxes = $mxRecords === [] ? array_values($request->validated('mailboxes')) : [];
 
         try
         {
@@ -218,13 +230,38 @@ class HostingController extends Controller
                 (string) $request->validated('domain'),
                 (string) $request->validated('username'),
                 $mailboxes,
+                $mxRecords,
             );
         } catch (RuntimeException $exception)
         {
+            $technical = $exception->getMessage();
+            $failures->report($technical, $context);
+
             return response()->json([
                 'success' => false,
-                'message' => $exception->getMessage(),
+                'message' => $failures->userMessage($technical),
             ], 422);
+        }
+
+        $createdMailboxes = $created['mailboxes'];
+
+        foreach ($createdMailboxes as $index => $mailbox)
+        {
+            if (($mailbox['created'] ?? false) || ! filled($mailbox['error'] ?? null))
+            {
+                continue;
+            }
+
+            $technical = (string) $mailbox['error'];
+            $failures->report($technical, $context + ['mailbox' => $mailbox['email'] ?? null]);
+            $createdMailboxes[$index]['error'] = $failures->userMessage($technical, 'No se pudo crear el correo. Avisamos al equipo para resolverlo.');
+        }
+
+        if (filled($created['mail_dns_error'] ?? null))
+        {
+            $technical = (string) $created['mail_dns_error'];
+            $failures->report($technical, $context);
+            $created['mail_dns_error'] = $failures->userMessage($technical, 'El hosting quedó creado, pero no se pudo preparar el correo. Avisamos al equipo para resolverlo.');
         }
 
         return response()->json([
@@ -237,7 +274,9 @@ class HostingController extends Controller
                 'password' => $created['password'],
                 'nameservers' => $created['nameservers'],
                 'spf_configured' => $created['spf_configured'],
-                'mailboxes' => $created['mailboxes'],
+                'mailboxes' => $createdMailboxes,
+                'mail_dns_configured' => $created['mail_dns_configured'],
+                'mail_dns_error' => $created['mail_dns_error'],
             ],
         ], 201);
     }
