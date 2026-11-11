@@ -17,6 +17,7 @@ return new class extends Migration
         {
             $table->unsignedBigInteger('phone')->nullable()->after('name');
             $table->boolean('subscribed')->default(true)->after('password');
+            $table->string('cover_photo_path', 2048)->nullable()->after('profile_photo_path');
             $table->softDeletes();
         });
     }
@@ -41,6 +42,11 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table)
         {
             $table->dropSoftDeletes();
+        });
+
+        Schema::table('users', function (Blueprint $table)
+        {
+            $table->dropColumn('cover_photo_path');
         });
     }
 };

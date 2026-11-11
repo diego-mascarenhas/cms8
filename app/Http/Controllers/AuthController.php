@@ -444,6 +444,56 @@ class AuthController extends Controller
         ]);
     }
 
+    public function showCoverPhoto(Request $request)
+    {
+        $user = $request->user();
+        $path = $user?->cover_photo_path;
+
+        if (! is_string($path) || $path === '')
+        {
+            return response()->noContent();
+        }
+
+        $disk = Storage::disk((string) config('jetstream.profile_photo_disk', 'public'));
+
+        if (! $disk->exists($path))
+        {
+            return response()->noContent();
+        }
+
+        return $disk->response($path);
+    }
+
+    public function updateCoverPhoto(UpdateUserProfilePhotoRequest $request)
+    {
+        $user = $request->user();
+        $user->updateCoverPhoto($request->file('photo'));
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Banner actualizado.'),
+            'user' => $this->profilePayload($user->fresh(['currentTeam', 'roles'])),
+        ]);
+    }
+
+    public function deleteCoverPhoto(Request $request)
+    {
+        $user = $request->user();
+
+        if (! $user)
+        {
+            return response()->json(['success' => false], 401);
+        }
+
+        $user->deleteCoverPhoto();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Banner eliminado.'),
+            'user' => $this->profilePayload($user->fresh(['currentTeam', 'roles'])),
+        ]);
+    }
+
     public function deleteProfilePhoto(Request $request)
     {
         $user = $request->user();
@@ -565,6 +615,9 @@ class AuthController extends Controller
             'role' => $user->actsAsClientOnTeam($team) ? 'Client' : $this->formatUserRoleLabel($user),
             'membership_role' => $team ? $user->teamRole($team)?->key : null,
             'profile_photo_url' => ChatMessageAvatar::forUser($user)['photo_url'] ?? null,
+            'cover_photo_url' => filled($user->cover_photo_path)
+                ? Storage::disk((string) config('jetstream.profile_photo_disk', 'public'))->url($user->cover_photo_path)
+                : null,
             'current_team' => $team ? [
                 'id' => $team->id,
                 'name' => $team->name,

@@ -545,6 +545,9 @@ Route::group(['prefix' => 'auth'], function ()
         Route::get('profile-photo', [AuthController::class, 'showProfilePhoto'])->name('api.auth.profile-photo.show');
         Route::post('profile-photo', [AuthController::class, 'updateProfilePhoto'])->name('api.auth.profile-photo.update');
         Route::delete('profile-photo', [AuthController::class, 'deleteProfilePhoto'])->name('api.auth.profile-photo.destroy');
+        Route::get('cover-photo', [AuthController::class, 'showCoverPhoto'])->name('api.auth.cover-photo.show');
+        Route::post('cover-photo', [AuthController::class, 'updateCoverPhoto'])->name('api.auth.cover-photo.update');
+        Route::delete('cover-photo', [AuthController::class, 'deleteCoverPhoto'])->name('api.auth.cover-photo.destroy');
         Route::put('password', [AuthController::class, 'updatePassword'])->name('api.auth.password.update');
     });
 });
@@ -632,6 +635,9 @@ Route::middleware('auth.api')->group(function ()
     // Today / Hoy (calendar events + tasks for the current day)
     Route::get('today', [TodayController::class, 'index'])->name('api.today.index');
     Route::get('calendar/events', [AppCalendarController::class, 'events'])->name('api.calendar.events');
+    Route::post('calendar/events', [AppCalendarController::class, 'store'])->name('api.calendar.events.store');
+    Route::put('calendar/events/{event}', [AppCalendarController::class, 'update'])->name('api.calendar.events.update');
+    Route::delete('calendar/events/{event}', [AppCalendarController::class, 'destroy'])->name('api.calendar.events.destroy');
 
     // Users of current team (for IDONEO app)
     Route::get('users', [ApiUserController::class, 'index']);
@@ -891,8 +897,11 @@ Route::middleware('auth.api')->group(function ()
     Route::get('hosting', [\App\Http\Controllers\Api\HostingController::class, 'index']);
     Route::get('hosting/{domain}', [\App\Http\Controllers\Api\HostingController::class, 'show'])->whereNumber('domain');
     Route::post('hosting/{domain}/password', [\App\Http\Controllers\Api\HostingController::class, 'updatePassword'])->whereNumber('domain');
+    Route::post('hosting/{domain}/session', [\App\Http\Controllers\Api\HostingController::class, 'createSession'])->whereNumber('domain');
     Route::post('hosting/{domain}/plan', [\App\Http\Controllers\Api\HostingController::class, 'updatePlan'])->whereNumber('domain');
     Route::post('hosting/{domain}/email-password', [\App\Http\Controllers\Api\HostingController::class, 'updateEmailPassword'])->whereNumber('domain');
+    Route::post('hosting/{domain}/emails', [\App\Http\Controllers\Api\HostingController::class, 'storeEmail'])->whereNumber('domain');
+    Route::post('hosting/{domain}/spf', [\App\Http\Controllers\Api\HostingController::class, 'ensureSpf'])->whereNumber('domain');
     Route::post('hosting/{domain}/email-quota', [\App\Http\Controllers\Api\HostingController::class, 'updateEmailQuota'])->whereNumber('domain');
     Route::post('hosting', [\App\Http\Controllers\Api\HostingController::class, 'store']);
     Route::post('domains/check', [\App\Http\Controllers\Api\DomainRegistrationController::class, 'check']);

@@ -8,6 +8,8 @@ use App\Models\Team;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -95,5 +97,38 @@ class CalendarEventsApiTest extends TestCase
             ->assertJsonPath('0.extendedProps.calendar', 'Email Marketing')
             ->assertJsonMissing(['title' => 'Campaña de octubre'])
             ->assertJsonMissing(['title' => 'WhatsApp de noviembre']);
+    }
+
+    public function test_a_timed_event_can_be_created_from_the_calendar(): void
+    {
+        Queue::fake();
+        Mail::fake();
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $token = $user->createToken('calendar')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/calendar/events', [
+                'title' => 'Bloque de trabajo',
+                'start' => '2026-11-11T06:00:00.000Z',
+                'end' => '2026-11-11T07:00:00.000Z',
+                'all_day' => false,
+                'label' => 'Business',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('title', 'Bloque de trabajo')
+            ->assertJsonPath('allDay', false);
+
+        $this->assertDatabaseHas('calendar_events', [
+            'team_id' => $team->id,
+            'title' => 'Bloque de trabajo',
+            'all_day' => false,
+        ]);
     }
 }
