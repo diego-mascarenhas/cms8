@@ -30,15 +30,38 @@ class HumanoPricingCatalogTest extends TestCase
         $this->assertNotContains('assistant', collect($plans)->pluck('id')->all());
     }
 
-    public function test_unfiltered_available_plans_still_require_checkout_urls(): void
+    public function test_unfiltered_available_plans_include_every_product_in_usd(): void
     {
-        $ids = collect(app(AffiliateReferralLinkBuilder::class)->availablePlans())
-            ->pluck('id')
-            ->all();
+        $plans = app(AffiliateReferralLinkBuilder::class)->availablePlans();
+        $ids = collect($plans)->pluck('id')->all();
 
         $this->assertContains('assistant', $ids);
         $this->assertContains('hunter', $ids);
-        $this->assertNotContains('shop_basic', $ids);
-        $this->assertNotContains('mailer_basic', $ids);
+        $this->assertContains('shop_basic', $ids);
+        $this->assertContains('mailer_basic', $ids);
+        $this->assertContains('ads', $ids);
+        $this->assertContains('projects', $ids);
+        $this->assertContains('estimator', $ids);
+        $this->assertContains('fanyion', $ids);
+        $this->assertNotContains('innovation', $ids);
+
+        foreach ($plans as $plan)
+        {
+            $this->assertSame('usd', $plan['currency']);
+        }
+
+        $assistant = collect($plans)->firstWhere('id', 'assistant');
+        $this->assertSame('54', $assistant['monthly_amount']);
+    }
+
+    public function test_plans_without_a_payment_link_get_a_referral_checkout_url(): void
+    {
+        $url = app(AffiliateReferralLinkBuilder::class)->referralUrl([
+            'id' => 'mailer_basic',
+            'checkout_url' => '',
+        ], 'cus_referrer');
+
+        $this->assertStringContainsString('/affiliate/checkout/mailer_basic', $url);
+        $this->assertStringContainsString('ref=cus_referrer', $url);
     }
 }

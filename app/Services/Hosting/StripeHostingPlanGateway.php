@@ -104,6 +104,32 @@ class StripeHostingPlanGateway
         ];
     }
 
+    /**
+     * @param  array<string, string>  $metadata
+     */
+    public function replaceMetadata(Team $team, string $subscriptionId, array $metadata): bool
+    {
+        $secret = $this->secret($team);
+        if ($secret === null || $subscriptionId === '')
+        {
+            return false;
+        }
+
+        Stripe::setApiKey($secret);
+
+        try
+        {
+            Subscription::update($subscriptionId, [
+                'metadata' => $metadata,
+            ]);
+        } catch (ApiErrorException|Throwable $exception)
+        {
+            throw new RuntimeException($exception->getMessage(), 0, $exception);
+        }
+
+        return true;
+    }
+
     public function swap(Team $team, string $subscriptionId, string $itemId, string $priceId): void
     {
         $secret = $this->secret($team);

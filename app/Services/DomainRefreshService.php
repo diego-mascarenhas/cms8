@@ -6,6 +6,7 @@ use App\Helpers\DnsHelper;
 use App\Models\Domain;
 use App\Services\ControlPanel\ControlPanelManager;
 use App\Services\ControlPanel\CpanelConnector;
+use App\Services\Hosting\DomainRuntimeDetector;
 use Illuminate\Support\Facades\Log;
 
 class DomainRefreshService
@@ -14,6 +15,7 @@ class DomainRefreshService
         private ControlPanelManager $controlPanelManager,
         private WHMService $whmService,
         private DomainInfoService $domainInfoService,
+        private DomainRuntimeDetector $runtimeDetector,
     ) {}
 
     /**
@@ -146,7 +148,7 @@ class DomainRefreshService
                 ]),
             ]);
 
-            $domain->updatePhpVersion();
+            $this->runtimeDetector->fillMissing($domain->fresh() ?? $domain, true);
 
             return ['success' => true];
         } catch (\Throwable $e)

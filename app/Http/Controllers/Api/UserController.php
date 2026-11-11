@@ -108,6 +108,14 @@ class UserController extends Controller
         $validated = $request->validated();
         $isOwner = (int) $team->user_id === (int) $user->id;
 
+        if ($this->roleOnTeam($user, $team) === 'client')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Ese usuario es cliente de este equipo, no un administrador.'),
+            ], 422);
+        }
+
         $user->forceFill([
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -198,6 +206,14 @@ class UserController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => __('No se puede quitar al dueño del equipo.'),
+            ], 422);
+        }
+
+        if ($this->roleOnTeam($user, $team) === 'client')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Ese usuario es cliente de este equipo.'),
             ], 422);
         }
 
@@ -391,6 +407,28 @@ class UserController extends Controller
     /**
      * @return array{id: int, name: string, email: string, role: ?string, roles: list<string>, is_owner: bool, working?: bool}
      */
+    /**
+     * Role of this user on the given team. A global Spatie role belongs to
+     * whatever workspace granted it and must not be reported as this team's role.
+     */
+    private function roleOnTeam(User $user, Team $team): ?string
+    {
+        $membership = $user->membership ?? null;
+        $role = is_object($membership) ? ($membership->role ?? null) : null;
+
+        if (is_string($role) && $role !== '')
+        {
+            return $role;
+        }
+
+        $attached = $user->relationLoaded('teams')
+            ? $user->teams->firstWhere('id', $team->id)
+            : $user->teams()->where('teams.id', $team->id)->first();
+        $attachedRole = $attached?->pivot->role ?? null;
+
+        return is_string($attachedRole) && $attachedRole !== '' ? $attachedRole : null;
+    }
+
     private function presentUser(User $user, Team $team, ?bool $working = null): array
     {
         $roleNames = $user->roles->pluck('name')->values()->all();
@@ -399,8 +437,8 @@ class UserController extends Controller
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
-            'role' => $roleNames[0] ?? 'admin',
-            'roles' => $roleNames !== [] ? $roleNames : ['admin'],
+            'role' => $this->roleOnTeam($user, $team),
+            'roles' => $roleNames,
             'is_owner' => (int) $team->user_id === (int) $user->id,
         ];
 

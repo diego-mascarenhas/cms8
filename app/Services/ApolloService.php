@@ -327,6 +327,48 @@ class ApolloService
     }
 
     /**
+     * Find a person from an email, a LinkedIn URL, or a name plus company.
+     * Does not ask Apollo to reveal personal emails or phone numbers.
+     *
+     * @param  array<string, mixed>  $hints
+     * @return array<string, mixed>|null
+     */
+    public function matchPerson(array $hints): ?array
+    {
+        if (empty($this->apiKey))
+        {
+            throw new \RuntimeException('Apollo no está configurado.');
+        }
+
+        $params = [];
+        foreach (['id', 'email', 'linkedin_url', 'first_name', 'last_name', 'organization_name', 'domain'] as $key)
+        {
+            $value = trim((string) ($hints[$key] ?? ''));
+            if ($value !== '')
+            {
+                $params[$key] = $value;
+            }
+        }
+
+        $identified = isset($params['id']) || isset($params['email']) || isset($params['linkedin_url']);
+        $named = isset($params['first_name']) && isset($params['last_name']) && isset($params['organization_name']);
+        if (! $identified && ! $named)
+        {
+            return null;
+        }
+
+        $response = $this->postPeopleMatch($params);
+        if (! $response->successful())
+        {
+            throw new \RuntimeException('Apollo no respondió.');
+        }
+
+        $person = $response->json('person');
+
+        return is_array($person) && $person !== [] ? $person : null;
+    }
+
+    /**
      * Enrich a person by Apollo id to get full name and email (consumes credits).
      * Calls Apollo People Enrichment API /people/match.
      *

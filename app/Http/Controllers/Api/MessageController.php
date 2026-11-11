@@ -925,7 +925,7 @@ class MessageController extends Controller
 
         try
         {
-            $data = $generator->generate($team, $request->validated());
+            $data = $generator->generate($team, $request->validated(), $request->boolean('include_image', true));
         } catch (RuntimeException $exception)
         {
             return response()->json([

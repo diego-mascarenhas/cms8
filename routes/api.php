@@ -868,6 +868,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('contacts/filters', [ContactController::class, 'filters']);
     Route::get('contacts/import', [ContactController::class, 'importSchema']);
     Route::post('contacts/import', [ContactController::class, 'import']);
+    Route::post('contacts/{id}/enrich', [ContactController::class, 'enrich'])->whereNumber('id');
     Route::get('contacts/{id}', [ContactController::class, 'show']);
 
     // Clients (enterprises) — Assistant plan module "clients"
@@ -879,11 +880,25 @@ Route::middleware('auth.api')->group(function ()
     Route::get('enterprises/roster', [\App\Http\Controllers\Api\EnterpriseController::class, 'roster']);
     Route::get('enterprises/{id}/subscriptions', [ApiSubscriptionController::class, 'forEnterprise'])->whereNumber('id');
     Route::get('enterprises/{id}/profile', [\App\Http\Controllers\Api\EnterpriseController::class, 'profile'])->whereNumber('id');
+    Route::get('enterprises/{id}/billing', [\App\Http\Controllers\Api\EnterpriseBillingController::class, 'show'])->whereNumber('id');
+    Route::post('enterprises/{id}/billing/setup', [\App\Http\Controllers\Api\EnterpriseBillingController::class, 'setup'])->whereNumber('id');
+    Route::post('enterprises/{id}/billing/confirm', [\App\Http\Controllers\Api\EnterpriseBillingController::class, 'confirm'])->whereNumber('id');
+    Route::post('enterprises/{id}/billing/default', [\App\Http\Controllers\Api\EnterpriseBillingController::class, 'choose'])->whereNumber('id');
     Route::patch('enterprises/{id}/contacts/{contactId}', [\App\Http\Controllers\Api\EnterpriseController::class, 'updateContactRole'])->whereNumber(['id', 'contactId']);
     Route::delete('enterprises/{id}/contacts/{contactId}', [\App\Http\Controllers\Api\EnterpriseController::class, 'detachContact'])->whereNumber(['id', 'contactId']);
     Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
     Route::get('subscriptions', [ApiSubscriptionController::class, 'index']);
+    Route::get('hosting', [\App\Http\Controllers\Api\HostingController::class, 'index']);
+    Route::get('hosting/{domain}', [\App\Http\Controllers\Api\HostingController::class, 'show'])->whereNumber('domain');
+    Route::post('hosting/{domain}/password', [\App\Http\Controllers\Api\HostingController::class, 'updatePassword'])->whereNumber('domain');
+    Route::post('hosting/{domain}/plan', [\App\Http\Controllers\Api\HostingController::class, 'updatePlan'])->whereNumber('domain');
+    Route::post('hosting/{domain}/email-password', [\App\Http\Controllers\Api\HostingController::class, 'updateEmailPassword'])->whereNumber('domain');
+    Route::post('hosting/{domain}/email-quota', [\App\Http\Controllers\Api\HostingController::class, 'updateEmailQuota'])->whereNumber('domain');
+    Route::post('hosting', [\App\Http\Controllers\Api\HostingController::class, 'store']);
+    Route::post('domains/check', [\App\Http\Controllers\Api\DomainRegistrationController::class, 'check']);
+    Route::post('domains/register', [\App\Http\Controllers\Api\DomainRegistrationController::class, 'register']);
     Route::get('subscriptions/{id}', [ApiSubscriptionController::class, 'show'])->whereNumber('id');
+    Route::patch('subscriptions/{id}/metadata', [ApiSubscriptionController::class, 'updateMetadata'])->whereNumber('id');
     Route::get('search', [WebContactController::class, 'search']);
 
     // Mailbox inbox (synced IMAP emails)

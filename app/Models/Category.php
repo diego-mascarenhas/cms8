@@ -294,6 +294,7 @@ class Category extends Model
                 'id' => $data->id,
                 'name' => $data->name,
                 'full_path' => $data->full_path,
+                'color' => \App\Services\WhatsApp\WhatsAppThreadCategoryService::normalizeColor($data->color),
             ];
         });
     }

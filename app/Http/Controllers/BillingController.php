@@ -193,7 +193,7 @@ class BillingController extends Controller
             {
                 $affiliateReferralPlans[] = array_merge($plan, [
                     'referral_url' => $affiliateReferralCode !== null
-                        ? $linkBuilder->buildCaptureRedirectLink($plan['checkout_url'], $affiliateReferralCode)
+                        ? $linkBuilder->referralUrl($plan, $affiliateReferralCode)
                         : null,
                 ]);
             }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Mail\AffiliatePurchaseInvitationMail;
 use App\Models\AffiliateInvitation;
 use App\Models\BillingAffiliateCommission;
+use App\Models\Enterprise;
 use App\Models\ServiceSync;
 use App\Models\Subscription;
 use App\Models\Team;
@@ -14,6 +15,7 @@ use App\Support\AffiliateCommission;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -85,10 +87,9 @@ class AffiliateProgramService
         $plans = [];
         foreach ($this->linkBuilder->availablePlans($catalog) as $plan)
         {
-            $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
             $plans[] = array_merge($plan, [
-                'referral_url' => $referralCode !== null && $checkoutUrl !== ''
-                    ? $this->linkBuilder->buildCaptureRedirectLink($checkoutUrl, $referralCode)
+                'referral_url' => $referralCode !== null
+                    ? $this->linkBuilder->referralUrl($plan, $referralCode)
                     : null,
             ]);
         }
@@ -99,7 +100,19 @@ class AffiliateProgramService
             ->limit(100)
             ->get();
 
-        $referrals = $this->buildReferrals($team, $invitations, $commissionsAsReferrer);
+        $linkedTeams = $commissionsAsReferrer
+            ->map(fn (BillingAffiliateCommission $row): ?Team => $row->payingTeam)
+            ->merge($commissionsAsPayer->map(fn (BillingAffiliateCommission $row): ?Team => $row->referrerTeam));
+
+        if ($referralCode !== null)
+        {
+            $linkedTeams = $linkedTeams->merge(
+                Team::query()->with('owner')->where('referred_by', $referralCode)->get(),
+            );
+        }
+
+        $enterpriseIds = $this->enterpriseIdsForTeams($linkedTeams);
+        $referrals = $this->buildReferrals($team, $invitations, $commissionsAsReferrer, $enterpriseIds);
         $totalsAsReferrer = $this->sumCommissionsByCurrency($commissionsAsReferrer);
         if ($totalsAsReferrer === [])
         {
@@ -115,8 +128,8 @@ class AffiliateProgramService
             'plans' => $plans,
             'invitations' => $invitations->map(fn (AffiliateInvitation $invitation): array => $this->serializeInvitation($invitation))->values()->all(),
             'referrals' => $referrals,
-            'commissions_as_referrer' => $commissionsAsReferrer->map(fn (BillingAffiliateCommission $row): array => $this->serializeCommission($row, 'paying'))->values()->all(),
-            'commissions_as_payer' => $commissionsAsPayer->map(fn (BillingAffiliateCommission $row): array => $this->serializeCommission($row, 'referrer'))->values()->all(),
+            'commissions_as_referrer' => $commissionsAsReferrer->map(fn (BillingAffiliateCommission $row): array => $this->serializeCommission($row, 'paying', $enterpriseIds))->values()->all(),
+            'commissions_as_payer' => $commissionsAsPayer->map(fn (BillingAffiliateCommission $row): array => $this->serializeCommission($row, 'referrer', $enterpriseIds))->values()->all(),
             'totals_as_referrer' => $totalsAsReferrer,
             'totals_as_payer' => $this->sumCommissionsByCurrency($commissionsAsPayer),
         ];
@@ -178,15 +191,15 @@ class AffiliateProgramService
         $planId = (string) $data['invite_plan'];
         $plan = collect($this->linkBuilder->availablePlans($data['catalog'] ?? null))->firstWhere('id', $planId);
 
-        if ($plan === null || trim((string) ($plan['checkout_url'] ?? '')) === '')
+        if ($plan === null)
         {
             throw ValidationException::withMessages([
                 'invite_plan' => __('The selected plan is not available.'),
             ]);
         }
 
-        $checkoutUrl = $this->linkBuilder->buildCaptureRedirectLink(
-            $plan['checkout_url'],
+        $checkoutUrl = $this->linkBuilder->referralUrl(
+            $plan,
             $referralCode,
             (string) $data['invite_email'],
         );
@@ -282,13 +295,16 @@ class AffiliateProgramService
             $this->claimCustomer($payingTeam, $referrerCode);
         }
 
+        $payingTeam = $payingTeam->unsetRelation('subscriptions')->loadMissing('owner');
+
         return $this->serializeReferralFromTeam(
-            $payingTeam->unsetRelation('subscriptions')->loadMissing('owner'),
+            $payingTeam,
             $referrer->billingAffiliateCommissionsAsReferrer()
                 ->where('paying_team_id', $payingTeam->id)
                 ->get()
                 ->all(),
             $referrerCode,
+            $this->enterpriseIdsForTeams(collect([$payingTeam])),
         );
     }
 
@@ -715,7 +731,11 @@ class AffiliateProgramService
      * @param  'paying'|'referrer'  $counterparty
      * @return array<string, mixed>
      */
-    private function serializeCommission(BillingAffiliateCommission $row, string $counterparty): array
+    /**
+     * @param  array<int, int>  $enterpriseIds
+     * @return array<string, mixed>
+     */
+    private function serializeCommission(BillingAffiliateCommission $row, string $counterparty, array $enterpriseIds = []): array
     {
         $team = $counterparty === 'paying' ? $row->payingTeam : $row->referrerTeam;
 
@@ -728,15 +748,17 @@ class AffiliateProgramService
             'commission_amount_cents' => (int) $row->commission_amount_cents,
             'created_at' => $row->created_at?->toIso8601String(),
             'counterparty_team' => $team?->name,
+            'enterprise_id' => $this->enterpriseId($team, $enterpriseIds),
         ];
     }
 
     /**
      * @param  Collection<int, AffiliateInvitation>  $invitations
      * @param  Collection<int, BillingAffiliateCommission>  $commissions
+     * @param  array<int, int>  $enterpriseIds
      * @return list<array<string, mixed>>
      */
-    private function buildReferrals(Team $team, Collection $invitations, Collection $commissions): array
+    private function buildReferrals(Team $team, Collection $invitations, Collection $commissions, array $enterpriseIds = []): array
     {
         $referralCode = $this->linkBuilder->referralCode($team);
 
@@ -794,6 +816,7 @@ class AffiliateProgramService
                     $teamsByEmail[$email] ?? null,
                     $commissionsByEmail[$email] ?? [],
                     $referralCode,
+                    $enterpriseIds,
                 ),
             );
         }
@@ -806,7 +829,7 @@ class AffiliateProgramService
             }
 
             $usedEmails[$email] = true;
-            array_push($referrals, ...$this->serializeTeamReferrals($referred, $commissionsByEmail[$email] ?? [], $referralCode));
+            array_push($referrals, ...$this->serializeTeamReferrals($referred, $commissionsByEmail[$email] ?? [], $referralCode, null, $enterpriseIds));
         }
 
         foreach ($commissions as $row)
@@ -820,12 +843,12 @@ class AffiliateProgramService
             if ($email !== '' && $row->payingTeam !== null)
             {
                 $usedEmails[$email] = true;
-                array_push($referrals, ...$this->serializeTeamReferrals($row->payingTeam, $commissionsByEmail[$email], $referralCode));
+                array_push($referrals, ...$this->serializeTeamReferrals($row->payingTeam, $commissionsByEmail[$email], $referralCode, null, $enterpriseIds));
 
                 continue;
             }
 
-            $referrals[] = $this->serializeReferralFromCommission($row);
+            $referrals[] = $this->serializeReferralFromCommission($row, $enterpriseIds);
         }
 
         return $this->sortReferralsByRenewal($referrals);
@@ -835,11 +858,15 @@ class AffiliateProgramService
      * @param  list<BillingAffiliateCommission>  $commissionRows
      * @return list<array<string, mixed>>
      */
-    private function serializeInvitationReferrals(AffiliateInvitation $invitation, ?Team $referred, array $commissionRows, ?string $referrerCode = null): array
+    /**
+     * @param  array<int, int>  $enterpriseIds
+     * @return list<array<string, mixed>>
+     */
+    private function serializeInvitationReferrals(AffiliateInvitation $invitation, ?Team $referred, array $commissionRows, ?string $referrerCode = null, array $enterpriseIds = []): array
     {
         if ($referred !== null)
         {
-            $rows = $this->serializeTeamReferrals($referred, $commissionRows, $referrerCode, $invitation);
+            $rows = $this->serializeTeamReferrals($referred, $commissionRows, $referrerCode, $invitation, $enterpriseIds);
             if ($rows !== [])
             {
                 return $rows;
@@ -864,6 +891,7 @@ class AffiliateProgramService
             'commission_percent' => $summary['commission_percent'],
             'currency' => $summary['currency'],
             'status' => $contracted ? 'Contrató' : $invitation->statusLabel(),
+            'enterprise_id' => $this->enterpriseId($referred, $enterpriseIds),
         ]];
     }
 
@@ -871,23 +899,31 @@ class AffiliateProgramService
      * @param  list<BillingAffiliateCommission>  $commissionRows
      * @return array<string, mixed>
      */
-    private function serializeReferralFromTeam(Team $referred, array $commissionRows, ?string $referrerCode = null): array
+    /**
+     * @param  array<int, int>  $enterpriseIds
+     * @return array<string, mixed>
+     */
+    private function serializeReferralFromTeam(Team $referred, array $commissionRows, ?string $referrerCode = null, array $enterpriseIds = []): array
     {
-        $rows = $this->serializeTeamReferrals($referred, $commissionRows, $referrerCode);
+        $rows = $this->serializeTeamReferrals($referred, $commissionRows, $referrerCode, null, $enterpriseIds);
 
-        return $rows[0] ?? $this->serializeTeamFallback($referred, $commissionRows);
+        return $rows[0] ?? $this->serializeTeamFallback($referred, $commissionRows, $enterpriseIds);
     }
 
     /**
      * @param  list<BillingAffiliateCommission>  $commissionRows
      * @return list<array<string, mixed>>
      */
-    private function serializeTeamReferrals(Team $referred, array $commissionRows, ?string $referrerCode = null, ?AffiliateInvitation $invitation = null): array
+    /**
+     * @param  array<int, int>  $enterpriseIds
+     * @return list<array<string, mixed>>
+     */
+    private function serializeTeamReferrals(Team $referred, array $commissionRows, ?string $referrerCode = null, ?AffiliateInvitation $invitation = null, array $enterpriseIds = []): array
     {
         $subscriptions = $this->referredSubscriptions($referred, $referrerCode);
         if ($subscriptions->isEmpty())
         {
-            return $invitation === null ? [$this->serializeTeamFallback($referred, $commissionRows)] : [];
+            return $invitation === null ? [$this->serializeTeamFallback($referred, $commissionRows, $enterpriseIds)] : [];
         }
 
         $summary = $this->summarizeCommissionRows($commissionRows);
@@ -917,6 +953,7 @@ class AffiliateProgramService
                 'commission_percent' => $percent,
                 'currency' => $commissionCents > 0 ? ($currency ?? 'EUR') : $currency,
                 'status' => 'Contrató',
+                'enterprise_id' => $this->enterpriseId($referred, $enterpriseIds),
             ];
         }
 
@@ -927,7 +964,11 @@ class AffiliateProgramService
      * @param  list<BillingAffiliateCommission>  $commissionRows
      * @return array<string, mixed>
      */
-    private function serializeTeamFallback(Team $referred, array $commissionRows): array
+    /**
+     * @param  array<int, int>  $enterpriseIds
+     * @return array<string, mixed>
+     */
+    private function serializeTeamFallback(Team $referred, array $commissionRows, array $enterpriseIds = []): array
     {
         $summary = $this->summarizeCommissionRows($commissionRows);
 
@@ -946,13 +987,15 @@ class AffiliateProgramService
             'commission_percent' => $summary['commission_percent'],
             'currency' => $summary['currency'],
             'status' => 'Contrató',
+            'enterprise_id' => $this->enterpriseId($referred, $enterpriseIds),
         ];
     }
 
     /**
+     * @param  array<int, int>  $enterpriseIds
      * @return array<string, mixed>
      */
-    private function serializeReferralFromCommission(BillingAffiliateCommission $row): array
+    private function serializeReferralFromCommission(BillingAffiliateCommission $row, array $enterpriseIds = []): array
     {
         return [
             'id' => 'commission-'.$row->id,
@@ -969,7 +1012,102 @@ class AffiliateProgramService
             'commission_percent' => (float) $row->commission_percent,
             'currency' => strtoupper((string) $row->currency),
             'status' => 'Contrató',
+            'enterprise_id' => $this->enterpriseId($row->payingTeam, $enterpriseIds),
         ];
+    }
+
+    /**
+     * @param  Collection<int, Team|null>  $teams
+     * @return array<int, int>
+     */
+    private function enterpriseIdsForTeams(Collection $teams): array
+    {
+        $teams = $teams->filter(fn ($team): bool => $team instanceof Team)->unique('id')->values();
+
+        if ($teams->isEmpty())
+        {
+            return [];
+        }
+
+        $codes = $teams
+            ->map(fn (Team $team): string => strtolower(trim((string) $team->stripe_id)))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $emails = $teams
+            ->map(fn (Team $team): string => $this->normalizedEmail($team->owner?->email))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($codes->isEmpty() && $emails->isEmpty())
+        {
+            return [];
+        }
+
+        $enterprises = Enterprise::query()
+            ->where(function ($query) use ($codes, $emails): void
+            {
+                if ($codes->isNotEmpty())
+                {
+                    $query->whereIn(DB::raw('lower(code)'), $codes->all());
+                }
+
+                if ($emails->isNotEmpty())
+                {
+                    $query->{$codes->isNotEmpty() ? 'orWhereIn' : 'whereIn'}(DB::raw('lower(email)'), $emails->all());
+                }
+            })
+            ->get(['id', 'code', 'email']);
+
+        $byCode = [];
+        $byEmail = [];
+
+        foreach ($enterprises as $enterprise)
+        {
+            $code = strtolower(trim((string) $enterprise->code));
+            $email = $this->normalizedEmail($enterprise->email);
+
+            if ($code !== '')
+            {
+                $byCode[$code] = (int) $enterprise->id;
+            }
+
+            if ($email !== '' && ! isset($byEmail[$email]))
+            {
+                $byEmail[$email] = (int) $enterprise->id;
+            }
+        }
+
+        $map = [];
+
+        foreach ($teams as $team)
+        {
+            $code = strtolower(trim((string) $team->stripe_id));
+            $email = $this->normalizedEmail($team->owner?->email);
+            $id = ($code !== '' ? ($byCode[$code] ?? null) : null) ?? ($email !== '' ? ($byEmail[$email] ?? null) : null);
+
+            if ($id !== null)
+            {
+                $map[(int) $team->id] = $id;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  array<int, int>  $enterpriseIds
+     */
+    private function enterpriseId(?Team $team, array $enterpriseIds): ?int
+    {
+        if ($team === null)
+        {
+            return null;
+        }
+
+        return $enterpriseIds[(int) $team->id] ?? null;
     }
 
     /**

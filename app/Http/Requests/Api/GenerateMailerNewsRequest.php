@@ -41,6 +41,7 @@ class GenerateMailerNewsRequest extends FormRequest
                 'educational',
             ])],
             'avoid' => ['nullable', 'string', 'max:1000'],
+            'include_image' => ['sometimes', 'boolean'],
         ];
     }
 

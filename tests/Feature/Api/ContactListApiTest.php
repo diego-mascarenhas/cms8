@@ -51,6 +51,7 @@ class ContactListApiTest extends TestCase
             'team_id' => $team->id,
             'module_id' => $module->id,
             'name' => 'Lead web',
+            'color' => '#6B8CAE',
             'status' => 1,
             'order' => 0,
         ]);
@@ -107,6 +108,7 @@ class ContactListApiTest extends TestCase
             ->assertJsonPath('data.data.0.intent.name', 'Comprar')
             ->assertJsonPath('data.data.0.sentiment.emoji', '🥳')
             ->assertJsonPath('data.data.0.categories.0.name', 'Lead web')
+            ->assertJsonPath('data.data.0.categories.0.color', '#6b8cae')
             ->assertJsonPath('data.data.0.responsible.name', 'Diego Mascarenhas')
             ->assertJsonPath('data.data.0.status.name', 'Lead')
             ->assertJsonPath('data.data.0.enterprise_id', null)
@@ -120,7 +122,7 @@ class ContactListApiTest extends TestCase
             ->assertOk()
             ->assertJsonFragment(['name' => '🥳 Muy Positivo'])
             ->assertJsonFragment(['name' => '🛒 Comprar'])
-            ->assertJsonFragment(['name' => 'Lead web'])
+            ->assertJsonFragment(['name' => 'Lead web', 'color' => '#6b8cae'])
             ->assertJsonFragment(['name' => 'Argentina'])
             ->assertJsonMissing(['name' => 'España'])
             ->assertJsonFragment(['name' => 'Lead'])

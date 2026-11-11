@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\PushCalendarEventToGoogleJob;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
+use App\Models\Message;
 use App\Services\CalendarEventInvitationService;
 use App\Services\MeetingCalendarSync;
 use App\Services\PaidAds\PaidAdCampaignCalendarSyncer;
@@ -74,9 +75,9 @@ class Calendar extends Controller
         $items = $events->map(function (CalendarEvent $event)
         {
             return $this->eventToFullCalendar($event);
-        });
+        })->all();
 
-        return response()->json($items->all());
+        return response()->json(array_merge($items, $this->emailCampaignStarts($start, $end)));
     }
 
     /**
@@ -227,6 +228,47 @@ class Calendar extends Controller
         PushCalendarEventToGoogleJob::dispatch($eventId, 'deleted');
 
         return response()->json(['ok' => true], 200);
+    }
+
+    /**
+     * All-day marks for email campaigns, on the day they were started.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function emailCampaignStarts(string $start, string $end): array
+    {
+        $rangeStart = CalendarEventDateTimeParser::parseForStorage($start);
+        $rangeEnd = CalendarEventDateTimeParser::parseForStorage($end);
+
+        return Message::query()
+            ->where('type_id', 1)
+            ->whereNotNull('started_at')
+            ->where('started_at', '>=', $rangeStart)
+            ->where('started_at', '<', $rangeEnd)
+            ->orderBy('started_at')
+            ->get(['id', 'name', 'started_at'])
+            ->map(function (Message $message): array
+            {
+                $day = $message->started_at->copy()->timezone(CalendarEventDateTimeParser::wallClockTimezone())->startOfDay();
+
+                return [
+                    'id' => 'message-'.$message->id,
+                    'title' => $message->name,
+                    'start' => $day->toDateString(),
+                    'end' => $day->copy()->addDay()->toDateString(),
+                    'allDay' => true,
+                    'editable' => false,
+                    'url' => '',
+                    'extendedProps' => [
+                        'calendar' => 'Email Marketing',
+                        'location' => '',
+                        'description' => 'Campaña iniciada',
+                        'guests' => [],
+                        'readOnly' => true,
+                    ],
+                ];
+            })
+            ->all();
     }
 
     private function eventToFullCalendar(CalendarEvent $event): array

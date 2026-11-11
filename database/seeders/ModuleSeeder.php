@@ -498,10 +498,17 @@ class ModuleSeeder extends Seeder
             'group' => 'learning',
             'order' => 7,
         ],
+        'surveys' => [
+            'name' => 'Surveys',
+            'icon' => 'clipboard-list',
+            'description' => 'Surveys and collected responses',
+            'group' => 'operations',
+            'order' => 8,
+        ],
     ];
 
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'team_files', 'blog', 'ebooks', 'website', 'campaigns', 'templates', 'mailer', 'paid_ads', 'hosting', 'mail', 'chat', 'enterprises', 'affiliates', 'prospecting', 'projects', 'services', 'times', 'documentation', 'ocr', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'stores', 'orders', 'academy'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'team_files', 'blog', 'ebooks', 'website', 'campaigns', 'templates', 'mailer', 'paid_ads', 'hosting', 'mail', 'chat', 'enterprises', 'affiliates', 'prospecting', 'projects', 'services', 'times', 'documentation', 'ocr', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'stores', 'orders', 'academy', 'surveys'],
     ];
 
     public function run()

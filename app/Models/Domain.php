@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Services\ControlPanel\ControlPanelManager;
+use App\Services\Hosting\DomainRuntimeDetector;
 use GuzzleHttp\Client;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Http;
 
 class Domain extends Model
 {
@@ -177,80 +178,26 @@ class Domain extends Model
 
     public function updateSiteType(): void
     {
-        if ($this->isWordPress() && $this->site_type !== 'WordPress')
-        {
-            $this->site_type = 'WordPress';
-            $this->save();
-        }
+        app(DomainRuntimeDetector::class)->fillMissing($this, true);
     }
 
     public function getPhpVersionFromServer(): ?string
     {
-        try
+        $server = $this->server;
+
+        if ($server === null || ! app(ControlPanelManager::class)->supports($server))
         {
-            $server = $this->server;
-
-            if (! $server || $server->control_panel !== 'cpanel' || ! $server->hasToken())
-            {
-                return null;
-            }
-
-            $url = "https://{$server->hostname}:2087/json-api/php_get_vhost_versions";
-            $query = http_build_query([
-                'api.filter.enable' => 1,
-                'api.filter.a.field' => 'vhost',
-                'api.filter.a.arg0' => $this->domain,
-            ]);
-
-            $response = Http::withHeaders([
-                'Authorization' => $server->getWhmAuthHeader(),
-            ])->get($url.'?'.$query);
-
-            if (! $response->successful())
-            {
-                \Log::error("WHM API request failed for {$this->domain}: ".$response->body());
-
-                return null;
-            }
-
-            $data = $response->json();
-
-            // Check for the version in the response
-            if (isset($data['data']['result'][0]['version']))
-            {
-                $version = $data['data']['result'][0]['version'];
-
-                // Handle cases like "ea-php82"
-                if (preg_match('/ea-php(\d+)/', $version, $matches))
-                {
-                    // Convert ea-php82 to 8.2
-                    $majorMinor = $matches[1];
-
-                    return substr($majorMinor, 0, 1).'.'.substr($majorMinor, 1);
-                }
-
-                return $version;
-            }
-
-            return null;
-        } catch (\Exception $e)
-        {
-            // Log error
-            \Log::error('Error fetching PHP version: '.$e->getMessage());
-
             return null;
         }
+
+        $version = app(ControlPanelManager::class)->forServer($server)->phpVersion($server, $this)['version'] ?? null;
+
+        return is_string($version) && $version !== '' ? $version : null;
     }
 
     public function updatePhpVersion(): void
     {
-        $phpVersion = $this->getPhpVersionFromServer();
-
-        if ($phpVersion && $this->php_version !== $phpVersion)
-        {
-            $this->php_version = $phpVersion;
-            $this->save();
-        }
+        app(DomainRuntimeDetector::class)->fillMissing($this, true);
     }
 
     /**

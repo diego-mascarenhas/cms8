@@ -125,6 +125,55 @@ JSON);
         $this->assertSame('<p>Hola</p>', $parsed['html']);
     }
 
+    public function test_generate_can_skip_the_hero_image(): void
+    {
+        [, , $token] = $this->adminWithToken();
+
+        $this->mock(MailerNewsGenerationService::class, function ($mock)
+        {
+            $mock->shouldReceive('generate')
+                ->once()
+                ->withArgs(function ($team, $brief, $withImage)
+                {
+                    return $brief['goal_type'] === 'promo' && $withImage === false;
+                })
+                ->andReturn([
+                    'name' => '¿Agendamos tu demo?',
+                    'text' => '20 minutos para ordenar tu WhatsApp comercial.',
+                    'html' => '<p>Hola {{name}}</p>',
+                    'css' => '',
+                ]);
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message/generate', [...$this->validBrief(), 'include_image' => false])
+            ->assertOk()
+            ->assertJsonPath('data.html', '<p>Hola {{name}}</p>');
+    }
+
+    public function test_apply_images_strips_the_hero_when_disabled(): void
+    {
+        $service = app(MailerNewsGenerationService::class);
+        $parsed = [
+            'name' => 'Asunto',
+            'text' => 'Vista previa',
+            'html' => '<p><img src="https://picsum.photos/id/1015/1200/480" alt="Hero"></p><p>Hola</p>',
+            'css' => '',
+        ];
+
+        $withoutImage = $service->applyImages($parsed, ['goal_type' => 'promo', 'goal' => 'oferta'], false);
+        $withImage = $service->applyImages([
+            'name' => 'Asunto',
+            'text' => 'Vista previa',
+            'html' => '<p>Hola</p>',
+            'css' => '',
+        ], ['goal_type' => 'promo', 'goal' => 'oferta'], true);
+
+        $this->assertStringNotContainsString('<img', $withoutImage['html']);
+        $this->assertStringContainsString('Hola', $withoutImage['html']);
+        $this->assertStringContainsString('<img', $withImage['html']);
+    }
+
     public function test_parse_keeps_img_tags(): void
     {
         $service = app(MailerNewsGenerationService::class);

@@ -10,4 +10,12 @@ return [
         'HOSTING_DEFAULT_SPF_RECORD',
         'v=spf1 include:spf.revisionalpha.com -all',
     ),
+
+    'flex_plan_name' => 'Flex',
+
+    'flex_package' => (string) env('HOSTING_FLEX_PACKAGE', 'revision_flex'),
+
+    'error_notify' => (string) env('HOSTING_ERROR_NOTIFY', 'webmaster@revisionalpha.cloud'),
+
+    'provision_server' => (string) env('HOSTING_PROVISION_SERVER', 'odin'),
 ];

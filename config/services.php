@@ -61,6 +61,11 @@ return [
         'enterprise_id' => env('OVH_ENTERPRISE_ID', 1),
     ],
 
+    'porkbun' => [
+        'key' => env('PORKBUN_API_KEY'),
+        'secret' => env('PORKBUN_SECRET_API_KEY'),
+    ],
+
     'mailbaby' => [
         'api_key' => env('MAILBABY_API_KEY'),
         'api_url' => env('MAILBABY_API_URL', 'https://api.mailbaby.net'),
