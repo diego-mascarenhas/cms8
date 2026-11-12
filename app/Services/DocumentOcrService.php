@@ -16,7 +16,7 @@ class DocumentOcrService
         $pdfText = $this->extractTextFromPdf($absolutePath);
         if ($pdfText !== null)
         {
-            return $pdfText;
+            return $this->ensureUtf8Text($pdfText);
         }
 
         $languages = (string) config('app.ocr_languages', 'spa+eng');
@@ -49,7 +49,7 @@ class DocumentOcrService
 
             $text = trim($fallback->getOutput());
 
-            return $text !== '' ? $text : null;
+            return $text !== '' ? $this->ensureUtf8Text($text) : null;
         }
 
         $text = trim($process->getOutput());
@@ -58,7 +58,25 @@ class DocumentOcrService
             return null;
         }
 
-        return $text;
+        return $this->ensureUtf8Text($text);
+    }
+
+    private function ensureUtf8Text(string $text): string
+    {
+        if ($text === '' || mb_check_encoding($text, 'UTF-8'))
+        {
+            return $text;
+        }
+
+        $fromLatin1 = @iconv('ISO-8859-1', 'UTF-8//IGNORE', $text);
+        if (is_string($fromLatin1) && $fromLatin1 !== '' && mb_check_encoding($fromLatin1, 'UTF-8'))
+        {
+            return $fromLatin1;
+        }
+
+        $stripped = @iconv('UTF-8', 'UTF-8//IGNORE', $text);
+
+        return is_string($stripped) ? $stripped : '';
     }
 
     private function resolveTesseractBinary(): string

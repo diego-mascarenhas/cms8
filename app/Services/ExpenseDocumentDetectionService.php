@@ -526,11 +526,30 @@ PROMPT;
 
     private function normalizeOcrText(string $text): string
     {
-        $normalized = str_replace(["\r\n", "\r"], "\n", $text);
+        $normalized = $this->ensureUtf8($text);
+        $normalized = str_replace(["\r\n", "\r"], "\n", $normalized);
         $normalized = preg_replace('/[^\S\n]+/u', ' ', $normalized) ?? $normalized;
         $normalized = preg_replace('/\n{3,}/u', "\n\n", $normalized) ?? $normalized;
 
         return trim($normalized);
+    }
+
+    private function ensureUtf8(string $text): string
+    {
+        if ($text === '' || mb_check_encoding($text, 'UTF-8'))
+        {
+            return $text;
+        }
+
+        $fromLatin1 = @iconv('ISO-8859-1', 'UTF-8//IGNORE', $text);
+        if (is_string($fromLatin1) && $fromLatin1 !== '' && mb_check_encoding($fromLatin1, 'UTF-8'))
+        {
+            return $fromLatin1;
+        }
+
+        $stripped = @iconv('UTF-8', 'UTF-8//IGNORE', $text);
+
+        return is_string($stripped) ? $stripped : '';
     }
 
     private function extractDocumentNumber(string $text, array $knownPhones): ?string
@@ -696,12 +715,12 @@ PROMPT;
             return null;
         }
 
-        if (preg_match('/\b(unpaid|not\s+paid|no\s+pagad[oa]|pendiente\s+de\s+pago|por\s+pagar|amount\s+due\s*[:\-]?\s*[$€]?\s*[1-9])/iu', $value) === 1)
+        if (preg_match('/(?:^|\n)\s*(?:status|estado|payment\s+status)\s*[:\-]?\s*(paid|pagad[oa]|cobrad[oa])\b/iu', $value) === 1)
         {
-            return false;
+            return true;
         }
 
-        if (preg_match('/(?:^|\n)\s*(?:status|estado|payment\s+status)\s*[:\-]?\s*(paid|pagad[oa]|cobrad[oa])\b/iu', $value) === 1)
+        if (preg_match('/\((?:paid|pagad[oa]|cobrad[oa])\)/iu', $value) === 1)
         {
             return true;
         }
@@ -714,6 +733,16 @@ PROMPT;
         if (preg_match('/amount\s+due\s*[:\-]?\s*[$€]?\s*0(?:[.,]00)?\b/iu', $value) === 1)
         {
             return true;
+        }
+
+        if (preg_match('/\b(unpaid|not\s+paid|no\s+pagad[oa]|pendiente\s+de\s+pago|por\s+pagar)\b/iu', $value) === 1)
+        {
+            return false;
+        }
+
+        if (preg_match('/amount\s+due\s*[:\-]?\s*[$€]?\s*[1-9]/iu', $value) === 1)
+        {
+            return false;
         }
 
         return null;
