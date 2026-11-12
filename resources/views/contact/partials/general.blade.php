@@ -76,6 +76,34 @@
             </div>
         </div>
 
+        @php
+            $certificates = $data->certificates();
+        @endphp
+        @if ($certificates->isNotEmpty())
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="ti ti-certificate ti-xs me-1"></i>{{ __('Certificados') }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    {{ __('El asistente los descarga en') }}
+                    <a href="{{ config('app.oba_certificate_url') }}" target="_blank" rel="noopener noreferrer">{{ config('app.oba_certificate_url') }}</a>
+                    {{ __('con su email.') }}
+                </p>
+                <ul class="list-unstyled mb-0">
+                    @foreach ($certificates as $certificate)
+                    <li class="d-flex justify-content-between align-items-center gap-3 py-2 border-bottom">
+                        <span>{{ $certificate->survey->title }}</span>
+                        <a href="{{ route('survey.certificate.admin', [$certificate->survey, $certificate]) }}">{{ __('Descargar') }}</a>
+                    </li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+        @endif
+
         <!-- Astral Profile -->
         @if($astralProfile)
         <div class="row g-4">

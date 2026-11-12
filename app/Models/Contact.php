@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Spatie\MediaLibrary\HasMedia;
@@ -829,6 +830,41 @@ class Contact extends Model implements HasMedia
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function certificates(): Collection
+    {
+        $email = mb_strtolower(trim((string) $this->email));
+        $userIds = collect($this->user_id ? [$this->user_id] : []);
+
+        if ($email !== '')
+        {
+            $matchedId = User::query()->whereRaw('LOWER(email) = ?', [$email])->value('id');
+
+            if ($matchedId)
+            {
+                $userIds->push($matchedId);
+            }
+        }
+
+        $userIds = $userIds->filter()->unique()->values();
+
+        if ($userIds->isEmpty())
+        {
+            return collect();
+        }
+
+        return SurveyResponse::withoutGlobalScope('team')
+            ->with(['survey' => function ($query)
+            {
+                $query->withoutGlobalScope('team');
+            }])
+            ->where('team_id', $this->team_id)
+            ->where('certified', true)
+            ->whereIn('user_id', $userIds)
+            ->get()
+            ->filter(fn (SurveyResponse $response): bool => $response->survey !== null && filled($response->survey->certificate_url))
+            ->values();
     }
 
     public function creator()

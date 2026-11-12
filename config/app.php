@@ -299,6 +299,8 @@ return [
 
     'survey_empresa_id' => (int) env('SURVEY_EMPRESA_ID', 7437),
 
+    'oba_certificate_url' => env('OBA_CERTIFICATE_URL', 'https://oba.test/certificado'),
+
     'legacy_media_base' => env('LEGACY_MEDIA_BASE', 'https://cms.revisionalpha.com/multimedia'),
 
     'allow_prod_read_toggle' => (bool) env('ALLOW_PROD_READ_TOGGLE', false),

@@ -1084,6 +1084,8 @@ Route::middleware('team.token')->prefix('team')->group(function ()
 
     // Team contacts
     Route::resource('contacts', TeamContactController::class);
+    Route::get('certificates', [\App\Http\Controllers\Api\TeamCertificateController::class, 'index'])->name('api.team.certificates.index');
+    Route::get('certificates/{survey}', [\App\Http\Controllers\Api\TeamCertificateController::class, 'download'])->whereNumber('survey')->name('api.team.certificates.download');
 
     // Team projects
     Route::resource('projects', TeamProjectController::class);
