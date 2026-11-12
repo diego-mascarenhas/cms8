@@ -18,6 +18,7 @@ use App\Services\InboxContactAccessService;
 use App\Services\MailerAudienceCsvImportService;
 use App\Services\Prospecting\ProspectDirectory;
 use App\Services\WhatsApp\WhatsAppThreadCategoryService;
+use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -211,13 +212,7 @@ class ContactController extends Controller
             $search = $request->get('search');
             if (is_string($search) && trim($search) !== '')
             {
-                $term = '%'.trim($search).'%';
-                $query->where(function ($q) use ($term)
-                {
-                    $q->where('name', 'like', $term)
-                        ->orWhere('surname', 'like', $term)
-                        ->orWhere('email', 'like', $term);
-                });
+                SearchNormalizer::applyContactNavbarConditions($query, trim($search));
             }
 
             $sentimentId = $this->numericFilter($request, 'sentiment_id');

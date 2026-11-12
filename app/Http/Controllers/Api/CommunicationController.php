@@ -11,6 +11,7 @@ use App\Models\Communication;
 use App\Models\Team;
 use App\Services\Communications\CommunicationService;
 use App\Services\MailBabyService;
+use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -62,13 +63,12 @@ class CommunicationController extends Controller
         $search = trim((string) ($validated['search'] ?? ''));
         if ($search !== '')
         {
-            $query->where(function ($builder) use ($search)
-            {
-                $builder->where('subject', 'like', '%'.$search.'%')
-                    ->orWhere('recipient_email', 'like', '%'.$search.'%')
-                    ->orWhere('recipient_phone', 'like', '%'.$search.'%')
-                    ->orWhere('recipient_name', 'like', '%'.$search.'%');
-            });
+            SearchNormalizer::applyColumnsNavbarConditions(
+                $query,
+                ['subject', 'recipient_email', 'recipient_name'],
+                $search,
+                'recipient_phone',
+            );
         }
 
         $perPage = (int) ($validated['per_page'] ?? 20);

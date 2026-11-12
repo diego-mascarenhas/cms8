@@ -9,6 +9,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\Imap\MailboxConnectionService;
 use App\Support\ApplicationDateTime;
+use App\Support\SearchNormalizer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator as Paginator;
@@ -67,14 +68,9 @@ class MailInboxService
             return $query;
         }
 
-        return $query->where(function (Builder $q) use ($term)
-        {
-            $like = '%'.$term.'%';
-            $q->where('subject', 'like', $like)
-                ->orWhere('from_address', 'like', $like)
-                ->orWhere('to_address', 'like', $like)
-                ->orWhere('body_text', 'like', $like);
-        });
+        SearchNormalizer::applyColumnsNavbarConditions($query, ['subject', 'from_address', 'to_address', 'body_text'], $term);
+
+        return $query;
     }
 
     public function paginate(Team $team, string $folder, string $search, int $page = 1, ?User $viewer = null, string $mailboxScope = 'all'): LengthAwarePaginator

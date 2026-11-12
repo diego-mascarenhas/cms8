@@ -78,9 +78,7 @@ class GlobalSearch extends Component
                 ->where('status_id', '!=', 6)
                 ->where(function ($q) use ($searchQuery)
                 {
-                    $q->whereRaw("CONCAT(name, ' ', surname) LIKE ?", ["%{$searchQuery}%"])
-                        ->orWhere('email', 'like', "%{$searchQuery}%")
-                        ->orWhere('phone', 'like', "%{$searchQuery}%");
+                    SearchNormalizer::applyContactNavbarConditions($q, $searchQuery);
                 });
 
             if (! $isAdmin)
@@ -133,8 +131,7 @@ class GlobalSearch extends Component
                 ->where('status', 1)
                 ->where(function ($q) use ($searchQuery)
                 {
-                    $q->where('description', 'like', "%{$searchQuery}%")
-                        ->orWhereRaw("JSON_SEARCH(data, 'one', ?) IS NOT NULL", ["%{$searchQuery}%"]);
+                    SearchNormalizer::applyServiceNavbarConditions($q, $searchQuery);
                 });
 
             $this->results['services'] = $servicesQuery->limit(10)
@@ -163,8 +160,7 @@ class GlobalSearch extends Component
                 ->where('team_id', $team->id)
                 ->where(function ($q) use ($searchQuery)
                 {
-                    $q->where('name', 'like', "%{$searchQuery}%")
-                        ->orWhere('description', 'like', "%{$searchQuery}%");
+                    SearchNormalizer::applyProjectNavbarConditions($q, $searchQuery);
                 });
 
             if (! $isAdmin)
@@ -195,7 +191,10 @@ class GlobalSearch extends Component
         {
             $this->results['invoices'] = Invoice::with('enterprise')
                 ->select('id', 'number', 'total_amount', 'created_at', 'enterprise_id')
-                ->where('number', 'like', "%{$searchQuery}%")
+                ->where(function ($q) use ($searchQuery)
+                {
+                    SearchNormalizer::applyColumnsNavbarConditions($q, ['number'], $searchQuery);
+                })
                 ->limit(10)
                 ->get()
                 ->map(function ($invoice)

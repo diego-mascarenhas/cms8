@@ -12,6 +12,7 @@ use App\Jobs\GenerateShopBriefOrderJob;
 use App\Models\Order;
 use App\Services\ShopOrderItemsService;
 use App\Services\ShopOrderWhatsAppQuoteService;
+use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -46,7 +47,7 @@ class OrderController extends Controller
         $search = trim((string) ($validated['search'] ?? ''));
         if ($search !== '')
         {
-            $query->where('order_number', 'like', '%'.$search.'%');
+            SearchNormalizer::applyColumnsNavbarConditions($query, ['order_number'], $search);
         }
 
         if (! empty($validated['payment_status']))

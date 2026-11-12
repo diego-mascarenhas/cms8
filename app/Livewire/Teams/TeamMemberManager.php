@@ -5,6 +5,7 @@ namespace App\Livewire\Teams;
 use App\Actions\Fortify\PasswordValidationRules;
 use App\Models\Team;
 use App\Services\TeamStripeCustomerService;
+use App\Support\SearchNormalizer;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
@@ -117,11 +118,7 @@ class TeamMemberManager extends JetstreamTeamMemberManager
 
         if ($search !== '')
         {
-            $query->where(function ($builder) use ($search)
-            {
-                $builder->where('users.name', 'like', "%{$search}%")
-                    ->orWhere('users.email', 'like', "%{$search}%");
-            });
+            SearchNormalizer::applyColumnsNavbarConditions($query, ['name', 'email'], $search);
         }
 
         return $query->with(['ownedTeams' => function ($builder): void

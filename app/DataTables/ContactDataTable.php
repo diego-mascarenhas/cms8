@@ -100,7 +100,7 @@ class ContactDataTable extends DataTable
             {
                 $query->whereHas('responsible', function ($q) use ($keyword)
                 {
-                    $q->where('name', 'like', "%{$keyword}%");
+                    SearchNormalizer::applyColumnsNavbarConditions($q, ['name'], $keyword);
                 });
             })
             ->addColumn('categories', function ($row)
