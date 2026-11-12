@@ -165,7 +165,10 @@ class DashboardWidgetsApiTest extends TestCase
             ->assertJsonPath('widgets.payments.1.customer_name', 'Norte Studio')
             ->assertJsonPath('widgets.payments.1.amount', '49,00 EUR')
             ->assertJsonPath('widgets.payments.2.last4', '0000')
+            ->assertJsonPath('widgets.sentiment.0.id', 1)
+            ->assertJsonPath('widgets.sentiment.0.label', 'Muy Negativo')
             ->assertJsonPath('widgets.sentiment.0.emoji', '😡')
+            ->assertJsonPath('widgets.sentiment.4.id', 5)
             ->assertJsonPath('widgets.sentiment.4.emoji', '🥳')
             ->assertJsonCount(5, 'widgets.sentiment')
             ->assertJsonPath('widgets.mailer.sent_total', 0)
@@ -363,10 +366,20 @@ class DashboardWidgetsApiTest extends TestCase
             'name' => 'REVISION ALPHA S.L.',
             'stripe_id' => 'cus_revision',
         ]);
-        $enterprise = Enterprise::withoutGlobalScopes()->create([
+        $named = Team::factory()->create([
+            'name' => 'IDONEO',
+            'stripe_id' => null,
+        ]);
+        $stripeEnterprise = Enterprise::withoutGlobalScopes()->create([
             'team_id' => $team->id,
-            'name' => 'REVISION ALPHA S.L.',
+            'name' => 'Otra razón social',
             'code' => 'cus_revision',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+        $idoneo = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Idoneo',
             'type_id' => 1,
             'status_id' => 1,
         ]);
@@ -376,12 +389,27 @@ class DashboardWidgetsApiTest extends TestCase
             'billed_cents' => 1500,
             'currency' => 'EUR',
             'stripe_invoice_id' => 'in_draft_link',
+            'period_to' => now()->startOfMonth(),
+        ]);
+        TeamUsageInvoice::factory()->create([
+            'team_id' => $named->id,
+            'status' => TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 700,
+            'currency' => 'EUR',
+            'stripe_invoice_id' => 'in_draft_name',
+            'period_to' => now()->subMonth()->startOfMonth(),
         ]);
 
         $this->withHeader('Authorization', 'Bearer '.$user->createToken('dashboard')->plainTextToken)
             ->getJson('/api/dashboard')
             ->assertOk()
-            ->assertJsonPath('widgets.drafts.items.0.team_name', 'REVISION ALPHA S.L.')
-            ->assertJsonPath('widgets.drafts.items.0.enterprise_id', $enterprise->id);
+            ->assertJsonFragment([
+                'team_name' => 'REVISION ALPHA S.L.',
+                'enterprise_id' => $stripeEnterprise->id,
+            ])
+            ->assertJsonFragment([
+                'team_name' => 'IDONEO',
+                'enterprise_id' => $idoneo->id,
+            ]);
     }
 }

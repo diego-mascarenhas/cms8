@@ -969,48 +969,34 @@ class DashboardController extends Controller
         $teams = Team::query()
             ->whereIn('id', $items->pluck('team_id')->filter()->unique()->all())
             ->get(['id', 'name', 'stripe_id']);
-        $codes = $teams
-            ->map(fn (Team $team): string => strtolower(trim((string) $team->stripe_id)))
-            ->filter(fn (string $code): bool => $code !== '')
-            ->unique()
-            ->values();
-        $names = $teams
-            ->map(fn (Team $team): string => trim((string) $team->name))
-            ->filter(fn (string $name): bool => $name !== '')
-            ->unique()
-            ->values();
-
-        if ($codes->isEmpty() && $names->isEmpty())
-        {
-            return [];
-        }
-
         $enterprises = Enterprise::withoutGlobalScopes()
             ->where('team_id', $teamId)
-            ->where(function ($query) use ($codes, $names)
-            {
-                if ($codes->isNotEmpty())
-                {
-                    $query->whereIn('code', $codes->all());
-                }
-
-                if ($names->isNotEmpty())
-                {
-                    $method = $codes->isNotEmpty() ? 'orWhereIn' : 'whereIn';
-                    $query->{$method}('name', $names->all());
-                }
-            })
             ->orderBy('id')
             ->get(['id', 'name', 'code']);
-        $byCode = $enterprises->keyBy(fn (Enterprise $enterprise): string => strtolower(trim((string) $enterprise->code)));
-        $byName = $enterprises->keyBy(fn (Enterprise $enterprise): string => mb_strtolower(trim((string) $enterprise->name)));
+        $byCode = $enterprises
+            ->filter(fn (Enterprise $enterprise): bool => trim((string) $enterprise->code) !== '')
+            ->keyBy(fn (Enterprise $enterprise): string => strtolower(trim((string) $enterprise->code)));
+        $byName = [];
+
+        foreach ($enterprises as $enterprise)
+        {
+            $key = $this->enterpriseMatchKey((string) $enterprise->name);
+
+            if ($key === '' || isset($byName[$key]))
+            {
+                continue;
+            }
+
+            $byName[$key] = $enterprise;
+        }
+
         $map = [];
 
         foreach ($teams as $team)
         {
             $code = strtolower(trim((string) $team->stripe_id));
-            $name = mb_strtolower(trim((string) $team->name));
-            $enterprise = ($code !== '' ? $byCode->get($code) : null) ?? $byName->get($name);
+            $enterprise = ($code !== '' ? $byCode->get($code) : null)
+                ?? $byName[$this->enterpriseMatchKey((string) $team->name)] ?? null;
 
             if ($enterprise)
             {
@@ -1021,13 +1007,23 @@ class DashboardController extends Controller
         return $map;
     }
 
+    private function enterpriseMatchKey(string $name): string
+    {
+        $value = mb_strtolower(trim($name));
+        $value = str_replace(['.', ',', '-', '_'], ' ', $value);
+        $value = preg_replace('/\s+/', ' ', $value) ?? $value;
+        $value = preg_replace('/\b(s l|s a|s r l|s l u|llc|ltd|inc|sa|sl|srl|slu)\b/', ' ', $value) ?? $value;
+
+        return trim(preg_replace('/\s+/', ' ', $value) ?? $value);
+    }
+
     private function moneyLabel(int $cents, string $currency): string
     {
         return number_format($cents / 100, 2, ',', '.').' '.strtoupper($currency);
     }
 
     /**
-     * @return list<array{label: string, count: int, emoji: string}>
+     * @return list<array{id: int, label: string, count: int, emoji: string}>
      */
     private function sentimentWidget(Team $team): array
     {
@@ -1037,6 +1033,7 @@ class DashboardController extends Controller
         return collect($rows)->values()->map(function (array $row, int $index) use ($emojis): array
         {
             return [
+                'id' => $index + 1,
                 'label' => (string) $row['label'],
                 'count' => (int) $row['count'],
                 'emoji' => $emojis[$index] ?? '😐',
