@@ -366,6 +366,60 @@ class ExpenseDocumentDetectionServiceTest extends TestCase
         $this->assertSame('2026-11-12', $detected['date']);
         $this->assertSame('2026-11-12', $detected['due_date']);
         $this->assertTrue($detected['is_paid']);
+        $this->assertSame('2026-11-12', $detected['payment_date']);
         $this->assertSame(121.0, $detected['payment_amount']);
+    }
+
+    public function test_detect_from_uploaded_file_extracts_forge_style_invoice_number_date_and_paid(): void
+    {
+        $team = Team::factory()->create([
+            'name' => 'REVISION ALPHA S.L.',
+        ]);
+        $team->setSetting('documents_ocr_mode', 'local', ['group' => 'documents']);
+
+        Currency::query()->create([
+            'code' => 'USD',
+            'name' => 'US Dollar',
+            'symbol' => '$',
+            'status' => true,
+        ]);
+
+        $ocrText = implode("\n", [
+            'Product: Forge',
+            'Date: Apr 10, 2026',
+            'Invoice Number: 1F3AD340-0018',
+            'Status: Paid',
+            'API Usage 1 $20.00',
+            'Total $20.00 USD',
+            'Amount due $0.00',
+        ]);
+
+        $ocrService = $this->createMock(DocumentOcrService::class);
+        $ocrService->expects($this->once())
+            ->method('extractTextFromLocalFile')
+            ->willReturn($ocrText);
+
+        $aiOcrService = $this->createMock(DocumentAiOcrService::class);
+        $aiOcrService->expects($this->never())
+            ->method('extractTextFromLocalFile');
+
+        $service = new ExpenseDocumentDetectionService(
+            $ocrService,
+            $aiOcrService,
+            app(\App\Services\ExpenseSupplierService::class),
+        );
+
+        $detected = $service->detectFromUploadedFile(
+            UploadedFile::fake()->create('Invoice-1F3AD340-0018.pdf', 64, 'application/pdf'),
+            $team->id,
+        );
+
+        $this->assertSame('1F3AD340-0018', $detected['document_number']);
+        $this->assertSame('2026-04-10', $detected['date']);
+        $this->assertSame('2026-04-10', $detected['due_date']);
+        $this->assertSame('2026-04-10', $detected['payment_date']);
+        $this->assertTrue($detected['is_paid']);
+        $this->assertSame(20.0, $detected['payment_amount']);
+        $this->assertSame('USD', $detected['currency_code']);
     }
 }
