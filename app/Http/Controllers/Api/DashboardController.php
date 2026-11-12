@@ -10,6 +10,7 @@ use App\Models\Contact;
 use App\Models\ContactIntent;
 use App\Models\ContactSentimentHistory;
 use App\Models\ContactStatus;
+use App\Models\Enterprise;
 use App\Models\List60;
 use App\Models\Notification;
 use App\Models\PaidAdMetricSnapshot;
@@ -932,22 +933,88 @@ class DashboardController extends Controller
             ->count();
 
         $items = $drafts->clone()->limit(6)->get();
+        $enterpriseIds = $this->draftEnterpriseIds($user, $items);
 
         return [
             'draft_count' => $drafts->clone()->count(),
             'open_count' => $openCount,
             'overdue_count' => $overdueCount,
             'total_label' => $this->moneyLabel((int) $drafts->clone()->sum('billed_cents'), $currency),
-            'items' => $items->map(function (TeamUsageInvoice $invoice): array
+            'items' => $items->map(function (TeamUsageInvoice $invoice) use ($enterpriseIds): array
             {
                 return [
                     'id' => $invoice->id,
                     'team_name' => $invoice->team?->name ?? ('Team #'.$invoice->team_id),
+                    'enterprise_id' => $enterpriseIds[(int) $invoice->team_id] ?? null,
                     'amount' => $this->moneyLabel((int) $invoice->billed_cents, (string) ($invoice->currency ?: 'eur')),
                     'status' => 'Borrador',
                 ];
             })->values()->all(),
         ];
+    }
+
+    /**
+     * @param  Collection<int, TeamUsageInvoice>  $items
+     * @return array<int, int>
+     */
+    private function draftEnterpriseIds(User $user, Collection $items): array
+    {
+        $teamId = (int) ($user->current_team_id ?? 0);
+
+        if ($teamId < 1 || $items->isEmpty())
+        {
+            return [];
+        }
+
+        $teams = Team::query()
+            ->whereIn('id', $items->pluck('team_id')->filter()->unique()->all())
+            ->get(['id', 'name', 'stripe_id']);
+        $enterprises = Enterprise::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->orderBy('id')
+            ->get(['id', 'name', 'code']);
+        $byCode = $enterprises
+            ->filter(fn (Enterprise $enterprise): bool => trim((string) $enterprise->code) !== '')
+            ->keyBy(fn (Enterprise $enterprise): string => strtolower(trim((string) $enterprise->code)));
+        $byName = [];
+
+        foreach ($enterprises as $enterprise)
+        {
+            $key = $this->enterpriseMatchKey((string) $enterprise->name);
+
+            if ($key === '' || isset($byName[$key]))
+            {
+                continue;
+            }
+
+            $byName[$key] = $enterprise;
+        }
+
+        $map = [];
+
+        foreach ($teams as $team)
+        {
+            $code = strtolower(trim((string) $team->stripe_id));
+            $enterprise = ($code !== '' ? $byCode->get($code) : null)
+                ?? $byName[$this->enterpriseMatchKey((string) $team->name)] ?? null;
+
+            if ($enterprise)
+            {
+                $map[(int) $team->id] = (int) $enterprise->id;
+            }
+        }
+
+        return $map;
+    }
+
+    private function enterpriseMatchKey(string $name): string
+    {
+        $value = mb_strtolower(trim($name));
+        $value = str_replace(['.', ',', '-', '_'], ' ', $value);
+        $value = preg_replace('/\s+/', ' ', $value) ?? $value;
+        $value = preg_replace('/\b(s l|s a|s r l|s l u|llc|ltd|inc|sa|sl|srl|slu)\b/', ' ', $value) ?? $value;
+
+        return trim(preg_replace('/\s+/', ' ', $value) ?? $value);
     }
 
     private function moneyLabel(int $cents, string $currency): string
@@ -956,7 +1023,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * @return list<array{label: string, count: int, emoji: string}>
+     * @return list<array{id: int, label: string, count: int, emoji: string}>
      */
     private function sentimentWidget(Team $team): array
     {
@@ -966,6 +1033,7 @@ class DashboardController extends Controller
         return collect($rows)->values()->map(function (array $row, int $index) use ($emojis): array
         {
             return [
+                'id' => $index + 1,
                 'label' => (string) $row['label'],
                 'count' => (int) $row['count'],
                 'emoji' => $emojis[$index] ?? '😐',

@@ -18,7 +18,7 @@ class ContactProfileBuilder
      */
     public function build(Contact $contact): array
     {
-        $contact->loadMissing(['status', 'responsible', 'currentEnterprise', 'person.enrichments', 'categories', 'team']);
+        $contact->loadMissing(['status', 'responsible', 'currentEnterprise', 'person.enrichments', 'categories', 'team', 'currentSentiment.sentiment']);
         $country = $contact->country()->first();
         $payload = $this->apolloPayload($contact);
         $organization = $this->organization($contact, $payload);
@@ -26,6 +26,7 @@ class ContactProfileBuilder
         $title = trim((string) ($contact->title ?: $contact->person?->title ?: ($payload['title'] ?? '')));
         $email = trim((string) $contact->email);
         $access = app(InboxContactAccessService::class)->presentForContact($contact->team, $contact);
+        $sentiment = $contact->currentSentiment?->sentiment;
 
         return [
             'id' => $contact->id,
@@ -58,6 +59,11 @@ class ContactProfileBuilder
             'access' => $access ? [
                 'id' => $access['id'],
                 'staff' => $access['staff'],
+            ] : null,
+            'sentiment' => $sentiment ? [
+                'id' => $sentiment->id,
+                'name' => $sentiment->name,
+                'emoji' => $sentiment->emoji,
             ] : null,
             'activity' => $this->activity($contact),
             'email_present' => $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL),

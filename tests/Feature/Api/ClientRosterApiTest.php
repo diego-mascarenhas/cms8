@@ -162,6 +162,7 @@ class ClientRosterApiTest extends TestCase
             ->assertJsonPath('data.summary.with_renewal', 1)
             ->assertJsonPath('data.data.0.contact.id', $contact->id)
             ->assertJsonPath('data.data.0.contact.email', 'ana@norte.test')
+            ->assertJsonPath('data.data.0.contact.sentiment', null)
             ->assertJsonPath('data.data.0.last_login', '2026-11-01T10:00:00+00:00');
 
         $other = Contact::query()->create([

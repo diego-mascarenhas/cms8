@@ -88,6 +88,7 @@ class ClientRoster
                     'status:id,name',
                     'categories:id',
                     'user:id,name,email',
+                    'currentSentiment.sentiment',
                     'enterprises' => function ($query) use ($ids, $teamId)
                     {
                         $query->where('enterprises.team_id', $teamId)->whereIn('enterprises.id', $ids);
@@ -446,6 +447,7 @@ class ClientRoster
     private function contact(Contact $contact, array $staffUserIds): array
     {
         $name = trim($contact->name.' '.(string) ($contact->surname ?? ''));
+        $sentiment = $contact->currentSentiment?->sentiment;
 
         return [
             'id' => (int) $contact->id,
@@ -461,6 +463,10 @@ class ClientRoster
                 'name' => (string) $contact->user->name,
                 'email' => (string) $contact->user->email,
                 'staff' => isset($staffUserIds[(int) $contact->user->id]),
+            ] : null,
+            'sentiment' => $sentiment ? [
+                'name' => $sentiment->name,
+                'emoji' => $sentiment->emoji,
             ] : null,
         ];
     }

@@ -3,11 +3,13 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Contact;
+use App\Models\ContactSentimentHistory;
 use App\Models\ContactStatus;
 use App\Models\Person;
 use App\Models\PersonEnrichment;
 use App\Models\Team;
 use App\Models\User;
+use Database\Seeders\ContactSentimentSeeder;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -45,6 +47,12 @@ class ContactEnrichApiTest extends TestCase
         $contact->person_id = $person->id;
         $contact->title = 'Directora';
         $contact->save();
+        $this->seed(ContactSentimentSeeder::class);
+        ContactSentimentHistory::query()->create([
+            'contact_id' => $contact->id,
+            'sentiment_id' => 5,
+            'notes' => 'Muy conforme',
+        ]);
 
         $this->withHeader('Authorization', 'Bearer '.$user->createToken('contact')->plainTextToken)
             ->getJson('/api/contacts/'.$contact->id)
@@ -59,6 +67,8 @@ class ContactEnrichApiTest extends TestCase
             ->assertJsonPath('data.categories', [])
             ->assertJsonPath('data.access', null)
             ->assertJsonPath('data.activity', [])
+            ->assertJsonPath('data.sentiment.emoji', '🥳')
+            ->assertJsonPath('data.sentiment.name', 'Muy Positivo')
             ->assertJsonPath('data.status.name', 'Lead')
             ->assertJsonPath('data.status.label_class', 'bg-label-success');
     }

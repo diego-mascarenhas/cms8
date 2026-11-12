@@ -7,15 +7,18 @@ use App\Models\Contact;
 use App\Models\ContactIntent;
 use App\Models\ContactSentimentHistory;
 use App\Models\ContactStatus;
+use App\Models\Enterprise;
 use App\Models\List60;
 use App\Models\List60Status;
 use App\Models\Module;
 use App\Models\PaymentSync;
 use App\Models\ServiceSync;
 use App\Models\Team;
+use App\Models\TeamUsageInvoice;
 use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
+use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
 use Database\Seeders\List60StatusesSeeder;
@@ -162,7 +165,10 @@ class DashboardWidgetsApiTest extends TestCase
             ->assertJsonPath('widgets.payments.1.customer_name', 'Norte Studio')
             ->assertJsonPath('widgets.payments.1.amount', '49,00 EUR')
             ->assertJsonPath('widgets.payments.2.last4', '0000')
+            ->assertJsonPath('widgets.sentiment.0.id', 1)
+            ->assertJsonPath('widgets.sentiment.0.label', 'Muy Negativo')
             ->assertJsonPath('widgets.sentiment.0.emoji', '😡')
+            ->assertJsonPath('widgets.sentiment.4.id', 5)
             ->assertJsonPath('widgets.sentiment.4.emoji', '🥳')
             ->assertJsonCount(5, 'widgets.sentiment')
             ->assertJsonPath('widgets.mailer.sent_total', 0)
@@ -341,5 +347,69 @@ class DashboardWidgetsApiTest extends TestCase
             ->assertJsonPath('widgets.intents.0.count', 1)
             ->assertJsonPath('widgets.intents.5.key', 'unclear')
             ->assertJsonPath('widgets.intents.5.count', 2);
+    }
+
+    public function test_draft_widget_links_the_billed_team_to_its_enterprise(): void
+    {
+        Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('root');
+
+        $billed = Team::factory()->create([
+            'name' => 'REVISION ALPHA S.L.',
+            'stripe_id' => 'cus_revision',
+        ]);
+        $named = Team::factory()->create([
+            'name' => 'IDONEO',
+            'stripe_id' => null,
+        ]);
+        $stripeEnterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Otra razón social',
+            'code' => 'cus_revision',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+        $idoneo = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Idoneo',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+        TeamUsageInvoice::factory()->create([
+            'team_id' => $billed->id,
+            'status' => TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 1500,
+            'currency' => 'EUR',
+            'stripe_invoice_id' => 'in_draft_link',
+            'period_to' => now()->startOfMonth(),
+        ]);
+        TeamUsageInvoice::factory()->create([
+            'team_id' => $named->id,
+            'status' => TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 700,
+            'currency' => 'EUR',
+            'stripe_invoice_id' => 'in_draft_name',
+            'period_to' => now()->subMonth()->startOfMonth(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('dashboard')->plainTextToken)
+            ->getJson('/api/dashboard')
+            ->assertOk()
+            ->assertJsonFragment([
+                'team_name' => 'REVISION ALPHA S.L.',
+                'enterprise_id' => $stripeEnterprise->id,
+            ])
+            ->assertJsonFragment([
+                'team_name' => 'IDONEO',
+                'enterprise_id' => $idoneo->id,
+            ]);
     }
 }
