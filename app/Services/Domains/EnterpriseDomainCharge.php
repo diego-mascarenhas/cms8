@@ -4,6 +4,7 @@ namespace App\Services\Domains;
 
 use App\Models\Enterprise;
 use App\Models\ServiceSync;
+use App\Services\StripeAccountResolver;
 use Carbon\Carbon;
 use RuntimeException;
 use Stripe\StripeClient;
@@ -204,12 +205,11 @@ class EnterpriseDomainCharge
      */
     private function client(Enterprise $enterprise): array
     {
-        $team = $enterprise->team;
-        $secret = trim((string) $team?->getSetting('stripe_secret'));
+        $secret = trim(StripeAccountResolver::secretForCategory('hosting'));
 
         if ($secret === '')
         {
-            throw new RuntimeException('Stripe no está configurado para el equipo.');
+            throw new RuntimeException('Stripe de la plataforma no está configurado.');
         }
 
         $customerId = $enterprise->getStripeCustomerId();
