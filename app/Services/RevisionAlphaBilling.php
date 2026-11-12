@@ -74,7 +74,7 @@ class RevisionAlphaBilling
             $response = Http::withHeaders([
                 'X-Portal-Secret' => $secret,
                 'Accept' => 'application/json',
-            ])->timeout(20)->post($base.$path, [
+            ])->connectTimeout(3)->timeout(8)->post($base.$path, [
                 'email' => $email,
             ]);
         } catch (\Throwable $exception)

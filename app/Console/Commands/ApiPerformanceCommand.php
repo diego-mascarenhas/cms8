@@ -10,8 +10,8 @@ use Illuminate\Console\Command;
 class ApiPerformanceCommand extends Command
 {
     protected $signature = 'api:performance
-                            {--team= : Team whose rows fill {id} parameters}
-                            {--user= : User whose Sanctum token calls auth routes. Defaults to the team owner}
+                            {--team=2 : Team whose rows fill {id} parameters}
+                            {--user=2 : User whose Sanctum token calls auth routes}
                             {--timeout=20 : Seconds before a single request is abandoned}
                             {--base-url= : API origin. Defaults to APP_URL}
                             {--token= : Sanctum token issued by the target server}

@@ -188,7 +188,7 @@ class AssistantWhatsAppUsageByLineService
             return [];
         }
 
-        $rows = Conversation::query()
+        $rowsQuery = Conversation::query()
             ->where('channel', 'whatsapp')
             ->where('direction', 'outbound')
             ->where('created_at', '>=', $from)
@@ -198,8 +198,9 @@ class AssistantWhatsAppUsageByLineService
                 $query->where('from', $teamNumber)
                     ->orWhere('from', 'like', $teamNumber.':%');
             })
-            ->whereNotNull('metadata')
-            ->get(['from', 'to', 'direction', 'metadata', 'created_at']);
+            ->whereNotNull('metadata');
+        $this->whereMetadataSignals($rowsQuery, ['token_usage']);
+        $rows = $rowsQuery->get(['from', 'to', 'direction', 'metadata', 'created_at']);
 
         $buckets = [];
 
@@ -746,7 +747,7 @@ class AssistantWhatsAppUsageByLineService
             return;
         }
 
-        $rows = Conversation::query()
+        $rowsQuery = Conversation::query()
             ->where('channel', 'whatsapp')
             ->where('direction', 'inbound')
             ->where('created_at', '>=', $from)
@@ -755,8 +756,9 @@ class AssistantWhatsAppUsageByLineService
             {
                 $query->where('to', $teamNumber)
                     ->orWhere('to', 'like', $teamNumber.':%');
-            })
-            ->get(['from', 'to', 'body', 'metadata', 'created_at']);
+            });
+        $this->whereMetadataSignals($rowsQuery, ['transcription_usage', 'TranscribedAudio', 'transcribed_audio'], true);
+        $rows = $rowsQuery->get(['from', 'to', 'body', 'metadata', 'created_at']);
 
         foreach ($rows as $row)
         {
@@ -820,7 +822,7 @@ class AssistantWhatsAppUsageByLineService
             $seen[(int) $ingestion->conversation_id] = true;
         }
 
-        $rows = Conversation::query()
+        $rowsQuery = Conversation::query()
             ->where('channel', 'whatsapp')
             ->where('direction', 'inbound')
             ->where('created_at', '>=', $from)
@@ -830,7 +832,9 @@ class AssistantWhatsAppUsageByLineService
                 $query->where('to', $teamNumber)
                     ->orWhere('to', 'like', $teamNumber.':%');
             })
-            ->get(['id', 'from', 'to', 'media', 'metadata', 'created_at']);
+            ->whereNotNull('metadata');
+        $this->whereMetadataSignals($rowsQuery, ['ocr_usage']);
+        $rows = $rowsQuery->get(['id', 'from', 'to', 'metadata', 'created_at']);
 
         foreach ($rows as $row)
         {
@@ -905,6 +909,31 @@ class AssistantWhatsAppUsageByLineService
     /**
      * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, model: string}|null
      */
+    /**
+     * Keep the year-long message scan on rows that can carry usage. The key is a fixed
+     * metadata name, never request input.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\Conversation>  $query
+     * @param  list<string>  $keys
+     */
+    private function whereMetadataSignals($query, array $keys, bool $audioBody = false): void
+    {
+        $column = $query->getConnection()->getDriverName() === 'pgsql' ? 'metadata::text' : 'metadata';
+
+        $query->where(function ($inner) use ($keys, $audioBody, $column): void
+        {
+            foreach ($keys as $key)
+            {
+                $inner->orWhereRaw($column.' LIKE ?', ['%"'.$key.'"%']);
+            }
+
+            if ($audioBody)
+            {
+                $inner->orWhere('body', 'like', '[audio]%');
+            }
+        });
+    }
+
     private function ocrUsageFromConversation(Conversation $row): ?array
     {
         $meta = is_array($row->metadata) ? $row->metadata : [];

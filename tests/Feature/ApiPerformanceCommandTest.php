@@ -87,6 +87,7 @@ class ApiPerformanceCommandTest extends TestCase
         $this->artisan('start', [
             '--api-performance' => true,
             '--api-team' => $team->id,
+            '--api-user' => $user->id,
             '--api-host' => 'admin',
         ])->assertSuccessful();
 
@@ -113,6 +114,7 @@ class ApiPerformanceCommandTest extends TestCase
 
         $this->artisan('api:performance', [
             '--team' => $team->id,
+            '--user' => $user->id,
             '--base-url' => 'https://staging.idoneo.dev',
             '--token' => 'sanctum-from-staging',
             '--team-token' => 'team-from-staging',

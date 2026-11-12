@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
@@ -53,6 +54,8 @@ return new class extends Migration
             $table->index(['category_id', 'status']);
             $table->index('whatsapp_enabled');
             $table->index(['team_id', 'is_featured']);
+            $table->index(['team_id', 'catalog_status'], 'products_team_catalog_status_idx');
+            $table->index(['team_id', new Expression('lower(code)')], 'products_team_lower_code_idx');
         });
     }
 

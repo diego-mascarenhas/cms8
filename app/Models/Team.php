@@ -999,19 +999,25 @@ class Team extends JetstreamTeam
      */
     public static function findForPublicCatalog(string $slug): ?self
     {
-        $enabledTeams = [];
-        foreach (TeamSetting::query()->where('key', 'public_catalog_enabled')->get() as $row)
+        $enabledIds = [];
+        foreach (TeamSetting::query()->where('key', 'public_catalog_enabled')->get(['team_id', 'value']) as $row)
         {
-            if (! filter_var($row->value, FILTER_VALIDATE_BOOLEAN))
+            if (filter_var($row->value, FILTER_VALIDATE_BOOLEAN))
             {
-                continue;
-            }
-            $team = $row->team;
-            if ($team)
-            {
-                $enabledTeams[] = $team;
+                $enabledIds[] = (int) $row->team_id;
             }
         }
+
+        $enabledTeams = $enabledIds === []
+            ? []
+            : static::query()
+                ->with(['settings' => function ($query): void
+                {
+                    $query->where('key', 'business_config');
+                }])
+                ->whereIn('id', $enabledIds)
+                ->get()
+                ->all();
 
         $requestedDomain = static::normalizePublicShopDomain($slug);
         if ($requestedDomain !== null && $requestedDomain !== '')
@@ -1066,7 +1072,10 @@ class Team extends JetstreamTeam
         $domainMatches = [];
         $nameMatches = [];
 
-        foreach (static::query()->get() as $team)
+        foreach (static::query()->with(['settings' => function ($query): void
+        {
+            $query->where('key', 'business_config');
+        }])->get() as $team)
         {
             $domain = $team->getPublicCatalogShopDomain();
             if ($requestedDomain !== null && $requestedDomain !== '' && $domain !== null && hash_equals($domain, $requestedDomain))

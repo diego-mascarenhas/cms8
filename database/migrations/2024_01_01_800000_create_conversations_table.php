@@ -27,10 +27,12 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            // Indexing for faster queries
             $table->index(['channel', 'from', 'to']);
             $table->index(['direction', 'status']);
             $table->index('created_at');
+            $table->index(['channel', 'direction', 'created_at'], 'conversations_channel_direction_created_idx');
+            $table->index(['channel', 'direction', 'from'], 'conversations_channel_direction_from_idx');
+            $table->index(['channel', 'direction', 'to'], 'conversations_channel_direction_to_idx');
         });
     }
 

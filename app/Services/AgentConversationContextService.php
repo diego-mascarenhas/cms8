@@ -127,9 +127,10 @@ class AgentConversationContextService
         return $conversation->messages()
             ->where('agent', self::AGENT_NAME)
             ->orderBy('created_at')
-            ->orderByRaw("CASE WHEN role = 'user' THEN 0 ELSE 1 END")
             ->limit($limit)
-            ->get()
+            ->get(['id', 'role', 'content', 'created_at', 'meta'])
+            ->sortBy(fn (AgentConversationMessage $message): string => ($message->created_at?->format('Y-m-d H:i:s.u') ?? '').($message->role === 'user' ? '0' : '1'))
+            ->values()
             ->map(fn (AgentConversationMessage $m) => [
                 'role' => $m->role,
                 'content' => $m->content,

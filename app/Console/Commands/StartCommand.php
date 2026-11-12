@@ -547,8 +547,8 @@ class StartCommand extends Command
             {
                 $this->line('Authenticated routes use TEAM_TOKEN from .env. It must be the API token of the team on that server.');
             }
-            $team = trim((string) $this->ask('Team ID (empty = the team that owns TEAM_TOKEN)', $team));
-            $user = trim((string) $this->ask('User ID (empty = the team owner)', $user));
+            $team = trim((string) $this->ask('Team ID', $team !== '' ? $team : '2'));
+            $user = trim((string) $this->ask('User ID', $user !== '' ? $user : '2'));
         }
 
         $baseUrl = $this->apiBaseUrl($host);
