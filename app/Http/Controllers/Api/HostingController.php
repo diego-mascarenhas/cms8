@@ -26,6 +26,7 @@ use App\Services\Hosting\HostingPlanCatalog;
 use App\Services\Hosting\HostingSubscriptionSync;
 use App\Support\HostingAccountPresenter;
 use App\Support\MailExchange;
+use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -52,12 +53,7 @@ class HostingController extends Controller
 
         if ($search !== '')
         {
-            $accounts->where(function (Builder $builder) use ($search)
-            {
-                $builder->where('domain', 'like', '%'.$search.'%')
-                    ->orWhere('username', 'like', '%'.$search.'%')
-                    ->orWhere('plan', 'like', '%'.$search.'%');
-            });
+            SearchNormalizer::applyColumnsNavbarConditions($accounts, ['domain', 'username', 'plan'], $search);
         }
 
         if ($status === 'active')

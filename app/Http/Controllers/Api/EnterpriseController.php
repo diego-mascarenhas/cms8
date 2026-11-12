@@ -9,6 +9,7 @@ use App\Models\ContactEnterprise;
 use App\Models\Enterprise;
 use App\Services\Clients\ClientProfileBuilder;
 use App\Services\Clients\ClientRoster;
+use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -60,8 +61,7 @@ class EnterpriseController extends Controller
             $search = $request->get('search');
             if (is_string($search) && trim($search) !== '')
             {
-                $term = '%'.trim($search).'%';
-                $query->where('name', 'like', $term);
+                SearchNormalizer::applyColumnsNavbarConditions($query, ['name'], trim($search));
             }
 
             $query->orderBy('name');

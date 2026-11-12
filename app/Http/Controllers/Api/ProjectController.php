@@ -23,6 +23,7 @@ use App\Models\Time;
 use App\Models\User;
 use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
+use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -68,12 +69,7 @@ class ProjectController extends Controller
             $search = $request->get('search');
             if (is_string($search) && trim($search) !== '')
             {
-                $term = '%'.trim($search).'%';
-                $query->where(function ($q) use ($term)
-                {
-                    $q->where('name', 'like', $term)
-                        ->orWhere('description', 'like', $term);
-                });
+                SearchNormalizer::applyProjectNavbarConditions($query, trim($search));
             }
 
             if ($request->filled('status_ids'))

@@ -18,6 +18,7 @@ use App\Policies\ContactPolicy;
 use App\Services\Stripe\CustomerPaymentMethodReader;
 use App\Services\Stripe\SubscriptionScheduleReader;
 use App\Support\ClientHeadlineMetrics;
+use App\Support\SearchNormalizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -731,14 +732,7 @@ class ClientController extends Controller
 
         if ($search !== '')
         {
-            $like = '%'.addcslashes($search, '%_\\').'%';
-            $query->where(function ($q) use ($like)
-            {
-                $q->where('name', 'like', $like)
-                    ->orWhere('surname', 'like', $like)
-                    ->orWhere('email', 'like', $like)
-                    ->orWhere('phone', 'like', $like);
-            });
+            SearchNormalizer::applyContactNavbarConditions($query, $search);
         }
 
         $contacts = $query->orderBy('name')->orderBy('surname')->limit(50)->get(['id', 'name', 'surname', 'email', 'phone']);

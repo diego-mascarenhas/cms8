@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Policies\InvoicePolicy;
+use App\Support\SearchNormalizer;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
@@ -34,8 +35,7 @@ class InvoiceController extends Controller
         $search = $request->get('search');
         if (is_string($search) && trim($search) !== '')
         {
-            $term = '%'.trim($search).'%';
-            $query->where('number', 'like', $term);
+            SearchNormalizer::applyColumnsNavbarConditions($query, ['number'], trim($search));
         }
 
         $invoices = $query

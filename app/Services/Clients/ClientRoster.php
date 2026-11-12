@@ -11,6 +11,7 @@ use App\Models\Service;
 use App\Models\ServiceSync;
 use App\Models\User;
 use App\Policies\ClientPolicy;
+use App\Support\SearchNormalizer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -30,7 +31,7 @@ class ClientRoster
         $term = trim((string) $search);
         if ($term !== '')
         {
-            $query->where('name', 'like', '%'.$term.'%');
+            SearchNormalizer::applyColumnsNavbarConditions($query, ['name'], $term);
         }
 
         $paginator = $query->orderBy('name')->paginate($perPage, ['*'], 'page', $page);

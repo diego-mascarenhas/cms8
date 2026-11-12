@@ -9,6 +9,7 @@ use App\Http\Requests\Api\StoreTemplateApiRequest;
 use App\Http\Requests\Api\UpdateTemplateApiRequest;
 use App\Models\Template;
 use App\Services\Mail\MailerTemplateGenerationService;
+use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -47,7 +48,7 @@ class TemplateController extends Controller
 
         if ($search !== '')
         {
-            $query->where('name', 'like', '%'.$search.'%');
+            SearchNormalizer::applyColumnsNavbarConditions($query, ['name'], $search);
         }
 
         $paginator = $query->paginate($perPage);

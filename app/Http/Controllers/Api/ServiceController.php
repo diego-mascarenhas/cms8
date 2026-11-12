@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Service;
 use App\Policies\ServicePolicy;
+use App\Support\SearchNormalizer;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
@@ -34,12 +35,7 @@ class ServiceController extends Controller
         $search = $request->get('search');
         if (is_string($search) && trim($search) !== '')
         {
-            $term = '%'.trim($search).'%';
-            $query->where(function ($q) use ($term)
-            {
-                $q->where('description', 'like', $term)
-                    ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(data, '$.serviceName')) LIKE ?", [$term]);
-            });
+            SearchNormalizer::applyServiceNavbarConditions($query, trim($search));
         }
 
         $services = $query->with(['client:id,name', 'responsible:id,name', 'currency:id,code'])

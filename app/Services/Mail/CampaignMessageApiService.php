@@ -9,6 +9,7 @@ use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryStat;
 use App\Models\Team;
 use App\Services\MailerCategoryService;
+use App\Support\SearchNormalizer;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -25,7 +26,7 @@ class CampaignMessageApiService
 
         if ($search !== '')
         {
-            $query->where('name', 'like', '%'.$search.'%');
+            SearchNormalizer::applyColumnsNavbarConditions($query, ['name'], $search);
         }
 
         return $query
@@ -46,8 +47,7 @@ class CampaignMessageApiService
         {
             $query->whereHas('contact', function (Builder $contactQuery) use ($search): void
             {
-                $contactQuery->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('email', 'like', '%'.$search.'%');
+                SearchNormalizer::applyColumnsNavbarConditions($contactQuery, ['name', 'email'], $search);
             });
         }
 

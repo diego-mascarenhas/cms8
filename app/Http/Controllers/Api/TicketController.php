@@ -16,6 +16,7 @@ use App\Models\Ticket;
 use App\Models\TicketRating;
 use App\Models\TicketResponse;
 use App\Models\User;
+use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -80,11 +81,7 @@ class TicketController extends Controller
         $search = trim((string) ($validated['search'] ?? ''));
         if ($search !== '')
         {
-            $query->where(function ($builder) use ($search)
-            {
-                $builder->where('subject', 'like', '%'.$search.'%')
-                    ->orWhere('description', 'like', '%'.$search.'%');
-            });
+            SearchNormalizer::applyColumnsNavbarConditions($query, ['subject', 'description'], $search);
         }
 
         $perPage = (int) ($validated['per_page'] ?? 20);
