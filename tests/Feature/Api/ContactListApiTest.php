@@ -128,4 +128,52 @@ class ContactListApiTest extends TestCase
             ->assertJsonFragment(['name' => 'Lead'])
             ->assertJsonFragment(['name' => 'Finalizado']);
     }
+
+    public function test_sentiment_filter_uses_only_the_latest_history(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed(ContactStatusSeeder::class);
+        $this->seed(ContactSentimentSeeder::class);
+        $this->seed(LanguageSeeder::class);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $leadId = ContactStatus::query()->where('name', 'Lead')->value('id');
+        $contact = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Marini',
+            'language' => 'es',
+            'creator_id' => $user->id,
+            'status_id' => $leadId,
+        ]);
+        ContactSentimentHistory::query()->create([
+            'contact_id' => $contact->id,
+            'sentiment_id' => 1,
+            'notes' => 'Antes',
+        ]);
+        ContactSentimentHistory::query()->create([
+            'contact_id' => $contact->id,
+            'sentiment_id' => 3,
+            'notes' => 'Ahora',
+        ]);
+
+        $token = $user->createToken('contacts')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/contacts?sentiment_id=1')
+            ->assertOk()
+            ->assertJsonPath('data.total', 0);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/contacts?sentiment_id=3')
+            ->assertOk()
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.data.0.name', 'Marini')
+            ->assertJsonPath('data.data.0.sentiment.emoji', '😐')
+            ->assertJsonPath('data.data.0.sentiment.name', 'Neutral');
+    }
 }

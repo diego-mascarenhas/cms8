@@ -998,7 +998,7 @@ class Contact extends Model implements HasMedia
 
     public function currentSentiment()
     {
-        return $this->hasOne(ContactSentimentHistory::class)->latest();
+        return $this->hasOne(ContactSentimentHistory::class)->latestOfMany();
     }
 
     public function status()
