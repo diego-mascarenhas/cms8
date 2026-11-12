@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Enterprise;
+use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\Domains\EnterpriseDomainCharge;
@@ -132,9 +133,24 @@ class DomainRegistrationApiTest extends TestCase
                 'status' => 'SUCCESS',
             ]),
         ]);
-        $this->mock(EnterpriseDomainCharge::class, function ($mock) use ($enterprise)
+        $sync = ServiceSync::query()->create([
+            'stripe_id' => 'sub_test_domain',
+            'provider' => 'stripe',
+            'type' => 'sell',
+            'team_id' => $user->currentTeam->id,
+            'customer_id' => 'cus_test_domain',
+            'customer_name' => $enterprise->name,
+            'status' => 'active',
+            'plan_name' => 'Dominio anual ejemplo.com',
+            'plan_interval' => 'year',
+            'plan_interval_count' => 1,
+            'price_currency' => 'USD',
+            'unit_amount' => 12.65,
+            'amount_total' => 12.65,
+        ]);
+        $this->mock(EnterpriseDomainCharge::class, function ($mock) use ($enterprise, $sync)
         {
-            $mock->shouldReceive('charge')
+            $mock->shouldReceive('subscribe')
                 ->once()
                 ->withArgs(function (Enterprise $found, int $amountCents, string $currency) use ($enterprise): bool
                 {
@@ -143,6 +159,8 @@ class DomainRegistrationApiTest extends TestCase
                         && strtoupper($currency) === 'USD';
                 })
                 ->andReturn([
+                    'subscription_id' => 'sub_test_domain',
+                    'service_sync_id' => $sync->id,
                     'payment_intent_id' => 'pi_test_domain',
                     'amount_cents' => 1265,
                     'currency' => 'USD',
@@ -160,13 +178,16 @@ class DomainRegistrationApiTest extends TestCase
             ->assertJsonPath('data.price', 12.65)
             ->assertJsonPath('data.cost', 9.73)
             ->assertJsonPath('data.charged', true)
+            ->assertJsonPath('data.subscription_id', 'sub_test_domain')
             ->assertJsonPath('data.payment_intent_id', 'pi_test_domain')
             ->assertJsonPath('data.nameservers_set', true)
             ->assertJsonPath('data.nameservers.0', 'ns1.revisionalpha.com');
 
         $this->assertDatabaseHas('services', [
             'enterprise_id' => $enterprise->id,
+            'subscription_id' => $sync->id,
             'description' => 'Dominio ejemplo.com (anual)',
+            'frequency' => 12,
         ]);
 
         Http::assertSent(function ($request): bool
@@ -202,7 +223,7 @@ class DomainRegistrationApiTest extends TestCase
         ]);
         $this->mock(EnterpriseDomainCharge::class, function ($mock)
         {
-            $mock->shouldReceive('charge')->never();
+            $mock->shouldReceive('subscribe')->never();
         });
 
         $this->withHeader('Authorization', 'Bearer '.$user->createToken('domains')->plainTextToken)

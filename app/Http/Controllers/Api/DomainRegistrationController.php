@@ -79,7 +79,7 @@ class DomainRegistrationController extends Controller
             }
 
             $amountCents = (int) round($quote['price'] * 100);
-            $charge = $charger->charge(
+            $charge = $charger->subscribe(
                 $enterprise,
                 $amountCents,
                 $quote['currency'],
@@ -97,12 +97,13 @@ class DomainRegistrationController extends Controller
                 $registered = $porkbun->register($team, $quote['domain']);
             } catch (RuntimeException $exception)
             {
-                // Manual review: keep the Stripe charge and alert ops instead of auto-refunding.
-                // $charger->refund($charge['payment_intent_id'], $enterprise);
+                // Manual review: keep the Stripe subscription and alert ops instead of auto-refunding.
+                // $charger->refund((string) ($charge['payment_intent_id'] ?? ''), $enterprise);
                 $failures->report($exception->getMessage(), [
                     'domain' => $quote['domain'],
                     'enterprise_id' => $enterprise->id,
                     'enterprise' => $enterprise->name,
+                    'subscription_id' => $charge['subscription_id'],
                     'payment_intent_id' => $charge['payment_intent_id'],
                     'amount_cents' => $charge['amount_cents'],
                     'currency' => $charge['currency'],
@@ -116,17 +117,21 @@ class DomainRegistrationController extends Controller
             $service = $this->storeAnnualService(
                 $user->id,
                 $enterprise->id,
+                $charge['service_sync_id'],
                 $registered['domain'],
                 $registered['cost'],
                 $registered['price'],
                 $registered['markup_percent'],
+                $charge['subscription_id'],
                 $charge['payment_intent_id'],
             );
 
             $registered['charged'] = true;
             $registered['amount_cents'] = $charge['amount_cents'];
+            $registered['subscription_id'] = $charge['subscription_id'];
             $registered['payment_intent_id'] = $charge['payment_intent_id'];
             $registered['service_id'] = $service->id;
+            $registered['service_sync_id'] = $charge['service_sync_id'];
         } catch (RuntimeException $exception)
         {
             return response()->json([
@@ -145,11 +150,13 @@ class DomainRegistrationController extends Controller
     private function storeAnnualService(
         int $userId,
         int $enterpriseId,
+        int $serviceSyncId,
         string $domain,
         ?float $cost,
         ?float $price,
         float $markupPercent,
-        string $paymentIntentId,
+        string $subscriptionId,
+        ?string $paymentIntentId,
     ): Service {
         $categoryId = Category::query()
             ->where('name', 'like', '%Dominio%')
@@ -166,6 +173,7 @@ class DomainRegistrationController extends Controller
 
         return Service::query()->create([
             'enterprise_id' => $enterpriseId,
+            'subscription_id' => $serviceSyncId,
             'category_id' => $categoryId,
             'operation' => 'sell',
             'description' => 'Dominio '.$domain.' (anual)',
@@ -176,10 +184,13 @@ class DomainRegistrationController extends Controller
                 'price' => $price,
                 'currency' => 'USD',
                 'markup_percent' => $markupPercent,
+                'stripe_subscription' => $subscriptionId,
                 'stripe_payment_intent' => $paymentIntentId,
             ],
             'responsible_id' => $userId,
             'status' => 4,
+            'frequency' => 12,
+            'next_billing' => now()->addYear()->toDateString(),
         ]);
     }
 }

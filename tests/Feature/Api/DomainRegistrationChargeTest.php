@@ -45,9 +45,11 @@ class DomainRegistrationChargeTest extends TestCase
         Mail::fake();
         $this->mock(EnterpriseDomainCharge::class, function ($mock)
         {
-            $mock->shouldReceive('charge')
+            $mock->shouldReceive('subscribe')
                 ->once()
                 ->andReturn([
+                    'subscription_id' => 'sub_test_manual_review',
+                    'service_sync_id' => 1,
                     'payment_intent_id' => 'pi_test_manual_review',
                     'amount_cents' => 1265,
                     'currency' => 'USD',
@@ -67,6 +69,7 @@ class DomainRegistrationChargeTest extends TestCase
         {
             return $mail->hasTo('webmaster@revisionalpha.cloud')
                 && str_contains($mail->technical, 'No hay saldo suficiente en Porkbun')
+                && ($mail->context['subscription_id'] ?? null) === 'sub_test_manual_review'
                 && ($mail->context['payment_intent_id'] ?? null) === 'pi_test_manual_review'
                 && ($mail->context['enterprise_id'] ?? null) === $enterprise->id
                 && ($mail->context['domain'] ?? null) === 'ejemplo.com';
@@ -91,7 +94,7 @@ class DomainRegistrationChargeTest extends TestCase
         ]);
         $this->mock(EnterpriseDomainCharge::class, function ($mock)
         {
-            $mock->shouldReceive('charge')
+            $mock->shouldReceive('subscribe')
                 ->once()
                 ->andThrow(new RuntimeException('La empresa no tiene una tarjeta por defecto. Guardá una tarjeta antes de registrar el dominio.'));
         });
