@@ -25,6 +25,7 @@ Return ONLY valid JSON with this structure:
   "payment_date": "YYYY-MM-DD|null",
   "currency_code": "ISO code like EUR/USD/ARS|null",
   "total_amount": number|null,
+  "is_paid": boolean|null,
   "lines": [
     {
       "concept": "string",
@@ -42,7 +43,12 @@ Rules:
 - If a tax/retention is unknown, use 0.
 - allocation_percent must be 100 when unknown.
 - enterprise_name MUST be the issuer/supplier (not customer/recipient/buyer).
-- document_number MUST NOT be a phone number.
+- document_number is the invoice/receipt number (labels like Invoice Number, Nº factura, Comprobante). NEVER a phone.
+- invoice_date is the issue/billing date (labels like Date, Date of issue, Fecha, Fecha de emisión). Accept English and Spanish month names.
+- due_date is the due/payment-due date when present.
+- payment_date is the paid-on date when present; if status is Paid and no paid date, reuse invoice_date.
+- is_paid must be true when the invoice shows Paid / Pagado / Payment received / Amount due 0.
+- is_paid must be false when it shows Unpaid / Pendiente / Amount due > 0.
 - lines must be product/service rows only (taxable base before VAT).
 - Do NOT include tax breakdown rows (IVA, base imponible, subtotal, total) as separate lines.
 - Do not include markdown or explanations.
@@ -67,15 +73,16 @@ PROMPT;
         }
 
         $ocrResult = $this->extractOcrText($absolutePath, $teamId);
-        $heuristicData = $this->extractStructuredDataWithHeuristics($ocrResult['text'], $teamId);
+        $ocrText = $this->normalizeOcrText((string) ($ocrResult['text'] ?? ''));
+        $heuristicData = $this->extractStructuredDataWithHeuristics($ocrText, $teamId);
         $aiData = $this->detectedDataIsIncomplete($heuristicData)
-            ? $this->extractStructuredDataWithAi($ocrResult['text'], $teamId, $ocrResult['mode'], $absolutePath)
+            ? $this->extractStructuredDataWithAi($ocrText, $teamId, $ocrResult['mode'], $absolutePath)
             : null;
         $detectedData = $this->mergeDetectedData($heuristicData, $aiData);
 
         $supplierResolution = $this->supplierService->resolveForDetectedInvoice(
             $file,
-            $ocrResult['text'],
+            $ocrText !== '' ? $ocrText : (string) ($ocrResult['text'] ?? ''),
             $detectedData,
             $teamId,
             $ocrResult['mode'],
@@ -84,6 +91,11 @@ PROMPT;
         $currencyId = $this->resolveCurrencyId($detectedData['currency_code'] ?? null);
         $lines = $this->normalizeLines($detectedData['lines'] ?? [], $detectedData['total_amount'] ?? null);
         $totalAmount = $this->resolveTotalAmount($detectedData['total_amount'] ?? null, $lines);
+        $isPaid = $this->resolveIsPaid($detectedData['is_paid'] ?? null, $ocrText);
+        $invoiceDate = $this->normalizeDate($detectedData['invoice_date'] ?? null);
+        $dueDate = $this->normalizeDate($detectedData['due_date'] ?? null) ?? $invoiceDate;
+        $paymentDate = $this->normalizeDate($detectedData['payment_date'] ?? null)
+            ?? ($isPaid ? $invoiceDate : null);
 
         return [
             'enterprise_id' => $supplierResolution['enterprise_id'],
@@ -91,20 +103,19 @@ PROMPT;
             'enterprise_match' => $supplierResolution['match'],
             'detected_supplier' => $this->formatDetectedSupplierForResponse($supplierResolution['supplier']),
             'document_number' => $detectedData['document_number'] ?? null,
-            'date' => $this->normalizeDate($detectedData['invoice_date'] ?? null),
-            'due_date' => $this->normalizeDate($detectedData['due_date'] ?? null)
-                ?? $this->normalizeDate($detectedData['invoice_date'] ?? null),
-            'payment_date' => $this->normalizeDate($detectedData['payment_date'] ?? null)
-                ?? $this->normalizeDate($detectedData['invoice_date'] ?? null),
+            'date' => $invoiceDate,
+            'due_date' => $dueDate,
+            'payment_date' => $paymentDate,
             'currency_id' => $currencyId,
             'currency_code' => $detectedData['currency_code'] ?? null,
             'payment_amount' => $totalAmount,
+            'is_paid' => $isPaid,
             'lines' => $lines,
             'ocr' => [
                 'mode' => $ocrResult['mode'],
                 'engine_used' => $ocrResult['engine_used'],
                 'engines_ran' => $ocrResult['engines_ran'],
-                'text_length' => mb_strlen((string) ($ocrResult['text'] ?? '')),
+                'text_length' => mb_strlen($ocrText !== '' ? $ocrText : (string) ($ocrResult['text'] ?? '')),
             ],
         ];
     }
@@ -227,6 +238,7 @@ PROMPT;
                 'payment_date' => null,
                 'currency_code' => null,
                 'total_amount' => null,
+                'is_paid' => null,
                 'lines' => [],
             ];
         }
@@ -239,22 +251,36 @@ PROMPT;
             'fecha de emision',
             'fecha de emisión',
             'fecha factura',
+            'fecha del comprobante',
             'invoice date',
+            'billing date',
             'issued on',
+            'issue date',
             'fecha',
             'date',
         ]);
         $dueDate = $this->extractDateByLabel($text, [
             'date due',
+            'fecha de vencimiento',
             'fecha vencimiento',
             'vencimiento',
             'due date',
             'payment due',
         ]);
+        $paymentDate = $this->extractDateByLabel($text, [
+            'date paid',
+            'paid on',
+            'paid date',
+            'payment date',
+            'fecha de pago',
+            'fecha pago',
+            'pagado el',
+        ]);
         $currencyCode = $this->extractCurrencyCode($text);
         $vatPercent = $this->extractPercentageByLabel($text, ['iva', 'vat']);
         $retentionPercent = $this->extractPercentageByLabel($text, ['retención', 'retencion', 'withholding']);
         $totalAmount = $this->extractTotalAmount($text);
+        $isPaid = $this->detectIsPaid($text);
 
         $lines = $this->extractInvoiceLines($text, $vatPercent, $retentionPercent, $totalAmount);
         if ($lines === [] && $totalAmount !== null && $totalAmount > 0)
@@ -283,9 +309,10 @@ PROMPT;
             'document_number' => $documentNumber,
             'invoice_date' => $invoiceDate,
             'due_date' => $dueDate ?? $invoiceDate,
-            'payment_date' => $invoiceDate,
+            'payment_date' => $paymentDate ?? ($isPaid ? $invoiceDate : null),
             'currency_code' => $currencyCode,
             'total_amount' => $totalAmount,
+            'is_paid' => $isPaid,
             'lines' => $lines,
         ];
     }
@@ -372,11 +399,26 @@ PROMPT;
         }
 
         $merged = $heuristicData;
-        $fields = ['enterprise_name', 'document_number', 'invoice_date', 'due_date', 'payment_date', 'currency_code', 'total_amount'];
+        $fields = ['enterprise_name', 'document_number', 'invoice_date', 'due_date', 'payment_date', 'currency_code', 'total_amount', 'is_paid'];
 
         foreach ($fields as $field)
         {
-            if (array_key_exists($field, $aiData) && filled($aiData[$field]))
+            if (! array_key_exists($field, $aiData))
+            {
+                continue;
+            }
+
+            if ($field === 'is_paid')
+            {
+                if (is_bool($aiData[$field]) && ! is_bool($merged[$field] ?? null))
+                {
+                    $merged[$field] = $aiData[$field];
+                }
+
+                continue;
+            }
+
+            if (filled($aiData[$field]) && ! filled($merged[$field] ?? null))
             {
                 $merged[$field] = $aiData[$field];
             }
@@ -482,10 +524,39 @@ PROMPT;
         return null;
     }
 
+    private function normalizeOcrText(string $text): string
+    {
+        $normalized = $this->ensureUtf8($text);
+        $normalized = str_replace(["\r\n", "\r"], "\n", $normalized);
+        $normalized = preg_replace('/[^\S\n]+/u', ' ', $normalized) ?? $normalized;
+        $normalized = preg_replace('/\n{3,}/u', "\n\n", $normalized) ?? $normalized;
+
+        return trim($normalized);
+    }
+
+    private function ensureUtf8(string $text): string
+    {
+        if ($text === '' || mb_check_encoding($text, 'UTF-8'))
+        {
+            return $text;
+        }
+
+        $fromLatin1 = @iconv('ISO-8859-1', 'UTF-8//IGNORE', $text);
+        if (is_string($fromLatin1) && $fromLatin1 !== '' && mb_check_encoding($fromLatin1, 'UTF-8'))
+        {
+            return $fromLatin1;
+        }
+
+        $stripped = @iconv('UTF-8', 'UTF-8//IGNORE', $text);
+
+        return is_string($stripped) ? $stripped : '';
+    }
+
     private function extractDocumentNumber(string $text, array $knownPhones): ?string
     {
         $patterns = [
-            '/(?:n[úu]m(?:ero)?\s+(?:de\s+)?factura|n[º°o]\s*factura|factura\s*(?:n[º°o]|#|num(?:ero)?)|invoice\s*(?:no\.?|number|#)|ref(?:erencia)?\s+factura)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/\.]{2,})/iu',
+            '/(?:invoice\s*number|n[úu]m(?:ero)?\s+(?:de\s+)?(?:factura|comprobante)|n[º°o]\s*(?:factura|comprobante)|(?:factura|comprobante|receipt)\s*(?:n[º°o]|#|num(?:ero|ber)?)|invoice\s*(?:no\.?|number|#)|ref(?:erencia)?\s+(?:factura|invoice))\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/\.]{2,})/iu',
+            '/(?:factura|invoice|comprobante|receipt)\s*[:#\-]?\s*([A-Z0-9]{6,}(?:[-\/][A-Z0-9]{2,})+)/iu',
             '/(?:factura|invoice)\s*[:#\-]?\s*([A-Z]{2,}[-\/][A-Z0-9][A-Z0-9\-\/\.]{2,})/iu',
             '/(?:factura|invoice)\s*[:#\-]?\s*([A-Z]{1,4}[-\/]?[0-9][A-Z0-9\-\/\.]{2,})/iu',
         ];
@@ -508,13 +579,20 @@ PROMPT;
     private function extractDateByLabel(string $text, array $labels): ?string
     {
         $monthNameDate = $this->monthNameDatePattern();
+        $numericDate = '[0-9]{1,4}[\/\.\-][0-9]{1,2}[\/\.\-][0-9]{1,4}';
+        $dateCapture = '(?:'.$monthNameDate.'|'.$numericDate.')';
 
         foreach ($labels as $label)
         {
-            $pattern = '/'.preg_quote($label, '/').'\s*[:\-]?\s*('.$monthNameDate.'|[0-9]{1,4}[\/\.\-][0-9]{1,2}[\/\.\-][0-9]{1,4})/iu';
+            $quoted = preg_quote($label, '/');
+            $pattern = '/(?<![\p{L}])'.$quoted.'(?![\p{L}])\s*[:\-]?\s*('.$dateCapture.')/iu';
             if (preg_match($pattern, $text, $matches) === 1)
             {
-                return $this->normalizeDate((string) ($matches[1] ?? null));
+                $normalized = $this->normalizeDate((string) ($matches[1] ?? null));
+                if ($normalized !== null)
+                {
+                    return $normalized;
+                }
             }
         }
 
@@ -538,9 +616,10 @@ PROMPT;
 
     private function monthNameDatePattern(): string
     {
-        $month = 'Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?';
+        $month = 'Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?'
+            .'|Ene(?:ro)?|Feb(?:rero)?|Mar(?:zo)?|Abr(?:il)?|May(?:o)?|Jun(?:io)?|Jul(?:io)?|Ago(?:sto)?|Sep(?:t(?:iembre)?)?|Oct(?:ubre)?|Nov(?:iembre)?|Dic(?:iembre)?';
 
-        return '(?:(?:'.$month.')\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:'.$month.')\s+\d{4})';
+        return '(?:(?:'.$month.')\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:de\s+)?(?:'.$month.')(?:\s+de)?\s+\d{4})';
     }
 
     private function normalizeDate(?string $value): ?string
@@ -549,6 +628,24 @@ PROMPT;
         if ($dateValue === '')
         {
             return null;
+        }
+
+        if (preg_match('/^(\d{1,2})\s+(?:de\s+)?([A-Za-zÁÉÍÓÚáéíóúñÑ\.]+)(?:\s+de)?\s+(\d{4})$/u', $dateValue, $matches) === 1)
+        {
+            $month = $this->monthNumberFromName((string) $matches[2]);
+            if ($month !== null)
+            {
+                return sprintf('%04d-%02d-%02d', (int) $matches[3], $month, (int) $matches[1]);
+            }
+        }
+
+        if (preg_match('/^([A-Za-zÁÉÍÓÚáéíóúñÑ\.]+)\s+(\d{1,2}),?\s+(\d{4})$/u', $dateValue, $matches) === 1)
+        {
+            $month = $this->monthNumberFromName((string) $matches[1]);
+            if ($month !== null)
+            {
+                return sprintf('%04d-%02d-%02d', (int) $matches[3], $month, (int) $matches[2]);
+            }
         }
 
         $normalized = str_replace(['.', '/'], '-', $dateValue);
@@ -576,6 +673,79 @@ PROMPT;
         {
             return null;
         }
+    }
+
+    private function monthNumberFromName(string $monthName): ?int
+    {
+        $normalized = Str::lower(Str::ascii(rtrim(trim($monthName), '.')));
+
+        $months = [
+            'jan' => 1, 'january' => 1, 'ene' => 1, 'enero' => 1,
+            'feb' => 2, 'february' => 2, 'febrero' => 2,
+            'mar' => 3, 'march' => 3, 'marzo' => 3,
+            'apr' => 4, 'april' => 4, 'abr' => 4, 'abril' => 4,
+            'may' => 5, 'mayo' => 5,
+            'jun' => 6, 'june' => 6, 'junio' => 6,
+            'jul' => 7, 'july' => 7, 'julio' => 7,
+            'aug' => 8, 'august' => 8, 'ago' => 8, 'agosto' => 8,
+            'sep' => 9, 'sept' => 9, 'september' => 9, 'septiembre' => 9,
+            'oct' => 10, 'october' => 10, 'octubre' => 10,
+            'nov' => 11, 'november' => 11, 'noviembre' => 11,
+            'dec' => 12, 'december' => 12, 'dic' => 12, 'diciembre' => 12,
+        ];
+
+        return $months[$normalized] ?? null;
+    }
+
+    private function resolveIsPaid(mixed $detectedValue, ?string $ocrText): bool
+    {
+        if (is_bool($detectedValue))
+        {
+            return $detectedValue;
+        }
+
+        return $this->detectIsPaid((string) $ocrText) === true;
+    }
+
+    private function detectIsPaid(string $text): ?bool
+    {
+        $value = trim($text);
+        if ($value === '')
+        {
+            return null;
+        }
+
+        if (preg_match('/(?:^|\n)\s*(?:status|estado|payment\s+status)\s*[:\-]?\s*(paid|pagad[oa]|cobrad[oa])\b/iu', $value) === 1)
+        {
+            return true;
+        }
+
+        if (preg_match('/\((?:paid|pagad[oa]|cobrad[oa])\)/iu', $value) === 1)
+        {
+            return true;
+        }
+
+        if (preg_match('/\b(paid|pagad[oa]|payment\s+received|cobrad[oa]|fully\s+paid)\b/iu', $value) === 1)
+        {
+            return true;
+        }
+
+        if (preg_match('/amount\s+due\s*[:\-]?\s*[$€]?\s*0(?:[.,]00)?\b/iu', $value) === 1)
+        {
+            return true;
+        }
+
+        if (preg_match('/\b(unpaid|not\s+paid|no\s+pagad[oa]|pendiente\s+de\s+pago|por\s+pagar)\b/iu', $value) === 1)
+        {
+            return false;
+        }
+
+        if (preg_match('/amount\s+due\s*[:\-]?\s*[$€]?\s*[1-9]/iu', $value) === 1)
+        {
+            return false;
+        }
+
+        return null;
     }
 
     private function extractCurrencyCode(string $text): ?string

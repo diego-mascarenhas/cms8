@@ -5,7 +5,9 @@ namespace App\Services;
 class StripeAccountResolver
 {
     /**
-     * All products share the default Cashier account (STRIPE_SECRET / STRIPE_KEY).
+     * Platform offerings (hosting, domain, mailer, shop, etc.) share Cashier
+     * (STRIPE_SECRET / STRIPE_KEY → REVISION ALPHA). Team stripe_* settings are
+     * only for a reseller's own products, not for platform catalog billing.
      */
     public static function hasDedicatedCredentials(string $category): bool
     {

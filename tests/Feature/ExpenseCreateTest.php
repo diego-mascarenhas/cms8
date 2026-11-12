@@ -885,6 +885,53 @@ class ExpenseCreateTest extends TestCase
             ->assertSee(basename((string) $storedPath), false);
     }
 
+    public function test_api_returns_the_create_form_and_stores_an_expense(): void
+    {
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+        $account = $this->createAccountForTeam($user);
+        $paymentType = $this->createPaymentType();
+        $token = $user->createToken('expense-api')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/expenses/form')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonFragment(['label' => 'Factura'])
+            ->assertJsonFragment(['name' => 'Proveedor de prueba'])
+            ->assertJsonFragment(['name' => 'Main bank account']);
+
+        $this->withToken($token)
+            ->postJson('/api/expenses', [
+                'document_type' => 'invoice',
+                'enterprise_id' => $supplier->id,
+                'date' => '2026-11-12',
+                'document_number' => 'API-GASTO-1',
+                'lines' => [[
+                    'concept' => 'Hosting',
+                    'base_amount' => '10.00',
+                    'vat_percent' => '21',
+                    'retention_percent' => '0',
+                    'allocation_percent' => '100',
+                ]],
+                'payments' => [[
+                    'payment_date' => '2026-11-12',
+                    'amount' => '12.10',
+                    'type_id' => $paymentType->id,
+                    'account_id' => $account->id,
+                    'status' => 2,
+                ]],
+                'submit_action' => 'save',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('message', 'Gasto guardado correctamente.');
+
+        $this->assertNotNull(
+            Invoice::withoutGlobalScopes()->where('number', 'API-GASTO-1')->first(),
+        );
+    }
+
     private function makeAdminUser(): User
     {
         $user = User::factory()->withPersonalTeam()->create();

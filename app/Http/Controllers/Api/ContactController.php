@@ -12,6 +12,7 @@ use App\Models\ContactSentiment;
 use App\Models\ContactStatus;
 use App\Models\Country;
 use App\Models\Module;
+use App\Models\User;
 use App\Services\ApolloService;
 use App\Services\Contacts\ContactProfileBuilder;
 use App\Services\InboxContactAccessService;
@@ -194,6 +195,11 @@ class ContactController extends Controller
                     'success' => false,
                     'error' => 'No tienes permisos para ver contactos',
                 ], 403);
+            }
+
+            if ($request->boolean('picker'))
+            {
+                return $this->picker($user);
             }
 
             $query = Contact::with([
@@ -554,6 +560,30 @@ class ContactController extends Controller
         }
 
         return (int) $value;
+    }
+
+    private function picker(User $user): JsonResponse
+    {
+        $query = Contact::query()->select(['id', 'name', 'surname', 'email']);
+        $filterCallback = \App\Policies\ContactPolicy::getQueryFilter($user);
+        $query = $filterCallback($query);
+
+        $contacts = $query
+            ->orderBy('name')
+            ->orderBy('surname')
+            ->get()
+            ->map(fn (Contact $contact): array => [
+                'id' => $contact->id,
+                'name' => $contact->name,
+                'surname' => $contact->surname,
+                'email' => $contact->email,
+            ])
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $contacts,
+        ]);
     }
 
     /**

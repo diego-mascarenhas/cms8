@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\Contact;
 use App\Models\ContactSentimentHistory;
 use App\Models\ContactStatus;
+use App\Models\Country;
 use App\Models\Person;
 use App\Models\PersonEnrichment;
 use App\Models\Team;
@@ -44,8 +45,14 @@ class ContactEnrichApiTest extends TestCase
             ],
             'fetched_at' => now(),
         ]);
+        Country::query()->create([
+            'id' => 32,
+            'name' => 'Argentina',
+            'code' => 'AR',
+        ]);
         $contact->person_id = $person->id;
         $contact->title = 'Directora';
+        $contact->country = 32;
         $contact->save();
         $this->seed(ContactSentimentSeeder::class);
         ContactSentimentHistory::query()->create([
@@ -60,6 +67,8 @@ class ContactEnrichApiTest extends TestCase
             ->assertJsonPath('data.title', 'Directora')
             ->assertJsonPath('data.organization', 'Acme')
             ->assertJsonPath('data.city', 'Madrid')
+            ->assertJsonPath('data.country_name', 'Argentina')
+            ->assertJsonPath('data.country_code', 'ar')
             ->assertJsonPath('data.linkedin', 'https://www.linkedin.com/in/ana')
             ->assertJsonPath('data.seniority', 'Director')
             ->assertJsonPath('data.can_enrich', true)

@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Helpers\PhoneHelper;
 use App\Models\AgentConversationMessage;
 use App\Models\Contact;
 use App\Models\Conversation;
@@ -12,6 +11,7 @@ use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\Billing\ClientTokenPresenter;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Ai\AiManager;
 
 class AssistantWhatsAppUsageByLineService
@@ -57,6 +57,17 @@ class AssistantWhatsAppUsageByLineService
         {
             [$from, $to] = $this->subscriptions->usagePeriod($team);
         }
+
+        $usageKey = 'assistant-whatsapp-usage-lines:'.$team->id.':'.$from->getTimestamp().':'.(int) floor($to->getTimestamp() / 60);
+        if (! app()->runningUnitTests())
+        {
+            $cached = Cache::get($usageKey);
+            if (is_array($cached))
+            {
+                return $cached;
+            }
+        }
+
         $this->tokens->usingTeam($team);
         $currency = TokenBillingRateService::displayCurrency();
         $defaultModel = $this->displayModel(null);
@@ -91,7 +102,7 @@ class AssistantWhatsAppUsageByLineService
         $mailer = TeamMailerUsageStatsService::forTeam($team, $from, $to);
         $transcription = TeamTranscriptionUsageStatsService::forTeam($team, $from, $to);
 
-        return [
+        $payload = [
             'period_days' => max(1, (int) $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay())),
             'period_start' => $from->toIso8601String(),
             'period_end' => $to->toIso8601String(),
@@ -157,6 +168,13 @@ class AssistantWhatsAppUsageByLineService
             'prospects' => TeamProspectUsageStatsService::lines($team, $from, $to),
             'storage_sources' => TeamStorageUsageStatsService::sourceLines($team, $to),
         ];
+
+        if (! app()->runningUnitTests())
+        {
+            Cache::put($usageKey, $payload, 60);
+        }
+
+        return $payload;
     }
 
     /**
@@ -170,7 +188,7 @@ class AssistantWhatsAppUsageByLineService
             return [];
         }
 
-        $rows = Conversation::query()
+        $rowsQuery = Conversation::query()
             ->where('channel', 'whatsapp')
             ->where('direction', 'outbound')
             ->where('created_at', '>=', $from)
@@ -180,8 +198,9 @@ class AssistantWhatsAppUsageByLineService
                 $query->where('from', $teamNumber)
                     ->orWhere('from', 'like', $teamNumber.':%');
             })
-            ->whereNotNull('metadata')
-            ->get(['from', 'to', 'direction', 'metadata', 'created_at']);
+            ->whereNotNull('metadata');
+        $this->whereMetadataSignals($rowsQuery, ['token_usage']);
+        $rows = $rowsQuery->get(['from', 'to', 'direction', 'metadata', 'created_at']);
 
         $buckets = [];
 
@@ -307,6 +326,10 @@ class AssistantWhatsAppUsageByLineService
     private function presentLines(array $buckets, Collection $contacts, Carbon $from, string $defaultModel): array
     {
         $lines = [];
+        $contactsByPhone = $this->matchContacts($contacts, array_map(
+            fn (array $bucket): string => (string) $bucket['phone'],
+            $buckets,
+        ));
 
         foreach ($buckets as $bucket)
         {
@@ -315,7 +338,7 @@ class AssistantWhatsAppUsageByLineService
                 continue;
             }
 
-            $contact = $this->matchContact($contacts, $bucket['phone']);
+            $contact = $contactsByPhone[$bucket['phone']] ?? null;
             $models = $this->sortedModels($bucket['models'], $defaultModel);
             $primary = $models[0] ?? $defaultModel;
             $presented = $this->presentModelUsage($bucket['model_usage'] ?? [], $from, $defaultModel);
@@ -603,19 +626,79 @@ class AssistantWhatsAppUsageByLineService
     }
 
     /**
+     * First contact in directory order whose phone is the same line as each peer.
+     *
      * @param  Collection<int, Contact>  $contacts
+     * @param  list<string>  $peers
+     * @return array<string, Contact>
      */
-    private function matchContact(Collection $contacts, string $peer): ?Contact
+    private function matchContacts(Collection $contacts, array $peers): array
     {
-        foreach ($contacts as $contact)
+        $pending = [];
+        foreach ($peers as $peer)
         {
-            if (PhoneHelper::digitsBelongToSameLine((string) $contact->phone, $peer))
+            $digits = preg_replace('/[^0-9]/', '', $peer) ?? '';
+            if ($digits !== '')
             {
-                return $contact;
+                $pending[$peer] = $digits;
             }
         }
 
-        return null;
+        $matched = [];
+        if ($pending === [])
+        {
+            return $matched;
+        }
+
+        foreach ($contacts as $contact)
+        {
+            $digits = preg_replace('/[^0-9]/', '', (string) $contact->phone) ?? '';
+            if ($digits === '')
+            {
+                continue;
+            }
+
+            foreach ($pending as $peer => $peerDigits)
+            {
+                if (! $this->sameLineDigits($digits, $peerDigits))
+                {
+                    continue;
+                }
+
+                $matched[$peer] = $contact;
+                unset($pending[$peer]);
+            }
+
+            if ($pending === [])
+            {
+                break;
+            }
+        }
+
+        return $matched;
+    }
+
+    private function sameLineDigits(string $leftDigits, string $rightDigits): bool
+    {
+        if ($leftDigits === '' || $rightDigits === '')
+        {
+            return false;
+        }
+
+        if ($leftDigits === $rightDigits)
+        {
+            return true;
+        }
+
+        $minLength = min(strlen($leftDigits), strlen($rightDigits));
+        if ($minLength < 8)
+        {
+            return false;
+        }
+
+        $suffixLength = min(10, $minLength);
+
+        return substr($leftDigits, -$suffixLength) === substr($rightDigits, -$suffixLength);
     }
 
     /**
@@ -664,7 +747,7 @@ class AssistantWhatsAppUsageByLineService
             return;
         }
 
-        $rows = Conversation::query()
+        $rowsQuery = Conversation::query()
             ->where('channel', 'whatsapp')
             ->where('direction', 'inbound')
             ->where('created_at', '>=', $from)
@@ -673,8 +756,9 @@ class AssistantWhatsAppUsageByLineService
             {
                 $query->where('to', $teamNumber)
                     ->orWhere('to', 'like', $teamNumber.':%');
-            })
-            ->get(['from', 'to', 'body', 'metadata', 'created_at']);
+            });
+        $this->whereMetadataSignals($rowsQuery, ['transcription_usage', 'TranscribedAudio', 'transcribed_audio'], true);
+        $rows = $rowsQuery->get(['from', 'to', 'body', 'metadata', 'created_at']);
 
         foreach ($rows as $row)
         {
@@ -738,7 +822,7 @@ class AssistantWhatsAppUsageByLineService
             $seen[(int) $ingestion->conversation_id] = true;
         }
 
-        $rows = Conversation::query()
+        $rowsQuery = Conversation::query()
             ->where('channel', 'whatsapp')
             ->where('direction', 'inbound')
             ->where('created_at', '>=', $from)
@@ -748,7 +832,9 @@ class AssistantWhatsAppUsageByLineService
                 $query->where('to', $teamNumber)
                     ->orWhere('to', 'like', $teamNumber.':%');
             })
-            ->get(['id', 'from', 'to', 'media', 'metadata', 'created_at']);
+            ->whereNotNull('metadata');
+        $this->whereMetadataSignals($rowsQuery, ['ocr_usage']);
+        $rows = $rowsQuery->get(['id', 'from', 'to', 'metadata', 'created_at']);
 
         foreach ($rows as $row)
         {
@@ -823,6 +909,31 @@ class AssistantWhatsAppUsageByLineService
     /**
      * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, model: string}|null
      */
+    /**
+     * Keep the year-long message scan on rows that can carry usage. The key is a fixed
+     * metadata name, never request input.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\Conversation>  $query
+     * @param  list<string>  $keys
+     */
+    private function whereMetadataSignals($query, array $keys, bool $audioBody = false): void
+    {
+        $column = $query->getConnection()->getDriverName() === 'pgsql' ? 'metadata::text' : 'metadata';
+
+        $query->where(function ($inner) use ($keys, $audioBody, $column): void
+        {
+            foreach ($keys as $key)
+            {
+                $inner->orWhereRaw($column.' LIKE ?', ['%"'.$key.'"%']);
+            }
+
+            if ($audioBody)
+            {
+                $inner->orWhere('body', 'like', '[audio]%');
+            }
+        });
+    }
+
     private function ocrUsageFromConversation(Conversation $row): ?array
     {
         $meta = is_array($row->metadata) ? $row->metadata : [];

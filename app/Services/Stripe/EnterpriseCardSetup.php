@@ -3,6 +3,7 @@
 namespace App\Services\Stripe;
 
 use App\Models\Enterprise;
+use App\Services\StripeAccountResolver;
 use RuntimeException;
 use Stripe\StripeClient;
 use Throwable;
@@ -146,13 +147,12 @@ class EnterpriseCardSetup
      */
     private function client(Enterprise $enterprise): array
     {
-        $team = $enterprise->team;
-        $secret = trim((string) $team?->getSetting('stripe_secret'));
-        $publishable = trim((string) $team?->getSetting('stripe_public'));
+        $secret = trim(StripeAccountResolver::secretForCategory('hosting'));
+        $publishable = trim((string) (StripeAccountResolver::keyForCategory('hosting') ?? ''));
 
         if ($secret === '' || $publishable === '')
         {
-            throw new RuntimeException('Stripe no está configurado para el equipo.');
+            throw new RuntimeException('Stripe de la plataforma no está configurado.');
         }
 
         $stripe = new StripeClient($secret);

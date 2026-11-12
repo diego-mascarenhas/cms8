@@ -276,10 +276,17 @@ class TeamSiteAssistantPromptService
      */
     public function settingsPayload(Team $team): array
     {
-        $automation = $this->syncEmbedAutomation($team, $this->resolvedRoutingKey($team));
-        $welcome = is_array($automation->settings)
+        $automation = $this->embedAutomation($team);
+        $welcome = is_array($automation?->settings)
             ? ($automation->settings['welcome_message'] ?? null)
             : null;
+        if ($automation === null || ! is_string($welcome) || trim($welcome) === '' || $automation->public_token === null || $automation->public_token === '')
+        {
+            $automation = $this->syncEmbedAutomation($team, $this->resolvedRoutingKey($team));
+            $welcome = is_array($automation->settings)
+                ? ($automation->settings['welcome_message'] ?? null)
+                : null;
+        }
 
         return [
             'selected_key' => $this->selectedRoutingKey($team),
@@ -373,6 +380,10 @@ class TeamSiteAssistantPromptService
         }
 
         $matches = Team::query()
+            ->with(['settings' => function ($query): void
+            {
+                $query->where('key', 'business_config');
+            }])
             ->get()
             ->filter(function (Team $team) use ($requested): bool
             {

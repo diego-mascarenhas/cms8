@@ -3,6 +3,7 @@
 namespace App\Services\Hosting;
 
 use App\Models\Team;
+use App\Services\StripeAccountResolver;
 use RuntimeException;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Price;
@@ -216,7 +217,7 @@ class StripeHostingPlanGateway
 
     private function secret(Team $team): ?string
     {
-        $secret = trim((string) $team->getSetting('stripe_secret'));
+        $secret = trim(StripeAccountResolver::secretForCategory('hosting'));
 
         return $secret !== '' ? $secret : null;
     }

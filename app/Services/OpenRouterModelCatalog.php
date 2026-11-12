@@ -23,6 +23,13 @@ class OpenRouterModelCatalog
     ];
 
     /**
+     * Normalized model key to the highest-scoring catalog row.
+     *
+     * @var array<string, array{id: string, name: string, prompt_per_million: float, completion_per_million: float}>|null
+     */
+    private ?array $index = null;
+
+    /**
      * @return array{prompt_per_million: float, completion_per_million: float, id: string, name: string}|null
      */
     public function find(string $used): ?array
@@ -33,17 +40,7 @@ class OpenRouterModelCatalog
             return null;
         }
 
-        $best = null;
-        $bestScore = 0;
-        foreach ($this->models() as $model)
-        {
-            $score = $this->score($wanted, $model);
-            if ($score > $bestScore)
-            {
-                $bestScore = $score;
-                $best = $model;
-            }
-        }
+        $best = $this->indexedModels()[$wanted] ?? null;
 
         if ($best !== null)
         {
@@ -150,6 +147,38 @@ class OpenRouterModelCatalog
         }
 
         return round((float) $pricePerToken * 1_000_000, 4);
+    }
+
+    /**
+     * @return array<string, array{id: string, name: string, prompt_per_million: float, completion_per_million: float}>
+     */
+    private function indexedModels(): array
+    {
+        if ($this->index !== null)
+        {
+            return $this->index;
+        }
+
+        $index = [];
+        $scores = [];
+        foreach ($this->models() as $model)
+        {
+            $keys = array_unique(array_filter([
+                $this->normalizeKey($model['id']),
+                $this->normalizeKey($model['name']),
+            ]));
+            foreach ($keys as $key)
+            {
+                $score = $this->score($key, $model);
+                if ($score > ($scores[$key] ?? 0))
+                {
+                    $scores[$key] = $score;
+                    $index[$key] = $model;
+                }
+            }
+        }
+
+        return $this->index = $index;
     }
 
     /**

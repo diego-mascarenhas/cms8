@@ -86,6 +86,28 @@ class ApiChatWhatsAppListPaginationTest extends TestCase
         $this->assertCount(5, $response->json('contacts'));
     }
 
+    public function test_list_preview_is_the_newest_message_for_each_chat(): void
+    {
+        [$token] = $this->inboxWithConversations(2);
+
+        Conversation::create([
+            'message_sid' => 'SM_older_same_chat',
+            'channel' => 'whatsapp',
+            'from' => '34600000002',
+            'to' => self::TEAM_NUMBER,
+            'body' => 'Viejo',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ])->forceFill(['created_at' => now()->subDay()])->save();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-list?limit=2');
+
+        $response->assertOk();
+        $preview = collect($response->json('contacts'))->firstWhere('from', '34600000002');
+        $this->assertSame('Mensaje 2', $preview['last_message'] ?? null);
+    }
+
     public function test_limit_is_bounded(): void
     {
         [$token] = $this->inboxWithConversations(1);

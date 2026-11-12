@@ -2,8 +2,13 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Enterprise;
+use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Domains\EnterpriseDomainCharge;
+use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Spatie\Permission\Models\Role;
@@ -13,12 +18,13 @@ class DomainRegistrationApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_check_reports_the_porkbun_price(): void
+    public function test_check_reports_the_marked_up_price(): void
     {
         $user = $this->admin();
         config([
             'services.porkbun.key' => 'pk_test',
             'services.porkbun.secret' => 'sk_test',
+            'humano_hosting.domain_markup_percent' => 30,
         ]);
         Http::fake([
             'https://api.porkbun.com/api/json/v3/domain/checkDomain/ejemplo.com' => Http::response([
@@ -33,7 +39,9 @@ class DomainRegistrationApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.domain', 'ejemplo.com')
             ->assertJsonPath('data.available', true)
-            ->assertJsonPath('data.price', 9.73)
+            ->assertJsonPath('data.cost', 9.73)
+            ->assertJsonPath('data.price', 12.65)
+            ->assertJsonPath('data.markup_percent', 30)
             ->assertJsonPath('data.currency', 'USD')
             ->assertJsonPath('data.suggestions', []);
 
@@ -46,6 +54,7 @@ class DomainRegistrationApiTest extends TestCase
         config([
             'services.porkbun.key' => 'pk_test',
             'services.porkbun.secret' => 'sk_test',
+            'humano_hosting.domain_markup_percent' => 30,
         ]);
         Http::fake([
             'https://api.porkbun.com/api/json/v3/domain/checkDomain/ejemplo.com' => Http::response([
@@ -69,7 +78,8 @@ class DomainRegistrationApiTest extends TestCase
             ->assertJsonPath('data.available', false)
             ->assertJsonPath('data.suggestions.0.domain', 'ejemplo.net')
             ->assertJsonPath('data.suggestions.0.available', true)
-            ->assertJsonPath('data.suggestions.0.price', 12.5)
+            ->assertJsonPath('data.suggestions.0.cost', 12.5)
+            ->assertJsonPath('data.suggestions.0.price', 16.25)
             ->assertJsonCount(1, 'data.suggestions');
     }
 
@@ -79,6 +89,7 @@ class DomainRegistrationApiTest extends TestCase
         config([
             'services.porkbun.key' => 'pk_test',
             'services.porkbun.secret' => 'sk_test',
+            'humano_hosting.domain_markup_percent' => 30,
         ]);
         Http::fake([
             'https://api.porkbun.com/api/json/v3/domain/checkDomain/ejemplo.com' => Http::response([
@@ -95,16 +106,19 @@ class DomainRegistrationApiTest extends TestCase
             ->postJson('/api/domains/check', ['domain' => 'ejemplo.com'])
             ->assertOk()
             ->assertJsonPath('data.available', true)
-            ->assertJsonPath('data.price', 11.81);
+            ->assertJsonPath('data.cost', 11.81)
+            ->assertJsonPath('data.price', 15.35);
     }
 
-    public function test_register_buys_the_domain_and_points_the_nameservers(): void
+    public function test_register_charges_then_buys_the_domain_and_points_the_nameservers(): void
     {
         $user = $this->admin();
+        $enterprise = $this->enterprise($user->currentTeam);
         config([
             'services.porkbun.key' => 'pk_test',
             'services.porkbun.secret' => 'sk_test',
             'humano_hosting.default_nameservers' => ['NS1.REVISIONALPHA.COM', 'NS2.REVISIONALPHA.COM'],
+            'humano_hosting.domain_markup_percent' => 30,
         ]);
         Http::fake([
             'https://api.porkbun.com/api/json/v3/domain/checkDomain/ejemplo.com' => Http::response([
@@ -119,13 +133,62 @@ class DomainRegistrationApiTest extends TestCase
                 'status' => 'SUCCESS',
             ]),
         ]);
+        $sync = ServiceSync::query()->create([
+            'stripe_id' => 'sub_test_domain',
+            'provider' => 'stripe',
+            'type' => 'sell',
+            'team_id' => $user->currentTeam->id,
+            'customer_id' => 'cus_test_domain',
+            'customer_name' => $enterprise->name,
+            'status' => 'active',
+            'plan_name' => 'Dominio anual ejemplo.com',
+            'plan_interval' => 'year',
+            'plan_interval_count' => 1,
+            'price_currency' => 'USD',
+            'unit_amount' => 12.65,
+            'amount_total' => 12.65,
+        ]);
+        $this->mock(EnterpriseDomainCharge::class, function ($mock) use ($enterprise, $sync)
+        {
+            $mock->shouldReceive('subscribe')
+                ->once()
+                ->withArgs(function (Enterprise $found, int $amountCents, string $currency) use ($enterprise): bool
+                {
+                    return $found->id === $enterprise->id
+                        && $amountCents === 1265
+                        && strtoupper($currency) === 'USD';
+                })
+                ->andReturn([
+                    'subscription_id' => 'sub_test_domain',
+                    'service_sync_id' => $sync->id,
+                    'payment_intent_id' => 'pi_test_domain',
+                    'amount_cents' => 1265,
+                    'currency' => 'USD',
+                ]);
+            $mock->shouldReceive('refund')->never();
+        });
 
         $this->withHeader('Authorization', 'Bearer '.$user->createToken('domains')->plainTextToken)
-            ->postJson('/api/domains/register', ['domain' => 'ejemplo.com'])
+            ->postJson('/api/domains/register', [
+                'domain' => 'ejemplo.com',
+                'enterprise_id' => $enterprise->id,
+            ])
             ->assertOk()
             ->assertJsonPath('data.domain', 'ejemplo.com')
+            ->assertJsonPath('data.price', 12.65)
+            ->assertJsonPath('data.cost', 9.73)
+            ->assertJsonPath('data.charged', true)
+            ->assertJsonPath('data.subscription_id', 'sub_test_domain')
+            ->assertJsonPath('data.payment_intent_id', 'pi_test_domain')
             ->assertJsonPath('data.nameservers_set', true)
             ->assertJsonPath('data.nameservers.0', 'ns1.revisionalpha.com');
+
+        $this->assertDatabaseHas('services', [
+            'enterprise_id' => $enterprise->id,
+            'subscription_id' => $sync->id,
+            'description' => 'Dominio ejemplo.com (anual)',
+            'frequency' => 12,
+        ]);
 
         Http::assertSent(function ($request): bool
         {
@@ -146,6 +209,7 @@ class DomainRegistrationApiTest extends TestCase
     public function test_register_does_not_buy_a_taken_domain(): void
     {
         $user = $this->admin();
+        $enterprise = $this->enterprise($user->currentTeam);
         config([
             'services.porkbun.key' => 'pk_test',
             'services.porkbun.secret' => 'sk_test',
@@ -157,13 +221,34 @@ class DomainRegistrationApiTest extends TestCase
                 'price' => 9.73,
             ]),
         ]);
+        $this->mock(EnterpriseDomainCharge::class, function ($mock)
+        {
+            $mock->shouldReceive('subscribe')->never();
+        });
 
         $this->withHeader('Authorization', 'Bearer '.$user->createToken('domains')->plainTextToken)
-            ->postJson('/api/domains/register', ['domain' => 'ejemplo.com'])
+            ->postJson('/api/domains/register', [
+                'domain' => 'ejemplo.com',
+                'enterprise_id' => $enterprise->id,
+            ])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Ese dominio no está disponible.');
 
         Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/domain/create/'));
+    }
+
+    public function test_register_requires_enterprise_id(): void
+    {
+        $user = $this->admin();
+        config([
+            'services.porkbun.key' => 'pk_test',
+            'services.porkbun.secret' => 'sk_test',
+        ]);
+        Http::fake();
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('domains')->plainTextToken)
+            ->postJson('/api/domains/register', ['domain' => 'ejemplo.com'])
+            ->assertStatus(422);
     }
 
     public function test_check_requires_the_porkbun_keys(): void
@@ -222,6 +307,21 @@ class DomainRegistrationApiTest extends TestCase
             ->postJson('/api/domains/check', ['domain' => 'tester.com'])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Porkbun no pudo completar la operación.');
+    }
+
+    private function enterprise(Team $team): Enterprise
+    {
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+        ]);
+
+        return Enterprise::withoutEvents(fn () => Enterprise::factory()->forTeam($team->id)->create([
+            'type_id' => 1,
+            'status_id' => 1,
+            'payment_type_id' => null,
+            'invoice_type_id' => null,
+        ]));
     }
 
     private function admin(): User

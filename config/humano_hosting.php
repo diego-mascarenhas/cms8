@@ -18,4 +18,10 @@ return [
     'error_notify' => (string) env('HOSTING_ERROR_NOTIFY', 'webmaster@revisionalpha.cloud'),
 
     'provision_server' => (string) env('HOSTING_PROVISION_SERVER', 'odin'),
+
+    /*
+     * Markup on Porkbun wholesale domain prices when quoting and charging the client.
+     * Default 30%. Raise via HOSTING_DOMAIN_MARKUP_PERCENT; floor stays at 30 for now.
+     */
+    'domain_markup_percent' => max(30, (float) env('HOSTING_DOMAIN_MARKUP_PERCENT', 30)),
 ];

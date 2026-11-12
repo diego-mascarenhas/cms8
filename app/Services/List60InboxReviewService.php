@@ -37,8 +37,12 @@ class List60InboxReviewService
      */
     public function promptPayload(Team $team): array
     {
-        DefaultAssistantFlowPromptsService::syncForTeam((int) $team->id);
         $prompt = Prompt::findByRoutingKey(self::ROUTING_KEY_ALTA, (int) $team->id);
+        if ($prompt === null)
+        {
+            DefaultAssistantFlowPromptsService::syncForTeam((int) $team->id);
+            $prompt = Prompt::findByRoutingKey(self::ROUTING_KEY_ALTA, (int) $team->id);
+        }
         $default = List60OutreachPromptDefaults::altaInstruction();
 
         return [

@@ -36,7 +36,13 @@ class StartCommand extends Command
                             {--team_id= : Team ID filter for --google-inspect}
                             {--limit=200 : Row limit for --google-inspect}
                             {--source-team= : Source team ID for --clone-catalog (optional; skips prompts if both IDs given)}
-                            {--target-team= : Target team ID for --clone-catalog}';
+                            {--target-team= : Target team ID for --clone-catalog}
+                            {--api-performance : Measure every API GET and print status, time and size}
+                            {--api-team= : Team id for --api-performance}
+                            {--api-user= : User id for --api-performance}
+                            {--api-host= : API host for --api-performance: local, staging or admin}
+                            {--api-token= : Sanctum token issued on staging or admin}
+                            {--api-team-token= : Team API token issued on staging or admin}';
 
     protected $description = 'Humano setup: fresh install (migrate:fresh --seed) then choose to load demo data';
 
@@ -60,6 +66,8 @@ class StartCommand extends Command
 
     private const OPT_HOSTING_REHEARSE = 'Hosting (ensayar el WhatsApp del cliente; "chau" sale del flujo)';
 
+    private const OPT_API_PERFORMANCE = 'API: medir la performance de cada GET';
+
     private const OPT_EXIT = 'Exit';
 
     public function handle(): int
@@ -73,6 +81,12 @@ class StartCommand extends Command
         $exchangeRatesBackfill = $this->option('exchange-rates-backfill');
         $reclassifyRoles = $this->option('reclassify-roles');
         $hostingRehearse = $this->option('hosting-rehearse');
+        $apiPerformance = $this->option('api-performance');
+
+        if ($apiPerformance)
+        {
+            return $this->runApiPerformance(prompt: false);
+        }
 
         if ($fresh)
         {
@@ -171,6 +185,7 @@ class StartCommand extends Command
                     self::OPT_EXCHANGE_RATES_BACKFILL,
                     self::OPT_RECLASSIFY_ROLES,
                     self::OPT_HOSTING_REHEARSE,
+                    self::OPT_API_PERFORMANCE,
                     self::OPT_EXIT,
                 ],
                 self::OPT_EXIT,
@@ -216,6 +231,9 @@ class StartCommand extends Command
             } elseif ($choice === self::OPT_HOSTING_REHEARSE)
             {
                 $this->runHostingRehearse(prompt: true);
+            } elseif ($choice === self::OPT_API_PERFORMANCE)
+            {
+                $this->runApiPerformance(prompt: true);
             }
 
             $this->newLine();
@@ -506,5 +524,85 @@ class StartCommand extends Command
         }
 
         return $this->call('hosting:rehearse', $arguments);
+    }
+
+    private function runApiPerformance(bool $prompt): int
+    {
+        $arguments = [];
+        $team = trim((string) $this->option('api-team'));
+        $user = trim((string) $this->option('api-user'));
+        $host = trim((string) $this->option('api-host'));
+        $token = trim((string) $this->option('api-token'));
+        $teamToken = trim((string) $this->option('api-team-token'));
+
+        if ($prompt)
+        {
+            $this->line('Measures every API GET. POST, PUT, and DELETE are not called.');
+            $this->line('local uses '.rtrim((string) config('app.url'), '/').'. staging is https://staging.idoneo.dev. admin is https://admin.idoneo.dev.');
+            if ($host === '')
+            {
+                $host = (string) $this->choice('Host', ['local', 'staging', 'admin'], 'local');
+            }
+            if (in_array($host, ['staging', 'admin'], true))
+            {
+                $this->line('Authenticated routes use TEAM_TOKEN from .env. It must be the API token of the team on that server.');
+            }
+            $team = trim((string) $this->ask('Team ID', $team !== '' ? $team : '2'));
+            $user = trim((string) $this->ask('User ID', $user !== '' ? $user : '2'));
+        }
+
+        $baseUrl = $this->apiBaseUrl($host);
+        if ($baseUrl === false)
+        {
+            return self::FAILURE;
+        }
+
+        if ($team !== '')
+        {
+            $arguments['--team'] = $team;
+        }
+        if ($user !== '')
+        {
+            $arguments['--user'] = $user;
+        }
+        if (is_string($baseUrl))
+        {
+            $arguments['--base-url'] = $baseUrl;
+        }
+        if ($token !== '')
+        {
+            $arguments['--token'] = $token;
+        }
+        if ($teamToken !== '')
+        {
+            $arguments['--team-token'] = $teamToken;
+        }
+
+        return $this->call('api:performance', $arguments);
+    }
+
+    /**
+     * @return string|false|null Null keeps APP_URL. False is an unknown host.
+     */
+    private function apiBaseUrl(string $host): string|false|null
+    {
+        if ($host === '' || $host === 'local')
+        {
+            return null;
+        }
+
+        if ($host === 'staging')
+        {
+            return 'https://staging.idoneo.dev';
+        }
+
+        if ($host === 'admin')
+        {
+            return 'https://admin.idoneo.dev';
+        }
+
+        $this->error('Unknown host. Use local, staging, or admin.');
+
+        return false;
     }
 }

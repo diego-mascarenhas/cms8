@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\Contact;
 use App\Models\Survey;
 use App\Models\SurveyResponse;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\LegacySurveyImporter;
 use App\Support\SurveySchema;
+use Database\Seeders\ContactStatusSeeder;
+use Database\Seeders\CountrySeeder;
+use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Spatie\Permission\Models\Role;
@@ -24,6 +28,7 @@ class SurveyModuleTest extends TestCase
         parent::setUp();
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([ContactStatusSeeder::class, CountrySeeder::class, LanguageSeeder::class]);
     }
 
     public function test_admin_creates_a_survey_as_json_fields(): void
@@ -130,6 +135,13 @@ class SurveyModuleTest extends TestCase
         $this->assertSame('ana@example.com', $response->user->email);
         $this->assertTrue($response->user->teams()->where('teams.id', $user->current_team_id)->exists());
         $this->assertSame(['q10' => '8'], $response->payload_json['answers']);
+        $this->assertNotNull(
+            Contact::withoutGlobalScopes()
+                ->where('team_id', $user->current_team_id)
+                ->where('user_id', $response->user_id)
+                ->whereRaw('LOWER(email) = ?', ['ana@example.com'])
+                ->first(),
+        );
 
         $results = $survey->fresh()->fieldResults();
         $this->assertSame(1, $results[0]['options'][0]['count']);
@@ -150,6 +162,7 @@ class SurveyModuleTest extends TestCase
         imagedestroy($image);
 
         $user = $this->makeAdminUser();
+        $user->currentTeam->forceFill(['name' => 'Revision Alpha'])->save();
         $respondent = User::factory()->create([
             'name' => 'Alan Robert Rodriguez',
             'email' => 'alan.04rt@gmail.com',
@@ -172,7 +185,8 @@ class SurveyModuleTest extends TestCase
         $this->get(route('survey.certificate', $survey))
             ->assertOk()
             ->assertSee('Descargar certificado')
-            ->assertSee('Conferencia SCI');
+            ->assertSee('Conferencia SCI')
+            ->assertSee('Email con el que te inscribiste');
 
         $download = $this->post(route('survey.certificate.download', $survey), [
             'email' => 'Alan.04rt@gmail.com',
@@ -181,6 +195,14 @@ class SurveyModuleTest extends TestCase
         $download->assertOk();
         $this->assertSame('image/jpeg', $download->headers->get('content-type'));
         $this->assertStringStartsWith("\xFF\xD8", $download->getContent());
+        $this->assertStringContainsString(
+            'revision-alpha-conferencia-sci-alan-robert-rodriguez-',
+            (string) $download->headers->get('content-disposition'),
+        );
+        $this->assertStringNotContainsString(
+            'filename="certificado.jpg"',
+            (string) $download->headers->get('content-disposition'),
+        );
 
         $this->post(route('survey.certificate.download', $survey), [
             'email' => 'otra@example.com',
@@ -265,7 +287,7 @@ class SurveyModuleTest extends TestCase
         $this->assertSame(7437, $command->filters['empresa']);
     }
 
-    public function test_company_contacts_become_users_of_the_team(): void
+    public function test_company_contacts_become_users_and_crm_contacts_of_the_team(): void
     {
         $user = $this->makeAdminUser();
 
@@ -280,6 +302,23 @@ class SurveyModuleTest extends TestCase
         $this->assertSame('Marina Lizama', $member->name);
         $this->assertTrue($member->teams()->where('teams.id', $user->current_team_id)->exists());
         $this->assertNull(User::query()->where('email', 'fuera@lizama.test')->first());
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $user->current_team_id)
+            ->whereRaw('LOWER(email) = ?', ['marina@lizama.test'])
+            ->first();
+
+        $this->assertNotNull($contact);
+        $this->assertSame($member->id, $contact->user_id);
+        $this->assertSame('Marina', $contact->name);
+        $this->assertSame('Lizama', $contact->surname);
+        $this->assertSame(1, $contact->status_id);
+        $this->assertNull(
+            Contact::withoutGlobalScopes()
+                ->where('team_id', $user->current_team_id)
+                ->whereRaw('LOWER(email) = ?', ['fuera@lizama.test'])
+                ->first(),
+        );
     }
 
     private function makeAdminUser(): User

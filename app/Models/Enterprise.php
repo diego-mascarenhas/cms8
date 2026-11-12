@@ -279,6 +279,48 @@ class Enterprise extends Model
         return $withEmail->first();
     }
 
+    /**
+     * Email of the company administrator for this enterprise (cPanel contact, notices).
+     */
+    public function administrativeContactEmail(): ?string
+    {
+        $this->loadMissing('contacts');
+
+        $admins = $this->contacts
+            ->filter(function (Contact $contact): bool
+            {
+                $position = trim((string) ($contact->pivot->position ?? ''));
+                $email = trim((string) ($contact->email ?? ''));
+
+                return strcasecmp($position, ContactEnterprise::ROLES[0]) === 0
+                    && $email !== ''
+                    && filter_var($email, FILTER_VALIDATE_EMAIL);
+            })
+            ->values();
+
+        if ($admins->isNotEmpty())
+        {
+            $current = $admins->filter(function (Contact $contact): bool
+            {
+                return (int) $contact->current_enterprise_id === (int) $this->id;
+            })->values();
+
+            $chosen = $current->count() === 1 ? $current->first() : $admins->first();
+            $email = trim((string) ($chosen?->email ?? ''));
+
+            if ($email !== '')
+            {
+                return $email;
+            }
+        }
+
+        $enterpriseEmail = trim((string) ($this->email ?? ''));
+
+        return $enterpriseEmail !== '' && filter_var($enterpriseEmail, FILTER_VALIDATE_EMAIL)
+            ? $enterpriseEmail
+            : null;
+    }
+
     public function getStatusLabelAttribute()
     {
         if ($this->status)

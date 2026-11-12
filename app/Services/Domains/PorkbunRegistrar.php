@@ -11,7 +11,7 @@ use RuntimeException;
 class PorkbunRegistrar
 {
     /**
-     * @return array{domain: string, available: bool, price: float|null, currency: string, suggestions: list<array{domain: string, available: bool, price: float|null, currency: string}>}
+     * @return array{domain: string, available: bool, cost: float|null, price: float|null, currency: string, markup_percent: float, suggestions: list<array{domain: string, available: bool, cost: float|null, price: float|null, currency: string, markup_percent: float}>}
      */
     public function check(Team $team, string $domain): array
     {
@@ -22,9 +22,9 @@ class PorkbunRegistrar
     }
 
     /**
-     * @return array{domain: string, available: bool, price: float|null, currency: string}
+     * @return array{domain: string, available: bool, cost: float|null, price: float|null, currency: string, markup_percent: float}
      */
-    private function quote(Team $team, string $domain): array
+    public function quote(Team $team, string $domain): array
     {
         $domain = $this->domain($domain);
         $payload = $this->post($team, 'domain/checkDomain/'.$domain);
@@ -34,22 +34,26 @@ class PorkbunRegistrar
 
     /**
      * @param  array<string, mixed>  $payload
-     * @return array{domain: string, available: bool, price: float|null, currency: string}
+     * @return array{domain: string, available: bool, cost: float|null, price: float|null, currency: string, markup_percent: float}
      */
     private function quoteFrom(string $domain, array $payload): array
     {
         $quote = is_array($payload['response'] ?? null) ? $payload['response'] : $payload;
+        $cost = isset($quote['price']) && is_numeric($quote['price']) ? round((float) $quote['price'], 2) : null;
+        $markup = $this->markupPercent();
 
         return [
             'domain' => $domain,
             'available' => strtolower((string) ($quote['avail'] ?? '')) === 'yes',
-            'price' => isset($quote['price']) && is_numeric($quote['price']) ? round((float) $quote['price'], 2) : null,
+            'cost' => $cost,
+            'price' => $cost === null ? null : $this->sellPrice($cost, $markup),
             'currency' => 'USD',
+            'markup_percent' => $markup,
         ];
     }
 
     /**
-     * @return list<array{domain: string, available: bool, price: float|null, currency: string}>
+     * @return list<array{domain: string, available: bool, cost: float|null, price: float|null, currency: string, markup_percent: float}>
      */
     private function suggestions(Team $team, string $domain): array
     {
@@ -154,19 +158,19 @@ class PorkbunRegistrar
     }
 
     /**
-     * @return array{domain: string, price: float|null, currency: string, nameservers: list<string>, nameservers_set: bool, message: string}
+     * @return array{domain: string, cost: float|null, price: float|null, currency: string, markup_percent: float, nameservers: list<string>, nameservers_set: bool, message: string}
      */
     public function register(Team $team, string $domain): array
     {
-        $quote = $this->check($team, $domain);
+        $quote = $this->quote($team, $domain);
 
-        if (! $quote['available'] || $quote['price'] === null)
+        if (! $quote['available'] || $quote['cost'] === null || $quote['price'] === null)
         {
             throw new RuntimeException('Ese dominio no está disponible.');
         }
 
         $this->post($team, 'domain/create/'.$quote['domain'], [
-            'cost' => (int) round($quote['price'] * 100),
+            'cost' => (int) round($quote['cost'] * 100),
             'agreeToTerms' => 'yes',
         ], 'register-'.$quote['domain']);
 
@@ -187,12 +191,26 @@ class PorkbunRegistrar
 
         return [
             'domain' => $quote['domain'],
+            'cost' => $quote['cost'],
             'price' => $quote['price'],
             'currency' => 'USD',
+            'markup_percent' => $quote['markup_percent'],
             'nameservers' => $nameservers,
             'nameservers_set' => $nameserversSet,
             'message' => $message,
         ];
+    }
+
+    public function markupPercent(): float
+    {
+        return max(30.0, (float) config('humano_hosting.domain_markup_percent', 30));
+    }
+
+    public function sellPrice(float $cost, ?float $markupPercent = null): float
+    {
+        $markup = $markupPercent ?? $this->markupPercent();
+
+        return round($cost * (1 + ($markup / 100)), 2);
     }
 
     /**

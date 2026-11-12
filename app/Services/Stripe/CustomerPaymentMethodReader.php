@@ -3,6 +3,7 @@
 namespace App\Services\Stripe;
 
 use App\Models\Team;
+use App\Services\StripeAccountResolver;
 use Illuminate\Support\Facades\Cache;
 use Stripe\StripeClient;
 use Throwable;
@@ -22,7 +23,7 @@ class CustomerPaymentMethodReader
             return null;
         }
 
-        $secret = trim((string) $team->getSetting('stripe_secret'));
+        $secret = trim(StripeAccountResolver::secretForCategory('hosting'));
         if ($secret === '')
         {
             return null;
@@ -63,7 +64,7 @@ class CustomerPaymentMethodReader
             return [];
         }
 
-        $secret = trim((string) $team->getSetting('stripe_secret'));
+        $secret = trim(StripeAccountResolver::secretForCategory('hosting'));
         if ($secret === '')
         {
             return [];

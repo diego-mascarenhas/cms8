@@ -317,4 +317,159 @@ class ExpenseDocumentDetectionServiceTest extends TestCase
         $this->assertSame('OWZPCFGE-0030', $detected['document_number']);
         $this->assertSame('local', $detected['ocr']['engine_used']);
     }
+
+    public function test_detect_from_uploaded_file_recognizes_spanish_dates_and_paid_status(): void
+    {
+        $team = Team::factory()->create([
+            'name' => 'REVISION ALPHA S.L.',
+        ]);
+        $team->setSetting('documents_ocr_mode', 'local', ['group' => 'documents']);
+
+        Currency::query()->create([
+            'code' => 'EUR',
+            'name' => 'Euro',
+            'symbol' => '€',
+            'status' => true,
+        ]);
+
+        $ocrText = implode("\n", [
+            'PROVEEDOR: FORGE S.L.',
+            'Número factura: FORGE-4-2026',
+            'Fecha de emisión: 12 de noviembre de 2026',
+            'Fecha vencimiento: 12/11/2026',
+            'Estado: Pagado',
+            'Hosting mensual 100,00 21% 0%',
+            'TOTAL A PAGAR: 121,00 €',
+        ]);
+
+        $ocrService = $this->createMock(DocumentOcrService::class);
+        $ocrService->expects($this->once())
+            ->method('extractTextFromLocalFile')
+            ->willReturn($ocrText);
+
+        $aiOcrService = $this->createMock(DocumentAiOcrService::class);
+        $aiOcrService->expects($this->never())
+            ->method('extractTextFromLocalFile');
+
+        $service = new ExpenseDocumentDetectionService(
+            $ocrService,
+            $aiOcrService,
+            app(\App\Services\ExpenseSupplierService::class),
+        );
+
+        $detected = $service->detectFromUploadedFile(
+            UploadedFile::fake()->create('Forge_4_2026.pdf', 64, 'application/pdf'),
+            $team->id,
+        );
+
+        $this->assertSame('FORGE-4-2026', $detected['document_number']);
+        $this->assertSame('2026-11-12', $detected['date']);
+        $this->assertSame('2026-11-12', $detected['due_date']);
+        $this->assertTrue($detected['is_paid']);
+        $this->assertSame('2026-11-12', $detected['payment_date']);
+        $this->assertSame(121.0, $detected['payment_amount']);
+    }
+
+    public function test_detect_from_uploaded_file_extracts_forge_style_invoice_number_date_and_paid(): void
+    {
+        $team = Team::factory()->create([
+            'name' => 'REVISION ALPHA S.L.',
+        ]);
+        $team->setSetting('documents_ocr_mode', 'local', ['group' => 'documents']);
+
+        Currency::query()->create([
+            'code' => 'USD',
+            'name' => 'US Dollar',
+            'symbol' => '$',
+            'status' => true,
+        ]);
+
+        $ocrText = implode("\n", [
+            'Product: Forge',
+            'Date: Apr 10, 2026',
+            'Invoice Number: 1F3AD340-0018',
+            'Status: Paid',
+            'API Usage 1 $20.00',
+            'Total $20.00 USD',
+            'Amount due $0.00',
+        ]);
+
+        $ocrService = $this->createMock(DocumentOcrService::class);
+        $ocrService->expects($this->once())
+            ->method('extractTextFromLocalFile')
+            ->willReturn($ocrText);
+
+        $aiOcrService = $this->createMock(DocumentAiOcrService::class);
+        $aiOcrService->expects($this->never())
+            ->method('extractTextFromLocalFile');
+
+        $service = new ExpenseDocumentDetectionService(
+            $ocrService,
+            $aiOcrService,
+            app(\App\Services\ExpenseSupplierService::class),
+        );
+
+        $detected = $service->detectFromUploadedFile(
+            UploadedFile::fake()->create('Invoice-1F3AD340-0018.pdf', 64, 'application/pdf'),
+            $team->id,
+        );
+
+        $this->assertSame('1F3AD340-0018', $detected['document_number']);
+        $this->assertSame('2026-04-10', $detected['date']);
+        $this->assertSame('2026-04-10', $detected['due_date']);
+        $this->assertSame('2026-04-10', $detected['payment_date']);
+        $this->assertTrue($detected['is_paid']);
+        $this->assertSame(20.0, $detected['payment_amount']);
+        $this->assertSame('USD', $detected['currency_code']);
+    }
+
+    public function test_detect_from_uploaded_file_handles_forge_multiline_latin1_ocr(): void
+    {
+        $team = Team::factory()->create([
+            'name' => 'REVISION ALPHA S.L.',
+        ]);
+        $team->setSetting('documents_ocr_mode', 'local', ['group' => 'documents']);
+
+        Currency::query()->create([
+            'code' => 'USD',
+            'name' => 'US Dollar',
+            'symbol' => '$',
+            'status' => true,
+        ]);
+
+        // Real Forge PDF stream OCR: labels on their own lines + Latin-1 multiply sign (0xD7).
+        $ocrText = "Invoice\n(Paid)\nProduct:\nForge\nDate:\nApr 10, 2026\nInvoice Number:\n1F3AD340-0018\n"
+            ."Laravel Holdings Inc.\nRecipient\nREVISION ALPHA S.L.\n"
+            ."1 \xD7 Business (at \$39.00 / month)\nApr 10, 2026 - May 10, 2026\n1\n\$39.00\n\$39.00\n"
+            ."Total\n\$39.00\nApplied balance\n\$0.00\nAmount due\n\$39.00";
+
+        $ocrService = $this->createMock(DocumentOcrService::class);
+        $ocrService->expects($this->once())
+            ->method('extractTextFromLocalFile')
+            ->willReturn($ocrText);
+
+        $aiOcrService = $this->createMock(DocumentAiOcrService::class);
+        $aiOcrService->expects($this->never())
+            ->method('extractTextFromLocalFile');
+
+        $service = new ExpenseDocumentDetectionService(
+            $ocrService,
+            $aiOcrService,
+            app(\App\Services\ExpenseSupplierService::class),
+        );
+
+        $detected = $service->detectFromUploadedFile(
+            UploadedFile::fake()->create('Forge_4_2026.pdf', 64, 'application/pdf'),
+            $team->id,
+        );
+
+        $this->assertSame('1F3AD340-0018', $detected['document_number']);
+        $this->assertSame('2026-04-10', $detected['date']);
+        $this->assertSame('2026-04-10', $detected['due_date']);
+        $this->assertSame('2026-04-10', $detected['payment_date']);
+        $this->assertTrue($detected['is_paid']);
+        $this->assertSame(39.0, $detected['payment_amount']);
+        $this->assertSame('USD', $detected['currency_code']);
+        $this->assertSame('Laravel Holdings Inc.', $detected['enterprise_name']);
+    }
 }

@@ -37,6 +37,8 @@ return new class extends AiMigration
 
             $table->index(['conversation_id', 'user_id', 'updated_at'], 'conversation_index');
             $table->index(['user_id']);
+            $table->index(['conversation_id', 'agent', 'created_at'], 'agent_messages_conversation_agent_created_idx');
+            $table->index(['role', 'created_at'], 'agent_messages_role_created_idx');
         });
     }
 

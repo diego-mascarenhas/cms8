@@ -190,6 +190,76 @@ class ExpenseController extends Controller
     {
         $this->authorize('create', Payment::class);
 
+        return view('expense.create', $this->creationFormData());
+    }
+
+    public function form(): JsonResponse
+    {
+        $this->authorize('create', Payment::class);
+
+        $data = $this->creationFormData();
+
+        return response()->json([
+            'success' => true,
+            'can_create_supplier' => auth()->user()->can('create', Enterprise::class),
+            'document_types' => collect($data['documentTypes'])->map(function (string $label, string $key) use ($data): array
+            {
+                return [
+                    'key' => $key,
+                    'label' => $label,
+                    'disabled' => in_array($key, $data['disabledDocumentTypes'], true),
+                ];
+            })->values(),
+            'enterprises' => $data['enterprises']->map(function (Enterprise $enterprise): array
+            {
+                return [
+                    'id' => (int) $enterprise->id,
+                    'name' => (string) $enterprise->name,
+                ];
+            })->values(),
+            'payment_accounts' => $data['paymentAccountOptions'],
+            'payment_types' => $data['paymentTypes']->map(function (PaymentType $type): array
+            {
+                return [
+                    'id' => (int) $type->id,
+                    'name' => (string) ($type->display_name ?? $type->name),
+                ];
+            })->values(),
+            'default_payment_type_id' => $data['defaultPaymentTypeId'],
+            'default_payment_account_id' => $data['defaultPaymentAccountId'],
+            'currencies' => $data['currencies']->map(function (Currency $currency): array
+            {
+                return [
+                    'id' => (int) $currency->id,
+                    'code' => (string) $currency->code,
+                    'name' => (string) $currency->name,
+                    'symbol' => (string) $currency->symbol,
+                ];
+            })->values(),
+            'countries' => $data['countries']->map(function (Country $country): array
+            {
+                return [
+                    'id' => (int) $country->id,
+                    'code' => (string) $country->code,
+                    'name' => (string) $country->name,
+                ];
+            })->values(),
+            'statuses' => collect($data['statusOptions'])->map(function (string $label, int $id): array
+            {
+                return [
+                    'id' => $id,
+                    'label' => $label,
+                ];
+            })->values(),
+            'categories' => $data['expenseCategoryOptions'],
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function creationFormData(): array
+    {
         $teamId = (int) auth()->user()->currentTeam->id;
 
         $enterprises = Enterprise::query()
@@ -273,7 +343,7 @@ class ExpenseController extends Controller
             'livewire_key' => 'expense-line-cat-mgr-services',
         ];
 
-        return view('expense.create', compact(
+        return compact(
             'enterprises',
             'paymentAccounts',
             'paymentAccountOptions',
@@ -287,7 +357,7 @@ class ExpenseController extends Controller
             'statusOptions',
             'expenseCategoryOptions',
             'documentFlow',
-        ));
+        );
     }
 
     public function detectDocument(
@@ -425,7 +495,7 @@ class ExpenseController extends Controller
     public function store(
         StoreExpenseRequest $request,
         ManualInvoiceDocumentService $manualInvoiceDocumentService,
-    ): RedirectResponse {
+    ): JsonResponse|RedirectResponse {
         $this->authorize('create', Payment::class);
 
         $teamId = (int) $request->user()->currentTeam->id;
@@ -445,6 +515,16 @@ class ExpenseController extends Controller
             : (($validated['document_type'] ?? '') === 'credit_note'
                 ? 'Nota de crédito guardada correctamente.'
                 : 'Gasto guardado correctamente.');
+
+        if ($request->expectsJson())
+        {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'is_draft' => $result['is_draft'],
+                'invoice_id' => $result['invoice']?->id,
+            ]);
+        }
 
         return redirect()->route('expense.index')->with('success', $message);
     }

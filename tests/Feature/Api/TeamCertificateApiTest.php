@@ -21,7 +21,10 @@ class TeamCertificateApiTest extends TestCase
         }
 
         $owner = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $owner->id]);
+        $team = Team::factory()->create([
+            'user_id' => $owner->id,
+            'name' => 'Revision Alpha',
+        ]);
         $token = bin2hex(random_bytes(32));
         $team->setSetting('api_token_hash', hash('sha256', $token), [
             'group' => 'api',
@@ -66,6 +69,10 @@ class TeamCertificateApiTest extends TestCase
         $download->assertOk();
         $this->assertSame('image/jpeg', $download->headers->get('content-type'));
         $this->assertStringStartsWith("\xFF\xD8", $download->getContent());
+        $this->assertStringContainsString(
+            'revision-alpha-conferencia-sci-alan-robert-rodriguez-',
+            (string) $download->headers->get('content-disposition'),
+        );
 
         $this->getJson('/api/team/certificates?email=otra@example.com', $headers)
             ->assertOk()

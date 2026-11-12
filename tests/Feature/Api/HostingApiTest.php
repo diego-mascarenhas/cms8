@@ -5,6 +5,10 @@ namespace Tests\Feature\Api;
 use App\Contracts\ControlPanelConnector;
 use App\Enums\ServerStatus;
 use App\Mail\HostingFailureMail;
+use App\Models\Contact;
+use App\Models\ContactEnterprise;
+use App\Models\ContactStatus;
+use App\Models\Country;
 use App\Models\Domain;
 use App\Models\Enterprise;
 use App\Models\Server;
@@ -13,8 +17,10 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\ControlPanel\ControlPanelManager;
 use App\Services\Hosting\StripeHostingPlanGateway;
+use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -81,12 +87,29 @@ class HostingApiTest extends TestCase
             'encrypted_token' => 'test-token',
         ]);
         $enterprise = $this->enterprise($team);
+        $this->seed([ContactStatusSeeder::class, LanguageSeeder::class]);
+        Country::query()->updateOrCreate(['id' => 724], ['name' => 'Spain', 'code' => 'ES']);
+        $admin = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Admin Cliente',
+            'email' => 'admin@cliente.test',
+            'language' => 'es',
+            'country' => 724,
+            'creator_id' => $user->id,
+            'status_id' => ContactStatus::query()->value('id') ?? 1,
+            'current_enterprise_id' => $enterprise->id,
+        ]);
+        $admin->enterprises()->attach($enterprise->id, ['position' => ContactEnterprise::ROLES[0]]);
         $connector = \Mockery::mock(ControlPanelConnector::class);
         $connector->shouldReceive('createAccount')
             ->once()
-            ->withArgs(function (Server $server, string $username, string $domain, string $plan) use ($odin): bool
+            ->withArgs(function (Server $server, string $username, string $domain, string $plan, string $password, ?string $contactEmail) use ($odin): bool
             {
-                return $server->is($odin) && $username === 'cliente' && $domain === 'cliente.test' && $plan === 'revision_flex';
+                return $server->is($odin)
+                    && $username === 'cliente'
+                    && $domain === 'cliente.test'
+                    && $plan === 'revision_flex'
+                    && $contactEmail === 'admin@cliente.test';
             })
             ->andReturn(['success' => true]);
         $connector->shouldReceive('ensureSpfRecord')->once()->andReturn(['success' => true]);
@@ -122,6 +145,10 @@ class HostingApiTest extends TestCase
             'plan' => 'revision_flex',
             'server_id' => $odin->id,
         ]);
+        $this->assertSame(
+            'admin@cliente.test',
+            Domain::query()->where('domain', 'cliente.test')->first()?->data['email'] ?? null,
+        );
     }
 
     public function test_google_mail_replaces_mx_and_skips_local_mailboxes(): void

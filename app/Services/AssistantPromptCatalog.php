@@ -16,10 +16,21 @@ use InvalidArgumentException;
  */
 class AssistantPromptCatalog
 {
+    /** @var list<array{key: string, group: string, group_label: string, own_brand: bool, module_key: string, section_key: string, section_label: string, helper_text: string, prompt_instruction: string}>|null */
+    private ?array $items = null;
+
     /**
      * @return list<array{key: string, group: string, group_label: string, own_brand: bool, module_key: string, section_key: string, section_label: string, helper_text: string, prompt_instruction: string}>
      */
     public function items(): array
+    {
+        return $this->items ??= $this->buildItems();
+    }
+
+    /**
+     * @return list<array{key: string, group: string, group_label: string, own_brand: bool, module_key: string, section_key: string, section_label: string, helper_text: string, prompt_instruction: string}>
+     */
+    private function buildItems(): array
     {
         $items = [];
 
@@ -89,6 +100,10 @@ class AssistantPromptCatalog
     public function groupsFor(Team $team): array
     {
         $grouped = [];
+        $ownedBySection = Prompt::withoutGlobalScope('team')
+            ->where('team_id', $team->id)
+            ->get()
+            ->groupBy('section_key');
 
         foreach ($this->items() as $item)
         {
@@ -97,8 +112,7 @@ class AssistantPromptCatalog
                 continue;
             }
 
-            $owned = $this->teamPromptBySection($team, $item['section_key'])
-                ?? $this->teamPrompt($team, $item['module_key'], $item['section_key']);
+            $owned = $ownedBySection->get($item['section_key'])?->first();
             $grouped[$item['group']]['group'] = $item['group'];
             $grouped[$item['group']]['group_label'] = $item['group_label'];
             $audience = $this->audienceFor($item['key'], $item['section_key']);

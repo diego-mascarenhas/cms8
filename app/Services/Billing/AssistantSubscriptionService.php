@@ -28,7 +28,11 @@ use App\Support\HumanoPricingCatalog;
 use App\Support\StripeErrorMessage;
 use App\Support\TeamUsageInvoiceFrequency;
 use Carbon\Carbon;
+use Illuminate\Http\Client\Pool;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Subscription;
 
@@ -46,6 +50,16 @@ class AssistantSubscriptionService
     public function summary(Team $team, string $catalog = 'assistant'): array
     {
         $catalog = $this->normalizeCatalog($catalog);
+        $summaryKey = $this->summaryCacheKey($team, $catalog);
+        if (! app()->runningUnitTests())
+        {
+            $cached = Cache::get($summaryKey);
+            if (is_array($cached))
+            {
+                return $cached;
+            }
+        }
+
         $plans = $this->catalogPlanConfigs($catalog);
         $currentConfig = $plans[0] ?? [];
         $subscription = $this->findCatalogSubscription($team, $plans);
@@ -70,7 +84,7 @@ class AssistantSubscriptionService
             $canCheckout = false;
         }
 
-        return [
+        $payload = [
             'plan' => $this->planPayload($currentConfig),
             'plans' => array_map(fn (array $plan): array => $this->planPayload($plan), $plans),
             'subscription' => $subscription ? [
@@ -100,6 +114,13 @@ class AssistantSubscriptionService
                 ? $this->estimatorUsagePayload($team, $stripe)
                 : null,
         ];
+
+        if (! app()->runningUnitTests())
+        {
+            Cache::put($summaryKey, $payload, 60);
+        }
+
+        return $payload;
     }
 
     /**
@@ -327,7 +348,7 @@ class AssistantSubscriptionService
 
         return [
             'success' => true,
-            'data' => $this->summary($team->fresh(), $resolvedCatalog),
+            'data' => $this->freshSummary($team->fresh(), $resolvedCatalog),
         ];
     }
 
@@ -396,7 +417,7 @@ class AssistantSubscriptionService
 
             return [
                 'success' => true,
-                'data' => $this->summary($team->fresh(), $catalog),
+                'data' => $this->freshSummary($team->fresh(), $catalog),
             ];
         } catch (\Exception $e)
         {
@@ -454,7 +475,7 @@ class AssistantSubscriptionService
 
             return [
                 'success' => true,
-                'data' => $this->summary($team->fresh(), $catalog),
+                'data' => $this->freshSummary($team->fresh(), $catalog),
             ];
         } catch (\Exception $e)
         {
@@ -588,7 +609,7 @@ class AssistantSubscriptionService
 
             return [
                 'success' => true,
-                'data' => $this->summary($team->fresh(), $catalog),
+                'data' => $this->freshSummary($team->fresh(), $catalog),
             ];
         } catch (\Exception $e)
         {
@@ -1673,7 +1694,7 @@ class AssistantSubscriptionService
             return [
                 'success' => true,
                 'url' => $successUrl,
-                'data' => $this->summary($team->fresh(), $catalog),
+                'data' => $this->freshSummary($team->fresh(), $catalog),
             ];
         } catch (\Exception $e)
         {
@@ -1698,6 +1719,39 @@ class AssistantSubscriptionService
     /**
      * @return array{payment_method: ?array<string, mixed>, payment_methods: list<array<string, mixed>>, invoices: list<array<string, mixed>>, current_period_start: ?string, current_period_end: ?string, customer_missing: bool}
      */
+    /**
+     * @return array<string, mixed>
+     */
+    private function freshSummary(Team $team, string $catalog): array
+    {
+        $catalog = $this->normalizeCatalog($catalog);
+        $this->forgetPlatformPaymentCache($team);
+        Cache::forget($this->summaryCacheKey($team, $catalog));
+
+        return $this->summary($team, $catalog);
+    }
+
+    private function summaryCacheKey(Team $team, string $catalog): string
+    {
+        return 'assistant-subscription-summary:'.$team->id.':'.$catalog;
+    }
+
+    private function forgetPlatformPaymentCache(Team $team): void
+    {
+        $customerId = $this->customerService->getStripeCustomerIdForCategory($team, '');
+        if (! is_string($customerId) || $customerId === '')
+        {
+            return;
+        }
+
+        Cache::forget($this->platformPaymentCacheKey($team, $customerId));
+    }
+
+    private function platformPaymentCacheKey(Team $team, string $customerId): string
+    {
+        return 'assistant-subscription-payment:'.$team->id.':'.$customerId;
+    }
+
     private function fetchPlatformPaymentData(Team $team, ?Subscription $subscription = null): array
     {
         $empty = [
@@ -1715,86 +1769,176 @@ class AssistantSubscriptionService
             return $empty;
         }
 
+        $cached = Cache::get($this->platformPaymentCacheKey($team, $customerId));
+        if (is_array($cached))
+        {
+            return $cached;
+        }
+
+        $loaded = $this->requestPlatformPaymentData($team, $customerId, $subscription, $empty);
+        if ($loaded['cacheable'] === true)
+        {
+            Cache::put($this->platformPaymentCacheKey($team, $customerId), $loaded['data'], 60);
+        }
+
+        return $loaded['data'];
+    }
+
+    /**
+     * @param  array<string, mixed>  $empty
+     * @return array{cacheable: bool, data: array<string, mixed>}
+     */
+    private function requestPlatformPaymentData(Team $team, string $customerId, ?Subscription $subscription, array $empty): array
+    {
+        $secret = StripeAccountResolver::secretForCategory('');
+        $stripeSubscriptionId = $subscription?->stripe_id;
+
         try
         {
-            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory(''));
-            $customer = \Stripe\Customer::retrieve($customerId);
-            if ($customer->deleted ?? false)
+            $responses = Http::pool(function (Pool $pool) use ($secret, $customerId, $stripeSubscriptionId)
             {
-                $this->customerService->forgetPersistedCustomerId($team);
+                $requests = [
+                    $pool->as('customer')->withToken($secret)->acceptJson()->timeout(8)
+                        ->get('https://api.stripe.com/v1/customers/'.$customerId),
+                    $pool->as('invoices')->withToken($secret)->acceptJson()->timeout(8)
+                        ->get('https://api.stripe.com/v1/invoices', [
+                            'customer' => $customerId,
+                            'limit' => 12,
+                        ]),
+                    $pool->as('cards')->withToken($secret)->acceptJson()->timeout(8)
+                        ->get('https://api.stripe.com/v1/payment_methods', [
+                            'customer' => $customerId,
+                            'type' => 'card',
+                        ]),
+                ];
 
-                return array_merge($empty, ['customer_missing' => true]);
-            }
-            $customerTeamId = $customer->metadata->team_id ?? null;
-            if ($customerTeamId && (int) $customerTeamId !== (int) $team->id)
-            {
-                return $empty;
-            }
-
-            $invoices = \Stripe\Invoice::all([
-                'customer' => $customerId,
-                'limit' => 12,
-            ]);
-
-            $paymentMethods = \Stripe\PaymentMethod::all([
-                'customer' => $customerId,
-                'type' => 'card',
-            ]);
-
-            $defaultId = $customer->invoice_settings->default_payment_method ?? null;
-            $cards = collect($paymentMethods->data)
-                ->map(fn ($method) => $this->mapCardPaymentMethod(
-                    $method,
-                    $defaultId !== null && $method->id === $defaultId,
-                ))
-                ->filter()
-                ->values()
-                ->all();
-            $card = collect($cards)->firstWhere('is_default') ?? ($cards[0] ?? null);
-            [$periodStart, $periodEnd] = $this->periodFromLocalSubscription($subscription);
-
-            return [
-                'customer_missing' => false,
-                'current_period_start' => $periodStart ? date('c', (int) $periodStart) : null,
-                'current_period_end' => $periodEnd ? date('c', (int) $periodEnd) : null,
-                'payment_method' => $card,
-                'payment_methods' => $cards,
-                'invoices' => collect($invoices->data)->map(function ($invoice): array
+                if (is_string($stripeSubscriptionId) && $stripeSubscriptionId !== '')
                 {
-                    return [
-                        'id' => (string) $invoice->id,
-                        'number' => $invoice->number ? (string) $invoice->number : null,
-                        'status' => (string) $invoice->status,
-                        'amount_paid' => (int) $invoice->amount_paid,
-                        'amount_due' => (int) $invoice->amount_due,
-                        'currency' => strtoupper((string) $invoice->currency),
-                        'created_at' => isset($invoice->created)
-                            ? date('c', (int) $invoice->created)
-                            : null,
-                        'hosted_invoice_url' => $invoice->hosted_invoice_url
-                            ? (string) $invoice->hosted_invoice_url
-                            : null,
-                        'invoice_pdf' => $invoice->invoice_pdf
-                            ? (string) $invoice->invoice_pdf
-                            : null,
-                    ];
-                })->values()->all(),
-            ];
+                    $requests[] = $pool->as('subscription')->withToken($secret)->acceptJson()->timeout(8)
+                        ->get('https://api.stripe.com/v1/subscriptions/'.$stripeSubscriptionId, [
+                            'expand' => ['items.data'],
+                        ]);
+                }
+
+                return $requests;
+            });
         } catch (\Exception $e)
         {
             Log::warning('Could not load Assistant Stripe payment data', array_merge([
                 'team_id' => $team->id,
             ], StripeErrorMessage::logContext($e)));
 
-            if (StripeErrorMessage::isMissingCustomer($e))
+            return ['cacheable' => false, 'data' => $empty];
+        }
+
+        $customerResponse = $responses['customer'] ?? null;
+        $invoiceResponse = $responses['invoices'] ?? null;
+        $cardResponse = $responses['cards'] ?? null;
+        if (! $customerResponse instanceof Response || ! $invoiceResponse instanceof Response || ! $cardResponse instanceof Response)
+        {
+            return ['cacheable' => false, 'data' => $empty];
+        }
+
+        if (! $customerResponse->successful())
+        {
+            if ($customerResponse->json('error.code') === 'resource_missing')
             {
                 $this->customerService->forgetPersistedCustomerId($team);
 
-                return array_merge($empty, ['customer_missing' => true]);
+                return ['cacheable' => false, 'data' => array_merge($empty, ['customer_missing' => true])];
             }
 
-            return $empty;
+            return ['cacheable' => false, 'data' => $empty];
         }
+
+        $customer = $customerResponse->json();
+        if (! is_array($customer) || ($customer['deleted'] ?? false))
+        {
+            $this->customerService->forgetPersistedCustomerId($team);
+
+            return ['cacheable' => false, 'data' => array_merge($empty, ['customer_missing' => true])];
+        }
+
+        $customerTeamId = Arr::get($customer, 'metadata.team_id');
+        if ($customerTeamId && (int) $customerTeamId !== (int) $team->id)
+        {
+            return ['cacheable' => false, 'data' => $empty];
+        }
+
+        if (! $invoiceResponse->successful() || ! $cardResponse->successful())
+        {
+            return ['cacheable' => false, 'data' => $empty];
+        }
+
+        $defaultId = Arr::get($customer, 'invoice_settings.default_payment_method');
+        if (is_array($defaultId))
+        {
+            $defaultId = $defaultId['id'] ?? null;
+        }
+
+        $cards = collect($cardResponse->json('data'))
+            ->map(function ($method) use ($defaultId)
+            {
+                if (! is_array($method))
+                {
+                    return null;
+                }
+
+                $object = json_decode(json_encode($method));
+
+                return $this->mapCardPaymentMethod(
+                    $object,
+                    is_string($defaultId) && $defaultId !== '' && ($method['id'] ?? null) === $defaultId,
+                );
+            })
+            ->filter()
+            ->values()
+            ->all();
+        $card = collect($cards)->firstWhere('is_default') ?? ($cards[0] ?? null);
+
+        $subscriptionResponse = $responses['subscription'] ?? null;
+        $periodPayload = $subscriptionResponse instanceof Response && $subscriptionResponse->successful()
+            ? $subscriptionResponse->json()
+            : null;
+        [$periodStart, $periodEnd] = is_array($periodPayload)
+            ? self::periodTimestampsFromStripeSubscription($periodPayload)
+            : [null, null];
+
+        return [
+            'cacheable' => true,
+            'data' => [
+                'customer_missing' => false,
+                'current_period_start' => $periodStart ? date('c', (int) $periodStart) : null,
+                'current_period_end' => $periodEnd ? date('c', (int) $periodEnd) : null,
+                'payment_method' => $card,
+                'payment_methods' => $cards,
+                'invoices' => collect($invoiceResponse->json('data'))->map(function ($invoice): array
+                {
+                    if (! is_array($invoice))
+                    {
+                        return [];
+                    }
+
+                    return [
+                        'id' => (string) ($invoice['id'] ?? ''),
+                        'number' => isset($invoice['number']) ? (string) $invoice['number'] : null,
+                        'status' => (string) ($invoice['status'] ?? ''),
+                        'amount_paid' => (int) ($invoice['amount_paid'] ?? 0),
+                        'amount_due' => (int) ($invoice['amount_due'] ?? 0),
+                        'currency' => strtoupper((string) ($invoice['currency'] ?? '')),
+                        'created_at' => isset($invoice['created'])
+                            ? date('c', (int) $invoice['created'])
+                            : null,
+                        'hosted_invoice_url' => isset($invoice['hosted_invoice_url'])
+                            ? (string) $invoice['hosted_invoice_url']
+                            : null,
+                        'invoice_pdf' => isset($invoice['invoice_pdf'])
+                            ? (string) $invoice['invoice_pdf']
+                            : null,
+                    ];
+                })->filter(fn (array $invoice): bool => $invoice !== [])->values()->all(),
+            ],
+        ];
     }
 
     private function urlWithSessionId(string $url): string
