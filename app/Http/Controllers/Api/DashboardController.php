@@ -474,7 +474,25 @@ class DashboardController extends Controller
     }
 
     /**
-     * @return array{labels: list<string>, amounts: list<float>, expenses: list<float>, total: float, expense_total: float, currency: string, period_label: string}
+     * @return array{
+     *     labels: list<string>,
+     *     amounts: list<float>,
+     *     expenses: list<float>,
+     *     total: float,
+     *     expense_total: float,
+     *     currency: string,
+     *     period_label: string,
+     *     metrics: array{
+     *         mbr: float,
+     *         monthly_expense: float,
+     *         monthly_profit: float,
+     *         margin_percent: float,
+     *         ytd_profit: float,
+     *         avg_monthly_income: float,
+     *         avg_monthly_expense: float,
+     *         avg_monthly_profit: float
+     *     }
+     * }
      */
     private function incomeWidget(Team $team): array
     {
@@ -494,6 +512,7 @@ class DashboardController extends Controller
         $expenses = [];
         $total = 0.0;
         $expenseTotal = 0.0;
+        $monthsWithData = 0;
 
         for ($month = 1; $month <= 12; $month++)
         {
@@ -505,7 +524,19 @@ class DashboardController extends Controller
             $expenses[] = round($expense, 2);
             $total += $income;
             $expenseTotal += $expense;
+
+            if ($income > 0 || $expense > 0)
+            {
+                $monthsWithData++;
+            }
         }
+
+        $currentMonth = (int) now()->month;
+        $mbr = (float) ($monthlyTotals[$currentMonth]['income'] ?? 0);
+        $monthlyExpense = (float) ($monthlyTotals[$currentMonth]['expense'] ?? 0);
+        $monthlyProfit = $mbr - $monthlyExpense;
+        $ytdProfit = $total - $expenseTotal;
+        $divisor = max(1, $monthsWithData);
 
         return [
             'labels' => $labels,
@@ -515,6 +546,16 @@ class DashboardController extends Controller
             'expense_total' => round($expenseTotal, 2),
             'currency' => $currency,
             'period_label' => (string) $year,
+            'metrics' => [
+                'mbr' => round($mbr, 2),
+                'monthly_expense' => round($monthlyExpense, 2),
+                'monthly_profit' => round($monthlyProfit, 2),
+                'margin_percent' => $total > 0 ? round(($ytdProfit / $total) * 100, 1) : 0.0,
+                'ytd_profit' => round($ytdProfit, 2),
+                'avg_monthly_income' => round($total / $divisor, 2),
+                'avg_monthly_expense' => round($expenseTotal / $divisor, 2),
+                'avg_monthly_profit' => round($ytdProfit / $divisor, 2),
+            ],
         ];
     }
 
