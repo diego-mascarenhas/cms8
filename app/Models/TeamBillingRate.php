@@ -35,18 +35,52 @@ class TeamBillingRate extends Model
         return $this->belongsTo(Team::class);
     }
 
+    protected static function booted(): void
+    {
+        static::saved(fn () => self::flushAmountCache());
+        static::deleted(fn () => self::flushAmountCache());
+    }
+
+    /**
+     * Same rate is read once per conversation line. Keep the answer for a minute
+     * so a usage summary does not query the rate table hundreds of times.
+     *
+     * @var array<string, float>
+     */
+    private static array $amountCache = [];
+
+    private static int $amountCacheUntil = 0;
+
+    public static function flushAmountCache(): void
+    {
+        self::$amountCache = [];
+        self::$amountCacheUntil = 0;
+    }
+
     public static function amountOn(?int $teamId, TeamBillingProduct $product, DateTimeInterface|string|null $on = null): float
     {
         $at = self::resolveDate($on);
-        $row = self::inEffect($teamId, $product, $at)
-            ?? ($teamId !== null ? self::inEffect(null, $product, $at) : null);
+        $key = ($teamId ?? 'platform').'|'.$product->value.'|'.$at->getTimestamp();
+        $now = time();
 
-        if ($row)
+        if ($now >= self::$amountCacheUntil)
         {
-            return self::normalizeAmount($product, (float) $row->amount);
+            self::$amountCache = [];
+            self::$amountCacheUntil = $now + 60;
         }
 
-        return self::configAmount($teamId, $product);
+        if (array_key_exists($key, self::$amountCache))
+        {
+            return self::$amountCache[$key];
+        }
+
+        $row = self::inEffect($teamId, $product, $at)
+            ?? ($teamId !== null ? self::inEffect(null, $product, $at) : null);
+        $amount = $row
+            ? self::normalizeAmount($product, (float) $row->amount)
+            : self::configAmount($teamId, $product);
+
+        return self::$amountCache[$key] = $amount;
     }
 
     public static function formattedAmountOn(?int $teamId, TeamBillingProduct $product, DateTimeInterface|string|null $on = null): string
@@ -159,6 +193,7 @@ class TeamBillingRate extends Model
         DateTimeInterface|string|null $from = null,
         ?string $currency = null,
     ): self {
+        self::flushAmountCache();
         $start = self::resolveDate($from);
         $amount = self::normalizeAmount($product, $amount);
         $open = self::query()

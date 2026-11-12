@@ -4,6 +4,7 @@ namespace Tests;
 
 use App\Models\Module;
 use App\Models\Team;
+use App\Models\TeamBillingRate;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Testing\TestResponse;
 
@@ -19,6 +20,7 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        TeamBillingRate::flushAmountCache();
         $this->assertTestsUseIsolatedDatabase();
         config(['daily_performance_insight.use_llm' => false]);
         config(['whatsapp.customer_service_window.enabled' => false]);

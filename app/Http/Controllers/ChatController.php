@@ -577,15 +577,10 @@ class ChatController extends Controller
         $usersByDigits = $this->usersByChatDigits(array_column($index, 'digits'));
 
         $contacts = collect();
+        $latestMessages = $this->latestWhatsAppMessagesByDigits($index, $query);
         foreach ($index as $entry)
         {
-            $lastMessage = (clone $query)
-                ->where(function ($q) use ($entry)
-                {
-                    $this->applyConversationPhoneFilter($q, $entry['phone']);
-                })
-                ->latest()
-                ->first();
+            $lastMessage = $latestMessages[$entry['digits']] ?? null;
             if (! $lastMessage)
             {
                 continue;
@@ -650,6 +645,102 @@ class ChatController extends Controller
         $this->attachWhatsAppProfilePhotos($contacts);
 
         return $contacts->values();
+    }
+
+    /**
+     * Latest message for each chat on the page, in one grouped query.
+     *
+     * @param  list<array<string, mixed>>  $index
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\Conversation>  $query
+     * @return array<string, Conversation>
+     */
+    private function latestWhatsAppMessagesByDigits(array $index, $query): array
+    {
+        $phones = array_values(array_unique(array_filter(array_map(
+            fn (array $entry): string => $this->normalizePhoneForList((string) ($entry['phone'] ?? '')),
+            $index,
+        ))));
+        if ($phones === [])
+        {
+            return [];
+        }
+
+        $teamNumber = preg_replace('/[^0-9]/', '', (string) (auth()->user()?->currentTeam?->getWhatsAppFrom() ?? ''));
+        if ($teamNumber === '')
+        {
+            return [];
+        }
+
+        $grammar = $query->getQuery()->getGrammar();
+        $from = $grammar->wrap('from');
+        $to = $grammar->wrap('to');
+        $created = $grammar->wrap('created_at');
+        $counterpart = "CASE WHEN {$from} = ? OR {$from} LIKE ? THEN {$to} ELSE {$from} END";
+        $bindings = [$teamNumber, $teamNumber.':%'];
+
+        $scoped = (clone $query)->where(function ($outer) use ($phones)
+        {
+            foreach ($phones as $phone)
+            {
+                $outer->orWhere(function ($inner) use ($phone)
+                {
+                    $this->applyConversationPhoneFilter($inner, $phone);
+                });
+            }
+        });
+
+        $aggregate = (clone $scoped)->toBase();
+        $aggregate->columns = null;
+        $aggregate->orders = null;
+        $peaks = $aggregate
+            ->selectRaw($counterpart.' as phone_key, MAX('.$created.') as last_at', $bindings)
+            ->groupByRaw('1')
+            ->get();
+
+        if ($peaks->isEmpty())
+        {
+            return [];
+        }
+
+        $messages = (clone $scoped)
+            ->where(function ($outer) use ($peaks, $counterpart, $bindings)
+            {
+                foreach ($peaks as $peak)
+                {
+                    $outer->orWhere(function ($inner) use ($peak, $counterpart, $bindings)
+                    {
+                        $inner->whereRaw($counterpart.' = ?', [...$bindings, $peak->phone_key])
+                            ->where('created_at', $peak->last_at);
+                    });
+                }
+            })
+            ->orderByDesc('id')
+            ->get();
+
+        $byDigits = [];
+        foreach ($messages as $message)
+        {
+            $digits = preg_replace('/[^0-9]/', '', $this->normalizePhoneForList($this->conversationCounterpart($message, $teamNumber)));
+            if ($digits === '' || isset($byDigits[$digits]))
+            {
+                continue;
+            }
+
+            $byDigits[$digits] = $message;
+        }
+
+        return $byDigits;
+    }
+
+    private function conversationCounterpart(Conversation $message, string $teamNumber): string
+    {
+        $from = (string) $message->from;
+        if ($this->normalizePhoneForList($from) === $teamNumber || str_starts_with($from, $teamNumber.':'))
+        {
+            return (string) $message->to;
+        }
+
+        return $from;
     }
 
     private function attachWhatsAppProfilePhotos(Collection $contacts): void

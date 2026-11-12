@@ -161,6 +161,9 @@ class ClientPortalAuthTest extends TestCase
                 && $request['email'] === 'cliente@example.com'
                 && $request->hasHeader('X-Portal-Secret', 'portal-secret');
         });
+        $this->assertSame(1, collect(Http::recorded())->filter(
+            fn (array $pair): bool => $pair[0]->url() === 'https://revisionalpha.test/api/portal/billing',
+        )->count());
     }
 
     public function test_profile_includes_the_tax_id_and_payment_method(): void

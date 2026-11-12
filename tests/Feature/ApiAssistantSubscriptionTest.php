@@ -110,6 +110,62 @@ class ApiAssistantSubscriptionTest extends TestCase
         $this->assertSame(0.037, $response->json('data.transcription_usage.our_rate'));
     }
 
+    public function test_subscription_summary_reads_stripe_in_parallel_and_reuses_the_result(): void
+    {
+        config(['cashier.secret' => 'sk_test_cache']);
+        Http::fake([
+            'https://openrouter.ai/*' => Http::response(['data' => []], 200),
+            'https://api.stripe.com/v1/customers/*' => Http::response([
+                'id' => 'cus_test',
+                'deleted' => false,
+                'metadata' => [],
+                'invoice_settings' => ['default_payment_method' => 'pm_1'],
+            ]),
+            'https://api.stripe.com/v1/invoices*' => Http::response(['data' => [[
+                'id' => 'in_1',
+                'number' => '0001',
+                'status' => 'paid',
+                'amount_paid' => 1000,
+                'amount_due' => 0,
+                'currency' => 'eur',
+                'created' => 1700000000,
+                'hosted_invoice_url' => null,
+                'invoice_pdf' => null,
+            ]]]),
+            'https://api.stripe.com/v1/payment_methods*' => Http::response(['data' => [[
+                'id' => 'pm_1',
+                'card' => [
+                    'brand' => 'visa',
+                    'last4' => '4242',
+                    'exp_month' => 12,
+                    'exp_year' => 2030,
+                ],
+            ]]]),
+        ]);
+
+        [, $team, $token] = $this->assistantUserWithToken();
+        $team->forceFill(['stripe_id' => 'cus_test'])->save();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription')
+            ->assertOk()
+            ->assertJsonPath('data.payment_method.last4', '4242')
+            ->assertJsonPath('data.invoices.0.id', 'in_1');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription')
+            ->assertOk()
+            ->assertJsonPath('data.payment_method.last4', '4242');
+
+        $stripeCalls = collect(Http::recorded())->filter(
+            fn (array $pair): bool => str_contains($pair[0]->url(), 'api.stripe.com'),
+        );
+        $this->assertSame(3, $stripeCalls->count());
+        $this->assertTrue($stripeCalls->every(
+            fn (array $pair): bool => $pair[0]->hasHeader('Authorization', 'Bearer sk_test_cache'),
+        ));
+    }
+
     public function test_estimator_catalog_is_free_and_ready_for_token_billing(): void
     {
         [, , $token] = $this->assistantUserWithToken();

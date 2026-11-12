@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
 class RevisionAlphaBilling
@@ -11,13 +12,31 @@ class RevisionAlphaBilling
      */
     public function forEmail(string $email): array
     {
-        $payload = $this->post('/api/portal/billing', $email);
+        $key = 'revision-alpha-billing:'.sha1(mb_strtolower(trim($email)));
+        $cached = Cache::get($key);
+        if (is_array($cached))
+        {
+            return $cached;
+        }
 
-        return [
+        $payload = $this->post('/api/portal/billing', $email);
+        if ($payload === null)
+        {
+            return [
+                'invoices' => [],
+                'services' => [],
+                'payments' => [],
+            ];
+        }
+
+        $account = [
             'invoices' => is_array($payload['invoices'] ?? null) ? $payload['invoices'] : [],
             'services' => is_array($payload['services'] ?? null) ? $payload['services'] : [],
             'payments' => is_array($payload['payments'] ?? null) ? $payload['payments'] : [],
         ];
+        Cache::put($key, $account, now()->addMinutes(3));
+
+        return $account;
     }
 
     /**
@@ -25,7 +44,7 @@ class RevisionAlphaBilling
      */
     public function profile(string $email): array
     {
-        $payload = $this->post('/api/portal/profile', $email);
+        $payload = $this->post('/api/portal/profile', $email) ?? [];
 
         return [
             'name' => (string) ($payload['name'] ?? ''),
@@ -37,15 +56,17 @@ class RevisionAlphaBilling
     }
 
     /**
-     * @return array<string, mixed>
+     * Null when the portal could not be reached, so a failed call is not cached.
+     *
+     * @return array<string, mixed>|null
      */
-    private function post(string $path, string $email): array
+    private function post(string $path, string $email): ?array
     {
         $secret = (string) config('services.revisionalpha.portal_secret');
         $base = rtrim((string) config('services.revisionalpha.url'), '/');
         if ($secret === '' || $base === '')
         {
-            return [];
+            return null;
         }
 
         try
@@ -60,12 +81,12 @@ class RevisionAlphaBilling
         {
             report($exception);
 
-            return [];
+            return null;
         }
 
         if (! $response->successful())
         {
-            return [];
+            return null;
         }
 
         $payload = $response->json();
