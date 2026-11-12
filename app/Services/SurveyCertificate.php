@@ -9,6 +9,32 @@ use RuntimeException;
 
 class SurveyCertificate
 {
+    public function downloadFilename(Survey $survey, SurveyResponse $response): string
+    {
+        $survey->loadMissing('team');
+
+        $team = str($survey->team?->name ?: 'team')->slug()->toString();
+        $person = str($response->user?->name ?: 'participante')->slug()->toString();
+        $event = str($survey->code ?: $survey->title)->slug()->limit(40, '')->toString();
+
+        if ($team === '')
+        {
+            $team = 'team-'.$survey->team_id;
+        }
+
+        if ($person === '')
+        {
+            $person = 'participante';
+        }
+
+        if ($event === '')
+        {
+            $event = 'evento-'.$survey->id;
+        }
+
+        return $team.'-'.$event.'-'.$person.'-'.$response->id.'.jpg';
+    }
+
     public function jpeg(Survey $survey, SurveyResponse $response): string
     {
         $name = $response->user?->name;

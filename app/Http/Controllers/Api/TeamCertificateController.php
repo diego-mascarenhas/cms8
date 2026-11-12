@@ -91,7 +91,7 @@ class TeamCertificateController extends Controller
             ], 404);
         }
 
-        $filename = 'certificado-'.str($response->user?->name)->slug().'.jpg';
+        $filename = $certificates->downloadFilename($surveyModel, $response);
 
         return response($jpeg, 200, [
             'Content-Type' => 'image/jpeg',

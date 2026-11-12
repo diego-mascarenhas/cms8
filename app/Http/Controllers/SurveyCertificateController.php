@@ -79,7 +79,7 @@ class SurveyCertificateController extends Controller
             abort(404, $exception->getMessage());
         }
 
-        $filename = 'certificado-'.str($response->user?->name)->slug().'.jpg';
+        $filename = $certificates->downloadFilename($survey, $response);
 
         return response($jpeg, 200, [
             'Content-Type' => 'image/jpeg',

@@ -162,6 +162,7 @@ class SurveyModuleTest extends TestCase
         imagedestroy($image);
 
         $user = $this->makeAdminUser();
+        $user->currentTeam->forceFill(['name' => 'Revision Alpha'])->save();
         $respondent = User::factory()->create([
             'name' => 'Alan Robert Rodriguez',
             'email' => 'alan.04rt@gmail.com',
@@ -184,7 +185,8 @@ class SurveyModuleTest extends TestCase
         $this->get(route('survey.certificate', $survey))
             ->assertOk()
             ->assertSee('Descargar certificado')
-            ->assertSee('Conferencia SCI');
+            ->assertSee('Conferencia SCI')
+            ->assertSee('Email con el que te inscribiste');
 
         $download = $this->post(route('survey.certificate.download', $survey), [
             'email' => 'Alan.04rt@gmail.com',
@@ -193,6 +195,14 @@ class SurveyModuleTest extends TestCase
         $download->assertOk();
         $this->assertSame('image/jpeg', $download->headers->get('content-type'));
         $this->assertStringStartsWith("\xFF\xD8", $download->getContent());
+        $this->assertStringContainsString(
+            'revision-alpha-conferencia-sci-alan-robert-rodriguez-',
+            (string) $download->headers->get('content-disposition'),
+        );
+        $this->assertStringNotContainsString(
+            'filename="certificado.jpg"',
+            (string) $download->headers->get('content-disposition'),
+        );
 
         $this->post(route('survey.certificate.download', $survey), [
             'email' => 'otra@example.com',
