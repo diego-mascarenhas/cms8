@@ -15,20 +15,20 @@ class SurveyCertificate
 
         if (! $response->certified || blank($name))
         {
-            throw new RuntimeException('This respondent has no certificate.');
+            throw new RuntimeException('No hay un certificado para ese email en esta conferencia.');
         }
 
-        if (! function_exists('imagecreatefromjpeg') || ! function_exists('imagettftext'))
+        if (! function_exists('imagecreatefromjpeg') || ! function_exists('imagecreatefrompng') || ! function_exists('imagettftext'))
         {
             throw new RuntimeException('GD is required to build the certificate.');
         }
 
         $source = $this->template($survey);
-        $image = imagecreatefromjpeg($source);
+        $image = $this->imageFromFile($source);
 
         if ($image === false)
         {
-            throw new RuntimeException('The certificate template could not be read.');
+            throw new RuntimeException('No se pudo leer la plantilla del certificado.');
         }
 
         $navy = imagecolorallocate($image, 15, 45, 82);
@@ -50,10 +50,42 @@ class SurveyCertificate
 
         if ($bytes === false || $bytes === '')
         {
-            throw new RuntimeException('The certificate could not be written.');
+            throw new RuntimeException('No se pudo generar el certificado.');
         }
 
         return $bytes;
+    }
+
+    public function cacheTemplate(Survey $survey): string
+    {
+        return $this->template($survey);
+    }
+
+    public function cachedPath(string $url, ?int $surveyId = null): string
+    {
+        $directory = storage_path('app/survey-certificates');
+
+        if (! is_dir($directory))
+        {
+            mkdir($directory, 0755, true);
+        }
+
+        if ($surveyId)
+        {
+            foreach (['.jpg', '.jpeg', '.png'] as $extension)
+            {
+                $bySurvey = $directory.'/'.$surveyId.$extension;
+
+                if (is_file($bySurvey))
+                {
+                    return $bySurvey;
+                }
+            }
+        }
+
+        $extension = $this->extensionForUrl($url);
+
+        return $directory.'/'.sha1($url).$extension;
     }
 
     private function template(Survey $survey): string
@@ -62,7 +94,7 @@ class SurveyCertificate
 
         if ($url === '')
         {
-            throw new RuntimeException('This survey has no certificate template.');
+            throw new RuntimeException('Esta conferencia no tiene plantilla de certificado.');
         }
 
         if (is_file($url))
@@ -70,26 +102,100 @@ class SurveyCertificate
             return $url;
         }
 
-        $path = storage_path('app/survey-certificates/'.$survey->id.'.jpg');
+        $local = $this->localMediaPath($url);
 
-        if (! is_dir(dirname($path)))
+        if ($local !== null)
         {
-            mkdir(dirname($path), 0755, true);
+            return $local;
         }
 
-        if (! is_file($path))
+        $path = $this->cachedPath($url, $survey->id);
+
+        if (is_file($path))
         {
-            $response = Http::timeout(20)->get($url);
+            return $path;
+        }
 
-            if (! $response->successful())
-            {
-                throw new RuntimeException('The certificate template could not be downloaded.');
-            }
+        $response = Http::timeout(20)
+            ->withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (compatible; IdoneoCertificate/1.0)',
+                'Accept' => 'image/jpeg,image/png,image/*;q=0.8,*/*;q=0.5',
+                'Referer' => rtrim((string) config('app.legacy_media_base'), '/').'/',
+            ])
+            ->get($url);
 
-            file_put_contents($path, $response->body());
+        if (! $response->successful() || ! $this->isImagePayload($response->body()))
+        {
+            throw new RuntimeException('No se pudo descargar la plantilla del certificado.');
+        }
+
+        file_put_contents($path, $response->body());
+
+        $bySurvey = storage_path('app/survey-certificates/'.$survey->id.$this->extensionForUrl($url));
+
+        if ($bySurvey !== $path)
+        {
+            @copy($path, $bySurvey);
         }
 
         return $path;
+    }
+
+    private function imageFromFile(string $path): \GdImage|false
+    {
+        $bytes = @file_get_contents($path);
+
+        if ($bytes === false || $bytes === '')
+        {
+            return false;
+        }
+
+        if (str_starts_with($bytes, "\xFF\xD8"))
+        {
+            return imagecreatefromjpeg($path);
+        }
+
+        if (str_starts_with($bytes, "\x89PNG"))
+        {
+            return imagecreatefrompng($path);
+        }
+
+        return false;
+    }
+
+    private function isImagePayload(string $body): bool
+    {
+        return str_starts_with($body, "\xFF\xD8") || str_starts_with($body, "\x89PNG");
+    }
+
+    private function extensionForUrl(string $url): string
+    {
+        $path = strtolower((string) parse_url($url, PHP_URL_PATH));
+
+        return str_ends_with($path, '.png') ? '.png' : '.jpg';
+    }
+
+    private function localMediaPath(string $url): ?string
+    {
+        $base = rtrim((string) config('app.legacy_media_path'), '/');
+
+        if ($base === '' || ! is_dir($base))
+        {
+            return null;
+        }
+
+        $mediaBase = rtrim((string) config('app.legacy_media_base'), '/');
+        $prefix = $mediaBase.'/';
+
+        if (! str_starts_with($url, $prefix))
+        {
+            return null;
+        }
+
+        $relative = ltrim(substr($url, strlen($prefix)), '/');
+        $path = $base.'/'.$relative;
+
+        return is_file($path) ? $path : null;
     }
 
     /**

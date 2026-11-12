@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\Contact;
+use App\Models\ContactStatus;
 use App\Models\Survey;
 use App\Models\SurveyResponse;
+use App\Models\Team;
 use App\Models\User;
 use App\Support\SurveySchema;
 use Illuminate\Support\Collection;
@@ -188,6 +191,8 @@ class LegacySurveyImporter
                     continue;
                 }
 
+                $this->contactForTeam($teamId, $contact, $user);
+
                 $response = SurveyResponse::withoutGlobalScope('team')->updateOrCreate(
                     [
                         'survey_id' => $survey->id,
@@ -267,6 +272,7 @@ class LegacySurveyImporter
                 continue;
             }
 
+            $this->contactForTeam($teamId, $contact, $user);
             $seen[$user->id] = true;
             $count++;
         }
@@ -312,6 +318,69 @@ class LegacySurveyImporter
         }
 
         return $user;
+    }
+
+    /**
+     * @param  array<string, mixed>  $legacyContact
+     */
+    private function contactForTeam(int $teamId, array $legacyContact, User $user): Contact
+    {
+        $email = mb_strtolower((string) $user->email);
+        $ownerId = (int) (Team::query()->whereKey($teamId)->value('user_id') ?: $user->id);
+        $statusId = (int) (ContactStatus::query()->where('name', 'Lead')->value('id') ?? 1);
+        $name = trim((string) ($legacyContact['nombre'] ?? ''));
+        $surname = trim((string) ($legacyContact['apellido'] ?? ''));
+
+        if ($name === '' && $surname === '')
+        {
+            $parts = preg_split('/\s+/', trim((string) $user->name), 2) ?: [];
+            $name = trim((string) ($parts[0] ?? $email));
+            $surname = trim((string) ($parts[1] ?? ''));
+        }
+
+        $payload = [
+            'user_id' => $user->id,
+            'name' => mb_substr($name !== '' ? $name : $email, 0, 255),
+            'surname' => $surname !== '' ? mb_substr($surname, 0, 255) : null,
+            'email' => $email,
+            'status_id' => $statusId,
+            'creator_id' => $ownerId,
+            'responsible_id' => $ownerId,
+        ];
+
+        $phone = preg_replace('/\D+/', '', (string) ($legacyContact['telefono'] ?? $legacyContact['phone'] ?? ''));
+
+        if (is_string($phone) && $phone !== '')
+        {
+            $payload['phone'] = (int) $phone;
+        }
+
+        $existing = Contact::withoutGlobalScopes()
+            ->withTrashed()
+            ->where('team_id', $teamId)
+            ->where(function ($query) use ($user, $email)
+            {
+                $query->where('user_id', $user->id)
+                    ->orWhereRaw('LOWER(email) = ?', [$email]);
+            })
+            ->first();
+
+        if ($existing)
+        {
+            if ($existing->trashed())
+            {
+                $existing->restore();
+            }
+
+            $existing->fill($payload)->save();
+
+            return $existing;
+        }
+
+        return Contact::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            ...$payload,
+        ]);
     }
 
     private function blankToNull(mixed $value): ?string

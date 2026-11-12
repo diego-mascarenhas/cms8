@@ -303,6 +303,8 @@ return [
 
     'legacy_media_base' => env('LEGACY_MEDIA_BASE', 'https://cms.revisionalpha.com/multimedia'),
 
+    'legacy_media_path' => env('LEGACY_MEDIA_PATH'),
+
     'allow_prod_read_toggle' => (bool) env('ALLOW_PROD_READ_TOGGLE', false),
 
     'prod_read_credentials_configured' => filled(env('DB_PROD_READ_HOST'))
