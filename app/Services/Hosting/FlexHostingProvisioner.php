@@ -4,6 +4,7 @@ namespace App\Services\Hosting;
 
 use App\Models\Category;
 use App\Models\Domain;
+use App\Models\Enterprise;
 use App\Models\Server;
 use App\Models\Service;
 use App\Models\User;
@@ -35,7 +36,10 @@ class FlexHostingProvisioner
     {
         $package = (string) config('humano_hosting.flex_package', 'revision_flex');
         $password = Str::password(16, letters: true, numbers: true, symbols: true);
-        $contactEmail = $user->currentTeam?->getHostingContactEmail() ?? $user->email;
+        $enterprise = Enterprise::query()->find($enterpriseId);
+        $contactEmail = $enterprise?->administrativeContactEmail()
+            ?? $user->currentTeam?->getHostingContactEmail()
+            ?? $user->email;
 
         if ($server->control_panel !== 'cpanel' || ! $server->hasToken())
         {
@@ -66,7 +70,7 @@ class FlexHostingProvisioner
             'suspended' => false,
             'needs_update' => false,
             'is_working' => true,
-            'data' => [],
+            'data' => filled($contactEmail) ? ['email' => $contactEmail] : [],
         ]);
 
         $spfConfigured = false;
