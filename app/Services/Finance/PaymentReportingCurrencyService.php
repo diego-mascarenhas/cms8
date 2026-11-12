@@ -86,21 +86,91 @@ class PaymentReportingCurrencyService
         string $targetCurrency,
         ?Closure $scope = null,
     ): float {
+        return $this->sumPaymentsConverted(
+            $transactionType,
+            $targetCurrency,
+            $scope,
+            approvedOnly: true,
+        );
+    }
+
+    /**
+     * Convert payments to a single reporting currency.
+     * Payments without a resolvable account/invoice currency are skipped (never assumed EUR).
+     */
+    public function sumPaymentsConverted(
+        TransactionType $transactionType,
+        string $targetCurrency,
+        ?Closure $scope = null,
+        bool $approvedOnly = false,
+    ): float {
+        $targetCurrency = strtoupper(trim($targetCurrency));
         $query = $this->scopedPaymentQuery()
-            ->where('payments.transaction_type', $transactionType)
-            ->where('payments.status', 2);
+            ->where('payments.transaction_type', $transactionType);
+
+        if ($approvedOnly)
+        {
+            $query->where('payments.status', 2);
+        }
 
         if ($scope instanceof Closure)
         {
             $scope($query);
         }
 
-        $converted = $this->sumConverted(
-            $this->sumsByCurrency($query),
-            $targetCurrency,
-        );
+        $payments = $this->loadPaymentsWithAccountCurrency($query, [
+            'payments.id',
+            'payments.amount',
+            'payments.date',
+            'payments.account_id',
+            'payments.invoice_id',
+        ]);
 
-        return round($converted ?? 0.0, 2);
+        $total = 0.0;
+
+        foreach ($payments as $payment)
+        {
+            $currencyCode = $this->resolvedPaymentCurrencyCode($payment);
+
+            if ($currencyCode === null)
+            {
+                continue;
+            }
+
+            $amount = (float) $payment->amount;
+
+            if ($currencyCode === $targetCurrency)
+            {
+                $total += $amount;
+
+                continue;
+            }
+
+            $conversionDate = $payment->date instanceof Carbon
+                ? $payment->date->copy()->endOfDay()
+                : now();
+
+            $converted = ExchangeRate::convertOnOrBeforeDate(
+                $amount,
+                $currencyCode,
+                $targetCurrency,
+                $conversionDate,
+            );
+
+            if ($converted === null)
+            {
+                $converted = ExchangeRate::convert($amount, $currencyCode, $targetCurrency);
+            }
+
+            if ($converted === null)
+            {
+                continue;
+            }
+
+            $total += $converted;
+        }
+
+        return round($total, 2);
     }
 
     /**
@@ -239,6 +309,15 @@ class PaymentReportingCurrencyService
 
     private function paymentCurrencyCode(Payment $payment): ?string
     {
+        return $this->resolvedPaymentCurrencyCode($payment)
+            ?? (strtoupper(trim((string) config('verifactu.default_currency', 'EUR'))) ?: null);
+    }
+
+    /**
+     * Currency from account or invoice only. No default-EUR guess for unknown accounts.
+     */
+    private function resolvedPaymentCurrencyCode(Payment $payment): ?string
+    {
         $accountCurrency = strtoupper(trim((string) ($payment->account?->currency?->code ?? '')));
         if ($accountCurrency !== '')
         {
@@ -251,8 +330,6 @@ class PaymentReportingCurrencyService
             return $invoiceCurrency;
         }
 
-        $fallback = strtoupper(trim((string) config('verifactu.default_currency', 'EUR')));
-
-        return $fallback !== '' ? $fallback : null;
+        return null;
     }
 }

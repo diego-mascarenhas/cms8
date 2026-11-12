@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\AdPlatform;
-use App\Enums\TransactionType;
 use App\Http\Controllers\Controller;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
@@ -27,6 +26,7 @@ use App\Models\User;
 use App\Services\ContactDailySentimentService;
 use App\Services\DashboardAnalyticsService;
 use App\Services\Finance\PaymentReportingCurrencyService;
+use App\Services\Finance\VatHaciendaCsvExportService;
 use App\Services\Mail\CampaignMessageApiService;
 use App\Services\Mail\MailInboxService;
 use App\Support\ApplicationDateTime;
@@ -478,27 +478,29 @@ class DashboardController extends Controller
      */
     private function incomeWidget(Team $team): array
     {
-        $service = app(PaymentReportingCurrencyService::class);
-        $currency = $service->reportingCurrencyForTeam($team);
+        $currency = app(PaymentReportingCurrencyService::class)->reportingCurrencyForTeam($team);
+        $year = (int) now()->year;
+        $from = Carbon::create($year, 1, 1)->startOfDay();
+        $to = Carbon::create($year, 12, 31)->endOfDay();
+        $monthlyTotals = app(VatHaciendaCsvExportService::class)->monthlyBookTotals(
+            (int) $team->id,
+            $from,
+            $to,
+            $currency,
+        )['months'];
+
         $labels = [];
         $amounts = [];
         $expenses = [];
         $total = 0.0;
         $expenseTotal = 0.0;
 
-        for ($i = 7; $i >= 0; $i--)
+        for ($month = 1; $month <= 12; $month++)
         {
-            $month = now()->startOfMonth()->subMonths($i);
-            $labels[] = $this->monthLabel($month);
-            $scope = function ($query) use ($month): void
-            {
-                $query->whereBetween('payments.date', [
-                    $month->toDateString(),
-                    $month->copy()->endOfMonth()->toDateString(),
-                ]);
-            };
-            $income = $service->sumApprovedPaymentsConverted(TransactionType::INCOME, $currency, $scope);
-            $expense = $service->sumApprovedPaymentsConverted(TransactionType::EXPENSE, $currency, $scope);
+            $date = Carbon::create($year, $month, 1);
+            $income = (float) ($monthlyTotals[$month]['income'] ?? 0);
+            $expense = (float) ($monthlyTotals[$month]['expense'] ?? 0);
+            $labels[] = $this->monthLabel($date);
             $amounts[] = round($income, 2);
             $expenses[] = round($expense, 2);
             $total += $income;
@@ -512,7 +514,7 @@ class DashboardController extends Controller
             'total' => round($total, 2),
             'expense_total' => round($expenseTotal, 2),
             'currency' => $currency,
-            'period_label' => 'Últimos 8 meses',
+            'period_label' => (string) $year,
         ];
     }
 
