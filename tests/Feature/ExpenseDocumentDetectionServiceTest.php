@@ -317,4 +317,55 @@ class ExpenseDocumentDetectionServiceTest extends TestCase
         $this->assertSame('OWZPCFGE-0030', $detected['document_number']);
         $this->assertSame('local', $detected['ocr']['engine_used']);
     }
+
+    public function test_detect_from_uploaded_file_recognizes_spanish_dates_and_paid_status(): void
+    {
+        $team = Team::factory()->create([
+            'name' => 'REVISION ALPHA S.L.',
+        ]);
+        $team->setSetting('documents_ocr_mode', 'local', ['group' => 'documents']);
+
+        Currency::query()->create([
+            'code' => 'EUR',
+            'name' => 'Euro',
+            'symbol' => '€',
+            'status' => true,
+        ]);
+
+        $ocrText = implode("\n", [
+            'PROVEEDOR: FORGE S.L.',
+            'Número factura: FORGE-4-2026',
+            'Fecha de emisión: 12 de noviembre de 2026',
+            'Fecha vencimiento: 12/11/2026',
+            'Estado: Pagado',
+            'Hosting mensual 100,00 21% 0%',
+            'TOTAL A PAGAR: 121,00 €',
+        ]);
+
+        $ocrService = $this->createMock(DocumentOcrService::class);
+        $ocrService->expects($this->once())
+            ->method('extractTextFromLocalFile')
+            ->willReturn($ocrText);
+
+        $aiOcrService = $this->createMock(DocumentAiOcrService::class);
+        $aiOcrService->expects($this->never())
+            ->method('extractTextFromLocalFile');
+
+        $service = new ExpenseDocumentDetectionService(
+            $ocrService,
+            $aiOcrService,
+            app(\App\Services\ExpenseSupplierService::class),
+        );
+
+        $detected = $service->detectFromUploadedFile(
+            UploadedFile::fake()->create('Forge_4_2026.pdf', 64, 'application/pdf'),
+            $team->id,
+        );
+
+        $this->assertSame('FORGE-4-2026', $detected['document_number']);
+        $this->assertSame('2026-11-12', $detected['date']);
+        $this->assertSame('2026-11-12', $detected['due_date']);
+        $this->assertTrue($detected['is_paid']);
+        $this->assertSame(121.0, $detected['payment_amount']);
+    }
 }

@@ -2047,7 +2047,47 @@
                 applySuggestedCategoriesToLines(true);
             }
 
+            if (data.is_paid === true) {
+                ensureDetectedPaidPayment(data);
+            }
+
             refreshSummary();
+        }
+
+        function ensureDetectedPaidPayment(data) {
+            var paymentDate = data.payment_date || data.date || '{{ now()->toDateString() }}';
+            var amount = data.payment_amount !== undefined && data.payment_amount !== null && data.payment_amount !== ''
+                ? data.payment_amount
+                : '';
+            var $existing = $paymentsContainer.find('.expense-payment-block').first();
+
+            if ($existing.length) {
+                if (paymentDate) {
+                    setExpenseDate($existing.find('.payment-date').first(), String(paymentDate));
+                }
+                if (amount !== '') {
+                    setAmountInputValue($existing.find('.payment-amount').get(0), amount);
+                }
+                $existing.find('.payment-status-select').val('2').trigger('change');
+                updatePaymentsSummary();
+                updatePaymentRemoveButtons();
+                return;
+            }
+
+            var $block = $(createPaymentBlock(nextPaymentIndex, {
+                payment_date: paymentDate,
+                amount: amount,
+                type_id: defaultPaymentTypeId,
+                account_id: defaultPaymentAccountId,
+                status: '2',
+            }));
+            $paymentsContainer.append($block);
+            nextPaymentIndex += 1;
+            initPaymentDatePickers($block);
+            initPaymentSelects($block);
+            initAmountInputs($block);
+            updatePaymentsSummary();
+            updatePaymentRemoveButtons();
         }
 
         function detectExpenseDocument(file) {

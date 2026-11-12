@@ -25,6 +25,7 @@ Return ONLY valid JSON with this structure:
   "payment_date": "YYYY-MM-DD|null",
   "currency_code": "ISO code like EUR/USD/ARS|null",
   "total_amount": number|null,
+  "is_paid": boolean|null,
   "lines": [
     {
       "concept": "string",
@@ -43,6 +44,8 @@ Rules:
 - allocation_percent must be 100 when unknown.
 - enterprise_name MUST be the issuer/supplier (not customer/recipient/buyer).
 - document_number MUST NOT be a phone number.
+- is_paid must be true when the invoice shows Paid / Pagado / Payment received / Amount due 0.
+- is_paid must be false when it shows Unpaid / Pendiente / Amount due > 0.
 - lines must be product/service rows only (taxable base before VAT).
 - Do NOT include tax breakdown rows (IVA, base imponible, subtotal, total) as separate lines.
 - Do not include markdown or explanations.
@@ -84,6 +87,7 @@ PROMPT;
         $currencyId = $this->resolveCurrencyId($detectedData['currency_code'] ?? null);
         $lines = $this->normalizeLines($detectedData['lines'] ?? [], $detectedData['total_amount'] ?? null);
         $totalAmount = $this->resolveTotalAmount($detectedData['total_amount'] ?? null, $lines);
+        $isPaid = $this->resolveIsPaid($detectedData['is_paid'] ?? null, $ocrResult['text'] ?? null);
 
         return [
             'enterprise_id' => $supplierResolution['enterprise_id'],
@@ -99,6 +103,7 @@ PROMPT;
             'currency_id' => $currencyId,
             'currency_code' => $detectedData['currency_code'] ?? null,
             'payment_amount' => $totalAmount,
+            'is_paid' => $isPaid,
             'lines' => $lines,
             'ocr' => [
                 'mode' => $ocrResult['mode'],
@@ -227,6 +232,7 @@ PROMPT;
                 'payment_date' => null,
                 'currency_code' => null,
                 'total_amount' => null,
+                'is_paid' => null,
                 'lines' => [],
             ];
         }
@@ -286,6 +292,7 @@ PROMPT;
             'payment_date' => $invoiceDate,
             'currency_code' => $currencyCode,
             'total_amount' => $totalAmount,
+            'is_paid' => $this->detectIsPaid($text),
             'lines' => $lines,
         ];
     }
@@ -372,11 +379,26 @@ PROMPT;
         }
 
         $merged = $heuristicData;
-        $fields = ['enterprise_name', 'document_number', 'invoice_date', 'due_date', 'payment_date', 'currency_code', 'total_amount'];
+        $fields = ['enterprise_name', 'document_number', 'invoice_date', 'due_date', 'payment_date', 'currency_code', 'total_amount', 'is_paid'];
 
         foreach ($fields as $field)
         {
-            if (array_key_exists($field, $aiData) && filled($aiData[$field]))
+            if (! array_key_exists($field, $aiData))
+            {
+                continue;
+            }
+
+            if ($field === 'is_paid')
+            {
+                if (is_bool($aiData[$field]))
+                {
+                    $merged[$field] = $aiData[$field];
+                }
+
+                continue;
+            }
+
+            if (filled($aiData[$field]))
             {
                 $merged[$field] = $aiData[$field];
             }
@@ -538,9 +560,10 @@ PROMPT;
 
     private function monthNameDatePattern(): string
     {
-        $month = 'Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?';
+        $month = 'Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?'
+            .'|Ene(?:ro)?|Feb(?:rero)?|Mar(?:zo)?|Abr(?:il)?|May(?:o)?|Jun(?:io)?|Jul(?:io)?|Ago(?:sto)?|Sep(?:t(?:iembre)?)?|Oct(?:ubre)?|Nov(?:iembre)?|Dic(?:iembre)?';
 
-        return '(?:(?:'.$month.')\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:'.$month.')\s+\d{4})';
+        return '(?:(?:'.$month.')\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:de\s+)?(?:'.$month.')(?:\s+de)?\s+\d{4})';
     }
 
     private function normalizeDate(?string $value): ?string
@@ -549,6 +572,24 @@ PROMPT;
         if ($dateValue === '')
         {
             return null;
+        }
+
+        if (preg_match('/^(\d{1,2})\s+(?:de\s+)?([A-Za-zÁÉÍÓÚáéíóúñÑ\.]+)(?:\s+de)?\s+(\d{4})$/u', $dateValue, $matches) === 1)
+        {
+            $month = $this->monthNumberFromName((string) $matches[2]);
+            if ($month !== null)
+            {
+                return sprintf('%04d-%02d-%02d', (int) $matches[3], $month, (int) $matches[1]);
+            }
+        }
+
+        if (preg_match('/^([A-Za-zÁÉÍÓÚáéíóúñÑ\.]+)\s+(\d{1,2}),?\s+(\d{4})$/u', $dateValue, $matches) === 1)
+        {
+            $month = $this->monthNumberFromName((string) $matches[1]);
+            if ($month !== null)
+            {
+                return sprintf('%04d-%02d-%02d', (int) $matches[3], $month, (int) $matches[2]);
+            }
         }
 
         $normalized = str_replace(['.', '/'], '-', $dateValue);
@@ -576,6 +617,59 @@ PROMPT;
         {
             return null;
         }
+    }
+
+    private function monthNumberFromName(string $monthName): ?int
+    {
+        $normalized = Str::lower(Str::ascii(rtrim(trim($monthName), '.')));
+
+        $months = [
+            'jan' => 1, 'january' => 1, 'ene' => 1, 'enero' => 1,
+            'feb' => 2, 'february' => 2, 'febrero' => 2,
+            'mar' => 3, 'march' => 3, 'marzo' => 3,
+            'apr' => 4, 'april' => 4, 'abr' => 4, 'abril' => 4,
+            'may' => 5, 'mayo' => 5,
+            'jun' => 6, 'june' => 6, 'junio' => 6,
+            'jul' => 7, 'july' => 7, 'julio' => 7,
+            'aug' => 8, 'august' => 8, 'ago' => 8, 'agosto' => 8,
+            'sep' => 9, 'sept' => 9, 'september' => 9, 'septiembre' => 9,
+            'oct' => 10, 'october' => 10, 'octubre' => 10,
+            'nov' => 11, 'november' => 11, 'noviembre' => 11,
+            'dec' => 12, 'december' => 12, 'dic' => 12, 'diciembre' => 12,
+        ];
+
+        return $months[$normalized] ?? null;
+    }
+
+    private function resolveIsPaid(mixed $detectedValue, ?string $ocrText): bool
+    {
+        if (is_bool($detectedValue))
+        {
+            return $detectedValue;
+        }
+
+        return $this->detectIsPaid((string) $ocrText);
+    }
+
+    private function detectIsPaid(string $text): bool
+    {
+        $value = trim($text);
+        if ($value === '')
+        {
+            return false;
+        }
+
+        if (preg_match('/\b(unpaid|not\s+paid|no\s+pagad[oa]|pendiente\s+de\s+pago|por\s+pagar|amount\s+due\s*[:\-]?\s*[$€]?\s*[1-9])/iu', $value) === 1)
+        {
+            return false;
+        }
+
+        if (preg_match('/\b(paid|pagad[oa]|payment\s+received|cobrad[oa]|status\s*[:\-]?\s*paid)\b/iu', $value) === 1)
+        {
+            return true;
+        }
+
+        return preg_match('/amount\s+due\s*[:\-]?\s*[$€]?\s*0(?:[.,]00)?\b/iu', $value) === 1;
     }
 
     private function extractCurrencyCode(string $text): ?string
