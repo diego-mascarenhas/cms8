@@ -176,4 +176,47 @@ class ContactListApiTest extends TestCase
             ->assertJsonPath('data.data.0.sentiment.emoji', '😐')
             ->assertJsonPath('data.data.0.sentiment.name', 'Neutral');
     }
+
+    public function test_contact_picker_returns_every_contact_without_the_page_cap(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed(ContactStatusSeeder::class);
+        $this->seed(LanguageSeeder::class);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $leadId = ContactStatus::query()->where('name', 'Lead')->value('id');
+
+        foreach (range(1, 120) as $index)
+        {
+            Contact::query()->create([
+                'team_id' => $team->id,
+                'name' => 'Contacto '.$index,
+                'email' => 'contacto'.$index.'@example.com',
+                'language' => 'es',
+                'creator_id' => $user->id,
+                'status_id' => $leadId,
+            ]);
+        }
+
+        $token = $user->createToken('contacts')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/contacts?per_page=100')
+            ->assertOk()
+            ->assertJsonPath('data.total', 120)
+            ->assertJsonCount(100, 'data.data');
+
+        $picker = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/contacts?picker=1');
+
+        $picker->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonCount(120, 'data')
+            ->assertJsonPath('data.0.name', 'Contacto 1');
+    }
 }
