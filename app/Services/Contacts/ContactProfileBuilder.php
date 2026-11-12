@@ -40,6 +40,7 @@ class ContactProfileBuilder
             'organization' => $organization !== '' && strcasecmp($organization, $enterpriseName) !== 0 ? $organization : null,
             'city' => $this->text($payload['city'] ?? null),
             'country_name' => $country?->name ?: $this->text($payload['country'] ?? null),
+            'country_code' => $country?->code ? strtolower((string) $country->code) : null,
             'linkedin' => $this->text($payload['linkedin_url'] ?? null),
             'seniority' => $this->seniority($payload['seniority'] ?? null),
             'headline' => $this->text($payload['headline'] ?? null),
