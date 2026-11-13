@@ -163,7 +163,7 @@ class ExpenseMovementsApiTest extends TestCase
         InvoiceItem::query()->create([
             'invoice_id' => $invoice->id,
             'category_id' => $category->id,
-            'description' => 'Licencia anual',
+            'description' => 'Licencia anual Administración',
             'quantity' => 1,
             'unit_price' => 50,
             'discount' => 0,
@@ -178,7 +178,23 @@ class ExpenseMovementsApiTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('vat_period', 'm:1')
             ->assertJsonPath('data.total', 1)
-            ->assertJsonPath('data.data.0.description', 'Licencia anual');
+            ->assertJsonPath('data.data.0.description', 'Licencia anual Administración');
+
+        $this->withToken($token)
+            ->getJson('/api/expenses/movements?vat_year=2026&vat_period=m:1&operation=buy&search=licencia')
+            ->assertOk()
+            ->assertJsonPath('data.total', 1);
+
+        $this->withToken($token)
+            ->getJson('/api/expenses/movements?vat_year=2026&vat_period=m:1&operation=buy&search=administracion')
+            ->assertOk()
+            ->assertJsonPath('data.total', 1);
+
+        $this->withToken($token)
+            ->getJson('/api/expenses/movements?vat_year=2026&vat_period=m:1&operation=buy&search=proveedor')
+            ->assertOk()
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.data.0.enterprise_name', 'Proveedor Filtrado');
 
         $this->withToken($token)
             ->getJson('/api/expenses/movements?vat_year=2026&vat_period=m:1&operation=sell')

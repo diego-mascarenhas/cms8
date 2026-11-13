@@ -27,6 +27,7 @@ use App\Services\Finance\ServiceCategoryOptionsService;
 use App\Services\Finance\VatHaciendaCsvExportService;
 use App\Services\Finance\VatReportingService;
 use App\Support\ExpenseDocumentTypes;
+use App\Support\SearchNormalizer;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -249,19 +250,21 @@ class ExpenseController extends Controller
 
         if ($search !== '')
         {
-            $like = '%'.$search.'%';
-            $query->where(function ($builder) use ($like): void
+            $query->where(function ($builder) use ($search): void
             {
+                SearchNormalizer::applyColumnsNavbarConditions($builder, ['description'], $search);
                 $builder
-                    ->where('invoice_items.description', 'like', $like)
-                    ->orWhere('invoices.number', 'like', $like)
-                    ->orWhereHas('invoice.enterprise', function ($enterpriseQuery) use ($like): void
+                    ->orWhereHas('invoice', function ($invoiceQuery) use ($search): void
                     {
-                        $enterpriseQuery->where('name', 'like', $like);
+                        SearchNormalizer::applyColumnsNavbarConditions($invoiceQuery, ['number'], $search);
                     })
-                    ->orWhereHas('category', function ($categoryQuery) use ($like): void
+                    ->orWhereHas('invoice.enterprise', function ($enterpriseQuery) use ($search): void
                     {
-                        $categoryQuery->where('name', 'like', $like);
+                        SearchNormalizer::applyColumnsNavbarConditions($enterpriseQuery, ['name'], $search);
+                    })
+                    ->orWhereHas('category', function ($categoryQuery) use ($search): void
+                    {
+                        SearchNormalizer::applyColumnsNavbarConditions($categoryQuery, ['name'], $search);
                     });
             });
         }
