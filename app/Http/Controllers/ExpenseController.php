@@ -20,6 +20,7 @@ use App\Models\PaymentType;
 use App\Services\ExpenseDocumentDetectionService;
 use App\Services\ExpenseDuplicateDocumentService;
 use App\Services\ExpenseSupplierService;
+use App\Services\Finance\InvoiceAnalyticsService;
 use App\Services\Finance\ManualInvoiceDocumentService;
 use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Services\Finance\PaymentReportingCurrencyService;
@@ -27,6 +28,7 @@ use App\Services\Finance\ServiceCategoryOptionsService;
 use App\Services\Finance\VatHaciendaCsvExportService;
 use App\Services\Finance\VatReportingService;
 use App\Support\ExpenseDocumentTypes;
+use App\Support\SearchNormalizer;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -43,6 +45,7 @@ class ExpenseController extends Controller
         private readonly PaymentReportingCurrencyService $paymentReportingCurrencyService,
         private readonly VatReportingService $vatReportingService,
         private readonly VatHaciendaCsvExportService $vatHaciendaCsvExportService,
+        private readonly InvoiceAnalyticsService $invoiceAnalyticsService,
     ) {}
 
     public function index(Request $request, ExpenseDataTable $dataTable)
@@ -194,6 +197,36 @@ class ExpenseController extends Controller
         return view('expense.create', $this->creationFormData());
     }
 
+    public function categoryCharts(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $teamId = (int) $request->user()->currentTeam->id;
+        $vatSelection = $this->vatReportingService->resolveSelectedPeriod(
+            year: $request->integer('vat_year') ?: ($request->integer('year') ?: null),
+            period: $request->string('vat_period')->toString() ?: null,
+            teamId: $teamId,
+        );
+        $year = (int) $vatSelection['year'];
+        $period = (string) $vatSelection['period'];
+        $periodLabel = (string) $vatSelection['label'];
+        $years = array_values(array_map('intval', $vatSelection['years']));
+        $from = $vatSelection['range']['from']->copy()->startOfDay();
+        $to = $vatSelection['range']['to']->copy()->endOfDay();
+        $breakdown = $this->invoiceAnalyticsService->buildCategoryBreakdownForRange($teamId, $from, $to);
+
+        return response()->json([
+            'success' => true,
+            'vat_year' => $year,
+            'vat_period' => $period,
+            'period_label' => $periodLabel,
+            'years' => $years,
+            'reporting_currency' => $breakdown['reporting_currency'],
+            'income_categories' => $breakdown['income_categories'],
+            'expense_categories' => $breakdown['expense_categories'],
+        ]);
+    }
+
     public function movements(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Payment::class);
@@ -228,9 +261,10 @@ class ExpenseController extends Controller
             ->whereDate('invoices.date', '<=', $rangeTo)
             ->with([
                 'category:id,name',
-                'invoice:id,number,date,operation,enterprise_id,currency_id',
+                'invoice:id,number,date,operation,enterprise_id,currency_id,source_reference_id',
                 'invoice.enterprise:id,name',
                 'invoice.currency:id,code',
+                'invoice.stripeInvoiceSync',
             ]);
 
         if (in_array($operation, ['buy', 'sell'], true))
@@ -248,19 +282,21 @@ class ExpenseController extends Controller
 
         if ($search !== '')
         {
-            $like = '%'.$search.'%';
-            $query->where(function ($builder) use ($like): void
+            $query->where(function ($builder) use ($search): void
             {
+                SearchNormalizer::applyColumnsNavbarConditions($builder, ['description'], $search);
                 $builder
-                    ->where('invoice_items.description', 'like', $like)
-                    ->orWhere('invoices.number', 'like', $like)
-                    ->orWhereHas('invoice.enterprise', function ($enterpriseQuery) use ($like): void
+                    ->orWhereHas('invoice', function ($invoiceQuery) use ($search): void
                     {
-                        $enterpriseQuery->where('name', 'like', $like);
+                        SearchNormalizer::applyColumnsNavbarConditions($invoiceQuery, ['number'], $search);
                     })
-                    ->orWhereHas('category', function ($categoryQuery) use ($like): void
+                    ->orWhereHas('invoice.enterprise', function ($enterpriseQuery) use ($search): void
                     {
-                        $categoryQuery->where('name', 'like', $like);
+                        SearchNormalizer::applyColumnsNavbarConditions($enterpriseQuery, ['name'], $search);
+                    })
+                    ->orWhereHas('category', function ($categoryQuery) use ($search): void
+                    {
+                        SearchNormalizer::applyColumnsNavbarConditions($categoryQuery, ['name'], $search);
                     });
             });
         }
@@ -295,6 +331,8 @@ class ExpenseController extends Controller
                 'enterprise_name' => $invoice?->enterprise?->name,
                 'invoice_id' => $invoice?->id,
                 'invoice_number' => $invoice?->number,
+                // Sell → Stripe hosted invoice; buy uses Axis /expense/edit/{id}.
+                'invoice_url' => $isIncome ? $invoice?->stripeHostedInvoiceUrl() : null,
                 'description' => $item->description,
                 'category_id' => $item->category_id ? (int) $item->category_id : null,
                 'category_name' => $item->category?->name,

@@ -3,8 +3,10 @@
 namespace App\Services\Finance;
 
 use App\Enums\TransactionType;
+use App\Models\BankStatement;
 use App\Models\ExchangeRate;
 use App\Models\Payment;
+use App\Models\PaymentAccount;
 use App\Models\Team;
 use App\Support\StripeInvoiceMetrics;
 use Carbon\Carbon;
@@ -253,9 +255,42 @@ class PaymentReportingCurrencyService
      */
     public function accountBalancesForDisplay(): Collection
     {
+        return $this->accountBalancesWithBank()->map(function (array $account): array
+        {
+            return [
+                'id' => $account['id'],
+                'name' => $account['name'],
+                'balance' => $account['balance'],
+                'currency_code' => $account['currency_code'],
+            ];
+        });
+    }
+
+    /**
+     * Book balances from payments, enriched with the latest extract stated balance when present.
+     *
+     * @return Collection<int, array{
+     *     id: int,
+     *     name: string,
+     *     balance: float,
+     *     book_balance: float,
+     *     bank_balance: float|null,
+     *     currency_code: string,
+     *     source: 'bank'|'book',
+     *     statement_period: string|null,
+     *     statement_balanced: bool|null,
+     *     statement_difference: float|null,
+     *     statement_matched: int|null,
+     *     statement_only: int|null,
+     *     payment_only: int|null
+     * }>
+     */
+    public function accountBalancesWithBank(Team|int|null $team = null): Collection
+    {
+        $teamId = $this->resolveTeamId($team);
         $incomeType = TransactionType::INCOME->value;
 
-        $balanceByAccountId = $this->scopedPaymentQuery()
+        $balanceByAccountId = $this->scopedPaymentQuery($teamId)
             ->whereNotNull('payments.account_id')
             ->groupBy('payments.account_id')
             ->selectRaw(
@@ -264,32 +299,117 @@ class PaymentReportingCurrencyService
             )
             ->pluck('balance', 'account_id');
 
-        return \App\Models\PaymentAccount::with('currency')
-            ->orderBy('name')
-            ->get()
-            ->map(function ($account) use ($balanceByAccountId): array
-            {
-                return [
-                    'id' => $account->id,
-                    'name' => $account->name,
-                    'balance' => (float) ($balanceByAccountId[$account->id] ?? 0),
-                    'currency_code' => strtoupper((string) ($account->currency->code ?? 'USD')),
-                ];
-            });
-    }
-
-    private function scopedPaymentQuery(): Builder
-    {
-        $query = Payment::query()->withoutGlobalScope('team');
-
-        $teamId = auth()->user()?->currentTeam?->id;
+        $accountsQuery = PaymentAccount::withoutGlobalScopes()->with('currency')->orderBy('name');
 
         if ($teamId)
         {
-            $query->where('payments.team_id', $teamId);
+            $accountsQuery->where('team_id', $teamId);
+        }
+
+        $accounts = $accountsQuery->get();
+
+        $latestStatements = $this->latestStatementsByAccountId(
+            $accounts->pluck('id')->map(fn ($id): int => (int) $id)->all(),
+            $teamId,
+        );
+
+        return $accounts->map(function (PaymentAccount $account) use ($balanceByAccountId, $latestStatements): array
+        {
+            $bookBalance = (float) ($balanceByAccountId[$account->id] ?? 0);
+            $statement = $latestStatements[(int) $account->id] ?? null;
+            $summary = is_array($statement?->validation_summary) ? $statement->validation_summary : [];
+            $bankBalance = array_key_exists('stated_balance', $summary) && $summary['stated_balance'] !== null
+                ? round((float) $summary['stated_balance'], 2)
+                : null;
+            $usesBank = $bankBalance !== null;
+
+            return [
+                'id' => (int) $account->id,
+                'name' => (string) $account->name,
+                'balance' => $usesBank ? $bankBalance : $bookBalance,
+                'book_balance' => round($bookBalance, 2),
+                'bank_balance' => $bankBalance,
+                'currency_code' => strtoupper((string) ($account->currency->code ?? 'USD')),
+                'source' => $usesBank ? 'bank' : 'book',
+                'statement_period' => $statement instanceof BankStatement ? $statement->periodLabel() : null,
+                'statement_balanced' => array_key_exists('balanced', $summary) ? (bool) $summary['balanced'] : null,
+                'statement_difference' => array_key_exists('difference', $summary) && $summary['difference'] !== null
+                    ? round((float) $summary['difference'], 2)
+                    : null,
+                'statement_matched' => array_key_exists('matched', $summary) ? (int) $summary['matched'] : null,
+                'statement_only' => array_key_exists('statement_only', $summary) ? (int) $summary['statement_only'] : null,
+                'payment_only' => array_key_exists('payment_only', $summary) ? (int) $summary['payment_only'] : null,
+            ];
+        });
+    }
+
+    /**
+     * @param  list<int>  $accountIds
+     * @return array<int, BankStatement>
+     */
+    private function latestStatementsByAccountId(array $accountIds, ?int $teamId = null): array
+    {
+        if ($accountIds === [])
+        {
+            return [];
+        }
+
+        $resolvedTeamId = $teamId ?? auth()->user()?->currentTeam?->id;
+
+        $query = BankStatement::query()
+            ->whereIn('payment_account_id', $accountIds)
+            ->orderByDesc('period_year')
+            ->orderByDesc('period_month')
+            ->orderByDesc('id');
+
+        if ($resolvedTeamId)
+        {
+            $query->where('team_id', $resolvedTeamId);
+        }
+
+        $latest = [];
+
+        foreach ($query->get() as $statement)
+        {
+            $accountId = (int) $statement->payment_account_id;
+
+            if (! isset($latest[$accountId]))
+            {
+                $latest[$accountId] = $statement;
+            }
+        }
+
+        return $latest;
+    }
+
+    private function scopedPaymentQuery(?int $teamId = null): Builder
+    {
+        $query = Payment::query()->withoutGlobalScope('team');
+        $resolvedTeamId = $teamId ?? auth()->user()?->currentTeam?->id;
+
+        if ($resolvedTeamId)
+        {
+            $query->where('payments.team_id', $resolvedTeamId);
         }
 
         return $query;
+    }
+
+    private function resolveTeamId(Team|int|null $team): ?int
+    {
+        if ($team instanceof Team)
+        {
+            return (int) $team->id;
+        }
+
+        if (is_int($team) && $team > 0)
+        {
+            return $team;
+        }
+
+        $authTeamId = auth()->user()?->currentTeam?->id;
+
+        return $authTeamId ? (int) $authTeamId : null;
     }
 
     /**

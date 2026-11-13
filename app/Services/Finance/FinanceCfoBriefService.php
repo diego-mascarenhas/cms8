@@ -13,6 +13,7 @@ use App\Models\ProjectStatus;
 use App\Models\StripeSubscription;
 use App\Models\Team;
 use App\Services\ProjectBudgetSpecService;
+use App\Services\TokenUsageLogService;
 use App\Support\AiTasks;
 use App\Support\RevisionAlphaOrganization;
 use Carbon\Carbon;
@@ -170,7 +171,7 @@ class FinanceCfoBriefService
             foreach ($this->generationGroups() as $phase => $keys)
             {
                 $this->mark($team, $year, 'running', $phase);
-                $parsed = $this->parse($this->ask($context, $keys));
+                $parsed = $this->parse($this->ask($team, $context, $keys));
 
                 if ($parsed === null)
                 {
@@ -209,7 +210,7 @@ class FinanceCfoBriefService
     {
         try
         {
-            return $this->ask($this->context($team, $year), ['dafo', 'fifo', 'dagmar', 'actions', 'capacity']);
+            return $this->ask($team, $this->context($team, $year), ['dafo', 'fifo', 'dagmar', 'actions', 'capacity']);
         } catch (Throwable $exception)
         {
             Log::error('FinanceCfoBriefService::suggest failed', ['error' => $exception->getMessage()]);
@@ -222,7 +223,7 @@ class FinanceCfoBriefService
      * @param  array<string, mixed>  $context
      * @param  list<string>  $keys
      */
-    private function ask(array $context, array $keys): string
+    private function ask(Team $team, array $context, array $keys): string
     {
         $schema = $this->schemaFor($keys);
         $instructions = <<<TXT
@@ -268,7 +269,36 @@ TXT;
             throw new RuntimeException('CFO reply was empty.');
         }
 
+        $this->logUsage($team, $response->usage ?? null, $userMessage, $text);
+
         return $text;
+    }
+
+    private function logUsage(Team $team, mixed $usage, string $input, string $output): void
+    {
+        $total = TokenUsageLogService::totalTokensFromUsage($usage);
+
+        if ($total > 0)
+        {
+            TokenUsageLogService::logFromAiResponse(
+                teamId: (int) $team->id,
+                service: 'FinanceCfoBriefService',
+                usage: $usage,
+                inputSize: strlen($input),
+                outputSize: strlen($output),
+            );
+
+            return;
+        }
+
+        $estimated = (int) max(1, round(strlen($input) / 4) + round(strlen($output) / 4));
+        TokenUsageLogService::log(
+            teamId: (int) $team->id,
+            service: 'FinanceCfoBriefService',
+            totalTokens: $estimated,
+            inputSize: strlen($input),
+            outputSize: strlen($output),
+        );
     }
 
     /**
@@ -742,23 +772,41 @@ TXT;
     public function projection(Team $team, int $year): array
     {
         $report = $this->invoiceAnalyticsService->buildYearReport($team->id, $year);
-        $trend = $report['monthly_trend'];
         $cursor = now()->startOfMonth();
+        $historyMonths = 3;
+        $forwardMonths = 12;
+        $chartStart = $cursor->copy()->subMonths($historyMonths);
+        $horizonStart = now()->startOfDay();
+        $horizonEnd = $cursor->copy()->addMonths($forwardMonths - 1)->endOfMonth();
+        $reportsByYear = [
+            (int) $report['year'] => $report,
+        ];
+
+        for ($reportYear = (int) $chartStart->year; $reportYear <= (int) $horizonEnd->year; $reportYear++)
+        {
+            if (! isset($reportsByYear[$reportYear]))
+            {
+                $reportsByYear[$reportYear] = $this->invoiceAnalyticsService->buildYearReport($team->id, $reportYear);
+            }
+        }
+
         $actual = [];
 
-        foreach ($trend as $row)
+        foreach ($reportsByYear as $reportYear => $yearReport)
         {
-            $isOpenOrFutureThisYear = (int) $report['year'] === (int) $cursor->year
-                && (int) $row['month'] >= (int) $cursor->month;
-
-            if ($isOpenOrFutureThisYear)
+            foreach ($yearReport['monthly_trend'] as $row)
             {
-                continue;
-            }
+                $rowMonth = Carbon::create((int) $reportYear, (int) $row['month'], 1)->startOfMonth();
 
-            if ((float) $row['income'] > 0 || (float) $row['expense'] > 0)
-            {
-                $actual[] = $row;
+                if ($rowMonth->gte($cursor))
+                {
+                    continue;
+                }
+
+                if ((float) $row['income'] > 0 || (float) $row['expense'] > 0)
+                {
+                    $actual[] = $row;
+                }
             }
         }
 
@@ -775,37 +823,57 @@ TXT;
             $avgExpense = $this->closedMonthExpenseAverage($team->id, $year - 1);
         }
 
-        $horizonStart = now()->startOfDay();
-        $horizonEnd = $cursor->copy()->addMonths(11)->endOfMonth();
         $span = max(1, (int) $horizonStart->copy()->startOfMonth()->diffInMonths($horizonEnd->copy()->startOfMonth()) + 1);
         $plans = $this->contractedIncomeByMonth($this->openInstallments($team), $horizonStart, $span);
         $finishes = $this->contractedIncomeByMonth($this->projectFinishes($team), $horizonStart, $span);
         $renewals = $this->annualRenewalsByMonth($team, $horizonStart, $horizonEnd);
         $points = [];
+        $totalMonths = $historyMonths + $forwardMonths;
 
-        for ($offset = 0; $offset < 12; $offset++)
+        for ($offset = 0; $offset < $totalMonths; $offset++)
         {
-            $date = $cursor->copy()->addMonths($offset);
-            $monthRow = ((int) $date->year === (int) $report['year'])
-                ? ($trend[$date->month - 1] ?? null)
+            $date = $chartStart->copy()->addMonths($offset);
+            $yearReport = $reportsByYear[(int) $date->year] ?? null;
+            $monthRow = is_array($yearReport)
+                ? ($yearReport['monthly_trend'][$date->month - 1] ?? null)
                 : null;
-            $hasActual = is_array($monthRow)
-                && $date->lte($cursor)
-                && (((float) $monthRow['income']) > 0 || ((float) $monthRow['expense']) > 0);
+            $bookedIncome = is_array($monthRow) ? (float) $monthRow['income'] : 0.0;
+            $bookedExpense = is_array($monthRow) ? (float) $monthRow['expense'] : 0.0;
+            $hasBooked = $bookedIncome > 0 || $bookedExpense > 0;
+            $isHistory = $date->lt($cursor);
+            $isCurrentWithBooks = $date->isSameMonth($cursor) && $hasBooked;
             $key = $date->format('Y-m');
             $extraIncome = (float) ($plans[$key] ?? 0)
                 + (float) ($finishes[$key] ?? 0)
                 + (float) ($renewals['income'][$key] ?? 0);
             $extraExpense = (float) ($renewals['expense'][$key] ?? 0);
-            $bookedExpense = $hasActual ? (float) $monthRow['expense'] : 0.0;
-            $baseExpense = $bookedExpense > 0 ? $bookedExpense : $avgExpense;
+
+            if ($isHistory)
+            {
+                $income = $bookedIncome;
+                $expense = $bookedExpense;
+                $projected = false;
+                $expenseProjected = false;
+            } elseif ($isCurrentWithBooks)
+            {
+                $income = $bookedIncome + $extraIncome;
+                $expense = $bookedExpense + $extraExpense;
+                $projected = false;
+                $expenseProjected = false;
+            } else
+            {
+                $income = $extraIncome;
+                $expense = ($bookedExpense > 0 ? $bookedExpense : $avgExpense) + $extraExpense;
+                $projected = true;
+                $expenseProjected = $bookedExpense <= 0;
+            }
 
             $points[] = [
                 'label' => $date->translatedFormat('M Y'),
-                'income' => round(($hasActual ? (float) $monthRow['income'] : 0.0) + $extraIncome, 2),
-                'expense' => round($baseExpense + $extraExpense, 2),
-                'projected' => ! $hasActual,
-                'expense_projected' => $bookedExpense <= 0,
+                'income' => round($income, 2),
+                'expense' => round($expense, 2),
+                'projected' => $projected,
+                'expense_projected' => $expenseProjected,
             ];
         }
 
