@@ -55,6 +55,8 @@ class StoreExpenseRequest extends FormRequest
             'payments' => ['nullable', 'array'],
             'payments.*.payment_date' => ['required', 'date'],
             'payments.*.amount' => ['nullable', 'numeric', 'min:0.01'],
+            'payments.*.document_amount' => ['nullable', 'numeric', 'min:0.01'],
+            'payments.*.exchange_rate' => ['nullable', 'numeric', 'gt:0'],
             'payments.*.type_id' => ['required', 'integer', 'exists:payment_types,id'],
             'payments.*.account_id' => [
                 'required',
@@ -160,6 +162,12 @@ class StoreExpenseRequest extends FormRequest
             $normalizedPayments[] = [
                 'payment_date' => $payment['payment_date'] ?? null,
                 'amount' => Helpers::parseDecimalInput($payment['amount']) ?? $payment['amount'],
+                'document_amount' => array_key_exists('document_amount', $payment) && filled($payment['document_amount'] ?? null)
+                    ? (Helpers::parseDecimalInput($payment['document_amount']) ?? $payment['document_amount'])
+                    : null,
+                'exchange_rate' => array_key_exists('exchange_rate', $payment) && filled($payment['exchange_rate'] ?? null)
+                    ? $this->parseExchangeRate($payment['exchange_rate'])
+                    : null,
                 'type_id' => $payment['type_id'] ?? null,
                 'account_id' => $payment['account_id'] ?? null,
                 'status' => $payment['status'] ?? 2,
@@ -167,6 +175,34 @@ class StoreExpenseRequest extends FormRequest
         }
 
         return $normalizedPayments;
+    }
+
+    private function parseExchangeRate(mixed $value): ?string
+    {
+        if ($value === null || $value === '')
+        {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '')
+        {
+            return null;
+        }
+
+        if (str_contains($normalized, ','))
+        {
+            $normalized = str_replace('.', '', $normalized);
+            $normalized = str_replace(',', '.', $normalized);
+        }
+
+        if (! is_numeric($normalized))
+        {
+            return trim((string) $value);
+        }
+
+        return number_format((float) $normalized, 6, '.', '');
     }
 
     public function withValidator(Validator $validator): void
@@ -181,24 +217,22 @@ class StoreExpenseRequest extends FormRequest
             $lines = $this->input('lines', []);
             $invoiceTotal = $this->calculateInvoiceTotal(is_array($lines) ? $lines : []);
             $payments = $this->input('payments', []);
+            $isDraft = (string) $this->input('submit_action') === 'draft';
 
             if (! is_array($payments))
             {
                 return;
             }
 
-            $specifiedSum = 0.0;
             $hasSpecifiedAmount = false;
 
             foreach ($payments as $payment)
             {
-                if (! is_array($payment) || ! filled($payment['amount'] ?? null))
+                if (is_array($payment) && filled($payment['amount'] ?? null))
                 {
-                    continue;
+                    $hasSpecifiedAmount = true;
+                    break;
                 }
-
-                $hasSpecifiedAmount = true;
-                $specifiedSum += round((float) $payment['amount'], 2);
             }
 
             if ($this->boolean('charge_automatically') && $this->routeIs('invoice.store'))
@@ -222,18 +256,10 @@ class StoreExpenseRequest extends FormRequest
                 }
             }
 
-            if ($hasSpecifiedAmount && $specifiedSum > round($invoiceTotal + 0.001, 2))
-            {
-                $validator->errors()->add(
-                    'payments.0.amount',
-                    'La suma de los importes de pago no puede superar el total '
-                        .($this->isSellFlow() ? 'de la factura' : 'del gasto')
-                        .' ('.Helpers::formatDecimal($invoiceTotal).').',
-                );
-            }
-
             $teamId = (int) auth()->user()->currentTeam->id;
             $compatibilityService = app(PaymentAccountCompatibilityService::class);
+            $expenseCurrencyId = $this->filled('currency_id') ? (int) $this->input('currency_id') : null;
+            $appliedSum = 0.0;
 
             foreach ($payments as $index => $payment)
             {
@@ -263,6 +289,84 @@ class StoreExpenseRequest extends FormRequest
                         'La forma de pago seleccionada no está permitida para la cuenta elegida.',
                     );
                 }
+
+                if ($isDraft || ! filled($payment['amount'] ?? null))
+                {
+                    continue;
+                }
+
+                $paidAmount = round((float) $payment['amount'], 2);
+                $documentAmount = filled($payment['document_amount'] ?? null)
+                    ? round((float) $payment['document_amount'], 2)
+                    : null;
+                $exchangeRate = filled($payment['exchange_rate'] ?? null)
+                    ? (float) $payment['exchange_rate']
+                    : null;
+                $accountCurrencyId = $account instanceof PaymentAccount && $account->currency_id !== null
+                    ? (int) $account->currency_id
+                    : null;
+                $currenciesMatch = ! $expenseCurrencyId
+                    || $accountCurrencyId === null
+                    || $accountCurrencyId === $expenseCurrencyId;
+
+                if ($currenciesMatch)
+                {
+                    if ($documentAmount !== null || $exchangeRate !== null)
+                    {
+                        $validator->errors()->add(
+                            'payments.'.$index.'.document_amount',
+                            'No hace falta cambio de divisa cuando la cuenta y el gasto usan la misma moneda.',
+                        );
+                    }
+
+                    $appliedSum += $paidAmount;
+
+                    continue;
+                }
+
+                if ($documentAmount === null)
+                {
+                    $validator->errors()->add(
+                        'payments.'.$index.'.document_amount',
+                        'Indica el importe aplicado en la moneda del gasto.',
+                    );
+                }
+
+                if ($exchangeRate === null || $exchangeRate <= 0)
+                {
+                    $validator->errors()->add(
+                        'payments.'.$index.'.exchange_rate',
+                        'Indica el tipo de cambio (moneda de la cuenta por 1 unidad de la moneda del gasto).',
+                    );
+                }
+
+                if ($documentAmount !== null && $exchangeRate !== null && $exchangeRate > 0)
+                {
+                    $expectedPaid = round($documentAmount * $exchangeRate, 2);
+                    $tolerance = max(1.0, round(abs($paidAmount) * 0.001, 2));
+
+                    if (abs($expectedPaid - $paidAmount) > $tolerance)
+                    {
+                        $validator->errors()->add(
+                            'payments.'.$index.'.amount',
+                            'El importe pagado ('.Helpers::formatDecimal($paidAmount)
+                                .') no coincide con el importe aplicado × tipo de cambio ('
+                                .Helpers::formatDecimal($expectedPaid).').',
+                        );
+                    }
+                }
+
+                $appliedSum += $documentAmount ?? 0.0;
+            }
+
+            if (! $isDraft && $hasSpecifiedAmount && round($appliedSum, 2) > round($invoiceTotal + 0.001, 2))
+            {
+                $validator->errors()->add(
+                    'payments.0.amount',
+                    'La suma de los importes de pago no puede superar el total '
+                        .($this->isSellFlow() ? 'de la factura' : 'del gasto')
+                        .' ('.Helpers::formatDecimal($invoiceTotal).').',
+                );
             }
 
             $enterpriseId = (int) $this->input('enterprise_id');
@@ -315,6 +419,8 @@ class StoreExpenseRequest extends FormRequest
             'payments' => 'pagos',
             'payments.*.payment_date' => 'fecha del pago',
             'payments.*.amount' => 'importe del pago',
+            'payments.*.document_amount' => 'importe aplicado al gasto',
+            'payments.*.exchange_rate' => 'tipo de cambio',
             'payments.*.type_id' => 'forma de pago',
             'payments.*.account_id' => 'cuenta',
             'payments.*.status' => 'estado del pago',

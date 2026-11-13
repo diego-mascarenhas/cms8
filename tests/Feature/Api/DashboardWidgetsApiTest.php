@@ -16,6 +16,7 @@ use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\TeamUsageInvoice;
 use App\Models\User;
+use App\Models\UserDailyPerformanceInsight;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -177,11 +178,20 @@ class DashboardWidgetsApiTest extends TestCase
             ->assertJsonCount(8, 'widgets.mailer.dates')
             ->assertJsonCount(8, 'widgets.mailer.sent')
             ->assertJsonCount(7, 'widgets.ads.clicks')
-            ->assertJsonCount(8, 'widgets.income.amounts')
-            ->assertJsonCount(8, 'widgets.income.expenses')
+            ->assertJsonCount(12, 'widgets.income.amounts')
+            ->assertJsonCount(12, 'widgets.income.expenses')
+            ->assertJsonPath('widgets.income.period_label', (string) now()->year)
             ->assertJsonPath('widgets.income.total', 0)
             ->assertJsonPath('widgets.income.expense_total', 0)
             ->assertJsonPath('widgets.income.currency', 'EUR')
+            ->assertJsonPath('widgets.income.metrics.mbr', 0)
+            ->assertJsonPath('widgets.income.metrics.monthly_expense', 0)
+            ->assertJsonPath('widgets.income.metrics.monthly_profit', 0)
+            ->assertJsonPath('widgets.income.metrics.margin_percent', 0)
+            ->assertJsonPath('widgets.income.metrics.ytd_profit', 0)
+            ->assertJsonPath('widgets.income.metrics.avg_monthly_income', 0)
+            ->assertJsonPath('widgets.income.metrics.avg_monthly_expense', 0)
+            ->assertJsonPath('widgets.income.metrics.avg_monthly_profit', 0)
             ->assertJsonPath('widgets.analytics', null)
             ->assertJsonPath('widgets.drafts', null)
             ->assertJsonCount(0, 'widgets.audience')
@@ -411,5 +421,48 @@ class DashboardWidgetsApiTest extends TestCase
                 'team_name' => 'IDONEO',
                 'enterprise_id' => $idoneo->id,
             ]);
+    }
+
+    public function test_dashboard_includes_today_performance_insight_for_admin(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $module = Module::query()->create([
+            'name' => 'performance_insights',
+            'key' => 'performance_insights',
+            'icon' => null,
+            'description' => null,
+            'is_core' => false,
+            'group' => null,
+            'order' => 0,
+            'status' => 1,
+        ]);
+        $team->modules()->attach($module->id, ['status' => 1, 'settings' => null]);
+
+        UserDailyPerformanceInsight::query()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'insight_date' => now()->toDateString(),
+            'headline' => 'Impulso',
+            'focus' => 'Prioridad de hoy buzón',
+            'message' => 'Actualiza tu dossier comercial con un seguimiento concreto antes del mediodía.',
+            'performance_ratio' => 0.42,
+            'context_snapshot' => [
+                'highlights' => ['99 correos sin leer en el buzón'],
+            ],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('dashboard')->plainTextToken)
+            ->getJson('/api/dashboard')
+            ->assertOk()
+            ->assertJsonPath('performance_insight.headline', 'Impulso')
+            ->assertJsonPath('performance_insight.focus', 'Prioridad de hoy buzón')
+            ->assertJsonPath('performance_insight.actions.0.label', '99 correos sin leer en el buzón');
     }
 }

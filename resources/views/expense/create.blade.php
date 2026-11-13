@@ -535,12 +535,17 @@
                             @enderror
                         </div>
                         <div class="col-md-2 col-lg-2">
-                            <label class="form-label" for="payment_amount_{{ $paymentIndex }}">Importe</label>
+                            <label class="form-label" for="payment_amount_{{ $paymentIndex }}">Importe pagado</label>
                             @php
                                 $paymentAmountValue = old('payments.'.$paymentIndex.'.amount', $payment['amount'] ?? '');
                                 $paymentAmountDisplay = filled($paymentAmountValue)
                                     ? \App\Helpers\Helpers::formatDecimal((float) $paymentAmountValue)
                                     : '';
+                                $paymentDocumentAmountValue = old('payments.'.$paymentIndex.'.document_amount', $payment['document_amount'] ?? '');
+                                $paymentDocumentAmountDisplay = filled($paymentDocumentAmountValue)
+                                    ? \App\Helpers\Helpers::formatDecimal((float) $paymentDocumentAmountValue)
+                                    : '';
+                                $paymentExchangeRateValue = old('payments.'.$paymentIndex.'.exchange_rate', $payment['exchange_rate'] ?? '');
                             @endphp
                             <input
                                 type="text"
@@ -553,6 +558,42 @@
                             @error('payments.'.$paymentIndex.'.amount')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                        </div>
+                        <div class="col-12 payment-fx-fields {{ filled($paymentDocumentAmountValue) || filled($paymentExchangeRateValue) ? '' : 'd-none' }}">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="form-label" for="payment_document_amount_{{ $paymentIndex }}">Importe aplicado (moneda del gasto)</label>
+                                    <input
+                                        type="text"
+                                        inputmode="decimal"
+                                        id="payment_document_amount_{{ $paymentIndex }}"
+                                        name="payments[{{ $paymentIndex }}][document_amount]"
+                                        class="form-control text-end payment-document-amount @error('payments.'.$paymentIndex.'.document_amount') is-invalid @enderror"
+                                        value="{{ $paymentDocumentAmountDisplay }}"
+                                    >
+                                    @error('payments.'.$paymentIndex.'.document_amount')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label" for="payment_exchange_rate_{{ $paymentIndex }}">Tipo de cambio</label>
+                                    <input
+                                        type="text"
+                                        inputmode="decimal"
+                                        id="payment_exchange_rate_{{ $paymentIndex }}"
+                                        name="payments[{{ $paymentIndex }}][exchange_rate]"
+                                        class="form-control text-end payment-exchange-rate @error('payments.'.$paymentIndex.'.exchange_rate') is-invalid @enderror"
+                                        value="{{ $paymentExchangeRateValue }}"
+                                        placeholder="Cuenta por 1 del gasto"
+                                    >
+                                    @error('payments.'.$paymentIndex.'.exchange_rate')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <small class="text-muted payment-fx-hint">Si la cuenta es otra divisa, completa importe aplicado y tipo de cambio.</small>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-2 col-lg-2">
                             <label class="form-label" for="payment_type_id_{{ $paymentIndex }}">Forma de pago (*)</label>
@@ -1182,16 +1223,71 @@
 
         function filteredPaymentAccounts(currencyId, typeId) {
             return paymentAccountOptions.filter(function (option) {
-                if (currencyId && String(option.currency_id) !== String(currencyId)) {
-                    return false;
-                }
-
                 if (typeId && !accountAcceptsType(option, typeId)) {
                     return false;
                 }
 
                 return true;
             });
+        }
+
+        function paymentNeedsFx($block) {
+            var expenseCurrencyId = $currencySelect.val() || '';
+            var accountId = $block.find('.payment-account-select').val() || '';
+            var account = findPaymentAccountOption(accountId);
+
+            if (!expenseCurrencyId || !account || !account.currency_id) {
+                return false;
+            }
+
+            return String(account.currency_id) !== String(expenseCurrencyId);
+        }
+
+        function togglePaymentFxFields($block) {
+            var needsFx = paymentNeedsFx($block);
+            var $fx = $block.find('.payment-fx-fields');
+
+            $fx.toggleClass('d-none', !needsFx);
+
+            if (!needsFx) {
+                $block.find('.payment-document-amount').val('');
+                $block.find('.payment-exchange-rate').val('');
+            } else if (!$block.find('.payment-document-amount').val()) {
+                var totals = calculateExpenseTotals();
+                var appliedOthers = 0;
+
+                $paymentsContainer.find('.expense-payment-block').not($block).each(function () {
+                    appliedOthers += paymentAppliedAmount($(this));
+                });
+
+                var remaining = Math.max(roundMoney(totals.total - appliedOthers), 0);
+
+                if (remaining > 0) {
+                    setAmountInputValue($block.find('.payment-document-amount').get(0), remaining);
+                    syncPaymentExchangeRate($block);
+                }
+            }
+        }
+
+        function paymentAppliedAmount($block) {
+            if (paymentNeedsFx($block)) {
+                return asNumber($block.find('.payment-document-amount').val());
+            }
+
+            return asNumber($block.find('.payment-amount').val());
+        }
+
+        function syncPaymentExchangeRate($block) {
+            if (!paymentNeedsFx($block)) {
+                return;
+            }
+
+            var paid = asNumber($block.find('.payment-amount').val());
+            var applied = asNumber($block.find('.payment-document-amount').val());
+
+            if (paid > 0 && applied > 0) {
+                $block.find('.payment-exchange-rate').val((paid / applied).toFixed(6));
+            }
         }
 
         function filteredPaymentTypes(accountId) {
@@ -1282,6 +1378,7 @@
 
             $accountSelect.html(buildAccountSelectOptions(accountId, currencyId, typeId));
             $typeSelect.html(buildTypeSelectOptions(typeId, accountId));
+            togglePaymentFxFields($block);
         }
 
         function refreshAllPaymentBlocks() {
@@ -1321,7 +1418,7 @@
                 '      <input type="text" id="payment_date_' + index + '" name="payments[' + index + '][payment_date]" class="form-control expense-date payment-date" value="' + escapeHtml(paymentDate) + '">',
                 '    </div>',
                 '    <div class="col-md-2 col-lg-2">',
-                '      <label class="form-label" for="payment_amount_' + index + '">Importe</label>',
+                '      <label class="form-label" for="payment_amount_' + index + '">Importe pagado</label>',
                 '      <input type="text" inputmode="decimal" id="payment_amount_' + index + '" name="payments[' + index + '][amount]" class="form-control text-end payment-amount" value="' + escapeHtml(amount) + '">',
                 '    </div>',
                 '    <div class="col-md-2 col-lg-2">',
@@ -1353,6 +1450,21 @@
                 '      <button type="button" class="btn btn-icon btn-label-danger remove-payment-btn" title="' + escapeHtml(documentFlow.remove_payment_title) + '">',
                 '        <i class="ti ti-trash"></i>',
                 '      </button>',
+                '    </div>',
+                '    <div class="col-12 payment-fx-fields d-none">',
+                '      <div class="row g-3">',
+                '        <div class="col-md-4">',
+                '          <label class="form-label" for="payment_document_amount_' + index + '">Importe aplicado (moneda del gasto)</label>',
+                '          <input type="text" inputmode="decimal" id="payment_document_amount_' + index + '" name="payments[' + index + '][document_amount]" class="form-control text-end payment-document-amount" value="">',
+                '        </div>',
+                '        <div class="col-md-4">',
+                '          <label class="form-label" for="payment_exchange_rate_' + index + '">Tipo de cambio</label>',
+                '          <input type="text" inputmode="decimal" id="payment_exchange_rate_' + index + '" name="payments[' + index + '][exchange_rate]" class="form-control text-end payment-exchange-rate" value="" placeholder="Cuenta por 1 del gasto">',
+                '        </div>',
+                '        <div class="col-md-4 d-flex align-items-end">',
+                '          <small class="text-muted payment-fx-hint">Si la cuenta es otra divisa, completa importe aplicado y tipo de cambio.</small>',
+                '        </div>',
+                '      </div>',
                 '    </div>',
                 '  </div>',
                 '</div>',
@@ -1406,10 +1518,10 @@
         function updatePaymentsSummary() {
             var totals = calculateExpenseTotals();
             var paid = 0;
-            var $amountInputs = $paymentsContainer.find('.payment-amount');
+            var $blocks = $paymentsContainer.find('.expense-payment-block');
 
-            $amountInputs.each(function () {
-                paid += asNumber($(this).val());
+            $blocks.each(function () {
+                paid += paymentAppliedAmount($(this));
             });
 
             paid = roundMoney(paid);
@@ -1418,7 +1530,7 @@
             var exceedsTotal = total > 0 && paid > total + 0.001;
             var $summary = $('#payments-summary');
 
-            if ($amountInputs.length === 0) {
+            if ($blocks.length === 0) {
                 $summary
                     .removeClass('text-danger')
                     .addClass('text-muted')
@@ -1446,12 +1558,18 @@
                 .toggleClass('text-muted', ! exceedsTotal)
                 .text(summaryText);
 
-            $paymentsContainer.find('.payment-amount').each(function () {
+            $paymentsContainer.find('.payment-amount, .payment-document-amount').each(function () {
                 $(this).toggleClass('is-invalid', exceedsTotal);
             });
         }
 
         function capPaymentAmountInput($input) {
+            var $block = $input.closest('.expense-payment-block');
+
+            if (paymentNeedsFx($block) && $input.hasClass('payment-amount')) {
+                return;
+            }
+
             var totals = calculateExpenseTotals();
             var maxTotal = roundMoney(totals.total);
 
@@ -1461,8 +1579,8 @@
 
             var sumOthers = 0;
 
-            $paymentsContainer.find('.payment-amount').not($input).each(function () {
-                sumOthers += asNumber($(this).val());
+            $paymentsContainer.find('.expense-payment-block').not($block).each(function () {
+                sumOthers += paymentAppliedAmount($(this));
             });
 
             var maxAllowed = Math.max(maxTotal - sumOthers, 0);
@@ -1484,14 +1602,18 @@
             var paid = 0;
             var hasSpecifiedAmount = false;
 
-            $paymentsContainer.find('.payment-amount').each(function () {
-                var value = $(this).val();
+            $paymentsContainer.find('.expense-payment-block').each(function () {
+                var $block = $(this);
+                var value = paymentNeedsFx($block)
+                    ? $block.find('.payment-document-amount').val()
+                    : $block.find('.payment-amount').val();
+
                 if (value === '' || value === null) {
                     return;
                 }
 
                 hasSpecifiedAmount = true;
-                paid += asNumber(value);
+                paid += paymentAppliedAmount($block);
             });
 
             return hasSpecifiedAmount && roundMoney(paid) > total + 0.001;
@@ -2404,7 +2526,7 @@
         }
 
         function initAmountInputs($container) {
-            $container.find('.line-base, .payment-amount').each(function () {
+            $container.find('.line-base, .payment-amount, .payment-document-amount').each(function () {
                 initAmountInput(this);
             });
         }
@@ -2427,7 +2549,7 @@
         }
 
         function normalizeAmountInputsForSubmit() {
-            $('.line-base, .payment-amount').each(function () {
+            $('.line-base, .payment-amount, .payment-document-amount').each(function () {
                 var $input = $(this);
                 var rawValue = String($input.val() || '').trim();
 
@@ -2443,6 +2565,16 @@
                 }
 
                 $input.val(normalized);
+            });
+
+            $('.payment-exchange-rate').each(function () {
+                var rawValue = String($(this).val() || '').trim();
+
+                if (rawValue === '') {
+                    return;
+                }
+
+                $(this).val(asNumber(rawValue).toFixed(6));
             });
         }
 
@@ -2470,6 +2602,7 @@
             initPaymentDatePickers($block);
             initPaymentSelects($block);
             initAmountInputs($block);
+            togglePaymentFxFields($block);
             updatePaymentsSummary();
             updatePaymentRemoveButtons();
         });
@@ -2481,7 +2614,28 @@
         });
 
         $paymentsContainer.on('input', '.payment-amount', function () {
+            var $block = $(this).closest('.expense-payment-block');
             capPaymentAmountInput($(this));
+            syncPaymentExchangeRate($block);
+            updatePaymentsSummary();
+        });
+
+        $paymentsContainer.on('input', '.payment-document-amount', function () {
+            var $block = $(this).closest('.expense-payment-block');
+            capPaymentAmountInput($(this));
+            syncPaymentExchangeRate($block);
+            updatePaymentsSummary();
+        });
+
+        $paymentsContainer.on('input', '.payment-exchange-rate', function () {
+            var $block = $(this).closest('.expense-payment-block');
+            var rate = asNumber($(this).val());
+            var applied = asNumber($block.find('.payment-document-amount').val());
+
+            if (rate > 0 && applied > 0) {
+                setAmountInputValue($block.find('.payment-amount').get(0), roundMoney(applied * rate));
+            }
+
             updatePaymentsSummary();
         });
 
@@ -2530,10 +2684,13 @@
         $currencySelect.on('change', refreshAllPaymentBlocks);
 
         $(document).on('change', '.payment-account-select', function () {
-            refreshPaymentBlockSelectors($(this).closest('.expense-payment-block'));
+            var $block = $(this).closest('.expense-payment-block');
+            refreshPaymentBlockSelectors($block);
+            togglePaymentFxFields($block);
+            updatePaymentsSummary();
 
             if ($currencySelect.val()) {
-                initPaymentSelects($(this).closest('.expense-payment-block'));
+                initPaymentSelects($block);
                 return;
             }
 

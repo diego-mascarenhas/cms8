@@ -19,6 +19,8 @@ class Payment extends Model
         'account_id',
         'type_id',
         'amount',
+        'document_amount',
+        'exchange_rate',
         'remarks',
         'status',
         'source_provider',
@@ -29,6 +31,9 @@ class Payment extends Model
     protected $casts = [
         'transaction_type' => TransactionType::class,
         'date' => 'date',
+        'amount' => 'decimal:2',
+        'document_amount' => 'decimal:2',
+        'exchange_rate' => 'decimal:6',
         'source_synced_at' => 'datetime',
     ];
 

@@ -173,6 +173,69 @@ class PaymentReportingCurrencyServiceTest extends TestCase
         $this->assertSame(100.0, $total);
     }
 
+    public function test_sum_payments_includes_all_statuses_and_skips_unknown_currency(): void
+    {
+        $this->team->setSetting('finance_reporting_currency', 'EUR', ['group' => 'finance']);
+
+        $eurAccount = $this->createAccount('EUR', 978);
+        $usdAccount = $this->createAccount('USD', 840);
+        $paymentType = PaymentType::query()->create(['name' => 'Transfer']);
+        $unknownAccount = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $this->team->id,
+            'code' => 'mp-unknown',
+            'name' => 'Mercado Pago',
+            'currency_id' => null,
+            'status' => 1,
+        ]);
+
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => $this->team->id,
+            'transaction_type' => TransactionType::INCOME,
+            'date' => now()->toDateString(),
+            'account_id' => $eurAccount->id,
+            'type_id' => $paymentType->id,
+            'amount' => 100,
+            'status' => 4,
+            'source_provider' => 'manual',
+        ]);
+
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => $this->team->id,
+            'transaction_type' => TransactionType::INCOME,
+            'date' => now()->toDateString(),
+            'account_id' => $usdAccount->id,
+            'type_id' => $paymentType->id,
+            'amount' => 100,
+            'status' => 9,
+            'source_provider' => 'manual',
+        ]);
+
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => $this->team->id,
+            'transaction_type' => TransactionType::INCOME,
+            'date' => now()->toDateString(),
+            'account_id' => $unknownAccount->id,
+            'type_id' => $paymentType->id,
+            'amount' => 19261.80,
+            'status' => 2,
+            'source_provider' => 'mercadopago',
+        ]);
+
+        $approvedOnly = $this->service->sumPaymentsConverted(
+            TransactionType::INCOME,
+            'EUR',
+            approvedOnly: true,
+        );
+        $allStatuses = $this->service->sumPaymentsConverted(
+            TransactionType::INCOME,
+            'EUR',
+            approvedOnly: false,
+        );
+
+        $this->assertSame(0.0, $approvedOnly);
+        $this->assertSame('190.00', number_format($allStatuses, 2, '.', ''));
+    }
+
     private function createAccount(string $code, int $currencyId): PaymentAccount
     {
         Currency::query()->updateOrCreate(
