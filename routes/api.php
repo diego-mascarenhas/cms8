@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\CommunicationSenderController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\FareController;
+use App\Http\Controllers\Api\FinanceAnalyticsController;
 use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LandingEmbedDemoController;
 use App\Http\Controllers\Api\LanguageVariantController;
@@ -964,6 +965,11 @@ Route::middleware('auth.api')->group(function ()
     Route::post('expenses', [ExpenseController::class, 'store'])->name('api.expenses.store');
     Route::patch('invoice-items/{invoiceItem}/category', [InvoiceItemCategoryController::class, 'update'])
         ->name('api.invoice-items.category.update');
+
+    Route::get('finance/cash-position', [FinanceAnalyticsController::class, 'cashPosition'])->name('api.finance.cash-position');
+    Route::get('finance/flow-projection', [FinanceAnalyticsController::class, 'flowProjection'])->name('api.finance.flow-projection');
+    Route::post('finance/cfo-brief', [FinanceAnalyticsController::class, 'storeCfoBrief'])->name('api.finance.cfo-brief');
+    Route::get('finance/cfo-status', [FinanceAnalyticsController::class, 'cfoStatus'])->name('api.finance.cfo-status');
 
     // Invoices - for user-based authentication (Sanctum tokens)
     Route::get('invoices', [InvoiceController::class, 'index']);
