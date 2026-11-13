@@ -289,6 +289,26 @@ class InvoiceAnalyticsService
     }
 
     /**
+     * Category totals for an arbitrary date range (same rules as the finance dashboard donuts).
+     *
+     * @return array{
+     *     reporting_currency: string,
+     *     income_categories: list<array{id: int|null, name: string, total: float, share_percent: float}>,
+     *     expense_categories: list<array{id: int|null, name: string, total: float, share_percent: float}>,
+     * }
+     */
+    public function buildCategoryBreakdownForRange(int $teamId, Carbon $from, Carbon $to): array
+    {
+        $reportingCurrency = $this->reportingCurrencyService->reportingCurrencyForTeam($teamId);
+
+        return [
+            'reporting_currency' => $reportingCurrency,
+            'income_categories' => $this->aggregateCategoryBreakdown($teamId, $from, $to, 'sell', $reportingCurrency),
+            'expense_categories' => $this->aggregateCategoryBreakdown($teamId, $from, $to, 'buy', $reportingCurrency),
+        ];
+    }
+
+    /**
      * @return list<array{id: int|null, name: string, total: float, share_percent: float}>
      */
     private function aggregateCategoryBreakdown(int $teamId, Carbon $from, Carbon $to, string $operation, string $reportingCurrency): array

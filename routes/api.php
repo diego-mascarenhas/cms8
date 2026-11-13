@@ -956,6 +956,7 @@ Route::middleware('auth.api')->group(function ()
 
     Route::get('expenses/form', [ExpenseController::class, 'form'])->name('api.expenses.form');
     Route::get('expenses/movements', [ExpenseController::class, 'movements'])->name('api.expenses.movements');
+    Route::get('expenses/category-charts', [ExpenseController::class, 'categoryCharts'])->name('api.expenses.category-charts');
     Route::post('expenses/detect-document', [ExpenseController::class, 'detectDocument'])->name('api.expenses.detect-document');
     Route::post('expenses/check-document-duplicate', [ExpenseController::class, 'checkDocumentDuplicate'])->name('api.expenses.check-document-duplicate');
     Route::post('expenses/suppliers', [ExpenseController::class, 'createSupplier'])->name('api.expenses.suppliers');

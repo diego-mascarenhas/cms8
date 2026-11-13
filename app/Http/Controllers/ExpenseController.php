@@ -20,6 +20,7 @@ use App\Models\PaymentType;
 use App\Services\ExpenseDocumentDetectionService;
 use App\Services\ExpenseDuplicateDocumentService;
 use App\Services\ExpenseSupplierService;
+use App\Services\Finance\InvoiceAnalyticsService;
 use App\Services\Finance\ManualInvoiceDocumentService;
 use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Services\Finance\PaymentReportingCurrencyService;
@@ -44,6 +45,7 @@ class ExpenseController extends Controller
         private readonly PaymentReportingCurrencyService $paymentReportingCurrencyService,
         private readonly VatReportingService $vatReportingService,
         private readonly VatHaciendaCsvExportService $vatHaciendaCsvExportService,
+        private readonly InvoiceAnalyticsService $invoiceAnalyticsService,
     ) {}
 
     public function index(Request $request, ExpenseDataTable $dataTable)
@@ -193,6 +195,36 @@ class ExpenseController extends Controller
         $this->authorize('create', Payment::class);
 
         return view('expense.create', $this->creationFormData());
+    }
+
+    public function categoryCharts(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $teamId = (int) $request->user()->currentTeam->id;
+        $vatSelection = $this->vatReportingService->resolveSelectedPeriod(
+            year: $request->integer('vat_year') ?: ($request->integer('year') ?: null),
+            period: $request->string('vat_period')->toString() ?: null,
+            teamId: $teamId,
+        );
+        $year = (int) $vatSelection['year'];
+        $period = (string) $vatSelection['period'];
+        $periodLabel = (string) $vatSelection['label'];
+        $years = array_values(array_map('intval', $vatSelection['years']));
+        $from = $vatSelection['range']['from']->copy()->startOfDay();
+        $to = $vatSelection['range']['to']->copy()->endOfDay();
+        $breakdown = $this->invoiceAnalyticsService->buildCategoryBreakdownForRange($teamId, $from, $to);
+
+        return response()->json([
+            'success' => true,
+            'vat_year' => $year,
+            'vat_period' => $period,
+            'period_label' => $periodLabel,
+            'years' => $years,
+            'reporting_currency' => $breakdown['reporting_currency'],
+            'income_categories' => $breakdown['income_categories'],
+            'expense_categories' => $breakdown['expense_categories'],
+        ]);
     }
 
     public function movements(Request $request): JsonResponse
