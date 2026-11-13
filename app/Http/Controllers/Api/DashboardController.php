@@ -199,7 +199,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Today's persisted performance insight for the CRM card (no digest regeneration).
+     * Latest persisted performance insight for the CRM card (today preferred; no digest regeneration).
      *
      * @return array{
      *     id: int,
@@ -222,7 +222,7 @@ class DashboardController extends Controller
             return null;
         }
 
-        $insight = app(UserDailyPerformanceInsightService::class)->findTodayInsight($user, $team);
+        $insight = app(UserDailyPerformanceInsightService::class)->findLatestInsight($user, $team);
 
         if (! $insight instanceof UserDailyPerformanceInsight)
         {

@@ -124,6 +124,20 @@ PROMPT;
     }
 
     /**
+     * Most recent persisted insight for the user/team (today first when present).
+     */
+    public function findLatestInsight(User $user, Team $team): ?UserDailyPerformanceInsight
+    {
+        return $this->findTodayInsight($user, $team)
+            ?? UserDailyPerformanceInsight::query()
+                ->where('team_id', $team->id)
+                ->where('user_id', $user->id)
+                ->orderByDesc('insight_date')
+                ->orderByDesc('id')
+                ->first();
+    }
+
+    /**
      * @return array{interactions_count: int, call_minutes: float, tasks_done: int}
      */
     public function collectMetrics(User $user, Team $team): array
