@@ -3,9 +3,11 @@
 namespace Tests\Feature\Api;
 
 use App\Enums\ServerStatus;
+use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Domain;
 use App\Models\Enterprise;
+use App\Models\Module;
 use App\Models\Server;
 use App\Models\Service;
 use App\Models\ServiceSync;
@@ -240,10 +242,10 @@ class SubscriptionApiTest extends TestCase
             'status' => 'active',
             'plan_name' => 'Mantenimiento',
             'data' => [
-                'category' => 'hosting',
+                'category' => 'service',
                 'metadata' => [
-                    'category' => 'hosting',
-                    'domain' => 'lizama.test',
+                    'category' => 'service',
+                    'note' => 'viejo',
                     'auto_suspend' => 'true',
                 ],
             ],
@@ -266,7 +268,6 @@ class SubscriptionApiTest extends TestCase
             ->patchJson('/api/subscriptions/'.$sync->id.'/metadata', [
                 'kind' => 'service',
                 'metadata' => [
-                    'domain' => 'lizama.test',
                     'note' => 'Mantenimiento web',
                 ],
             ])
@@ -280,5 +281,281 @@ class SubscriptionApiTest extends TestCase
         $this->assertSame('', $gateway->metadata['auto_suspend']);
         $this->assertSame('service', $sync->data['category']);
         $this->assertSame('Mantenimiento web', $sync->data['metadata']['note']);
+    }
+
+    public function test_subscription_categories_and_service_category_can_be_updated(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([EnterpriseTypeSeeder::class, EnterpriseStatusSeeder::class]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $module = Module::query()->firstOrCreate(
+            ['key' => 'services'],
+            [
+                'name' => 'Services',
+                'icon' => 'ti-server',
+                'description' => null,
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+
+        $hosting = Category::factory()->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'name' => 'Hosting',
+            'status' => 1,
+        ]);
+        $vps = Category::factory()->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'name' => 'VPS',
+            'status' => 1,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'code' => 'cus_cat_1',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $sync = ServiceSync::query()->create([
+            'stripe_id' => 'sub_category_edit',
+            'team_id' => $team->id,
+            'status' => 'active',
+            'plan_name' => 'Mantenimiento web',
+            'customer_id' => 'cus_cat_1',
+            'customer_name' => 'Acme SL',
+            'data' => [
+                'category' => 'service',
+                'metadata' => ['category' => 'service'],
+            ],
+        ]);
+
+        $service = Service::withoutGlobalScopes()->create([
+            'enterprise_id' => $enterprise->id,
+            'subscription_id' => $sync->id,
+            'category_id' => $hosting->id,
+            'operation' => 'sell',
+            'description' => 'Mantenimiento',
+            'data' => [],
+            'currency_id' => 1,
+            'price' => 19.99,
+            'discount' => 0,
+            'frequency' => 1,
+            'responsible_id' => $user->id,
+            'status' => 4,
+        ]);
+
+        $token = $user->createToken('subscriptions')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/subscriptions/categories')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonFragment(['id' => $hosting->id, 'name' => 'Hosting'])
+            ->assertJsonFragment(['id' => $vps->id, 'name' => 'VPS']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/subscriptions/'.$sync->id)
+            ->assertOk()
+            ->assertJsonPath('data.service_id', $service->id)
+            ->assertJsonPath('data.service_category_id', $hosting->id)
+            ->assertJsonPath('data.service_category_name', 'Hosting');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/subscriptions/'.$sync->id.'/service-category', [
+                'category_id' => $vps->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('category_id', $vps->id)
+            ->assertJsonPath('category_name', 'VPS')
+            ->assertJsonPath('data.service_category_id', $vps->id);
+
+        $this->assertDatabaseHas('services', [
+            'id' => $service->id,
+            'category_id' => $vps->id,
+        ]);
+    }
+
+    public function test_hosting_plan_cannot_be_changed_via_metadata(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $server = Server::query()->create([
+            'name' => 'Odin',
+            'server_url' => 'odin.test',
+            'username' => 'revision',
+            'control_panel' => 'cpanel',
+            'success' => true,
+            'status_id' => ServerStatus::Active,
+            'team_id' => $team->id,
+        ]);
+
+        Domain::query()->create([
+            'domain' => 'lizama.test',
+            'server_id' => $server->id,
+            'username' => 'lizama',
+            'plan' => 'revision_enthusiast',
+            'data' => [],
+        ]);
+
+        $sync = ServiceSync::query()->create([
+            'stripe_id' => 'sub_plan_guard',
+            'team_id' => $team->id,
+            'status' => 'active',
+            'plan_name' => 'Hosting anual',
+            'data' => [
+                'category' => 'hosting',
+                'metadata' => [
+                    'category' => 'hosting',
+                    'domain' => 'lizama.test',
+                    'plan' => 'revision_enthusiast',
+                ],
+            ],
+        ]);
+
+        $gateway = new class extends StripeHostingPlanGateway
+        {
+            public bool $called = false;
+
+            public function replaceMetadata(Team $team, string $subscriptionId, array $metadata): bool
+            {
+                $this->called = true;
+
+                return true;
+            }
+        };
+        $this->app->instance(StripeHostingPlanGateway::class, $gateway);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('subscriptions')->plainTextToken)
+            ->patchJson('/api/subscriptions/'.$sync->id.'/metadata', [
+                'kind' => 'hosting',
+                'metadata' => [
+                    'domain' => 'lizama.test',
+                    'plan' => 'revision_business',
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Cambiá el plan desde el selector de hosting; debe sincronizarse con WHM.');
+
+        $this->assertFalse($gateway->called);
+    }
+
+    public function test_hosting_subscription_cannot_change_kind_or_service_category(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([EnterpriseTypeSeeder::class, EnterpriseStatusSeeder::class]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $module = Module::query()->firstOrCreate(
+            ['key' => 'services'],
+            [
+                'name' => 'Services',
+                'icon' => 'ti-server',
+                'description' => null,
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+        $category = Category::factory()->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'name' => 'Email',
+            'status' => 1,
+        ]);
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'code' => 'cus_host_lock',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $sync = ServiceSync::query()->create([
+            'stripe_id' => 'sub_host_lock',
+            'team_id' => $team->id,
+            'status' => 'active',
+            'plan_name' => 'Hosting',
+            'customer_id' => 'cus_host_lock',
+            'data' => [
+                'category' => 'hosting',
+                'metadata' => [
+                    'category' => 'hosting',
+                    'domain' => 'lizama.test',
+                    'plan' => 'revision_enthusiast',
+                ],
+            ],
+        ]);
+
+        Service::withoutGlobalScopes()->create([
+            'enterprise_id' => $enterprise->id,
+            'subscription_id' => $sync->id,
+            'category_id' => $category->id,
+            'operation' => 'sell',
+            'description' => 'Hosting',
+            'data' => [],
+            'currency_id' => 1,
+            'price' => 19.99,
+            'discount' => 0,
+            'frequency' => 1,
+            'responsible_id' => $user->id,
+            'status' => 4,
+        ]);
+
+        $gateway = new class extends StripeHostingPlanGateway
+        {
+            public bool $called = false;
+
+            public function replaceMetadata(Team $team, string $subscriptionId, array $metadata): bool
+            {
+                $this->called = true;
+
+                return true;
+            }
+        };
+        $this->app->instance(StripeHostingPlanGateway::class, $gateway);
+
+        $token = $user->createToken('subscriptions')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/subscriptions/'.$sync->id.'/metadata', [
+                'kind' => 'service',
+                'metadata' => ['domain' => 'lizama.test', 'plan' => 'revision_enthusiast'],
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Esta suscripción es de hosting y no puede pasar a otro tipo de servicio.');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/subscriptions/'.$sync->id.'/service-category', [
+                'category_id' => $category->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath(
+                'message',
+                'Las suscripciones de hosting no cambian de categoría de servicio. El plan se elige en cPanel/WHM.',
+            );
+
+        $this->assertFalse($gateway->called);
     }
 }

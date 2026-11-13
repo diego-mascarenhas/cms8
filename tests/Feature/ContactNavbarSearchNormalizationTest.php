@@ -321,4 +321,42 @@ class ContactNavbarSearchNormalizationTest extends TestCase
             collect($rejected->json('projects'))->firstWhere('name', 'Local CBD Norte')['subtitle'] ?? '',
         );
     }
+
+    public function test_navbar_hosting_search_matches_domain_and_username(): void
+    {
+        $team = $this->user->currentTeam;
+
+        $serverId = DB::table('servers')->insertGetId([
+            'team_id' => $team->id,
+            'name' => 'Odin',
+            'server_url' => 'odin.test',
+            'username' => 'revision',
+            'control_panel' => 'cpanel',
+            'success' => true,
+            'status_id' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $domainId = DB::table('domains')->insertGetId([
+            'domain' => 'lizama.test',
+            'server_id' => $serverId,
+            'username' => 'lizama',
+            'plan' => 'revision_enthusiast',
+            'suspended' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $byDomain = $this->actingAs($this->user)->getJson(route('contact.search', ['q' => 'lizama.test']));
+        $byDomain->assertOk();
+        $hit = collect($byDomain->json('hosting'))->firstWhere('name', 'lizama.test');
+        $this->assertNotNull($hit);
+        $this->assertSame('/hosting/'.$domainId, $hit['url']);
+        $this->assertStringContainsString('Usuario: lizama', $hit['subtitle']);
+
+        $byUser = $this->actingAs($this->user)->getJson(route('contact.search', ['q' => 'lizama']));
+        $byUser->assertOk();
+        $this->assertTrue(collect($byUser->json('hosting'))->contains(fn ($row) => ($row['name'] ?? '') === 'lizama.test'));
+    }
 }

@@ -1210,6 +1210,7 @@ class ContactController extends Controller
             'enterprises' => [],
             'billingAddresses' => [],
             'services' => [],
+            'hosting' => [],
             'projects' => [],
             'collaborators' => [],
             'invoices' => [],
@@ -1311,6 +1312,45 @@ class ContactController extends Controller
                         'src' => 'img/icons/brands/web.png',
                         'url' => route('service.show', $service->id),
                         'enterprise_id' => $service->enterprise_id ? (int) $service->enterprise_id : null,
+                    ];
+                })
+                ->values()
+                ->all();
+        }
+
+        if ($team && auth()->user()?->canAccessInfrastructure())
+        {
+            $hostingQuery = \App\Models\Domain::query()
+                ->with('server:id,name,team_id')
+                ->whereHas('server', function ($server) use ($team)
+                {
+                    $server->where('team_id', $team->id);
+                })
+                ->select('id', 'domain', 'username', 'plan', 'server_id', 'suspended');
+
+            if (! $isInitialLoad)
+            {
+                SearchNormalizer::applyColumnsNavbarConditions($hostingQuery, ['domain', 'username', 'plan'], $query);
+            }
+
+            $data['hosting'] = $hostingQuery
+                ->orderBy('domain')
+                ->limit(20)
+                ->get()
+                ->map(function ($domain)
+                {
+                    $bits = array_values(array_filter([
+                        $domain->username ? 'Usuario: '.$domain->username : null,
+                        $domain->plan ? 'Plan: '.$domain->plan : null,
+                        $domain->server?->name ? 'Servidor: '.$domain->server->name : null,
+                        $domain->suspended ? 'Suspendido' : null,
+                    ]));
+
+                    return [
+                        'name' => (string) $domain->domain,
+                        'subtitle' => $bits !== [] ? implode(' · ', $bits) : 'Cuenta de hosting',
+                        'icon' => 'ri-server-line',
+                        'url' => '/hosting/'.$domain->id,
                     ];
                 })
                 ->values()

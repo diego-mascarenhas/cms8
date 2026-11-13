@@ -486,13 +486,15 @@ class HostingApiTest extends TestCase
             ['name' => 'rs-s7', 'quota_mb' => 1024000, 'unlimited' => false],
             ['name' => 'rs-s1', 'quota_mb' => 100, 'unlimited' => false],
             ['name' => 'rs-s3', 'quota_mb' => 1024, 'unlimited' => false],
+            ['name' => 'Beginner', 'quota_mb' => 500, 'unlimited' => false],
+            ['name' => 'revision_flex', 'quota_mb' => null, 'unlimited' => true],
         ];
         $connector = \Mockery::mock(ControlPanelConnector::class);
         $connector->shouldReceive('phpVersion')->andReturn(['version' => null]);
         $connector->shouldReceive('siteType')->andReturn(['site_type' => null]);
         $connector->shouldReceive('listPlans')->andReturn([
             'success' => true,
-            'plans' => ['rs-s7', 'rs-s1', 'rs-s3'],
+            'plans' => ['rs-s7', 'rs-s1', 'rs-s3', 'Beginner', 'revision_flex'],
             'packages' => $packages,
         ]);
         $connector->shouldReceive('changePlan')
@@ -504,6 +506,45 @@ class HostingApiTest extends TestCase
             $mock->shouldReceive('supports')->andReturn(true);
             $mock->shouldReceive('forServer')->andReturn($connector);
         });
+        $gateway = new class extends StripeHostingPlanGateway
+        {
+            public function catalog(Team $team): array
+            {
+                return [
+                    [
+                        'price_id' => 'price_s7',
+                        'product_name' => 'Hosting S7',
+                        'plan' => 'rs-s7',
+                        'currency' => 'eur',
+                        'interval' => 'month',
+                        'interval_count' => 1,
+                        'unit_amount' => 1990,
+                        'whm_package' => 'rs-s7',
+                    ],
+                    [
+                        'price_id' => 'price_s1',
+                        'product_name' => 'Hosting S1',
+                        'plan' => 'rs-s1',
+                        'currency' => 'eur',
+                        'interval' => 'month',
+                        'interval_count' => 1,
+                        'unit_amount' => 490,
+                        'whm_package' => 'rs-s1',
+                    ],
+                    [
+                        'price_id' => 'price_s3',
+                        'product_name' => 'Hosting S3',
+                        'plan' => 'rs-s3',
+                        'currency' => 'eur',
+                        'interval' => 'month',
+                        'interval_count' => 1,
+                        'unit_amount' => 990,
+                        'whm_package' => 'rs-s3',
+                    ],
+                ];
+            }
+        };
+        $this->app->instance(StripeHostingPlanGateway::class, $gateway);
 
         $token = $user->createToken('hosting')->plainTextToken;
 
@@ -511,10 +552,13 @@ class HostingApiTest extends TestCase
             ->getJson('/api/hosting/'.$domain->id)
             ->assertOk()
             ->assertJsonPath('data.can_change_plan', true)
-            ->assertJsonPath('data.plans.1.name', 'rs-s1')
-            ->assertJsonPath('data.plans.1.allowed', false)
-            ->assertJsonPath('data.plans.2.name', 'rs-s3')
-            ->assertJsonPath('data.plans.2.allowed', true);
+            ->assertJsonPath('data.plans.0.name', 'rs-s1')
+            ->assertJsonPath('data.plans.0.allowed', false)
+            ->assertJsonPath('data.plans.1.name', 'rs-s3')
+            ->assertJsonPath('data.plans.1.allowed', true)
+            ->assertJsonPath('data.plans.2.name', 'rs-s7')
+            ->assertJsonPath('data.plans.3.name', 'revision_flex')
+            ->assertJsonCount(4, 'data.plans');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/hosting/'.$domain->id.'/plan', [
