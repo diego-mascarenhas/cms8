@@ -30,6 +30,7 @@ final class TeamApiUsageStatsService
      */
     private const NAMED_SERVICE_LABELS = [
         'MeetingSummaryService' => 'Reuniones',
+        'FinanceCfoBriefService' => 'Análisis CFO',
     ];
 
     /**

@@ -968,6 +968,7 @@ Route::middleware('auth.api')->group(function ()
 
     Route::get('finance/cash-position', [FinanceAnalyticsController::class, 'cashPosition'])->name('api.finance.cash-position');
     Route::get('finance/flow-projection', [FinanceAnalyticsController::class, 'flowProjection'])->name('api.finance.flow-projection');
+    Route::get('finance/dashboard-snapshot', [FinanceAnalyticsController::class, 'dashboardSnapshot'])->name('api.finance.dashboard-snapshot');
     Route::post('finance/cfo-brief', [FinanceAnalyticsController::class, 'storeCfoBrief'])->name('api.finance.cfo-brief');
     Route::get('finance/cfo-status', [FinanceAnalyticsController::class, 'cfoStatus'])->name('api.finance.cfo-status');
 

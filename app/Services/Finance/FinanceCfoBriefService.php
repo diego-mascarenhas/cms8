@@ -13,6 +13,7 @@ use App\Models\ProjectStatus;
 use App\Models\StripeSubscription;
 use App\Models\Team;
 use App\Services\ProjectBudgetSpecService;
+use App\Services\TokenUsageLogService;
 use App\Support\AiTasks;
 use App\Support\RevisionAlphaOrganization;
 use Carbon\Carbon;
@@ -170,7 +171,7 @@ class FinanceCfoBriefService
             foreach ($this->generationGroups() as $phase => $keys)
             {
                 $this->mark($team, $year, 'running', $phase);
-                $parsed = $this->parse($this->ask($context, $keys));
+                $parsed = $this->parse($this->ask($team, $context, $keys));
 
                 if ($parsed === null)
                 {
@@ -209,7 +210,7 @@ class FinanceCfoBriefService
     {
         try
         {
-            return $this->ask($this->context($team, $year), ['dafo', 'fifo', 'dagmar', 'actions', 'capacity']);
+            return $this->ask($team, $this->context($team, $year), ['dafo', 'fifo', 'dagmar', 'actions', 'capacity']);
         } catch (Throwable $exception)
         {
             Log::error('FinanceCfoBriefService::suggest failed', ['error' => $exception->getMessage()]);
@@ -222,7 +223,7 @@ class FinanceCfoBriefService
      * @param  array<string, mixed>  $context
      * @param  list<string>  $keys
      */
-    private function ask(array $context, array $keys): string
+    private function ask(Team $team, array $context, array $keys): string
     {
         $schema = $this->schemaFor($keys);
         $instructions = <<<TXT
@@ -268,7 +269,36 @@ TXT;
             throw new RuntimeException('CFO reply was empty.');
         }
 
+        $this->logUsage($team, $response->usage ?? null, $userMessage, $text);
+
         return $text;
+    }
+
+    private function logUsage(Team $team, mixed $usage, string $input, string $output): void
+    {
+        $total = TokenUsageLogService::totalTokensFromUsage($usage);
+
+        if ($total > 0)
+        {
+            TokenUsageLogService::logFromAiResponse(
+                teamId: (int) $team->id,
+                service: 'FinanceCfoBriefService',
+                usage: $usage,
+                inputSize: strlen($input),
+                outputSize: strlen($output),
+            );
+
+            return;
+        }
+
+        $estimated = (int) max(1, round(strlen($input) / 4) + round(strlen($output) / 4));
+        TokenUsageLogService::log(
+            teamId: (int) $team->id,
+            service: 'FinanceCfoBriefService',
+            totalTokens: $estimated,
+            inputSize: strlen($input),
+            outputSize: strlen($output),
+        );
     }
 
     /**

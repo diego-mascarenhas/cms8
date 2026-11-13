@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\TransactionType;
+use App\Models\BankStatement;
 use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -114,7 +115,61 @@ class FinanceAnalyticsApiTest extends TestCase
             ->assertJsonPath('receivables.count', 1)
             ->assertJsonPath('payables.amount', 150)
             ->assertJsonPath('payables.count', 1)
-            ->assertJsonPath('net_position', 1050);
+            ->assertJsonPath('net_position', 1050)
+            ->assertJsonPath('liquid_source', 'book')
+            ->assertJsonPath('book_liquid_assets', 1000)
+            ->assertJsonPath('bank_liquid_assets', null);
+    }
+
+    public function test_cash_position_prefers_bank_statement_stated_balance(): void
+    {
+        $user = $this->makeAdminUser();
+        $teamId = (int) $user->current_team_id;
+        $account = $this->createAccountForTeam($user);
+        $paymentType = PaymentType::query()->create(['name' => 'Transfer']);
+
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'transaction_type' => TransactionType::INCOME,
+            'date' => now()->toDateString(),
+            'account_id' => $account->id,
+            'type_id' => $paymentType->id,
+            'amount' => 1000,
+            'status' => 2,
+            'source_provider' => 'manual',
+        ]);
+
+        BankStatement::query()->create([
+            'team_id' => $teamId,
+            'payment_account_id' => $account->id,
+            'provider' => BankStatement::PROVIDER_UPLOAD,
+            'period_year' => (int) now()->year,
+            'period_month' => (int) now()->month,
+            'source' => BankStatement::SOURCE_UPLOAD,
+            'original_filename' => 'extracto.csv',
+            'validation_summary' => [
+                'stated_balance' => 875.5,
+                'balanced' => false,
+                'difference' => -124.5,
+                'matched' => 1,
+                'statement_only' => 0,
+                'payment_only' => 1,
+            ],
+        ]);
+
+        $token = $user->createToken('finance-api')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/finance/cash-position')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('liquid_assets', 875.5)
+            ->assertJsonPath('book_liquid_assets', 1000)
+            ->assertJsonPath('bank_liquid_assets', 875.5)
+            ->assertJsonPath('liquid_source', 'bank')
+            ->assertJsonPath('accounts.0.source', 'bank')
+            ->assertJsonPath('accounts.0.bank_balance', 875.5)
+            ->assertJsonPath('accounts.0.book_balance', 1000);
     }
 
     public function test_flow_projection_returns_twelve_month_points(): void

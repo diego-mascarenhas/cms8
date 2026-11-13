@@ -274,3 +274,10 @@ Schedule::command('strategy:weekly-analysis')
     ->description('Store the CFO projection and refresh the weekly analysis')
     ->withoutOverlapping(180)
     ->runInBackground();
+
+Schedule::command('finance:capture-dashboard-snapshots')
+    ->everySixHours()
+    ->name('finance-dashboard-snapshots')
+    ->description('Persist finance dashboard snapshots for teams with payment activity')
+    ->withoutOverlapping(120)
+    ->runInBackground();
