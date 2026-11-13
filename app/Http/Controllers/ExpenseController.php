@@ -11,6 +11,7 @@ use App\Http\Requests\SuggestExpenseCategoriesRequest;
 use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Enterprise;
+use App\Models\ExchangeRate;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Payment;
@@ -191,6 +192,169 @@ class ExpenseController extends Controller
         $this->authorize('create', Payment::class);
 
         return view('expense.create', $this->creationFormData());
+    }
+
+    public function movements(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $teamId = (int) $request->user()->currentTeam->id;
+        $operation = strtolower(trim((string) $request->query('operation', 'all')));
+        $search = trim((string) $request->query('search', ''));
+        $vatSelection = $this->vatReportingService->resolveSelectedPeriod(
+            year: $request->integer('vat_year') ?: ($request->integer('year') ?: null),
+            period: $request->string('vat_period')->toString() ?: null,
+            teamId: $teamId,
+        );
+        $year = (int) $vatSelection['year'];
+        $period = (string) $vatSelection['period'];
+        $periodLabel = (string) $vatSelection['label'];
+        $years = array_values(array_map('intval', $vatSelection['years']));
+        $rangeFrom = $vatSelection['range']['from']->toDateString();
+        $rangeTo = $vatSelection['range']['to']->toDateString();
+        $categoryId = $request->filled('category_id') ? $request->integer('category_id') : null;
+        $uncategorized = $request->boolean('uncategorized');
+        $perPage = min(max($request->integer('per_page') ?: 25, 1), 100);
+        $categories = app(ServiceCategoryOptionsService::class)->optionsForInvoiceLines($teamId);
+        $reportingCurrency = $this->paymentReportingCurrencyService->reportingCurrencyForTeam($teamId);
+
+        $query = InvoiceItem::query()
+            ->select('invoice_items.*')
+            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
+            ->where('invoices.team_id', $teamId)
+            ->whereNull('invoices.deleted_at')
+            ->whereIn('invoices.operation', ['buy', 'sell'])
+            ->whereDate('invoices.date', '>=', $rangeFrom)
+            ->whereDate('invoices.date', '<=', $rangeTo)
+            ->with([
+                'category:id,name',
+                'invoice:id,number,date,operation,enterprise_id,currency_id',
+                'invoice.enterprise:id,name',
+                'invoice.currency:id,code',
+            ]);
+
+        if (in_array($operation, ['buy', 'sell'], true))
+        {
+            $query->where('invoices.operation', $operation);
+        }
+
+        if ($uncategorized)
+        {
+            $query->whereNull('invoice_items.category_id');
+        } elseif ($categoryId)
+        {
+            $query->where('invoice_items.category_id', $categoryId);
+        }
+
+        if ($search !== '')
+        {
+            $like = '%'.$search.'%';
+            $query->where(function ($builder) use ($like): void
+            {
+                $builder
+                    ->where('invoice_items.description', 'like', $like)
+                    ->orWhere('invoices.number', 'like', $like)
+                    ->orWhereHas('invoice.enterprise', function ($enterpriseQuery) use ($like): void
+                    {
+                        $enterpriseQuery->where('name', 'like', $like);
+                    })
+                    ->orWhereHas('category', function ($categoryQuery) use ($like): void
+                    {
+                        $categoryQuery->where('name', 'like', $like);
+                    });
+            });
+        }
+
+        $paginator = $query
+            ->orderByDesc('invoices.date')
+            ->orderByDesc('invoice_items.id')
+            ->paginate($perPage)
+            ->withQueryString();
+
+        $rows = collect($paginator->items())->map(function (InvoiceItem $item) use ($reportingCurrency): array
+        {
+            $invoice = $item->invoice;
+            $operationValue = (string) ($invoice?->operation ?? 'buy');
+            $isIncome = $operationValue === 'sell';
+            $amount = round((float) $item->total, 2);
+            $currencyCode = strtoupper((string) ($invoice?->currency_code ?: 'EUR'));
+            $reportingAmount = $this->convertMovementAmount(
+                $amount,
+                $currencyCode,
+                $reportingCurrency,
+                $invoice?->date,
+            );
+
+            return [
+                'id' => (int) $item->id,
+                'date' => filled($invoice?->date)
+                    ? Carbon::parse($invoice->date)->format('Y-m-d')
+                    : null,
+                'operation' => $operationValue,
+                'operation_label' => $isIncome ? 'Ingreso' : 'Gasto',
+                'enterprise_name' => $invoice?->enterprise?->name,
+                'invoice_id' => $invoice?->id,
+                'invoice_number' => $invoice?->number,
+                'description' => $item->description,
+                'category_id' => $item->category_id ? (int) $item->category_id : null,
+                'category_name' => $item->category?->name,
+                'amount' => $amount,
+                'signed_amount' => $isIncome ? $amount : -$amount,
+                'currency_code' => $currencyCode,
+                'reporting_amount' => $reportingAmount,
+                'reporting_currency' => $reportingCurrency,
+            ];
+        })->values();
+
+        return response()->json([
+            'success' => true,
+            'year' => $year,
+            'vat_year' => $year,
+            'vat_period' => $period,
+            'period_label' => $periodLabel,
+            'years' => $years,
+            'operation' => in_array($operation, ['buy', 'sell'], true) ? $operation : 'all',
+            'category_id' => $uncategorized ? 0 : $categoryId,
+            'categories' => $categories,
+            'reporting_currency' => $reportingCurrency,
+            'data' => [
+                'data' => $rows,
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ]);
+    }
+
+    private function convertMovementAmount(
+        float $amount,
+        string $fromCurrency,
+        string $reportingCurrency,
+        mixed $invoiceDate,
+    ): ?float {
+        $fromCurrency = strtoupper(trim($fromCurrency));
+        $reportingCurrency = strtoupper(trim($reportingCurrency));
+
+        if ($fromCurrency === $reportingCurrency)
+        {
+            return round($amount, 2);
+        }
+
+        if (blank($invoiceDate))
+        {
+            return ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
+        }
+
+        $conversionDate = Carbon::parse($invoiceDate)->endOfMonth();
+        $converted = ExchangeRate::convertOnOrBeforeDate($amount, $fromCurrency, $reportingCurrency, $conversionDate);
+
+        if ($converted !== null)
+        {
+            return $converted;
+        }
+
+        return ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
     }
 
     public function form(): JsonResponse

@@ -22,6 +22,8 @@ return new class extends Migration
             $table->unsignedBigInteger('account_id');  // payment_accounts.id
             $table->unsignedTinyInteger('type_id');  // payment_types.id
             $table->decimal('amount', 15, 2);
+            $table->decimal('document_amount', 15, 2)->nullable();
+            $table->decimal('exchange_rate', 18, 6)->nullable();
             $table->text('remarks')->nullable();
             $table->tinyInteger('status')->default(1);
             $table->enum('source_provider', ['manual', 'stripe', 'mercadopago', 'paypal', 'transfer', 'cuentica'])

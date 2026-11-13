@@ -39,6 +39,7 @@ class ServiceCategoryOptionsService
             ->map(fn ($id) => (int) $id)
             ->all();
 
+        // status > 0 matches Active across legacy values (1, 2, …); status = true only matches 1.
         $categoriesQuery = Category::query()
             ->where('status', '>', 0)
             ->where(function ($query) use ($teamId)
@@ -128,8 +129,14 @@ class ServiceCategoryOptionsService
             }
 
             $parentCategory = $categoryById->get((int) $parentId);
-            $skipAsNested = $parentCategory
-                && $parentCategory->parent_id !== null
+
+            // Skip children of inactive/missing parents, and children already rendered as nested.
+            if (! $parentCategory instanceof Category)
+            {
+                continue;
+            }
+
+            $skipAsNested = $parentCategory->parent_id !== null
                 && in_array((int) $parentCategory->parent_id, $parentIds, true);
 
             if ($skipAsNested)
@@ -147,7 +154,7 @@ class ServiceCategoryOptionsService
                 $options[] = [
                     'id' => (int) $child->id,
                     'name' => $this->nestedLabel($child, $categoryById),
-                    'group' => null,
+                    'group' => (string) $parentCategory->name,
                 ];
             }
         }

@@ -23,13 +23,16 @@ use App\Models\Team;
 use App\Models\TeamUsageInvoice;
 use App\Models\Time;
 use App\Models\User;
+use App\Models\UserDailyPerformanceInsight;
 use App\Services\ContactDailySentimentService;
 use App\Services\DashboardAnalyticsService;
 use App\Services\Finance\PaymentReportingCurrencyService;
 use App\Services\Finance\VatHaciendaCsvExportService;
 use App\Services\Mail\CampaignMessageApiService;
 use App\Services\Mail\MailInboxService;
+use App\Services\UserDailyPerformanceInsightService;
 use App\Support\ApplicationDateTime;
+use App\Support\DemoTeam;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -190,8 +193,81 @@ class DashboardController extends Controller
 
         $payload['widgets'] = $this->widgets($user, $team);
         $payload['follow_up'] = $this->followUpPayload($user, $team, $today);
+        $payload['performance_insight'] = $this->performanceInsightPayload($user, $team);
 
         return response()->json($payload);
+    }
+
+    /**
+     * Today's persisted performance insight for the CRM card (no digest regeneration).
+     *
+     * @return array{
+     *     id: int,
+     *     insight_date: string,
+     *     headline: string,
+     *     headline_emoji: string,
+     *     focus: string|null,
+     *     message: string|null,
+     *     performance_ratio: float,
+     *     actions: list<array{label: string}>
+     * }|null
+     */
+    private function performanceInsightPayload(User $user, Team $team): ?array
+    {
+        $canShow = $user->hasAnyRole(['admin', 'root'])
+            && ($team->hasModule('performance_insights') || DemoTeam::isDemoTeam($team));
+
+        if (! $canShow)
+        {
+            return null;
+        }
+
+        $insight = app(UserDailyPerformanceInsightService::class)->findTodayInsight($user, $team);
+
+        if (! $insight instanceof UserDailyPerformanceInsight)
+        {
+            return null;
+        }
+
+        $parts = UserDailyPerformanceInsight::splitHeadlineWordAndTrailingEmoji($insight->headline);
+        $focus = trim(strip_tags((string) $insight->focus));
+        $message = trim(strip_tags((string) $insight->message));
+        $snapshot = is_array($insight->context_snapshot) ? $insight->context_snapshot : [];
+        $actions = [];
+
+        $items = is_array($snapshot['highlight_items'] ?? null) ? $snapshot['highlight_items'] : [];
+
+        if ($items === [] && is_array($snapshot['highlights'] ?? null))
+        {
+            foreach ($snapshot['highlights'] as $label)
+            {
+                if (is_string($label) && trim($label) !== '')
+                {
+                    $items[] = ['label' => trim($label)];
+                }
+            }
+        }
+
+        foreach (array_slice($items, 0, 3) as $item)
+        {
+            $label = trim((string) ($item['label'] ?? ''));
+            if ($label === '')
+            {
+                continue;
+            }
+            $actions[] = ['label' => $label];
+        }
+
+        return [
+            'id' => (int) $insight->id,
+            'insight_date' => $insight->insight_date?->toDateString() ?? now()->toDateString(),
+            'headline' => (string) ($parts['text'] ?: $insight->headline),
+            'headline_emoji' => (string) ($parts['emoji'] ?? ''),
+            'focus' => $focus !== '' ? $focus : null,
+            'message' => $message !== '' ? $message : null,
+            'performance_ratio' => round((float) $insight->performance_ratio, 2),
+            'actions' => $actions,
+        ];
     }
 
     /**

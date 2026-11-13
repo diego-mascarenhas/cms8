@@ -39,10 +39,12 @@ class ManualInvoiceDocumentService
         $lineSummaries = $this->buildLineSummaries($validated['lines']);
         $invoiceTotal = round(max((float) collect($lineSummaries)->sum('allocated_total'), 0.01), 2);
         $paymentEntries = $this->resolvePaymentEntries($validated['payments'] ?? []);
-        $paymentsTotal = round((float) collect($paymentEntries)->sum('amount'), 2);
-        $invoiceBalance = round(max($invoiceTotal - $paymentsTotal, 0), 2);
         $currencyCode = $this->resolveCurrencyCode($validated);
         $currencyId = $this->resolveCurrencyId($validated);
+        $paymentsTotal = round((float) collect($paymentEntries)->sum(
+            fn (array $paymentEntry): float => $this->paymentAppliedToInvoice($paymentEntry, $currencyId),
+        ), 2);
+        $invoiceBalance = round(max($invoiceTotal - $paymentsTotal, 0), 2);
         $isCreditNote = ($validated['document_type'] ?? '') === 'credit_note';
         $invoiceTypeId = $isCreditNote ? 2 : $this->resolveInvoiceTypeId();
         $categoryId = isset($validated['expense_category_id'])
@@ -113,6 +115,8 @@ class ManualInvoiceDocumentService
 
             foreach ($paymentEntries as $paymentEntry)
             {
+                $appliedAmount = $this->paymentAppliedToInvoice($paymentEntry, $currencyId);
+
                 Payment::query()->create([
                     'team_id' => $teamId,
                     'enterprise_id' => (int) $validated['enterprise_id'],
@@ -124,9 +128,11 @@ class ManualInvoiceDocumentService
                     'account_id' => (int) $paymentEntry['account_id'],
                     'type_id' => (int) $paymentEntry['type_id'],
                     'amount' => (float) $paymentEntry['amount'],
+                    'document_amount' => $paymentEntry['document_amount'] ?? null,
+                    'exchange_rate' => $paymentEntry['exchange_rate'] ?? null,
                     'remarks' => $this->buildRemarks(
                         $validated,
-                        (float) $paymentEntry['amount'],
+                        $appliedAmount,
                         $currencyCode,
                         $lineSummaries,
                         $categoryName,
@@ -243,12 +249,51 @@ class ManualInvoiceDocumentService
                 continue;
             }
 
+            $documentAmount = filled($payment['document_amount'] ?? null)
+                ? round((float) $payment['document_amount'], 2)
+                : null;
+            $exchangeRate = filled($payment['exchange_rate'] ?? null)
+                ? round((float) $payment['exchange_rate'], 6)
+                : null;
+
             $resolved[] = array_merge($payment, [
                 'amount' => round((float) $payment['amount'], 2),
+                'document_amount' => $documentAmount,
+                'exchange_rate' => $exchangeRate,
             ]);
         }
 
         return $resolved;
+    }
+
+    /**
+     * Amount applied against the invoice total (document currency).
+     * Cross-currency payments without document_amount do not reduce the balance yet.
+     *
+     * @param  array<string, mixed>  $paymentEntry
+     */
+    private function paymentAppliedToInvoice(array $paymentEntry, ?int $invoiceCurrencyId): float
+    {
+        if (filled($paymentEntry['document_amount'] ?? null))
+        {
+            return round((float) $paymentEntry['document_amount'], 2);
+        }
+
+        $accountId = (int) ($paymentEntry['account_id'] ?? 0);
+        $account = $accountId > 0
+            ? PaymentAccount::withoutGlobalScopes()->find($accountId)
+            : null;
+
+        if (
+            $invoiceCurrencyId
+            && $account instanceof PaymentAccount
+            && $account->currency_id !== null
+            && (int) $account->currency_id !== $invoiceCurrencyId
+        ) {
+            return 0.0;
+        }
+
+        return round((float) ($paymentEntry['amount'] ?? 0), 2);
     }
 
     /**

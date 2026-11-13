@@ -93,6 +93,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ContactController as WebContactController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\InvoiceItemCategoryController;
 use App\Http\Controllers\ProspectSearchController;
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
@@ -954,11 +955,14 @@ Route::middleware('auth.api')->group(function ()
     Route::get('payments/{id}', [ApiPaymentController::class, 'show'])->whereNumber('id')->name('api.payments.show');
 
     Route::get('expenses/form', [ExpenseController::class, 'form'])->name('api.expenses.form');
+    Route::get('expenses/movements', [ExpenseController::class, 'movements'])->name('api.expenses.movements');
     Route::post('expenses/detect-document', [ExpenseController::class, 'detectDocument'])->name('api.expenses.detect-document');
     Route::post('expenses/check-document-duplicate', [ExpenseController::class, 'checkDocumentDuplicate'])->name('api.expenses.check-document-duplicate');
     Route::post('expenses/suppliers', [ExpenseController::class, 'createSupplier'])->name('api.expenses.suppliers');
     Route::get('expenses/suggested-categories', [ExpenseController::class, 'suggestedCategories'])->name('api.expenses.suggested-categories');
     Route::post('expenses', [ExpenseController::class, 'store'])->name('api.expenses.store');
+    Route::patch('invoice-items/{invoiceItem}/category', [InvoiceItemCategoryController::class, 'update'])
+        ->name('api.invoice-items.category.update');
 
     // Invoices - for user-based authentication (Sanctum tokens)
     Route::get('invoices', [InvoiceController::class, 'index']);

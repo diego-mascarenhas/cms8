@@ -552,6 +552,52 @@ class ExpenseCreateTest extends TestCase
         $this->assertSame('71.00', number_format((float) $invoice->balance, 2, '.', ''));
     }
 
+    public function test_store_rejects_payment_account_with_different_currency_without_exchange(): void
+    {
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+        $arsAccount = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => (int) $user->current_team_id,
+            'code' => 'bank-ars',
+            'name' => 'Banco Galicia',
+            'symbol' => '$',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+        $paymentType = $this->createPaymentType();
+
+        $this->actingAs($user)
+            ->post(route('expense.store'), [
+                'document_type' => 'invoice',
+                'enterprise_id' => $supplier->id,
+                'date' => '2026-06-22',
+                'currency_id' => 978,
+                'lines' => [
+                    [
+                        'concept' => 'Servicio',
+                        'base_amount' => '291.29',
+                        'vat_percent' => '0',
+                        'retention_percent' => '0',
+                        'allocation_percent' => '100',
+                    ],
+                ],
+                'payments' => [
+                    [
+                        'payment_date' => '2026-06-22',
+                        'amount' => '291.29',
+                        'type_id' => $paymentType->id,
+                        'account_id' => $arsAccount->id,
+                        'status' => 2,
+                    ],
+                ],
+                'submit_action' => 'save',
+            ])
+            ->assertSessionHasErrors([
+                'payments.0.document_amount',
+                'payments.0.exchange_rate',
+            ]);
+    }
+
     public function test_store_rejects_duplicate_document_number_for_same_supplier(): void
     {
         $user = $this->makeAdminUser();
