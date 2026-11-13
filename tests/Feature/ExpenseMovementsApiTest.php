@@ -7,6 +7,7 @@ use App\Models\Enterprise;
 use App\Models\ExchangeRate;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\InvoiceSync;
 use App\Models\Module;
 use App\Models\User;
 use Database\Seeders\CurrencySeeder;
@@ -90,7 +91,15 @@ class ExpenseMovementsApiTest extends TestCase
             'balance' => 0,
             'currency_id' => 978,
             'status' => 2,
-            'source_provider' => 'manual',
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_movements_sell',
+        ]);
+
+        InvoiceSync::query()->create([
+            'team_id' => $teamId,
+            'provider' => 'stripe',
+            'external_id' => 'in_movements_sell',
+            'hosted_invoice_url' => 'https://invoice.stripe.com/i/acct_test/movements',
         ]);
 
         InvoiceItem::query()->create([
@@ -116,9 +125,12 @@ class ExpenseMovementsApiTest extends TestCase
             ->assertJsonPath('data.data.0.description', 'Desarrollo web')
             ->assertJsonPath('data.data.0.category_name', 'Servicios')
             ->assertJsonPath('data.data.0.enterprise_name', 'Cliente Beta')
+            ->assertJsonPath('data.data.0.invoice_url', 'https://invoice.stripe.com/i/acct_test/movements')
             ->assertJsonPath('data.data.1.operation', 'buy')
             ->assertJsonPath('data.data.1.category_name', 'Hosting')
-            ->assertJsonPath('data.data.1.signed_amount', -121);
+            ->assertJsonPath('data.data.1.signed_amount', -121)
+            ->assertJsonPath('data.data.1.invoice_url', null)
+            ->assertJsonPath('data.data.1.invoice_id', $expenseInvoice->id);
     }
 
     public function test_movements_can_filter_by_operation_and_search(): void

@@ -228,9 +228,10 @@ class ExpenseController extends Controller
             ->whereDate('invoices.date', '<=', $rangeTo)
             ->with([
                 'category:id,name',
-                'invoice:id,number,date,operation,enterprise_id,currency_id',
+                'invoice:id,number,date,operation,enterprise_id,currency_id,source_reference_id',
                 'invoice.enterprise:id,name',
                 'invoice.currency:id,code',
+                'invoice.stripeInvoiceSync',
             ]);
 
         if (in_array($operation, ['buy', 'sell'], true))
@@ -295,6 +296,8 @@ class ExpenseController extends Controller
                 'enterprise_name' => $invoice?->enterprise?->name,
                 'invoice_id' => $invoice?->id,
                 'invoice_number' => $invoice?->number,
+                // Sell → Stripe hosted invoice; buy uses Axis /expense/edit/{id}.
+                'invoice_url' => $isIncome ? $invoice?->stripeHostedInvoiceUrl() : null,
                 'description' => $item->description,
                 'category_id' => $item->category_id ? (int) $item->category_id : null,
                 'category_name' => $item->category?->name,
