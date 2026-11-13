@@ -58,11 +58,43 @@ class DashboardController extends Controller
             ], 422);
         }
 
+        $scope = strtolower(trim((string) $request->query('scope', 'full')));
         $today = now()->startOfDay();
+
+        if ($scope === 'crm')
+        {
+            return response()->json($this->crmDashboardPayload($user, $team, $today));
+        }
+
+        return response()->json($this->fullDashboardPayload($user, $team, $today));
+    }
+
+    /**
+     * Lean payload for Axis CRM dashboard: skip mail/chat/today/projects/ads/etc.
+     *
+     * @return array<string, mixed>
+     */
+    private function crmDashboardPayload(User $user, Team $team, Carbon $today): array
+    {
+        return [
+            'success' => true,
+            'scope' => 'crm',
+            'widgets' => $this->crmWidgets($user, $team),
+            'follow_up' => $this->followUpCountsPayload($user, $team, $today),
+            'performance_insight' => $this->performanceInsightPayload($user, $team),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fullDashboardPayload(User $user, Team $team, Carbon $today): array
+    {
         $tomorrow = $today->copy()->addDay();
 
         $payload = [
             'success' => true,
+            'scope' => 'full',
             'contact_stats' => null,
             'running_task' => null,
             'today' => [
@@ -195,7 +227,7 @@ class DashboardController extends Controller
         $payload['follow_up'] = $this->followUpPayload($user, $team, $today);
         $payload['performance_insight'] = $this->performanceInsightPayload($user, $team);
 
-        return response()->json($payload);
+        return $payload;
     }
 
     /**
@@ -284,6 +316,23 @@ class DashboardController extends Controller
             'analytics' => app(DashboardAnalyticsService::class)->forTeam($team),
             'expiring' => $this->expiringWidgets($team),
             'payments' => $this->paymentWidgets($team),
+            'drafts' => $this->draftWidgets($user),
+            'sentiment' => $this->sentimentWidget($team),
+            'audience' => $this->audienceWidgets($user, $team),
+            'intents' => $this->intentWidgets($user, $team),
+        ];
+    }
+
+    /**
+     * Widgets required by the Axis CRM dashboard only.
+     *
+     * @return array<string, mixed>
+     */
+    private function crmWidgets(User $user, Team $team): array
+    {
+        return [
+            'income' => $this->incomeWidget($team),
+            'analytics' => app(DashboardAnalyticsService::class)->forTeam($team),
             'drafts' => $this->draftWidgets($user),
             'sentiment' => $this->sentimentWidget($team),
             'audience' => $this->audienceWidgets($user, $team),
@@ -1163,6 +1212,68 @@ class DashboardController extends Controller
     private function weekdayLabel(Carbon $day): string
     {
         return ['L', 'M', 'X', 'J', 'V', 'S', 'D'][$day->dayOfWeekIso - 1];
+    }
+
+    /**
+     * Counts-only follow-up for Axis CRM (no due/upcoming row hydration).
+     *
+     * @return array<string, mixed>
+     */
+    private function followUpCountsPayload(User $user, Team $team, Carbon $today): array
+    {
+        $empty = [
+            'enabled' => false,
+            'counts' => [
+                'overdue' => 0,
+                'today' => 0,
+                'upcoming' => 0,
+                'total' => 0,
+            ],
+            'statuses' => [],
+            'weeks' => [],
+            'due' => [],
+            'upcoming' => [],
+        ];
+
+        if (! $team->hasModule('list60') || ! $user->can('viewAny', Contact::class))
+        {
+            return $empty;
+        }
+
+        $base = List60::query()
+            ->whereHas('contact', function ($query) use ($team): void
+            {
+                $query->where('team_id', $team->id);
+            });
+
+        if (! $user->hasRole('admin'))
+        {
+            $base->where('responsible_id', $user->id);
+        }
+
+        $overdue = (clone $base)->whereDate('date_next', '<', $today)->count();
+        $todayCount = (clone $base)
+            ->where(function ($query) use ($today): void
+            {
+                $query->whereNull('date_next')
+                    ->orWhereDate('date_next', $today);
+            })
+            ->count();
+        $upcoming = (clone $base)->whereDate('date_next', '>', $today)->count();
+
+        return [
+            'enabled' => true,
+            'counts' => [
+                'overdue' => $overdue,
+                'today' => $todayCount,
+                'upcoming' => $upcoming,
+                'total' => $overdue + $todayCount + $upcoming,
+            ],
+            'statuses' => [],
+            'weeks' => [],
+            'due' => [],
+            'upcoming' => [],
+        ];
     }
 
     /**

@@ -466,6 +466,57 @@ class DashboardWidgetsApiTest extends TestCase
             ->assertJsonPath('performance_insight.actions.0.label', '99 correos sin leer en el buzón');
     }
 
+    public function test_dashboard_crm_scope_skips_heavy_sections(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        foreach (['calendar', 'mailer', 'list60', 'paid_ads'] as $key)
+        {
+            $module = Module::query()->create([
+                'name' => $key,
+                'key' => $key,
+                'icon' => null,
+                'description' => null,
+                'is_core' => false,
+                'group' => null,
+                'order' => 0,
+                'status' => 1,
+            ]);
+            $team->modules()->attach($module->id, ['status' => 1, 'settings' => null]);
+        }
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$user->createToken('dashboard')->plainTextToken)
+            ->getJson('/api/dashboard?scope=crm')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('scope', 'crm')
+            ->assertJsonMissingPath('mail')
+            ->assertJsonMissingPath('chat')
+            ->assertJsonMissingPath('contact_stats')
+            ->assertJsonMissingPath('today_contacts')
+            ->assertJsonMissingPath('notifications')
+            ->assertJsonMissingPath('widgets.projects')
+            ->assertJsonMissingPath('widgets.mailer')
+            ->assertJsonMissingPath('widgets.meetings')
+            ->assertJsonMissingPath('widgets.ads')
+            ->assertJsonMissingPath('widgets.expiring')
+            ->assertJsonMissingPath('widgets.payments')
+            ->assertJsonStructure([
+                'widgets' => ['income', 'analytics', 'drafts', 'sentiment', 'audience', 'intents'],
+                'follow_up' => ['enabled', 'counts'],
+                'performance_insight',
+            ]);
+
+        $this->assertSame([], $response->json('follow_up.due'));
+        $this->assertSame([], $response->json('follow_up.upcoming'));
+    }
+
     public function test_dashboard_falls_back_to_latest_performance_insight_when_today_missing(): void
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
