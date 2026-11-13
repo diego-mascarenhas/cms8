@@ -77,25 +77,8 @@ class BillingHistoryApiTest extends TestCase
             ->assertJsonPath('data.products.1.name', 'Mailer Basic')
             ->assertJsonPath('data.products.1.active', true)
             ->assertJsonPath('data.products.1.interval', 'Mensual')
-            ->assertJsonPath('data.invoices', []);
-
-        $appPlans = collect($response->json('data.app_plans'));
-        $assistant = $appPlans->firstWhere('id', 'assistant');
-        $shop = $appPlans->firstWhere('id', 'shop_basic');
-
-        $this->assertNotNull($assistant);
-        $this->assertSame('Assistant', $assistant['name']);
-        $this->assertTrue($assistant['subscribed']);
-        $this->assertFalse($assistant['can_checkout']);
-        $this->assertNotEmpty($assistant['features']);
-        $this->assertNotNull($shop);
-        $this->assertSame('Shop Freelancer', $shop['name']);
-        $this->assertSame('Shop', $shop['catalog_label']);
-        $this->assertFalse($shop['subscribed']);
-        $this->assertTrue($shop['can_checkout']);
-        $this->assertTrue($appPlans->contains(fn (array $plan): bool => $plan['id'] === 'ads'));
-        $this->assertTrue($appPlans->contains(fn (array $plan): bool => $plan['id'] === 'projects'));
-        $this->assertFalse($appPlans->contains(fn (array $plan): bool => $plan['id'] === 'innovation'));
+            ->assertJsonPath('data.invoices', [])
+            ->assertJsonMissingPath('data.app_plans');
 
         $blocked = User::factory()->create();
         $blocked->teams()->attach($team->id, ['role' => 'collaborator']);

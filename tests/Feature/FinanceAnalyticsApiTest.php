@@ -172,7 +172,7 @@ class FinanceAnalyticsApiTest extends TestCase
             ->assertJsonPath('accounts.0.book_balance', 1000);
     }
 
-    public function test_flow_projection_returns_twelve_month_points(): void
+    public function test_flow_projection_returns_history_plus_twelve_month_points(): void
     {
         $user = $this->makeAdminUser();
         $token = $user->createToken('finance-api')->plainTextToken;
@@ -183,7 +183,7 @@ class FinanceAnalyticsApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('year', $year)
-            ->assertJsonCount(12, 'points');
+            ->assertJsonCount(15, 'points');
     }
 
     public function test_cfo_brief_starts_in_background_and_status_returns_analysis(): void

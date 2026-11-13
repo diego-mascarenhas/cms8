@@ -319,13 +319,18 @@ class FinanceDashboardExchangeRatesTest extends TestCase
         $this->assertEqualsWithDelta(1000.0, $projection['avg_monthly_income'], 0.01);
         $this->assertEqualsWithDelta(400.0, $projection['avg_monthly_expense'], 0.01);
         $this->assertEqualsWithDelta(-4800.0, $projection['year_profit'], 0.01);
-        $this->assertCount(12, $projection['points']);
-        $this->assertTrue($projection['points'][0]['projected']);
+        $this->assertCount(15, $projection['points']);
+        $this->assertFalse($projection['points'][0]['projected']);
+        $this->assertFalse($projection['points'][1]['projected']);
+        $this->assertFalse($projection['points'][2]['projected']);
         $this->assertEqualsWithDelta(0.0, $projection['points'][0]['income'], 0.01);
-        $this->assertEqualsWithDelta(400.0, $projection['points'][0]['expense'], 0.01);
-        $this->assertTrue($projection['points'][0]['expense_projected']);
-        $this->assertEqualsWithDelta(400.0, $projection['points'][11]['expense'], 0.01);
-        $this->assertTrue($projection['points'][11]['projected']);
+        $this->assertEqualsWithDelta(0.0, $projection['points'][0]['expense'], 0.01);
+        $this->assertTrue($projection['points'][3]['projected']);
+        $this->assertEqualsWithDelta(0.0, $projection['points'][3]['income'], 0.01);
+        $this->assertEqualsWithDelta(400.0, $projection['points'][3]['expense'], 0.01);
+        $this->assertTrue($projection['points'][3]['expense_projected']);
+        $this->assertEqualsWithDelta(400.0, $projection['points'][14]['expense'], 0.01);
+        $this->assertTrue($projection['points'][14]['projected']);
 
         $trend[9]['income'] = 100.0;
         $trend[9]['expense'] = 40.0;
@@ -347,12 +352,15 @@ class FinanceDashboardExchangeRatesTest extends TestCase
         $this->assertSame(2, $withOpenMonth['months_with_data']);
         $this->assertEqualsWithDelta(1000.0, $withOpenMonth['avg_monthly_income'], 0.01);
         $this->assertFalse($withOpenMonth['points'][0]['projected']);
-        $this->assertEqualsWithDelta(100.0, $withOpenMonth['points'][0]['income'], 0.01);
-        $this->assertEqualsWithDelta(40.0, $withOpenMonth['points'][0]['expense'], 0.01);
-        $this->assertFalse($withOpenMonth['points'][0]['expense_projected']);
-        $this->assertTrue($withOpenMonth['points'][1]['expense_projected']);
-        $this->assertEqualsWithDelta(0.0, $withOpenMonth['points'][1]['income'], 0.01);
-        $this->assertEqualsWithDelta(400.0, $withOpenMonth['points'][1]['expense'], 0.01);
+        $this->assertFalse($withOpenMonth['points'][1]['projected']);
+        $this->assertFalse($withOpenMonth['points'][2]['projected']);
+        $this->assertFalse($withOpenMonth['points'][3]['projected']);
+        $this->assertEqualsWithDelta(100.0, $withOpenMonth['points'][3]['income'], 0.01);
+        $this->assertEqualsWithDelta(40.0, $withOpenMonth['points'][3]['expense'], 0.01);
+        $this->assertFalse($withOpenMonth['points'][3]['expense_projected']);
+        $this->assertTrue($withOpenMonth['points'][4]['expense_projected']);
+        $this->assertEqualsWithDelta(0.0, $withOpenMonth['points'][4]['income'], 0.01);
+        $this->assertEqualsWithDelta(400.0, $withOpenMonth['points'][4]['expense'], 0.01);
         $this->assertEqualsWithDelta(-4340.0, $withOpenMonth['year_profit'], 0.01);
         $this->assertSame(0.0, $withOpenMonth['contracted_income']);
     }
@@ -483,11 +491,14 @@ class FinanceDashboardExchangeRatesTest extends TestCase
 
         $projection = (new FinanceCfoBriefService($analytics))->projection($team, 2026);
 
-        $this->assertEqualsWithDelta(400.0, $projection['points'][1]['income'], 0.01);
-        $this->assertEqualsWithDelta(120.0, $projection['points'][3]['income'], 0.01);
-        $this->assertEqualsWithDelta(80.0, $projection['points'][4]['expense'], 0.01);
-        $this->assertEqualsWithDelta(3100.0, $projection['points'][5]['income'], 0.01);
-        $this->assertEqualsWithDelta(40.0, $projection['points'][6]['income'], 0.01);
+        $this->assertFalse($projection['points'][0]['projected']);
+        $this->assertFalse($projection['points'][1]['projected']);
+        $this->assertFalse($projection['points'][2]['projected']);
+        $this->assertEqualsWithDelta(400.0, $projection['points'][4]['income'], 0.01);
+        $this->assertEqualsWithDelta(120.0, $projection['points'][6]['income'], 0.01);
+        $this->assertEqualsWithDelta(80.0, $projection['points'][7]['expense'], 0.01);
+        $this->assertEqualsWithDelta(3100.0, $projection['points'][8]['income'], 0.01);
+        $this->assertEqualsWithDelta(40.0, $projection['points'][9]['income'], 0.01);
         $this->assertEqualsWithDelta(3660.0, $projection['contracted_income'], 0.01);
         $this->assertEqualsWithDelta(80.0, $projection['contracted_expense'], 0.01);
         $this->assertEqualsWithDelta(3580.0, $projection['year_profit'], 0.01);
@@ -630,10 +641,10 @@ class FinanceDashboardExchangeRatesTest extends TestCase
         $projection = (new FinanceCfoBriefService($analytics))->projection($team, 2026);
 
         $this->assertSame('EUR', $projection['currency']);
-        $this->assertEqualsWithDelta(200.0, $projection['points'][1]['income'], 0.01);
-        $this->assertEqualsWithDelta(150.0, $projection['points'][3]['income'], 0.01);
-        $this->assertEqualsWithDelta(50.0, $projection['points'][4]['income'], 0.01);
-        $this->assertEqualsWithDelta(30.0, $projection['points'][5]['income'], 0.01);
+        $this->assertEqualsWithDelta(200.0, $projection['points'][4]['income'], 0.01);
+        $this->assertEqualsWithDelta(150.0, $projection['points'][6]['income'], 0.01);
+        $this->assertEqualsWithDelta(50.0, $projection['points'][7]['income'], 0.01);
+        $this->assertEqualsWithDelta(30.0, $projection['points'][8]['income'], 0.01);
         $this->assertEqualsWithDelta(430.0, $projection['contracted_income'], 0.01);
     }
 
@@ -698,7 +709,7 @@ class FinanceDashboardExchangeRatesTest extends TestCase
 
         $stored = $team->fresh()->getSetting('finance_cfo_projection_2026');
         $this->assertIsArray($stored);
-        $this->assertCount(12, $stored['points']);
+        $this->assertCount(15, $stored['points']);
         $this->assertNotEmpty($stored['generated_at']);
 
         $team->setSetting('finance_cfo_projection_2026', [
