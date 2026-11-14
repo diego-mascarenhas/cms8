@@ -68,6 +68,7 @@ class HostingController extends Controller
 
         $perPage = min(50, max(1, (int) $request->query('per_page', 25)));
         $page = $accounts->orderBy('domain')->paginate($perPage);
+        $page->setCollection(HostingAccountPresenter::listItems($page->getCollection()));
 
         return response()->json([
             'success' => true,
@@ -77,7 +78,7 @@ class HostingController extends Controller
                 'active' => $active,
                 'suspended' => $suspended,
             ],
-            'data' => $page->through(fn (Domain $domain) => HostingAccountPresenter::listItem($domain)),
+            'data' => $page,
         ]);
     }
 

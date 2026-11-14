@@ -6,12 +6,31 @@ use App\Helpers\DnsHelper;
 use App\Models\Domain;
 use App\Models\Enterprise;
 use App\Models\ServiceSync;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 
 class HostingAccountPresenter
 {
     /**
+     * Compact rows for a page of domains. Relations and fallback subscriptions are loaded in batch.
+     *
+     * @param  Collection<int, Domain>  $domains
+     * @return Collection<int, array<string, mixed>>
+     */
+    public static function listItems(Collection $domains): Collection
+    {
+        $models = $domains instanceof EloquentCollection ? $domains : new EloquentCollection($domains->all());
+        $models->loadMissing(['server', 'service.enterprise.contacts', 'service.serviceSync']);
+
+        $preloaded = self::preloadFallbacks($models);
+
+        return $domains->map(fn (Domain $domain): array => self::listItem($domain, $preloaded))->values();
+    }
+
+    /**
      * Compact row for the hosting accounts table.
      *
+     * @param  array{subscriptions: array<string, ServiceSync>, enterprises: array<string, Enterprise>}|null  $preloaded
      * @return array{
      *     id: int,
      *     domain: string|null,
@@ -26,9 +45,9 @@ class HostingAccountPresenter
      *     administrator: array{id: int, name: string}|null
      * }
      */
-    public static function listItem(Domain $domain): array
+    public static function listItem(Domain $domain, ?array $preloaded = null): array
     {
-        $owner = self::owner($domain);
+        $owner = self::owner($domain, $preloaded);
 
         return [
             'id' => $domain->id,
@@ -114,7 +133,7 @@ class HostingAccountPresenter
      *     subscription: array{id: int, name: string, amount: float|null, currency: string|null, interval: string|null, status: string|null}|null
      * }
      */
-    private static function owner(Domain $domain): array
+    private static function owner(Domain $domain, ?array $preloaded = null): array
     {
         $domain->loadMissing(['server', 'service.enterprise.contacts', 'service.serviceSync']);
 
@@ -123,16 +142,20 @@ class HostingAccountPresenter
 
         if (! $enterprise instanceof Enterprise || ! $sync instanceof ServiceSync)
         {
-            $matched = self::hostingSubscription($domain);
+            $matched = $preloaded !== null
+                ? ($preloaded['subscriptions'][self::fallbackKey($domain->server?->team_id, (string) $domain->domain)] ?? null)
+                : self::hostingSubscription($domain);
             $sync = $sync instanceof ServiceSync ? $sync : $matched;
 
             if (! $enterprise instanceof Enterprise && $matched instanceof ServiceSync && filled($matched->customer_id))
             {
-                $enterprise = Enterprise::query()
-                    ->with('contacts')
-                    ->where('team_id', $domain->server?->team_id)
-                    ->where('code', $matched->customer_id)
-                    ->first();
+                $enterprise = $preloaded !== null
+                    ? ($preloaded['enterprises'][self::fallbackKey($domain->server?->team_id, (string) $matched->customer_id)] ?? null)
+                    : Enterprise::query()
+                        ->with('contacts')
+                        ->where('team_id', $domain->server?->team_id)
+                        ->where('code', $matched->customer_id)
+                        ->first();
             }
         }
 
@@ -195,9 +218,112 @@ class HostingAccountPresenter
                     ->orWhere('data->domain', $domainName);
             })
             ->get()
+            ->pipe(fn (Collection $syncs): ?ServiceSync => self::bestHostingSubscription($syncs, $domainName));
+    }
+
+    /**
+     * @param  Collection<int, ServiceSync>  $syncs
+     */
+    private static function bestHostingSubscription(Collection $syncs, string $domainName): ?ServiceSync
+    {
+        return $syncs
             ->filter(fn (ServiceSync $sync): bool => $sync->isClientHosting() && $sync->hostingDomainCandidate() === $domainName)
             ->sortBy(fn (ServiceSync $sync): int => strtolower((string) $sync->status) === 'active' ? 0 : 1)
             ->first();
+    }
+
+    private static function fallbackKey(mixed $teamId, string $value): string
+    {
+        return (int) $teamId.'|'.strtolower(trim($value));
+    }
+
+    /**
+     * Batch-load the subscriptions and enterprises that domains without a linked service fall back to.
+     *
+     * @param  EloquentCollection<int, Domain>  $domains
+     * @return array{subscriptions: array<string, ServiceSync>, enterprises: array<string, Enterprise>}
+     */
+    private static function preloadFallbacks(EloquentCollection $domains): array
+    {
+        $preloaded = ['subscriptions' => [], 'enterprises' => []];
+        $namesByTeam = [];
+
+        foreach ($domains as $domain)
+        {
+            $teamId = $domain->server?->team_id;
+            $domainName = strtolower(trim((string) $domain->domain));
+
+            if ($teamId === null || $domainName === '')
+            {
+                continue;
+            }
+
+            if ($domain->service?->enterprise instanceof Enterprise && $domain->service?->serviceSync instanceof ServiceSync)
+            {
+                continue;
+            }
+
+            $namesByTeam[(int) $teamId][$domainName] = true;
+        }
+
+        if ($namesByTeam === [])
+        {
+            return $preloaded;
+        }
+
+        foreach ($namesByTeam as $teamId => $names)
+        {
+            $names = array_keys($names);
+
+            $candidates = ServiceSync::query()
+                ->where('team_id', $teamId)
+                ->where(function ($query) use ($names): void
+                {
+                    foreach ($names as $name)
+                    {
+                        $like = '%'.addcslashes($name, '%_\\').'%';
+
+                        $query->orWhereRaw('LOWER(plan_name) LIKE ?', [$like])
+                            ->orWhere('raw_payload->description', 'like', $like)
+                            ->orWhere('data->domain', $name);
+                    }
+                })
+                ->get();
+
+            foreach ($names as $name)
+            {
+                $matched = self::bestHostingSubscription($candidates, $name);
+
+                if ($matched instanceof ServiceSync)
+                {
+                    $preloaded['subscriptions'][self::fallbackKey($teamId, $name)] = $matched;
+                }
+            }
+
+            $codes = collect($preloaded['subscriptions'])
+                ->filter(fn (ServiceSync $sync, string $key): bool => str_starts_with($key, $teamId.'|') && filled($sync->customer_id))
+                ->map(fn (ServiceSync $sync): string => (string) $sync->customer_id)
+                ->unique()
+                ->values();
+
+            if ($codes->isEmpty())
+            {
+                continue;
+            }
+
+            Enterprise::query()
+                ->with('contacts')
+                ->where('team_id', $teamId)
+                ->whereIn('code', $codes->all())
+                ->get()
+                ->each(function (Enterprise $enterprise) use (&$preloaded, $teamId): void
+                {
+                    $key = self::fallbackKey($teamId, (string) $enterprise->code);
+                    $preloaded['enterprises'][$key] ??= $enterprise;
+                });
+        }
+
+        return $preloaded;
     }
 
     /**

@@ -11,7 +11,6 @@ use App\Http\Requests\SuggestExpenseCategoriesRequest;
 use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Enterprise;
-use App\Models\ExchangeRate;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Payment;
@@ -28,6 +27,7 @@ use App\Services\Finance\ServiceCategoryOptionsService;
 use App\Services\Finance\VatHaciendaCsvExportService;
 use App\Services\Finance\VatReportingService;
 use App\Support\ExpenseDocumentTypes;
+use App\Support\InvoiceSettlementConverter;
 use App\Support\SearchNormalizer;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -265,6 +265,7 @@ class ExpenseController extends Controller
                 'invoice.enterprise:id,name',
                 'invoice.currency:id,code',
                 'invoice.stripeInvoiceSync',
+                'invoice.payments.account.currency:id,code',
             ]);
 
         if (in_array($operation, ['buy', 'sell'], true))
@@ -319,6 +320,7 @@ class ExpenseController extends Controller
                 $currencyCode,
                 $reportingCurrency,
                 $invoice?->date,
+                $invoice,
             );
 
             return [
@@ -370,29 +372,15 @@ class ExpenseController extends Controller
         string $fromCurrency,
         string $reportingCurrency,
         mixed $invoiceDate,
+        ?Invoice $invoice = null,
     ): ?float {
-        $fromCurrency = strtoupper(trim($fromCurrency));
-        $reportingCurrency = strtoupper(trim($reportingCurrency));
-
-        if ($fromCurrency === $reportingCurrency)
-        {
-            return round($amount, 2);
-        }
-
-        if (blank($invoiceDate))
-        {
-            return ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
-        }
-
-        $conversionDate = Carbon::parse($invoiceDate)->endOfMonth();
-        $converted = ExchangeRate::convertOnOrBeforeDate($amount, $fromCurrency, $reportingCurrency, $conversionDate);
-
-        if ($converted !== null)
-        {
-            return $converted;
-        }
-
-        return ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
+        return InvoiceSettlementConverter::convert(
+            $amount,
+            $fromCurrency,
+            $reportingCurrency,
+            $invoiceDate,
+            $invoice,
+        );
     }
 
     public function form(): JsonResponse

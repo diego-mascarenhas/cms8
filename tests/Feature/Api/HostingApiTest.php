@@ -18,11 +18,14 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\ControlPanel\ControlPanelManager;
 use App\Services\Hosting\StripeHostingPlanGateway;
+use App\Support\HostingAccountPresenter;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
@@ -101,6 +104,137 @@ class HostingApiTest extends TestCase
             ->assertJsonPath('data.data.0.enterprise.name', $enterprise->name)
             ->assertJsonPath('data.data.0.administrator.id', $admin->id)
             ->assertJsonPath('data.data.0.administrator.name', 'Ana Responsable');
+    }
+
+    public function test_hosting_list_matches_subscriptions_without_a_query_per_domain(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::query()->create([
+            'name' => 'Odin',
+            'server_url' => 'odin.test',
+            'username' => 'revision',
+            'control_panel' => 'cpanel',
+            'success' => true,
+            'status_id' => ServerStatus::Active,
+            'team_id' => $team->id,
+        ]);
+        $enterprise = $this->enterprise($team);
+        $enterprise->forceFill(['code' => 'cus_list_batch'])->save();
+
+        foreach (['uno.test', 'dos.test', 'tres.test'] as $name)
+        {
+            Domain::query()->create([
+                'domain' => $name,
+                'server_id' => $server->id,
+                'username' => substr($name, 0, 3),
+                'plan' => 'revision_enthusiast',
+                'suspended' => false,
+            ]);
+        }
+
+        foreach (['uno.test', 'dos.test'] as $name)
+        {
+            ServiceSync::query()->create([
+                'stripe_id' => 'sub_'.$name,
+                'team_id' => $team->id,
+                'customer_id' => 'cus_list_batch',
+                'customer_name' => 'Cliente '.$name,
+                'status' => 'active',
+                'plan_name' => 'Hosting anual',
+                'data' => ['metadata' => ['category' => 'hosting', 'domain' => $name], 'category' => 'hosting', 'domain' => $name],
+            ]);
+        }
+
+        $token = $user->createToken('hosting')->plainTextToken;
+        $syncQueries = 0;
+        DB::listen(function ($query) use (&$syncQueries): void
+        {
+            if (str_contains($query->sql, 'from `service_syncs`') || str_contains($query->sql, 'from "service_syncs"'))
+            {
+                $syncQueries++;
+            }
+        });
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/hosting')
+            ->assertOk()
+            ->assertJsonPath('stats.total', 3);
+
+        $rows = collect($response->json('data.data'))->keyBy('domain');
+
+        $this->assertSame('Cliente uno.test', $rows['uno.test']['customer_name']);
+        $this->assertSame($enterprise->id, $rows['dos.test']['enterprise']['id']);
+        $this->assertNull($rows['tres.test']['enterprise']);
+        $this->assertNull($rows['tres.test']['customer_name']);
+        $this->assertSame(1, $syncQueries);
+    }
+
+    public function test_presenter_list_item_still_resolves_a_subscription_for_one_domain(): void
+    {
+        [, $team] = $this->adminTeam();
+        $server = Server::query()->create([
+            'name' => 'Odin',
+            'server_url' => 'odin.test',
+            'username' => 'revision',
+            'control_panel' => 'cpanel',
+            'success' => true,
+            'status_id' => ServerStatus::Active,
+            'team_id' => $team->id,
+        ]);
+        $domain = Domain::query()->create([
+            'domain' => 'solo.test',
+            'server_id' => $server->id,
+            'username' => 'solo',
+            'plan' => 'revision_enthusiast',
+            'suspended' => false,
+        ]);
+        ServiceSync::query()->create([
+            'stripe_id' => 'sub_solo',
+            'team_id' => $team->id,
+            'customer_name' => 'Cliente Solo',
+            'status' => 'active',
+            'plan_name' => 'Hosting anual',
+            'data' => ['category' => 'hosting', 'domain' => 'solo.test'],
+        ]);
+
+        $item = HostingAccountPresenter::listItem($domain);
+
+        $this->assertSame('Cliente Solo', $item['customer_name']);
+    }
+
+    public function test_stripe_plan_catalog_is_cached_per_team(): void
+    {
+        $team = Team::factory()->create();
+        config(['cashier.secret' => 'sk_test_cache_catalog']);
+        Cache::flush();
+
+        $gateway = new class extends StripeHostingPlanGateway
+        {
+            public int $fetches = 0;
+
+            protected function fetchCatalog(string $secret): array
+            {
+                $this->fetches++;
+
+                return [[
+                    'price_id' => 'price_1',
+                    'product_name' => 'Hosting',
+                    'plan' => 'enthusiast',
+                    'currency' => 'eur',
+                    'interval' => 'month',
+                    'interval_count' => 1,
+                    'unit_amount' => 1000,
+                    'whm_package' => null,
+                ]];
+            }
+        };
+
+        $first = $gateway->catalog($team);
+        $second = $gateway->catalog($team);
+
+        $this->assertSame($first, $second);
+        $this->assertSame('price_1', $first[0]['price_id']);
+        $this->assertSame(1, $gateway->fetches);
     }
 
     public function test_admin_can_link_and_unlink_a_hosting_client(): void

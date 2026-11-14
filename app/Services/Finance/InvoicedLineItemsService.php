@@ -2,8 +2,8 @@
 
 namespace App\Services\Finance;
 
-use App\Models\ExchangeRate;
 use App\Models\InvoiceItem;
+use App\Support\InvoiceSettlementConverter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -76,7 +76,7 @@ class InvoicedLineItemsService
                     ->whereDate('date', '>=', $from->toDateString())
                     ->whereDate('date', '<=', $to->toDateString());
             })
-            ->with(['invoice.enterprise', 'category'])
+            ->with(['invoice.enterprise', 'invoice.currency', 'invoice.payments.account.currency', 'category'])
             ->get()
             ->sortBy(
                 fn (InvoiceItem $item) => mb_strtolower((string) ($item->invoice?->enterprise?->name ?? '')),
@@ -189,22 +189,12 @@ class InvoicedLineItemsService
             return null;
         }
 
-        $fromCurrency = $invoice->currency_code;
-        $reportingCurrency = strtoupper(trim($reportingCurrency));
-
-        if ($fromCurrency === $reportingCurrency)
-        {
-            return round($amount, 2);
-        }
-
-        $conversionDate = Carbon::parse($invoice->date)->endOfMonth();
-        $converted = ExchangeRate::convertOnOrBeforeDate($amount, $fromCurrency, $reportingCurrency, $conversionDate);
-
-        if ($converted !== null)
-        {
-            return $converted;
-        }
-
-        return ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
+        return InvoiceSettlementConverter::convert(
+            $amount,
+            (string) $invoice->currency_code,
+            $reportingCurrency,
+            $invoice->date,
+            $invoice,
+        );
     }
 }

@@ -71,6 +71,43 @@ class FinanceDashboardSnapshotTest extends TestCase
             ->assertJsonPath('payload.cash_position.liquid_assets', 500);
     }
 
+    public function test_capture_computes_the_projection_once(): void
+    {
+        $user = $this->makeAdminUser();
+        $team = $user->currentTeam;
+
+        $brief = $this->getMockBuilder(FinanceCfoBriefService::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['projection'])
+            ->getMock();
+        $brief->expects($this->once())
+            ->method('projection')
+            ->willReturn(['currency' => 'EUR', 'avg_monthly_expense' => 100.0, 'points' => []]);
+        $this->app->instance(FinanceCfoBriefService::class, $brief);
+
+        $snapshot = app(FinanceDashboardSnapshotService::class)->capture($team, (int) now()->year);
+
+        $this->assertSame(100.0, (float) data_get($snapshot->payload, 'cash_position.avg_monthly_expense'));
+    }
+
+    public function test_cash_position_uses_a_precomputed_projection(): void
+    {
+        $user = $this->makeAdminUser();
+        $team = $user->currentTeam;
+
+        $brief = $this->getMockBuilder(FinanceCfoBriefService::class)
+            ->disableOriginalConstructor()
+            ->onlyMethods(['projection'])
+            ->getMock();
+        $brief->expects($this->never())->method('projection');
+        $this->app->instance(FinanceCfoBriefService::class, $brief);
+
+        $cash = app(FinanceDashboardSnapshotService::class)
+            ->buildCashPosition($team, (int) now()->year, ['avg_monthly_expense' => 50.0]);
+
+        $this->assertSame(50.0, (float) $cash['avg_monthly_expense']);
+    }
+
     public function test_cfo_usage_is_logged_against_the_team(): void
     {
         $user = $this->makeAdminUser();
