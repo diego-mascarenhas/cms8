@@ -3,9 +3,9 @@
 namespace App\Services\Finance;
 
 use App\Models\Category;
-use App\Models\ExchangeRate;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Support\InvoiceSettlementConverter;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -390,7 +390,7 @@ class InvoiceAnalyticsService
                     ->whereDate('date', '>=', $from->toDateString())
                     ->whereDate('date', '<=', $to->toDateString());
             })
-            ->with(['invoice' => fn ($query) => $query->withoutGlobalScopes()->with('currency')])
+            ->with(['invoice' => fn ($query) => $query->withoutGlobalScopes()->with(['currency', 'payments.account.currency'])])
             ->get();
     }
 
@@ -428,19 +428,17 @@ class InvoiceAnalyticsService
             return $amount;
         }
 
-        $conversionDate = Carbon::parse($invoice->date)->endOfMonth();
-        $converted = ExchangeRate::convertOnOrBeforeDate($amount, $fromCurrency, $reportingCurrency, $conversionDate);
+        $converted = InvoiceSettlementConverter::convert(
+            $amount,
+            (string) $fromCurrency,
+            $reportingCurrency,
+            $invoice->date,
+            $invoice,
+        );
 
         if ($converted !== null)
         {
             return $converted;
-        }
-
-        $fallback = ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
-
-        if ($fallback !== null)
-        {
-            return $fallback;
         }
 
         $pair = "{$fromCurrency}->{$reportingCurrency}";

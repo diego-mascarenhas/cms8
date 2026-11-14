@@ -9,6 +9,9 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceSync;
 use App\Models\Module;
+use App\Models\Payment;
+use App\Models\PaymentAccount;
+use App\Models\PaymentType;
 use App\Models\User;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -277,6 +280,83 @@ class ExpenseMovementsApiTest extends TestCase
             ->assertJsonPath('data.data.0.amount', 10000)
             ->assertJsonPath('data.data.0.reporting_currency', 'EUR')
             ->assertJsonPath('data.data.0.reporting_amount', 9);
+    }
+
+    public function test_movements_prefer_payment_settlement_rate_over_frankfurter(): void
+    {
+        $user = $this->makeAdminUser();
+        $teamId = (int) $user->current_team_id;
+        $supplier = $this->createEnterpriseForTeam($user, 'Proveedor USD', 2);
+
+        ExchangeRate::query()->create([
+            'base_currency' => 'USD',
+            'target_currency' => 'EUR',
+            'rate' => 0.89509,
+            'date' => '2026-10-31',
+            'fetched_at' => now(),
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $supplier->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => '1F3AD340-0024',
+            'date' => '2026-10-10',
+            'due_date' => '2026-10-10',
+            'gross_amount' => 39,
+            'discount' => 0,
+            'total_amount' => 39,
+            'balance' => 0,
+            'currency_id' => 840,
+            'status' => 2,
+            'source_provider' => 'manual',
+        ]);
+
+        InvoiceItem::query()->create([
+            'invoice_id' => $invoice->id,
+            'category_id' => null,
+            'description' => 'Suscripción USD',
+            'quantity' => 1,
+            'unit_price' => 39,
+            'discount' => 0,
+            'tax_percentage' => 0,
+        ]);
+
+        $eurAccount = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'code' => 'bank-eur',
+            'name' => 'Cuenta EUR',
+            'symbol' => '€',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
+
+        $paymentType = PaymentType::query()->firstOrCreate(['name' => 'Transfer']);
+
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $supplier->id,
+            'transaction_type' => 'expense',
+            'date' => '2026-10-12',
+            'invoice_id' => $invoice->id,
+            'account_id' => $eurAccount->id,
+            'type_id' => $paymentType->id,
+            'amount' => 39.87,
+            'document_amount' => 39,
+            'exchange_rate' => round(39.87 / 39, 6),
+            'status' => 2,
+        ]);
+
+        $token = $user->createToken('movements-api')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/expenses/movements?vat_year=2026&vat_period=m:10&operation=buy')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.data.0.currency_code', 'USD')
+            ->assertJsonPath('data.data.0.amount', 39)
+            ->assertJsonPath('data.data.0.reporting_amount', 39.87);
     }
 
     public function test_category_charts_return_income_and_expense_breakdown(): void

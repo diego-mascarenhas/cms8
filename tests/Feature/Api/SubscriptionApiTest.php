@@ -134,6 +134,51 @@ class SubscriptionApiTest extends TestCase
             ->assertJsonPath('data.hosting.nameservers.match', true);
     }
 
+    public function test_subscription_list_puts_unlinked_customers_first_without_duplicating_rows(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $this->seed([EnterpriseTypeSeeder::class, EnterpriseStatusSeeder::class]);
+
+        foreach (['A', 'B'] as $suffix)
+        {
+            Enterprise::withoutEvents(fn () => Enterprise::factory()->forTeam($team->id)->create([
+                'type_id' => 1,
+                'status_id' => 1,
+                'payment_type_id' => null,
+                'invoice_type_id' => null,
+                'code' => 'cus_linked',
+            ]));
+        }
+
+        $linked = ServiceSync::query()->create([
+            'stripe_id' => 'sub_linked',
+            'team_id' => $team->id,
+            'status' => 'active',
+            'customer_id' => 'cus_linked',
+            'customer_name' => 'Aaa Linked',
+        ]);
+        $unlinked = ServiceSync::query()->create([
+            'stripe_id' => 'sub_unlinked',
+            'team_id' => $team->id,
+            'status' => 'active',
+            'customer_id' => 'cus_unlinked',
+            'customer_name' => 'Zzz Unlinked',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('subscriptions')->plainTextToken)
+            ->getJson('/api/subscriptions')
+            ->assertOk()
+            ->assertJsonPath('data.total', 2)
+            ->assertJsonPath('data.data.0.id', $unlinked->id)
+            ->assertJsonPath('data.data.1.id', $linked->id);
+    }
+
     public function test_subscription_list_links_the_company_when_stripe_code_is_missing(): void
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);

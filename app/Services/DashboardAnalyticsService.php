@@ -12,6 +12,8 @@ class DashboardAnalyticsService
 {
     private const CACHE_SECONDS = 3600;
 
+    private const FAILURE_CACHE_SECONDS = 120;
+
     /**
      * @return array{
      *     dates: list<mixed>,
@@ -37,7 +39,14 @@ class DashboardAnalyticsService
             return null;
         }
 
-        return Cache::remember(
+        $failureKey = "dashboard.analytics.v4.failed.{$team->id}";
+
+        if (Cache::has($failureKey))
+        {
+            return null;
+        }
+
+        $payload = Cache::remember(
             "dashboard.analytics.v4.{$team->id}",
             self::CACHE_SECONDS,
             function () use ($propertyId, $credentialsJson)
@@ -88,6 +97,13 @@ class DashboardAnalyticsService
                 }
             },
         );
+
+        if ($payload === null)
+        {
+            Cache::put($failureKey, true, self::FAILURE_CACHE_SECONDS);
+        }
+
+        return $payload;
     }
 
     /**

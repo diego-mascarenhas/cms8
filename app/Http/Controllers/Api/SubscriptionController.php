@@ -55,9 +55,18 @@ class SubscriptionController extends Controller
             ? null
             : $labels->filter(fn (string $label): bool => $label === $selectedCategory)->keys()->all();
 
-        $subscriptions = ServiceSync::query()
-            ->with('enterprise:id,name,code')
+        $linkedEnterpriseCodes = Enterprise::withoutGlobalScopes()
             ->where('team_id', $user->currentTeam->id)
+            ->whereNull('deleted_at')
+            ->whereNotNull('code')
+            ->select('code')
+            ->groupBy('code');
+
+        $subscriptions = ServiceSync::query()
+            ->select('service_syncs.*')
+            ->leftJoinSub($linkedEnterpriseCodes, 'linked_enterprises', 'linked_enterprises.code', '=', 'service_syncs.customer_id')
+            ->with('enterprise:id,name,code')
+            ->where('service_syncs.team_id', $user->currentTeam->id)
             ->when(is_array($categoryIds), function ($query) use ($categoryIds)
             {
                 if ($categoryIds === [])
@@ -67,7 +76,7 @@ class SubscriptionController extends Controller
                     return;
                 }
 
-                $query->whereIn('id', $categoryIds);
+                $query->whereIn('service_syncs.id', $categoryIds);
             })
             ->when($selectedStatus !== '', function ($query) use ($selectedStatus)
             {
@@ -92,12 +101,7 @@ class SubscriptionController extends Controller
                         });
                 });
             })
-            ->orderByRaw('CASE WHEN EXISTS (
-                SELECT 1 FROM enterprises
-                WHERE enterprises.code = service_syncs.customer_id
-                  AND enterprises.team_id = service_syncs.team_id
-                  AND enterprises.deleted_at IS NULL
-            ) THEN 1 ELSE 0 END')
+            ->orderByRaw('CASE WHEN linked_enterprises.code IS NULL THEN 0 ELSE 1 END')
             ->orderByRaw("CASE LOWER(TRIM(service_syncs.status))
                 WHEN 'past_due' THEN 1
                 WHEN 'unpaid' THEN 2
@@ -109,7 +113,7 @@ class SubscriptionController extends Controller
                 WHEN 'canceled' THEN 8
                 ELSE 99
             END")
-            ->orderBy('customer_name')
+            ->orderBy('service_syncs.customer_name')
             ->paginate($perPage);
 
         $this->hydrateClientEnterprises($subscriptions->getCollection());
@@ -383,7 +387,7 @@ class SubscriptionController extends Controller
         return ServiceSync::query()
             ->where('team_id', $teamId)
             ->orderBy('id')
-            ->get()
+            ->get(['id', 'stripe_id', 'plan_name', 'data', 'raw_payload'])
             ->mapWithKeys(fn (ServiceSync $sync): array => [$sync->id => $sync->clientCategoryLabel()]);
     }
 

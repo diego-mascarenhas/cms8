@@ -55,6 +55,7 @@ return [
         'affiliates' => false,
         'events' => false,
         'today' => false,
+        'meetings' => false,
         'times' => false,
         'attendances' => false,
         'documentation' => false,

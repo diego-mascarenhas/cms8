@@ -4,6 +4,7 @@ namespace App\Services\Hosting;
 
 use App\Models\Team;
 use App\Services\StripeAccountResolver;
+use Illuminate\Support\Facades\Cache;
 use RuntimeException;
 use Stripe\Exception\ApiErrorException;
 use Stripe\Price;
@@ -13,6 +14,8 @@ use Throwable;
 
 class StripeHostingPlanGateway
 {
+    private const CATALOG_CACHE_MINUTES = 10;
+
     /**
      * @return list<array{
      *     price_id: string,
@@ -33,6 +36,29 @@ class StripeHostingPlanGateway
             return [];
         }
 
+        $cacheKey = 'hosting:stripe-plan-catalog:'.(int) $team->id.':'.substr(sha1($secret), 0, 12);
+
+        return Cache::remember(
+            $cacheKey,
+            now()->addMinutes(self::CATALOG_CACHE_MINUTES),
+            fn (): array => $this->fetchCatalog($secret),
+        );
+    }
+
+    /**
+     * @return list<array{
+     *     price_id: string,
+     *     product_name: string,
+     *     plan: string,
+     *     currency: string,
+     *     interval: string,
+     *     interval_count: int,
+     *     unit_amount: int,
+     *     whm_package: string|null
+     * }>
+     */
+    protected function fetchCatalog(string $secret): array
+    {
         Stripe::setApiKey($secret);
         $plans = [];
         $startingAfter = null;

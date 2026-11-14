@@ -57,8 +57,8 @@ class FinanceDashboardSnapshotService
      */
     public function buildPayload(Team $team, int $year): array
     {
-        $cash = $this->buildCashPosition($team, $year);
         $projection = $this->financeCfoBriefService->projection($team, $year);
+        $cash = $this->buildCashPosition($team, $year, $projection);
         $monthStart = Carbon::now()->startOfMonth();
         $monthEnd = Carbon::now()->endOfMonth();
         $categories = $this->invoiceAnalyticsService->buildCategoryBreakdownForRange(
@@ -99,9 +99,10 @@ class FinanceDashboardSnapshotService
     }
 
     /**
+     * @param  array<string, mixed>|null  $projection  Precomputed projection to avoid computing it twice.
      * @return array<string, mixed>
      */
-    public function buildCashPosition(Team $team, ?int $year = null): array
+    public function buildCashPosition(Team $team, ?int $year = null, ?array $projection = null): array
     {
         $year = $year !== null && $year > 0 ? $year : (int) Carbon::now()->year;
         $teamId = (int) $team->id;
@@ -140,7 +141,7 @@ class FinanceDashboardSnapshotService
         $receivables = $this->outstandingBalance($teamId, 'sell', $reportingCurrency);
         $payables = $this->outstandingBalance($teamId, 'buy', $reportingCurrency);
         $netPosition = round($liquidAssets + $receivables['amount'] - $payables['amount'], 2);
-        $projection = $this->financeCfoBriefService->projection($team, $year);
+        $projection ??= $this->financeCfoBriefService->projection($team, $year);
         $avgMonthlyExpense = (float) ($projection['avg_monthly_expense'] ?? 0);
         $runwayMonths = $avgMonthlyExpense > 0
             ? round($liquidAssets / $avgMonthlyExpense, 1)

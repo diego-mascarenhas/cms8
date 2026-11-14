@@ -11,7 +11,6 @@ use App\Http\Requests\SuggestExpenseCategoriesRequest;
 use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Enterprise;
-use App\Models\ExchangeRate;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Payment;
@@ -28,6 +27,7 @@ use App\Services\Finance\ServiceCategoryOptionsService;
 use App\Services\Finance\VatHaciendaCsvExportService;
 use App\Services\Finance\VatReportingService;
 use App\Support\ExpenseDocumentTypes;
+use App\Support\InvoiceSettlementConverter;
 use App\Support\SearchNormalizer;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -261,10 +261,11 @@ class ExpenseController extends Controller
             ->whereDate('invoices.date', '<=', $rangeTo)
             ->with([
                 'category:id,name',
-                'invoice:id,number,date,operation,enterprise_id,currency_id,source_reference_id',
+                'invoice:id,team_id,number,date,operation,enterprise_id,currency_id,source_reference_id',
                 'invoice.enterprise:id,name',
                 'invoice.currency:id,code',
                 'invoice.stripeInvoiceSync',
+                'invoice.payments.account.currency:id,code',
             ]);
 
         if (in_array($operation, ['buy', 'sell'], true))
@@ -307,7 +308,10 @@ class ExpenseController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        $rows = collect($paginator->items())->map(function (InvoiceItem $item) use ($reportingCurrency): array
+        $manualInvoiceDocumentService = app(ManualInvoiceDocumentService::class);
+        $documentPresenceByInvoice = [];
+
+        $rows = collect($paginator->items())->map(function (InvoiceItem $item) use ($reportingCurrency, $manualInvoiceDocumentService, &$documentPresenceByInvoice): array
         {
             $invoice = $item->invoice;
             $operationValue = (string) ($invoice?->operation ?? 'buy');
@@ -319,10 +323,20 @@ class ExpenseController extends Controller
                 $currencyCode,
                 $reportingCurrency,
                 $invoice?->date,
+                $invoice,
             );
+
+            $hasDocument = false;
+
+            if ($invoice instanceof Invoice && ! $isIncome)
+            {
+                $documentPresenceByInvoice[$invoice->id] ??= $manualInvoiceDocumentService->storedRelativePath($invoice) !== null;
+                $hasDocument = $documentPresenceByInvoice[$invoice->id];
+            }
 
             return [
                 'id' => (int) $item->id,
+                'has_document' => $hasDocument,
                 'date' => filled($invoice?->date)
                     ? Carbon::parse($invoice->date)->format('Y-m-d')
                     : null,
@@ -370,38 +384,32 @@ class ExpenseController extends Controller
         string $fromCurrency,
         string $reportingCurrency,
         mixed $invoiceDate,
+        ?Invoice $invoice = null,
     ): ?float {
-        $fromCurrency = strtoupper(trim($fromCurrency));
-        $reportingCurrency = strtoupper(trim($reportingCurrency));
-
-        if ($fromCurrency === $reportingCurrency)
-        {
-            return round($amount, 2);
-        }
-
-        if (blank($invoiceDate))
-        {
-            return ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
-        }
-
-        $conversionDate = Carbon::parse($invoiceDate)->endOfMonth();
-        $converted = ExchangeRate::convertOnOrBeforeDate($amount, $fromCurrency, $reportingCurrency, $conversionDate);
-
-        if ($converted !== null)
-        {
-            return $converted;
-        }
-
-        return ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
+        return InvoiceSettlementConverter::convert(
+            $amount,
+            $fromCurrency,
+            $reportingCurrency,
+            $invoiceDate,
+            $invoice,
+        );
     }
 
     public function form(): JsonResponse
     {
         $this->authorize('create', Payment::class);
 
+        return response()->json($this->formPayload());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formPayload(): array
+    {
         $data = $this->creationFormData();
 
-        return response()->json([
+        return [
             'success' => true,
             'can_create_supplier' => auth()->user()->can('create', Enterprise::class),
             'document_types' => collect($data['documentTypes'])->map(function (string $label, string $key) use ($data): array
@@ -454,7 +462,7 @@ class ExpenseController extends Controller
                 ];
             })->values(),
             'categories' => $data['expenseCategoryOptions'],
-        ]);
+        ];
     }
 
     /**
@@ -729,5 +737,129 @@ class ExpenseController extends Controller
         }
 
         return redirect()->route('expense.index')->with('success', $message);
+    }
+
+    public function show(
+        Request $request,
+        Invoice $invoice,
+        ManualInvoiceDocumentService $manualInvoiceDocumentService,
+    ): JsonResponse {
+        $this->resolveBuyInvoiceForCurrentTeam($request, $invoice);
+        $this->authorize('view', $invoice);
+
+        $invoice->load([
+            'items' => fn ($query) => $query->orderBy('id'),
+            'payments' => fn ($query) => $query->withoutGlobalScopes()->orderBy('id'),
+        ]);
+
+        $metadata = $manualInvoiceDocumentService->storedMetadata($invoice);
+        $storedDocument = $manualInvoiceDocumentService->storedRelativePath($invoice);
+        $storedLines = $metadata['lines'];
+        $useStoredLines = count($storedLines) === $invoice->items->count();
+
+        $lines = $invoice->items->values()->map(function (InvoiceItem $item, int $index) use ($useStoredLines, $storedLines): array
+        {
+            $storedLine = $useStoredLines ? $storedLines[$index] : null;
+
+            return [
+                'concept' => (string) $item->description,
+                'category_id' => $item->category_id ? (int) $item->category_id : null,
+                'base_amount' => $storedLine['base_amount'] ?? round((float) $item->unit_price, 2),
+                'vat_percent' => $storedLine['vat_percent'] ?? round((float) $item->tax_percentage, 2),
+                'retention_percent' => $storedLine['retention_percent'] ?? 0.0,
+                'allocation_percent' => $storedLine['allocation_percent'] ?? 100.0,
+            ];
+        })->all();
+
+        $payments = $invoice->payments->map(function (Payment $payment): array
+        {
+            return [
+                'id' => (int) $payment->id,
+                'payment_date' => $payment->date?->format('Y-m-d'),
+                'amount' => round((float) $payment->amount, 2),
+                'document_amount' => $payment->document_amount !== null
+                    ? round((float) $payment->document_amount, 2)
+                    : null,
+                'exchange_rate' => $payment->exchange_rate !== null
+                    ? (float) $payment->exchange_rate
+                    : null,
+                'type_id' => $payment->type_id ? (int) $payment->type_id : null,
+                'account_id' => $payment->account_id ? (int) $payment->account_id : null,
+                'status' => (int) $payment->status,
+            ];
+        })->values()->all();
+
+        return response()->json(array_merge($this->formPayload(), [
+            'expense' => [
+                'id' => (int) $invoice->id,
+                'enterprise_id' => $invoice->enterprise_id ? (int) $invoice->enterprise_id : null,
+                'document_number' => $invoice->number,
+                'date' => filled($invoice->date) ? Carbon::parse($invoice->date)->format('Y-m-d') : null,
+                'due_date' => filled($invoice->due_date) ? Carbon::parse($invoice->due_date)->format('Y-m-d') : null,
+                'currency_id' => $invoice->currency_id ? (int) $invoice->currency_id : null,
+                'document_type' => $metadata['document_type'],
+                'remarks' => null,
+                'tags' => $metadata['tags'],
+                'cash_criteria' => $metadata['cash_criteria'],
+                'is_investment' => $metadata['is_investment'],
+                'total_amount' => round((float) $invoice->total_amount, 2),
+                'balance' => round((float) $invoice->balance, 2),
+                'lines' => $lines,
+                'payments' => $payments,
+                'has_document' => $storedDocument !== null,
+                'document_name' => $storedDocument !== null ? basename($storedDocument) : null,
+            ],
+        ]));
+    }
+
+    public function update(
+        StoreExpenseRequest $request,
+        Invoice $invoice,
+        ManualInvoiceDocumentService $manualInvoiceDocumentService,
+    ): JsonResponse {
+        $this->resolveBuyInvoiceForCurrentTeam($request, $invoice);
+        $this->authorize('create', Payment::class);
+
+        $validated = $request->validated();
+        $result = $manualInvoiceDocumentService->update(
+            $invoice,
+            $validated,
+            $request->file('document_file'),
+            isset($validated['pending_document_token'])
+                ? (string) $validated['pending_document_token']
+                : null,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Gasto actualizado correctamente.',
+            'invoice_id' => $result['invoice']->id,
+        ]);
+    }
+
+    public function downloadDocument(
+        Request $request,
+        Invoice $invoice,
+        ManualInvoiceDocumentService $manualInvoiceDocumentService,
+    ): StreamedResponse {
+        $this->resolveBuyInvoiceForCurrentTeam($request, $invoice);
+        $this->authorize('view', $invoice);
+
+        return $manualInvoiceDocumentService->documentResponse(
+            $invoice,
+            inline: ! $request->boolean('download'),
+        );
+    }
+
+    private function resolveBuyInvoiceForCurrentTeam(Request $request, Invoice $invoice): void
+    {
+        $teamId = (int) ($request->user()?->currentTeam?->id ?? 0);
+
+        abort_unless(
+            $teamId > 0
+                && (int) $invoice->team_id === $teamId
+                && (string) $invoice->operation === 'buy',
+            404,
+        );
     }
 }

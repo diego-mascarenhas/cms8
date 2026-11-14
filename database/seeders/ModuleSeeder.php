@@ -505,6 +505,13 @@ class ModuleSeeder extends Seeder
             'group' => 'operations',
             'order' => 8,
         ],
+        'meetings' => [
+            'name' => 'Meetings',
+            'icon' => 'microphone',
+            'description' => 'Meeting transcripts and recordings',
+            'group' => 'operations',
+            'order' => 9,
+        ],
     ];
 
     protected $teamModules = [

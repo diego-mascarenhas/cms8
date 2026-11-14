@@ -119,6 +119,11 @@ class TeamMeetingController extends Controller
             abort(401, 'Token not provided');
         }
 
+        if (! $team->hasModule('meetings'))
+        {
+            abort(403, 'Meetings module is disabled.');
+        }
+
         return $team;
     }
 

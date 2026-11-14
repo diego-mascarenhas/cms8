@@ -86,7 +86,8 @@
       "url": "meeting",
       "name": "Reuniones",
       "icon": "menu-icon tf-icons ti ti-microphone",
-      "slug": "meeting.index"
+      "slug": "meeting.index",
+      "module_key": "meetings"
     },
     {
       "menuHeader": "E-commerce"

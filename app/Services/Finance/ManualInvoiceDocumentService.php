@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ManualInvoiceDocumentService
 {
@@ -149,6 +150,251 @@ class ManualInvoiceDocumentService
         return [
             'is_draft' => $isDraft,
             'invoice' => $invoice,
+        ];
+    }
+
+    /**
+     * Update a manual buy/sell invoice from validated expense form data.
+     *
+     * Payments are synced by id: existing ids are updated, rows without a known id are
+     * created and payments missing from the payload are deleted.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array{invoice: Invoice}
+     */
+    public function update(
+        Invoice $invoice,
+        array $validated,
+        ?UploadedFile $documentFile = null,
+        ?string $pendingDocumentToken = null,
+    ): array {
+        $teamId = (int) $invoice->team_id;
+        $operation = (string) $invoice->operation === 'sell' ? 'sell' : 'buy';
+        $lineSummaries = $this->buildLineSummaries($validated['lines']);
+        $invoiceTotal = round(max((float) collect($lineSummaries)->sum('allocated_total'), 0.01), 2);
+        $paymentEntries = $this->resolvePaymentEntries($validated['payments'] ?? []);
+        $currencyCode = $this->resolveCurrencyCode($validated);
+        $currencyId = $this->resolveCurrencyId($validated);
+        $paymentsTotal = round((float) collect($paymentEntries)->sum(
+            fn (array $paymentEntry): float => $this->paymentAppliedToInvoice($paymentEntry, $currencyId),
+        ), 2);
+        $invoiceBalance = round(max($invoiceTotal - $paymentsTotal, 0), 2);
+        $isCreditNote = ($validated['document_type'] ?? '') === 'credit_note';
+        $wasCreditNote = (int) $invoice->type_id === 2;
+        $categoryId = isset($validated['expense_category_id'])
+            ? (int) $validated['expense_category_id']
+            : null;
+        $categoryName = $this->resolveExpenseCategoryName($validated);
+        $isDraft = ($validated['submit_action'] ?? 'save') === 'draft';
+
+        DB::transaction(function () use (
+            $invoice,
+            $validated,
+            $teamId,
+            $operation,
+            $lineSummaries,
+            $invoiceTotal,
+            $invoiceBalance,
+            $paymentEntries,
+            $currencyId,
+            $currencyCode,
+            $isCreditNote,
+            $wasCreditNote,
+            $categoryId,
+            $categoryName,
+            $isDraft,
+            $documentFile,
+            $pendingDocumentToken,
+        ): void {
+            $storedDocumentPath = null;
+
+            if ($documentFile instanceof UploadedFile)
+            {
+                $storedDocumentPath = $this->attachDocument($invoice, $documentFile);
+
+                if (is_string($pendingDocumentToken) && $pendingDocumentToken !== '')
+                {
+                    $this->deletePendingDocument($teamId, $pendingDocumentToken);
+                }
+            } else
+            {
+                $adoptedPath = $this->adoptPendingDocument(
+                    $teamId,
+                    (int) $invoice->id,
+                    $operation,
+                    $pendingDocumentToken,
+                );
+
+                if (is_string($adoptedPath) && $adoptedPath !== '')
+                {
+                    $this->deleteSiblingDocuments($adoptedPath);
+                    $storedDocumentPath = $adoptedPath;
+                }
+            }
+
+            $storedDocumentPath ??= $this->storedRelativePath($invoice);
+
+            $attributes = [
+                'enterprise_id' => (int) $validated['enterprise_id'],
+                'number' => filled($validated['document_number'] ?? null)
+                    ? trim((string) $validated['document_number'])
+                    : $invoice->number,
+                'date' => $validated['date'],
+                'due_date' => $validated['due_date'] ?? collect($paymentEntries)->pluck('payment_date')->filter()->last() ?? $validated['date'],
+                'gross_amount' => $invoiceTotal,
+                'total_amount' => $invoiceTotal,
+                'balance' => $invoiceBalance,
+                'currency_id' => $currencyId,
+            ];
+
+            if ($isCreditNote)
+            {
+                $attributes['type_id'] = 2;
+                $attributes['status'] = 4;
+            } elseif ($wasCreditNote)
+            {
+                $attributes['type_id'] = $this->resolveInvoiceTypeId();
+                $attributes['status'] = 2;
+            }
+
+            $invoice->update($attributes);
+
+            InvoiceItem::query()->where('invoice_id', $invoice->id)->delete();
+            $this->createInvoiceItems($invoice, $lineSummaries, $categoryId);
+
+            $existingPayments = Payment::withoutGlobalScopes()
+                ->where('invoice_id', $invoice->id)
+                ->get()
+                ->keyBy('id');
+            $keptPaymentIds = [];
+
+            foreach ($paymentEntries as $paymentEntry)
+            {
+                $appliedAmount = $this->paymentAppliedToInvoice($paymentEntry, $currencyId);
+                $attributes = [
+                    'enterprise_id' => (int) $validated['enterprise_id'],
+                    'date' => $paymentEntry['payment_date'],
+                    'account_id' => (int) $paymentEntry['account_id'],
+                    'type_id' => (int) $paymentEntry['type_id'],
+                    'amount' => (float) $paymentEntry['amount'],
+                    'document_amount' => $paymentEntry['document_amount'] ?? null,
+                    'exchange_rate' => $paymentEntry['exchange_rate'] ?? null,
+                    'remarks' => $this->buildRemarks(
+                        $validated,
+                        $appliedAmount,
+                        $currencyCode,
+                        $lineSummaries,
+                        $categoryName,
+                        $storedDocumentPath,
+                        $paymentEntries,
+                        $operation,
+                    ),
+                    'status' => $isDraft ? 1 : (int) $paymentEntry['status'],
+                ];
+
+                $paymentId = filled($paymentEntry['id'] ?? null) ? (int) $paymentEntry['id'] : null;
+                $existingPayment = $paymentId !== null ? $existingPayments->get($paymentId) : null;
+
+                if ($existingPayment instanceof Payment)
+                {
+                    $existingPayment->update($attributes);
+                    $keptPaymentIds[] = (int) $existingPayment->id;
+
+                    continue;
+                }
+
+                Payment::query()->create(array_merge($attributes, [
+                    'team_id' => $teamId,
+                    'transaction_type' => $operation === 'sell'
+                        ? TransactionType::INCOME
+                        : TransactionType::EXPENSE,
+                    'invoice_id' => $invoice->id,
+                    'source_provider' => 'manual',
+                ]));
+            }
+
+            $removedPaymentIds = $existingPayments->keys()
+                ->map(fn ($id): int => (int) $id)
+                ->diff($keptPaymentIds)
+                ->values()
+                ->all();
+
+            if ($removedPaymentIds !== [])
+            {
+                Payment::withoutGlobalScopes()->whereIn('id', $removedPaymentIds)->delete();
+            }
+        });
+
+        return ['invoice' => $invoice->refresh()];
+    }
+
+    /**
+     * Download (or display inline) the stored supplier document of an invoice.
+     */
+    public function documentResponse(Invoice $invoice, bool $inline = false): StreamedResponse
+    {
+        $path = $this->storedRelativePath($invoice);
+
+        if (! is_string($path) || $path === '')
+        {
+            abort(404);
+        }
+
+        if ($inline)
+        {
+            return Storage::disk('public')->response($path);
+        }
+
+        return Storage::disk('public')->download($path, basename($path));
+    }
+
+    /**
+     * Metadata that is not stored in dedicated columns but can be recovered from payment remarks.
+     *
+     * @return array{document_type: string, tags: ?string, cash_criteria: bool, is_investment: bool, lines: array<int, array{base_amount: float, vat_percent: float, retention_percent: float, allocation_percent: float}>}
+     */
+    public function storedMetadata(Invoice $invoice): array
+    {
+        $remarks = (string) Payment::withoutGlobalScopes()
+            ->where('invoice_id', $invoice->id)
+            ->whereNotNull('remarks')
+            ->orderBy('id')
+            ->value('remarks');
+
+        $documentType = $invoice->isCreditNote() ? 'credit_note' : 'invoice';
+
+        if (preg_match('/Tipo de documento: ([a-z_]+)/', $remarks, $matches) === 1
+            && in_array($matches[1], ['invoice', 'credit_note', 'receipt', 'tax'], true))
+        {
+            $documentType = $matches[1];
+        }
+
+        $tags = preg_match('/Etiquetas: ([^|]+)/u', $remarks, $matches) === 1
+            ? trim($matches[1])
+            : null;
+
+        $lines = [];
+        $linePattern = '/Línea \d+: .*? \| Base: (-?[\d.]+) \| IVA: (-?[\d.]+)% \| Retención: (-?[\d.]+)% \| Imputa: (-?[\d.]+)%/u';
+
+        if (preg_match_all($linePattern, $remarks, $matches, PREG_SET_ORDER) > 0)
+        {
+            foreach ($matches as $match)
+            {
+                $lines[] = [
+                    'base_amount' => (float) $match[1],
+                    'vat_percent' => (float) $match[2],
+                    'retention_percent' => (float) $match[3],
+                    'allocation_percent' => (float) $match[4],
+                ];
+            }
+        }
+
+        return [
+            'document_type' => $documentType,
+            'tags' => $tags !== '' ? $tags : null,
+            'cash_criteria' => str_contains($remarks, 'Criterio de caja: sí'),
+            'is_investment' => str_contains($remarks, 'Inversión: sí'),
+            'lines' => $lines,
         ];
     }
 
