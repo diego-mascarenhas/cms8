@@ -37,6 +37,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
@@ -63,7 +64,13 @@ class DashboardController extends Controller
 
         if ($scope === 'crm')
         {
-            return response()->json($this->crmDashboardPayload($user, $team, $today));
+            $cacheKey = sprintf('api.dashboard.crm.%d.%d', $team->id, $user->id);
+
+            return response()->json(Cache::remember(
+                $cacheKey,
+                now()->addSeconds(90),
+                fn (): array => $this->crmDashboardPayload($user, $team, $today),
+            ));
         }
 
         return response()->json($this->fullDashboardPayload($user, $team, $today));
