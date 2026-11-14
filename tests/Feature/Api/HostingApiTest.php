@@ -103,6 +103,57 @@ class HostingApiTest extends TestCase
             ->assertJsonPath('data.data.0.administrator.name', 'Ana Responsable');
     }
 
+    public function test_admin_can_link_and_unlink_a_hosting_client(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::query()->create([
+            'name' => 'Odin',
+            'server_url' => 'odin.test',
+            'username' => 'revision',
+            'control_panel' => 'cpanel',
+            'success' => true,
+            'status_id' => ServerStatus::Active,
+            'team_id' => $team->id,
+        ]);
+        $enterprise = $this->enterprise($team);
+        $domain = Domain::query()->create([
+            'domain' => 'sincliente.test',
+            'server_id' => $server->id,
+            'username' => 'sincliente',
+            'plan' => 'revision_enthusiast',
+            'suspended' => false,
+        ]);
+        $gateway = new class extends StripeHostingPlanGateway
+        {
+            public function catalog(Team $team): array
+            {
+                return [];
+            }
+        };
+        $this->app->instance(StripeHostingPlanGateway::class, $gateway);
+
+        $token = $user->createToken('hosting')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/hosting/'.$domain->id.'/client', ['enterprise_id' => $enterprise->id])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.enterprise.id', $enterprise->id)
+            ->assertJsonPath('data.enterprise.name', $enterprise->name);
+
+        $domain->refresh();
+        $this->assertNotNull($domain->service_id);
+        $this->assertSame($enterprise->id, Service::withoutGlobalScopes()->find($domain->service_id)?->enterprise_id);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/hosting/'.$domain->id.'/client', ['enterprise_id' => null])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.enterprise', null);
+
+        $this->assertNull($domain->fresh()->service_id);
+    }
+
     public function test_admin_provisions_a_flex_account_and_mailbox(): void
     {
         [$user, $team] = $this->adminTeam();

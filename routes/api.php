@@ -903,6 +903,7 @@ Route::middleware('auth.api')->group(function ()
     Route::post('hosting/{domain}/password', [\App\Http\Controllers\Api\HostingController::class, 'updatePassword'])->whereNumber('domain');
     Route::post('hosting/{domain}/session', [\App\Http\Controllers\Api\HostingController::class, 'createSession'])->whereNumber('domain');
     Route::post('hosting/{domain}/plan', [\App\Http\Controllers\Api\HostingController::class, 'updatePlan'])->whereNumber('domain');
+    Route::patch('hosting/{domain}/client', [\App\Http\Controllers\Api\HostingController::class, 'updateClient'])->whereNumber('domain');
     Route::post('hosting/{domain}/email-password', [\App\Http\Controllers\Api\HostingController::class, 'updateEmailPassword'])->whereNumber('domain');
     Route::post('hosting/{domain}/emails', [\App\Http\Controllers\Api\HostingController::class, 'storeEmail'])->whereNumber('domain');
     Route::post('hosting/{domain}/spf', [\App\Http\Controllers\Api\HostingController::class, 'ensureSpf'])->whereNumber('domain');

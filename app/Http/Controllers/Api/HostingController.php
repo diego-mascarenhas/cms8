@@ -8,6 +8,7 @@ use App\Http\Requests\ChangeHostingPlanRequest;
 use App\Http\Requests\CreateHostingSessionRequest;
 use App\Http\Requests\StoreApiHostingRequest;
 use App\Http\Requests\StoreHostingEmailRequest;
+use App\Http\Requests\UpdateHostingClientRequest;
 use App\Http\Requests\UpdateHostingEmailPasswordRequest;
 use App\Http\Requests\UpdateHostingEmailQuotaRequest;
 use App\Http\Requests\UpdateHostingPasswordRequest;
@@ -21,6 +22,7 @@ use App\Services\Hosting\DomainMailboxPasswordService;
 use App\Services\Hosting\DomainMailboxQuotaService;
 use App\Services\Hosting\DomainRuntimeDetector;
 use App\Services\Hosting\FlexHostingProvisioner;
+use App\Services\Hosting\HostingClientLinker;
 use App\Services\Hosting\HostingFailureNotice;
 use App\Services\Hosting\HostingPlanCatalog;
 use App\Services\Hosting\HostingSubscriptionSync;
@@ -86,6 +88,23 @@ class HostingController extends Controller
 
         return response()->json([
             'success' => true,
+            'data' => $this->account($domain, $plans),
+        ]);
+    }
+
+    public function updateClient(UpdateHostingClientRequest $request, Domain $domain, HostingClientLinker $linker, HostingPlanCatalog $plans): JsonResponse
+    {
+        $domain = $this->teamDomain($request, $domain);
+        $enterpriseId = $request->validated('enterprise_id');
+        $domain = $linker->link(
+            $request->user(),
+            $domain,
+            $enterpriseId !== null ? (int) $enterpriseId : null,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => $enterpriseId !== null ? 'Cliente vinculado.' : 'Cliente desvinculado.',
             'data' => $this->account($domain, $plans),
         ]);
     }
