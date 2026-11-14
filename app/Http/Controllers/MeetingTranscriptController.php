@@ -27,16 +27,22 @@ class MeetingTranscriptController extends Controller
 {
     public function index(MeetingTranscriptDataTable $dataTable)
     {
+        $this->ensureMeetingsModule();
+
         return $dataTable->render('meeting.index');
     }
 
     public function create(): View
     {
+        $this->ensureMeetingsModule();
+
         return view('meeting.create');
     }
 
     public function store(StoreMeetingTranscriptRequest $request, MeetingCalendarSync $calendar): RedirectResponse
     {
+        $this->ensureMeetingsModule();
+
         $team = $request->user()?->currentTeam;
         $audio = $request->file('audio');
         $path = $audio->store('meetings/'.$team->id, 'local');
@@ -62,6 +68,8 @@ class MeetingTranscriptController extends Controller
 
     public function show(MeetingTranscript $meeting): View
     {
+        $this->ensureMeetingsModule();
+
         return view('meeting.show', [
             'meeting' => $meeting,
             'contacts' => $this->contactsFor($meeting),
@@ -70,11 +78,15 @@ class MeetingTranscriptController extends Controller
 
     public function edit(MeetingTranscript $meeting): View
     {
+        $this->ensureMeetingsModule();
+
         return view('meeting.edit', ['meeting' => $meeting]);
     }
 
     public function update(UpdateMeetingTranscriptRequest $request, MeetingTranscript $meeting, MeetingCalendarSync $calendar): RedirectResponse
     {
+        $this->ensureMeetingsModule();
+
         $meeting->forceFill([
             'title' => $request->string('title')->toString(),
         ])->save();
@@ -87,6 +99,8 @@ class MeetingTranscriptController extends Controller
 
     public function summary(MeetingTranscript $meeting): View
     {
+        $this->ensureMeetingsModule();
+
         $token = $meeting->publicToken();
 
         return view('meeting.summary', [
@@ -109,6 +123,8 @@ class MeetingTranscriptController extends Controller
 
     public function contacts(Request $request): JsonResponse
     {
+        $this->ensureMeetingsModule();
+
         $term = trim((string) $request->query('q', ''));
         if (mb_strlen($term) < 2)
         {
@@ -137,6 +153,8 @@ class MeetingTranscriptController extends Controller
 
     public function linkSpeaker(LinkMeetingSpeakerRequest $request, MeetingTranscript $meeting, MeetingTranscriptService $transcripts): RedirectResponse
     {
+        $this->ensureMeetingsModule();
+
         $speaker = $request->string('speaker')->toString();
         $contactId = $request->filled('contact_id') ? (int) $request->input('contact_id') : null;
         $linked = $transcripts->linkSpeaker($meeting, $speaker, $contactId);
@@ -159,6 +177,8 @@ class MeetingTranscriptController extends Controller
 
     public function summarize(MeetingTranscript $meeting, MeetingSummaryService $summaries): RedirectResponse
     {
+        $this->ensureMeetingsModule();
+
         try
         {
             $summaries->summarize($meeting);
@@ -176,6 +196,8 @@ class MeetingTranscriptController extends Controller
 
     public function destroy(MeetingTranscript $meeting, MeetingCalendarSync $calendar): RedirectResponse
     {
+        $this->ensureMeetingsModule();
+
         if ($meeting->audio_path !== '')
         {
             Storage::disk('local')->delete($meeting->audio_path);
@@ -187,6 +209,14 @@ class MeetingTranscriptController extends Controller
         return redirect()
             ->route('meeting.index')
             ->with('status', 'La reunión se eliminó.');
+    }
+
+    private function ensureMeetingsModule(): void
+    {
+        if (! auth()->user()?->currentTeam?->hasModule('meetings'))
+        {
+            abort(403);
+        }
     }
 
     /**

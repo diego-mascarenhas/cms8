@@ -23,6 +23,7 @@ class ExpenseDuplicateDocumentService
         int $enterpriseId,
         ?string $documentNumber,
         string $operation = 'buy',
+        ?int $ignoreInvoiceId = null,
     ): ?Invoice {
         $normalizedNumber = $this->normalizeDocumentNumber($documentNumber);
 
@@ -36,6 +37,7 @@ class ExpenseDuplicateDocumentService
             ->where('enterprise_id', $enterpriseId)
             ->where('operation', $operation)
             ->whereRaw('LOWER(number) = ?', [mb_strtolower($normalizedNumber)])
+            ->when($ignoreInvoiceId !== null, fn ($query) => $query->whereKeyNot($ignoreInvoiceId))
             ->first();
     }
 
@@ -44,7 +46,8 @@ class ExpenseDuplicateDocumentService
         int $enterpriseId,
         ?string $documentNumber,
         string $operation = 'buy',
+        ?int $ignoreInvoiceId = null,
     ): bool {
-        return $this->findDuplicate($teamId, $enterpriseId, $documentNumber, $operation) instanceof Invoice;
+        return $this->findDuplicate($teamId, $enterpriseId, $documentNumber, $operation, $ignoreInvoiceId) instanceof Invoice;
     }
 }

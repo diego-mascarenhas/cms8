@@ -334,7 +334,15 @@
       <div class="card-body">
         <h6 class="mb-2">{{ __('Supplier document') }}</h6>
         @if ($savedSupplierDocumentName !== '')
-        <p class="small text-muted mb-2">{{ $savedSupplierDocumentName }}</p>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+          <span class="small text-muted">{{ $savedSupplierDocumentName }}</span>
+          <a href="{{ route('invoice.document.download', ['invoice' => $invoice->id, 'inline' => 1]) }}" target="_blank" rel="noopener" class="small">
+            <i class="ti ti-external-link ti-xs me-1"></i>{{ __('Open') }}
+          </a>
+          <a href="{{ route('invoice.document.download', $invoice->id) }}" class="small">
+            <i class="ti ti-download ti-xs me-1"></i>{{ __('Download') }}
+          </a>
+        </div>
         @else
         <p class="small text-muted mb-2">{{ __('Upload the supplier file so it can be downloaded from the accountant link.') }}</p>
         @endif

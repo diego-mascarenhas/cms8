@@ -44,6 +44,7 @@ use App\Http\Controllers\Api\PaidAdAudienceController as ApiPaidAdAudienceContro
 use App\Http\Controllers\Api\PaidAdCampaignController as ApiPaidAdCampaignController;
 use App\Http\Controllers\Api\PaidAdCreativeAssetController as ApiPaidAdCreativeAssetController;
 use App\Http\Controllers\Api\PaidAdDashboardController as ApiPaidAdDashboardController;
+use App\Http\Controllers\Api\PaymentAccountStatementController;
 use App\Http\Controllers\Api\PaymentController as ApiPaymentController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectFunnelController;
@@ -966,6 +967,10 @@ Route::middleware('auth.api')->group(function ()
     Route::post('expenses/suppliers', [ExpenseController::class, 'createSupplier'])->name('api.expenses.suppliers');
     Route::get('expenses/suggested-categories', [ExpenseController::class, 'suggestedCategories'])->name('api.expenses.suggested-categories');
     Route::post('expenses', [ExpenseController::class, 'store'])->name('api.expenses.store');
+    Route::get('expenses/{invoice}', [ExpenseController::class, 'show'])->whereNumber('invoice')->name('api.expenses.show');
+    Route::post('expenses/{invoice}', [ExpenseController::class, 'update'])->whereNumber('invoice')->name('api.expenses.update');
+    Route::put('expenses/{invoice}', [ExpenseController::class, 'update'])->whereNumber('invoice');
+    Route::get('expenses/{invoice}/document', [ExpenseController::class, 'downloadDocument'])->whereNumber('invoice')->name('api.expenses.document');
     Route::patch('invoice-items/{invoiceItem}/category', [InvoiceItemCategoryController::class, 'update'])
         ->name('api.invoice-items.category.update');
 
@@ -974,6 +979,11 @@ Route::middleware('auth.api')->group(function ()
     Route::get('finance/dashboard-snapshot', [FinanceAnalyticsController::class, 'dashboardSnapshot'])->name('api.finance.dashboard-snapshot');
     Route::post('finance/cfo-brief', [FinanceAnalyticsController::class, 'storeCfoBrief'])->name('api.finance.cfo-brief');
     Route::get('finance/cfo-status', [FinanceAnalyticsController::class, 'cfoStatus'])->name('api.finance.cfo-status');
+
+    Route::get('payment-accounts', [PaymentAccountStatementController::class, 'index'])
+        ->name('api.payment-accounts.index');
+    Route::post('payment-accounts/{paymentAccount}/statements', [PaymentAccountStatementController::class, 'store'])
+        ->name('api.payment-accounts.statements.store');
 
     // Invoices - for user-based authentication (Sanctum tokens)
     Route::get('invoices', [InvoiceController::class, 'index']);

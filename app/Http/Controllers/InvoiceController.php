@@ -55,6 +55,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use InvalidArgumentException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class InvoiceController extends Controller
 {
@@ -630,6 +631,19 @@ class InvoiceController extends Controller
         return redirect()
             ->route('invoice.show', $invoice)
             ->with('success', __('The supplier document was saved.'));
+    }
+
+    public function downloadDocument(
+        Request $request,
+        Invoice $invoice,
+        ManualInvoiceDocumentService $manualInvoiceDocumentService,
+    ): StreamedResponse {
+        $this->authorize('view', $invoice);
+
+        return $manualInvoiceDocumentService->documentResponse(
+            $invoice,
+            inline: $request->boolean('inline'),
+        );
     }
 
     public function discardDraft(Invoice $invoice): RedirectResponse

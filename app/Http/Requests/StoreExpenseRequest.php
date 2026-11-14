@@ -53,6 +53,7 @@ class StoreExpenseRequest extends FormRequest
             'cash_criteria' => ['sometimes', 'boolean'],
             'is_investment' => ['sometimes', 'boolean'],
             'payments' => ['nullable', 'array'],
+            'payments.*.id' => ['nullable', 'integer'],
             'payments.*.payment_date' => ['required', 'date'],
             'payments.*.amount' => ['nullable', 'numeric', 'min:0.01'],
             'payments.*.document_amount' => ['nullable', 'numeric', 'min:0.01'],
@@ -160,6 +161,7 @@ class StoreExpenseRequest extends FormRequest
             }
 
             $normalizedPayments[] = [
+                'id' => filled($payment['id'] ?? null) ? (int) $payment['id'] : null,
                 'payment_date' => $payment['payment_date'] ?? null,
                 'amount' => Helpers::parseDecimalInput($payment['amount']) ?? $payment['amount'],
                 'document_amount' => array_key_exists('document_amount', $payment) && filled($payment['document_amount'] ?? null)
@@ -380,6 +382,7 @@ class StoreExpenseRequest extends FormRequest
                         $enterpriseId,
                         (string) $documentNumber,
                         $this->isSellFlow() ? 'sell' : 'buy',
+                        $this->editedInvoiceId(),
                     );
 
                 if ($duplicateInvoice instanceof Invoice)
@@ -471,6 +474,21 @@ class StoreExpenseRequest extends FormRequest
         }
 
         return round(max($total, 0), 2);
+    }
+
+    /**
+     * Invoice being edited when the request targets an `{invoice}` route; null when creating.
+     */
+    private function editedInvoiceId(): ?int
+    {
+        $routeInvoice = $this->route('invoice');
+
+        if ($routeInvoice instanceof Invoice)
+        {
+            return (int) $routeInvoice->id;
+        }
+
+        return is_numeric($routeInvoice) ? (int) $routeInvoice : null;
     }
 
     private function isSellFlow(): bool
