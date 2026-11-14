@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ExpenseDataTable;
+use App\Enums\TransactionType;
 use App\Http\Requests\CheckExpenseDocumentDuplicateRequest;
 use App\Http\Requests\DetectExpenseDocumentRequest;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Http\Requests\StoreExpenseSupplierRequest;
 use App\Http\Requests\SuggestExpenseCategoriesRequest;
+use App\Models\Category;
 use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Enterprise;
@@ -257,6 +259,13 @@ class ExpenseController extends Controller
             ->where('invoices.team_id', $teamId)
             ->whereNull('invoices.deleted_at')
             ->whereIn('invoices.operation', ['buy', 'sell'])
+            ->whereNotIn('invoices.status', [4, 6])
+            ->where('invoices.type_id', '!=', 2)
+            ->where(function ($builder): void
+            {
+                $builder->whereNull('invoices.source_reference_id')
+                    ->orWhere('invoices.source_reference_id', 'not like', 'cn_%');
+            })
             ->whereDate('invoices.date', '>=', $rangeFrom)
             ->whereDate('invoices.date', '<=', $rangeTo)
             ->with([
@@ -437,6 +446,10 @@ class ExpenseController extends Controller
             })->values(),
             'default_payment_type_id' => $data['defaultPaymentTypeId'],
             'default_payment_account_id' => $data['defaultPaymentAccountId'],
+            'default_payment_account_source' => $data['defaultPaymentAccountSource'],
+            'default_category_id' => $data['defaultCategoryId'],
+            'default_category_name' => $data['defaultCategoryName'],
+            'default_category_source' => $data['defaultCategorySource'],
             'currencies' => $data['currencies']->map(function (Currency $currency): array
             {
                 return [
@@ -500,18 +513,31 @@ class ExpenseController extends Controller
 
         $preferredTypeId = $paymentTypes->firstWhere('id', 2)?->id
             ?? $paymentTypes->first()?->id;
-        [$defaultPaymentAccountId, $defaultPaymentTypeId] = $this->paymentAccountCompatibilityService->resolveDefaults(
-            $paymentAccounts,
-            $paymentTypes,
-            $preferredTypeId,
-        );
-
-        $paymentAccountOptions = $this->paymentAccountCompatibilityService->mapAccountsForFrontend($paymentAccounts);
 
         $currencies = Currency::query()
             ->active()
             ->orderBy('code')
             ->get(['id', 'code', 'name', 'symbol']);
+
+        $defaultCurrencyId = $currencies->firstWhere('code', 'EUR')?->id
+            ?? $currencies->first()?->id;
+
+        $lastPaymentAccountId = Payment::query()
+            ->where('transaction_type', TransactionType::EXPENSE)
+            ->whereNotNull('account_id')
+            ->whereIn('account_id', $paymentAccounts->modelKeys())
+            ->orderByDesc('id')
+            ->value('account_id');
+
+        [$defaultPaymentAccountId, $defaultPaymentTypeId, $defaultPaymentAccountSource] = $this->paymentAccountCompatibilityService->resolveDefaults(
+            $paymentAccounts,
+            $paymentTypes,
+            $preferredTypeId ? (int) $preferredTypeId : null,
+            $lastPaymentAccountId ? (int) $lastPaymentAccountId : null,
+            $defaultCurrencyId ? (int) $defaultCurrencyId : null,
+        );
+
+        $paymentAccountOptions = $this->paymentAccountCompatibilityService->mapAccountsForFrontend($paymentAccounts);
 
         $countries = Country::query()
             ->orderBy('name')
@@ -528,6 +554,10 @@ class ExpenseController extends Controller
         ];
 
         $expenseCategoryOptions = app(ServiceCategoryOptionsService::class)->optionsForInvoiceLines($teamId);
+        [$defaultCategoryId, $defaultCategoryName, $defaultCategorySource] = $this->resolveDefaultCategory(
+            $teamId,
+            $expenseCategoryOptions,
+        );
         $documentFlow = [
             'mode' => 'buy',
             'page_title' => 'Añadir gasto',
@@ -560,6 +590,10 @@ class ExpenseController extends Controller
             'paymentTypes',
             'defaultPaymentTypeId',
             'defaultPaymentAccountId',
+            'defaultPaymentAccountSource',
+            'defaultCategoryId',
+            'defaultCategoryName',
+            'defaultCategorySource',
             'currencies',
             'countries',
             'documentTypes',
@@ -568,6 +602,78 @@ class ExpenseController extends Controller
             'expenseCategoryOptions',
             'documentFlow',
         );
+    }
+
+    /**
+     * Prefer URL/request context category, then last categorized expense line.
+     *
+     * @param  list<array{id: int|string, name: string, group?: string|null}>  $categoryOptions
+     * @return array{0: int|null, 1: string|null, 2: string}
+     */
+    private function resolveDefaultCategory(int $teamId, array $categoryOptions): array
+    {
+        $allowedIds = collect($categoryOptions)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->values()
+            ->all();
+
+        $contextCategoryId = request()->filled('category_id')
+            ? (int) request('category_id')
+            : null;
+
+        $categoryName = function (int $categoryId) use ($categoryOptions): ?string
+        {
+            $fromOptions = collect($categoryOptions)->first(
+                fn (array $option): bool => (int) $option['id'] === $categoryId,
+            );
+
+            if (is_array($fromOptions) && filled($fromOptions['name'] ?? null))
+            {
+                return (string) $fromOptions['name'];
+            }
+
+            $name = Category::query()->whereKey($categoryId)->value('name');
+
+            return filled($name) ? (string) $name : null;
+        };
+
+        if ($contextCategoryId && in_array($contextCategoryId, $allowedIds, true))
+        {
+            return [$contextCategoryId, $categoryName($contextCategoryId), 'context'];
+        }
+
+        if ($allowedIds === [])
+        {
+            return [null, null, 'none'];
+        }
+
+        $lastItem = InvoiceItem::query()
+            ->whereNotNull('category_id')
+            ->whereIn('category_id', $allowedIds)
+            ->whereHas('invoice', function ($query) use ($teamId): void
+            {
+                $query->withoutGlobalScopes()
+                    ->where('team_id', $teamId)
+                    ->where('operation', 'buy');
+            })
+            ->orderByDesc('id')
+            ->with('category:id,name')
+            ->first(['id', 'category_id']);
+
+        if ($lastItem instanceof InvoiceItem && $lastItem->category_id)
+        {
+            $categoryId = (int) $lastItem->category_id;
+
+            return [
+                $categoryId,
+                $lastItem->category?->name ?? $categoryName($categoryId),
+                'last_item',
+            ];
+        }
+
+        return [null, null, 'none'];
     }
 
     public function detectDocument(
@@ -666,10 +772,22 @@ class ExpenseController extends Controller
 
         if (! $previousInvoice instanceof Invoice)
         {
+            $fallback = $this->resolveDefaultCategory(
+                $teamId,
+                app(ServiceCategoryOptionsService::class)->optionsForInvoiceLines($teamId),
+            );
+
             return response()->json([
                 'success' => true,
                 'invoice' => null,
-                'items' => [],
+                'items' => $fallback[0]
+                    ? [[
+                        'category_id' => $fallback[0],
+                        'category_name' => $fallback[1],
+                        'description' => null,
+                        'source' => $fallback[2],
+                    ]]
+                    : [],
             ]);
         }
 
@@ -684,6 +802,7 @@ class ExpenseController extends Controller
                     'category_id' => $item->category_id ? (int) $item->category_id : null,
                     'category_name' => $item->category?->name,
                     'description' => (string) $item->description,
+                    'source' => 'invoice',
                 ];
             })
             ->values()

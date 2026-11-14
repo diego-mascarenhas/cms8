@@ -171,7 +171,7 @@ class InboxProductOnboardingServiceTest extends TestCase
         $this->assertFalse((bool) (is_object($flow) ? ($flow->active ?? true) : true));
     }
 
-    public function test_cambio_de_imagen_after_mentor_offer_hands_off_to_mix_vasallo(): void
+    public function test_cambio_de_imagen_after_mentor_offer_hands_off_to_alejandra(): void
     {
         $contact = $this->makeContact();
         $team = Team::withoutGlobalScopes()->find($contact->team_id);
@@ -185,8 +185,8 @@ class InboxProductOnboardingServiceTest extends TestCase
         $reply = $service->tryHandleInbound($team, '34600111001', 'Queremos un cambio de imagen');
 
         $this->assertNotNull($reply);
-        $this->assertStringContainsString('Mix Vasallo', $reply['message']);
-        $this->assertStringContainsString('https://mixvasallo.com', $reply['message']);
+        $this->assertStringContainsString('Alejandra', $reply['message']);
+        $this->assertStringNotContainsString('mixvasallo', mb_strtolower($reply['message']));
         $this->assertStringNotContainsString('mostrador', $reply['message']);
         $this->assertStringNotContainsString('stripe', mb_strtolower($reply['message']));
 
@@ -196,7 +196,7 @@ class InboxProductOnboardingServiceTest extends TestCase
         $this->assertSame('design', is_object($flow) ? ($flow->studio ?? null) : null);
     }
 
-    public function test_design_problem_hands_off_to_mix_vasallo_without_payment_links(): void
+    public function test_design_problem_hands_off_to_alejandra_without_payment_links(): void
     {
         $contact = $this->makeContact();
         $team = Team::withoutGlobalScopes()->find($contact->team_id);
@@ -207,8 +207,8 @@ class InboxProductOnboardingServiceTest extends TestCase
         $reply = $service->tryHandleInbound($team, '34600111001', 'Necesitamos diseño de marca y un logo nuevo');
 
         $this->assertNotNull($reply);
-        $this->assertStringContainsString('Mix Vasallo', $reply['message']);
-        $this->assertStringContainsString('https://mixvasallo.com', $reply['message']);
+        $this->assertStringContainsString('Alejandra', $reply['message']);
+        $this->assertStringNotContainsString('mixvasallo', mb_strtolower($reply['message']));
         $this->assertStringNotContainsString('assistant.idoneo.dev/register', $reply['message']);
         $this->assertStringNotContainsString('stripe', mb_strtolower($reply['message']));
 

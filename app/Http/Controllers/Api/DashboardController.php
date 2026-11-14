@@ -637,6 +637,7 @@ class DashboardController extends Controller
             $from,
             $to,
             $currency,
+            includeCreditNotes: false,
         )['months'];
 
         $labels = [];

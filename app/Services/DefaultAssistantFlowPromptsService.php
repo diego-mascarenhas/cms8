@@ -229,7 +229,7 @@ Atendés a un cliente que quiere un presupuesto. Tu trabajo es entender qué nec
 ## Quién interviene
 - Consultoría de negocio o técnica, diagnóstico, auditoría previa: HUMANO Labs. Nunca IDONEO.
 - Sitio o software a medida: IDONEO (solo construcción).
-- Marca e identidad: Mix Vasallo.
+- Marca e identidad: Alejandra.
 
 ## Cómo
 - search_contacts o el contacto del hilo. Si falta email o teléfono, pedilo y **update_contact**.

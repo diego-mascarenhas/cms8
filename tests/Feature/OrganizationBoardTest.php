@@ -20,13 +20,20 @@ class OrganizationBoardTest extends TestCase
 
     public function test_admin_on_revision_alpha_team_sees_catalog_and_affiliates(): void
     {
-        $user = $this->teamUser('admin', 'Magoo');
+        $user = $this->teamUser('admin', 'Diego');
 
         $this->actingAs($user)
             ->get(route('organization.index'))
             ->assertOk()
             ->assertSeeLivewire(OrganizationBoard::class)
             ->assertSee('ti-sitemap', false)
+            ->assertSee('Diego')
+            ->assertSee('Germán')
+            ->assertSee('Alejandra')
+            ->assertSee('Anita')
+            ->assertSee('socialnetwork.com.ar', false)
+            ->assertDontSee('Mix Vasallo')
+            ->assertDontSee('CONGA')
             ->assertSee('Leticia')
             ->assertSee('Publicidad')
             ->assertSee('Medio')

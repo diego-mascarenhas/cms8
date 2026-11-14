@@ -233,6 +233,21 @@ class Invoice extends Model
     }
 
     /**
+     * Exclude credit notes from cash-flow / category analytics (they are not inflow).
+     */
+    public function scopeWithoutCreditNotes(Builder $query): Builder
+    {
+        return $query
+            ->whereNotIn($query->qualifyColumn('status'), [4, 6])
+            ->where($query->qualifyColumn('type_id'), '!=', 2)
+            ->where(function (Builder $regular) use ($query): void
+            {
+                $regular->whereNull($query->qualifyColumn('source_reference_id'))
+                    ->orWhere($query->qualifyColumn('source_reference_id'), 'not like', 'cn_%');
+            });
+    }
+
+    /**
      * Provider-facing document number (e.g. Stripe CN number), kept on invoice_syncs.
      */
     public function providerNumber(): ?string

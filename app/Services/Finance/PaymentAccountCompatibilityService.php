@@ -78,21 +78,55 @@ class PaymentAccountCompatibilityService
     }
 
     /**
+     * Prefer last payment account, then same-currency account, then type compatibility.
+     *
      * @param  EloquentCollection<int, PaymentAccount>  $accounts
      * @param  EloquentCollection<int, PaymentType>|null  $paymentTypes
-     * @return array{0: int|null, 1: int|null}
+     * @return array{0: int|null, 1: int|null, 2: string}
      */
     public function resolveDefaults(
         EloquentCollection $accounts,
         ?EloquentCollection $paymentTypes = null,
         ?int $preferredTypeId = null,
+        ?int $preferredAccountId = null,
+        ?int $currencyId = null,
     ): array {
         if ($accounts->isEmpty())
         {
-            return [null, null];
+            return [null, null, 'none'];
         }
 
         $paymentTypes ??= PaymentType::query()->orderBy('name')->get();
+
+        if ($preferredAccountId !== null)
+        {
+            $preferredAccount = $accounts->firstWhere('id', $preferredAccountId);
+
+            if ($preferredAccount instanceof PaymentAccount)
+            {
+                return [
+                    (int) $preferredAccount->id,
+                    $this->defaultTypeForAccount($preferredAccount, $paymentTypes, $preferredTypeId),
+                    'last_payment',
+                ];
+            }
+        }
+
+        if ($currencyId !== null)
+        {
+            $currencyAccount = $accounts->first(
+                fn (PaymentAccount $account): bool => (int) $account->currency_id === (int) $currencyId,
+            );
+
+            if ($currencyAccount instanceof PaymentAccount)
+            {
+                return [
+                    (int) $currencyAccount->id,
+                    $this->defaultTypeForAccount($currencyAccount, $paymentTypes, $preferredTypeId),
+                    'currency',
+                ];
+            }
+        }
 
         foreach ($accounts as $account)
         {
@@ -100,7 +134,7 @@ class PaymentAccountCompatibilityService
 
             if ($preferredTypeId !== null && in_array($preferredTypeId, $acceptedTypeIds, true))
             {
-                return [(int) $account->id, $preferredTypeId];
+                return [(int) $account->id, $preferredTypeId, 'fallback'];
             }
         }
 
@@ -117,11 +151,41 @@ class PaymentAccountCompatibilityService
 
             if ($paymentTypes->contains('id', $firstTypeId))
             {
-                return [(int) $account->id, $firstTypeId];
+                return [(int) $account->id, $firstTypeId, 'fallback'];
             }
         }
 
-        return [(int) $accounts->first()->id, $preferredTypeId ?? (int) ($paymentTypes->first()?->id)];
+        return [
+            (int) $accounts->first()->id,
+            $preferredTypeId ?? (int) ($paymentTypes->first()?->id),
+            'fallback',
+        ];
+    }
+
+    /**
+     * @param  EloquentCollection<int, PaymentType>  $paymentTypes
+     */
+    private function defaultTypeForAccount(
+        PaymentAccount $account,
+        EloquentCollection $paymentTypes,
+        ?int $preferredTypeId,
+    ): ?int {
+        $acceptedTypeIds = $this->acceptedPaymentTypeIds($account);
+
+        if ($preferredTypeId !== null && in_array($preferredTypeId, $acceptedTypeIds, true))
+        {
+            return $preferredTypeId;
+        }
+
+        foreach ($acceptedTypeIds as $typeId)
+        {
+            if ($paymentTypes->contains('id', $typeId))
+            {
+                return (int) $typeId;
+            }
+        }
+
+        return $preferredTypeId ?? (int) ($paymentTypes->first()?->id);
     }
 
     /**

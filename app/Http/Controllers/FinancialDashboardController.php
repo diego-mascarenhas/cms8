@@ -69,6 +69,7 @@ class FinancialDashboardController extends Controller
             $bookYearFrom,
             $bookYearTo,
             $reportingCurrency,
+            includeCreditNotes: false,
         )['months'];
         $selectedMonth = Carbon::now()->month;
 

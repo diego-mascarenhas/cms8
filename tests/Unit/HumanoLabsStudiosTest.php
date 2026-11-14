@@ -16,7 +16,8 @@ class HumanoLabsStudiosTest extends TestCase
             $keys,
         );
         $this->assertStringContainsString('Diseño, Desarrollo', HumanoLabsStudios::offerLine());
-        $this->assertStringContainsString('https://mixvasallo.com', HumanoLabsStudios::promptBlock());
+        $this->assertStringContainsString('Alejandra', HumanoLabsStudios::promptBlock());
+        $this->assertStringContainsString('https://www.socialnetwork.com.ar/', HumanoLabsStudios::promptBlock());
         $this->assertStringContainsString('https://globaltraffic.com', HumanoLabsStudios::promptBlock());
     }
 
@@ -28,11 +29,11 @@ class HumanoLabsStudiosTest extends TestCase
         return [
             ['necesitamos senaletica para el local', 'signage', 'https://globaltraffic.com'],
             ['el hosting se cae y el cpanel no responde', 'hosting', 'https://revisionalpha.com'],
-            ['hace falta diseno de marca y un logo', 'design', 'https://mixvasallo.com'],
-            ['queremos un cambio de imagen', 'design', 'https://mixvasallo.com'],
-            ['es de la marca', 'design', 'https://mixvasallo.com'],
+            ['hace falta diseno de marca y un logo', 'design', ''],
+            ['queremos un cambio de imagen', 'design', ''],
+            ['es de la marca', 'design', ''],
             ['es del negocio', 'consulting', 'https://humano.app'],
-            ['queremos marketing y campanas', 'marketing', 'https://somosconga.com'],
+            ['queremos marketing y campanas', 'marketing', 'https://www.socialnetwork.com.ar/'],
             ['un sistema de innovacion tipo fanyion', 'innovation', 'https://fanyion.com'],
             ['necesitamos desarrollo de software a medida', 'development', 'https://idoneo.dev'],
             ['hay desorden y no logramos crecer', 'consulting', 'https://humano.app'],

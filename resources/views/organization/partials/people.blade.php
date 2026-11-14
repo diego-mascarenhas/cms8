@@ -20,6 +20,13 @@
                             @endforeach
                         </ul>
                         <p class="small mb-2">{{ $person['summary'] }}</p>
+                        @foreach ($person['companies'] ?? [] as $company)
+                            @if (! empty($company['url']))
+                                <p class="small mb-1">
+                                    <a href="{{ $company['url'] }}" target="_blank" rel="noopener noreferrer">{{ $company['url'] }}</a>
+                                </p>
+                            @endif
+                        @endforeach
                         @if ($person['work_starts_at'] && $person['work_ends_at'])
                             <p class="small text-muted mb-0">
                                 Ventana: {{ $person['work_starts_at'] }}–{{ $person['work_ends_at'] }}
@@ -27,6 +34,8 @@
                                     · {{ $person['weekly_hours'] }} h/semana
                                 @endif
                             </p>
+                        @elseif ($person['weekly_hours'])
+                            <p class="small text-muted mb-0">{{ $person['weekly_hours'] }} h/semana</p>
                         @endif
                     </div>
                 </div>
