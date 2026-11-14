@@ -12,6 +12,7 @@ use App\Models\Country;
 use App\Models\Domain;
 use App\Models\Enterprise;
 use App\Models\Server;
+use App\Models\Service;
 use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\User;
@@ -44,9 +45,24 @@ class HostingApiTest extends TestCase
             'status_id' => ServerStatus::Active,
             'team_id' => $team->id,
         ]);
+        $enterprise = $this->enterprise($team);
+        $service = Service::withoutGlobalScopes()->create([
+            'enterprise_id' => $enterprise->id,
+            'category_id' => null,
+            'operation' => 'sell',
+            'description' => 'Hosting Lizama',
+            'data' => [],
+            'currency_id' => null,
+            'price' => 11.99,
+            'discount' => 0,
+            'frequency' => 1,
+            'responsible_id' => $user->id,
+            'status' => 4,
+        ]);
         Domain::query()->create([
             'domain' => 'lizama.test',
             'server_id' => $server->id,
+            'service_id' => $service->id,
             'username' => 'lizama',
             'plan' => 'revision_enthusiast',
             'site_type' => 'WordPress',
@@ -66,7 +82,9 @@ class HostingApiTest extends TestCase
             ->assertJsonPath('nameservers.1', 'NS2.REVISIONALPHA.COM')
             ->assertJsonPath('data.data.0.domain', 'lizama.test')
             ->assertJsonPath('data.data.0.server', 'Odin')
-            ->assertJsonPath('data.data.0.suspended', false);
+            ->assertJsonPath('data.data.0.suspended', false)
+            ->assertJsonPath('data.data.0.enterprise.id', $enterprise->id)
+            ->assertJsonPath('data.data.0.enterprise.name', $enterprise->name);
     }
 
     public function test_admin_provisions_a_flex_account_and_mailbox(): void

@@ -75,16 +75,7 @@ class HostingController extends Controller
                 'active' => $active,
                 'suspended' => $suspended,
             ],
-            'data' => $page->through(fn (Domain $domain) => [
-                'id' => $domain->id,
-                'domain' => $domain->domain,
-                'username' => $domain->username,
-                'plan' => $domain->plan,
-                'site_type' => $domain->site_type,
-                'php_version' => $domain->php_version,
-                'suspended' => (bool) $domain->suspended,
-                'server' => $domain->server?->name,
-            ]),
+            'data' => $page->through(fn (Domain $domain) => HostingAccountPresenter::listItem($domain)),
         ]);
     }
 
@@ -548,7 +539,11 @@ class HostingController extends Controller
         $teamId = $request->user()?->currentTeam?->id;
 
         return Domain::query()
-            ->with('server:id,name')
+            ->with([
+                'server:id,name,team_id',
+                'service.enterprise',
+                'service.serviceSync',
+            ])
             ->when($teamId, function (Builder $builder) use ($teamId)
             {
                 $builder->whereHas('server', function (Builder $server) use ($teamId)
