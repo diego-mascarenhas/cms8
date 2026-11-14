@@ -3,11 +3,15 @@
 namespace App\Services\Hosting;
 
 use App\Models\Domain;
+use App\Models\Team;
 use App\Services\ControlPanel\ControlPanelManager;
 
 class HostingPlanCatalog
 {
-    public function __construct(private readonly ControlPanelManager $controlPanelManager) {}
+    public function __construct(
+        private readonly ControlPanelManager $controlPanelManager,
+        private readonly StripeHostingPlanGateway $stripe,
+    ) {}
 
     public function isFlex(?string $plan): bool
     {
@@ -26,7 +30,7 @@ class HostingPlanCatalog
             return [];
         }
 
-        $packages = $this->packages($domain);
+        $packages = $this->pricedPackages($domain);
         $used = $this->usedMb($domain);
         $current = $this->find($packages, (string) $domain->plan);
 
@@ -116,6 +120,125 @@ class HostingPlanCatalog
     }
 
     /**
+     * Active Stripe pricing packages present on the server, plus Flex and the current plan.
+     * Ordered by the cheapest matching Stripe price (Beginner → Explorer → Enthusiast…), Flex last.
+     *
+     * @return list<array{name: string, quota_mb: int|null, unlimited: bool}>
+     */
+    private function pricedPackages(Domain $domain): array
+    {
+        $available = $this->packages($domain);
+        $names = array_map(fn (array $package): string => $package['name'], $available);
+        /** @var array<string, int> $rank */
+        $rank = [];
+
+        $team = $this->teamFor($domain);
+        if ($team !== null)
+        {
+            foreach ($this->stripe->catalog($team) as $price)
+            {
+                $package = $this->packageFor($price, $names);
+                if ($package === null)
+                {
+                    continue;
+                }
+
+                $key = strtolower($package);
+                $amount = (int) ($price['unit_amount'] ?? 0);
+                if (! isset($rank[$key]) || $amount < $rank[$key])
+                {
+                    $rank[$key] = $amount;
+                }
+            }
+        }
+
+        foreach ($names as $name)
+        {
+            if ($this->isFlex($name))
+            {
+                $rank[strtolower($name)] = PHP_INT_MAX - 1;
+            }
+        }
+
+        $current = trim((string) $domain->plan);
+        if ($current !== '' && ! isset($rank[strtolower($current)]))
+        {
+            $rank[strtolower($current)] = PHP_INT_MAX;
+        }
+
+        $filtered = array_values(array_filter(
+            $available,
+            fn (array $package): bool => isset($rank[strtolower($package['name'])]),
+        ));
+
+        usort($filtered, function (array $left, array $right) use ($rank): int
+        {
+            $leftRank = $rank[strtolower($left['name'])] ?? PHP_INT_MAX;
+            $rightRank = $rank[strtolower($right['name'])] ?? PHP_INT_MAX;
+            if ($leftRank !== $rightRank)
+            {
+                return $leftRank <=> $rightRank;
+            }
+
+            return strcasecmp($left['name'], $right['name']);
+        });
+
+        return $filtered;
+    }
+
+    /**
+     * @param  array{plan: string, whm_package: string|null}  $price
+     * @param  list<string>  $packages
+     */
+    private function packageFor(array $price, array $packages): ?string
+    {
+        $explicit = trim((string) ($price['whm_package'] ?? ''));
+        if ($explicit !== '')
+        {
+            $found = array_values(array_filter(
+                $packages,
+                fn (string $package): bool => strcasecmp($package, $explicit) === 0,
+            ));
+
+            if (count($found) === 1)
+            {
+                return $found[0];
+            }
+        }
+
+        $slug = strtolower(trim($price['plan']));
+        $candidates = array_values(array_unique(array_filter([
+            $slug,
+            preg_match('/^(hosting|cloud|vps)-[a-z0-9]+$/', $slug)
+                ? 'revision_'.substr($slug, strrpos($slug, '-') + 1)
+                : null,
+        ])));
+
+        foreach ($candidates as $candidate)
+        {
+            $found = array_values(array_filter(
+                $packages,
+                fn (string $package): bool => strcasecmp($package, $candidate) === 0,
+            ));
+
+            if (count($found) === 1)
+            {
+                return $found[0];
+            }
+        }
+
+        return null;
+    }
+
+    private function teamFor(Domain $domain): ?Team
+    {
+        $domain->loadMissing('server.team');
+        $team = $domain->server?->team;
+
+        return $team instanceof Team ? $team : null;
+    }
+
+    /**
      * @param  array{quota_mb: int|null, unlimited: bool}  $package
      */
     private function rememberDiskLimit(Domain $domain, array $package): void
@@ -191,6 +314,7 @@ class HostingPlanCatalog
     {
         $domain->loadMissing('server');
         $server = $domain->server;
+        $isCpanel = $server !== null && strtolower((string) $server->control_panel) === 'cpanel';
 
         if ($server !== null && $server->hasToken() && $this->controlPanelManager->supports($server))
         {
@@ -199,7 +323,10 @@ class HostingPlanCatalog
 
             if (is_array($packages) && $packages !== [])
             {
-                return array_values(array_filter($packages, fn (mixed $package): bool => is_array($package) && filled($package['name'] ?? null)));
+                return array_values(array_filter(
+                    $packages,
+                    fn (mixed $package): bool => is_array($package) && filled($package['name'] ?? null),
+                ));
             }
 
             $names = $listed['plans'] ?? [];
@@ -210,15 +337,37 @@ class HostingPlanCatalog
                     'name' => (string) $name,
                     'quota_mb' => null,
                     'unlimited' => false,
-                ], array_filter($names, fn (mixed $name): bool => is_string($name) && $name !== ''));
+                ], array_filter(
+                    $names,
+                    fn (mixed $name): bool => is_string($name) && $name !== '',
+                ));
             }
+
+            // cPanel accounts must not fall back to a local catalog of unrelated plans.
+            if ($isCpanel)
+            {
+                $current = trim((string) $domain->plan);
+
+                return $current !== ''
+                    ? [['name' => $current, 'quota_mb' => null, 'unlimited' => false]]
+                    : [];
+            }
+        }
+
+        if ($isCpanel)
+        {
+            $current = trim((string) $domain->plan);
+
+            return $current !== ''
+                ? [['name' => $current, 'quota_mb' => null, 'unlimited' => false]]
+                : [];
         }
 
         return array_map(fn (string $name): array => [
             'name' => $name,
             'quota_mb' => null,
             'unlimited' => false,
-        ], $domain->getCachedAvailablePlans());
+        ], array_values($domain->getCachedAvailablePlans()));
     }
 
     private function usedMb(Domain $domain): ?float

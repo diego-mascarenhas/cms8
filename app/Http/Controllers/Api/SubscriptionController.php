@@ -4,11 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\UpdateSubscriptionMetadataRequest;
+use App\Http\Requests\UpdateSubscriptionServiceCategoryRequest;
 use App\Models\Contact;
 use App\Models\Domain;
 use App\Models\Enterprise;
 use App\Models\Service;
 use App\Models\ServiceSync;
+use App\Services\Billing\ServiceCategoryAssignmentService;
+use App\Services\Billing\ServiceSyncImporter;
+use App\Services\Finance\ServiceCategoryOptionsService;
+use App\Services\Hosting\HostingPlanCatalog;
 use App\Services\Hosting\HostingSubscriptionSync;
 use App\Services\Hosting\StripeHostingPlanGateway;
 use App\Support\HostingAccountPresenter;
@@ -138,6 +143,86 @@ class SubscriptionController extends Controller
         ]);
     }
 
+    public function categories(Request $request, ServiceCategoryOptionsService $categories): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user?->currentTeam)
+        {
+            return response()->json(['success' => false, 'message' => 'Usuario no autenticado o sin equipo'], 401);
+        }
+
+        if (! $user->canAccessBilling())
+        {
+            return response()->json(['success' => false, 'message' => 'No tienes permisos para ver suscripciones'], 403);
+        }
+
+        return response()->json([
+            'success' => true,
+            'categories' => $categories->optionsForTeam((int) $user->currentTeam->id),
+        ]);
+    }
+
+    public function updateServiceCategory(
+        UpdateSubscriptionServiceCategoryRequest $request,
+        string $id,
+        ServiceSyncImporter $importer,
+        ServiceCategoryAssignmentService $assignment,
+    ): JsonResponse {
+        $sync = $this->findForUser($request, $id);
+
+        if ($sync instanceof JsonResponse)
+        {
+            return $sync;
+        }
+
+        if ($sync->isClientHosting())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Las suscripciones de hosting no cambian de categoría de servicio. El plan se elige en cPanel/WHM.',
+            ], 422);
+        }
+
+        $service = $importer->findLinkedService($sync);
+
+        if (! $service)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No service is linked to this subscription.'),
+            ], 422);
+        }
+
+        $this->authorize('update', $service);
+
+        $categoryId = $request->input('category_id');
+        $categoryId = $categoryId === null || $categoryId === '' ? null : (int) $categoryId;
+
+        try
+        {
+            $service = $importer->updateServiceCategory($sync, $categoryId);
+            $assignment->publish($service);
+        } catch (RuntimeException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
+        $this->hydrateClientEnterprises(collect([$sync->fresh()->load('enterprise:id,name,code')]));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'La categoría quedó actualizada.',
+            'service_id' => (int) $service->id,
+            'category_id' => $service->category_id ? (int) $service->category_id : null,
+            'category_name' => (string) ($service->category?->name ?? __('Uncategorized')),
+            'data' => $this->present($sync->fresh()->load('enterprise:id,name,code'), true),
+        ]);
+    }
+
     public function updateMetadata(
         UpdateSubscriptionMetadataRequest $request,
         string $id,
@@ -152,11 +237,33 @@ class SubscriptionController extends Controller
         }
 
         $kind = (string) $request->validated('kind');
+
+        if ($sync->isClientHosting() && $kind !== 'hosting')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta suscripción es de hosting y no puede pasar a otro tipo de servicio.',
+            ], 422);
+        }
+
+        if ($sync->isClientHosting())
+        {
+            $kind = 'hosting';
+        }
+
         $metadata = $store->strings($request->validated('metadata'));
         $metadata['type'] = $kind;
         $metadata['category'] = $kind === 'hosting'
             ? 'hosting'
             : (($metadata['category'] ?? '') !== '' && $metadata['category'] !== 'hosting' ? $metadata['category'] : 'service');
+
+        if ($this->rejectsHostingPlanMetadataChange($sync, $metadata))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cambiá el plan desde el selector de hosting; debe sincronizarse con WHM.',
+            ], 422);
+        }
 
         try
         {
@@ -552,6 +659,8 @@ class SubscriptionController extends Controller
      */
     private function present(ServiceSync $sync, bool $withMetadata = false): array
     {
+        $linkedService = app(ServiceSyncImporter::class)->findLinkedService($sync);
+        $linkedService?->loadMissing('category:id,name');
         $payload = [
             'id' => $sync->id,
             'stripe_id' => $sync->stripe_id,
@@ -573,6 +682,9 @@ class SubscriptionController extends Controller
             'cancel_at_period_end' => (bool) $sync->cancel_at_period_end,
             'category' => $sync->clientCategoryLabel(),
             'kind' => $sync->clientKind(),
+            'service_id' => $linkedService?->id,
+            'service_category_id' => $linkedService?->category_id ? (int) $linkedService->category_id : null,
+            'service_category_name' => $linkedService?->category?->name,
         ];
 
         if ($withMetadata)
@@ -582,6 +694,40 @@ class SubscriptionController extends Controller
         }
 
         return $payload;
+    }
+
+    /**
+     * @param  array<string, string>  $metadata
+     */
+    private function rejectsHostingPlanMetadataChange(ServiceSync $sync, array $metadata): bool
+    {
+        if (! $sync->isClientHosting() && ($metadata['type'] ?? '') !== 'hosting' && ($metadata['category'] ?? '') !== 'hosting')
+        {
+            return false;
+        }
+
+        if (! array_key_exists('plan', $metadata))
+        {
+            return false;
+        }
+
+        $incoming = strtolower(trim((string) $metadata['plan']));
+        $currentMeta = strtolower(trim((string) data_get($this->metadata($sync), 'plan', '')));
+        $domainPlan = '';
+
+        $candidate = $sync->hostingDomainCandidate();
+
+        if ($candidate !== null && $candidate !== '')
+        {
+            $domain = Domain::query()
+                ->whereRaw('LOWER(domain) = ?', [$candidate])
+                ->first();
+            $domainPlan = strtolower(trim((string) ($domain?->plan ?? '')));
+        }
+
+        $current = $domainPlan !== '' ? $domainPlan : $currentMeta;
+
+        return $incoming !== $current;
     }
 
     /**
@@ -607,10 +753,15 @@ class SubscriptionController extends Controller
             return null;
         }
 
-        return HostingAccountPresenter::forDomain(
+        $plans = app(HostingPlanCatalog::class);
+        $data = HostingAccountPresenter::forDomain(
             $domain,
             (bool) data_get($sync->data, 'metadata.auto_suspend', data_get($sync->raw_payload, 'metadata.auto_suspend', false)),
         );
+        $data['can_change_plan'] = ! $plans->isFlex($domain->plan);
+        $data['plans'] = $data['can_change_plan'] ? $plans->options($domain) : [];
+
+        return $data;
     }
 
     /**

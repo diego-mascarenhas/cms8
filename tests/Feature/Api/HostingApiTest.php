@@ -12,6 +12,7 @@ use App\Models\Country;
 use App\Models\Domain;
 use App\Models\Enterprise;
 use App\Models\Server;
+use App\Models\Service;
 use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\User;
@@ -44,9 +45,38 @@ class HostingApiTest extends TestCase
             'status_id' => ServerStatus::Active,
             'team_id' => $team->id,
         ]);
+        $enterprise = $this->enterprise($team);
+        $this->seed([ContactStatusSeeder::class, LanguageSeeder::class]);
+        Country::query()->updateOrCreate(['id' => 724], ['name' => 'Spain', 'code' => 'ES']);
+        $admin = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Ana',
+            'surname' => 'Responsable',
+            'email' => 'ana@cliente.test',
+            'language' => 'es',
+            'country' => 724,
+            'creator_id' => $user->id,
+            'status_id' => ContactStatus::query()->value('id') ?? 1,
+            'current_enterprise_id' => $enterprise->id,
+        ]);
+        $admin->enterprises()->attach($enterprise->id, ['position' => ContactEnterprise::ROLES[0]]);
+        $service = Service::withoutGlobalScopes()->create([
+            'enterprise_id' => $enterprise->id,
+            'category_id' => null,
+            'operation' => 'sell',
+            'description' => 'Hosting Lizama',
+            'data' => [],
+            'currency_id' => null,
+            'price' => 11.99,
+            'discount' => 0,
+            'frequency' => 1,
+            'responsible_id' => $user->id,
+            'status' => 4,
+        ]);
         Domain::query()->create([
             'domain' => 'lizama.test',
             'server_id' => $server->id,
+            'service_id' => $service->id,
             'username' => 'lizama',
             'plan' => 'revision_enthusiast',
             'site_type' => 'WordPress',
@@ -66,7 +96,62 @@ class HostingApiTest extends TestCase
             ->assertJsonPath('nameservers.1', 'NS2.REVISIONALPHA.COM')
             ->assertJsonPath('data.data.0.domain', 'lizama.test')
             ->assertJsonPath('data.data.0.server', 'Odin')
-            ->assertJsonPath('data.data.0.suspended', false);
+            ->assertJsonPath('data.data.0.suspended', false)
+            ->assertJsonPath('data.data.0.enterprise.id', $enterprise->id)
+            ->assertJsonPath('data.data.0.enterprise.name', $enterprise->name)
+            ->assertJsonPath('data.data.0.administrator.id', $admin->id)
+            ->assertJsonPath('data.data.0.administrator.name', 'Ana Responsable');
+    }
+
+    public function test_admin_can_link_and_unlink_a_hosting_client(): void
+    {
+        [$user, $team] = $this->adminTeam();
+        $server = Server::query()->create([
+            'name' => 'Odin',
+            'server_url' => 'odin.test',
+            'username' => 'revision',
+            'control_panel' => 'cpanel',
+            'success' => true,
+            'status_id' => ServerStatus::Active,
+            'team_id' => $team->id,
+        ]);
+        $enterprise = $this->enterprise($team);
+        $domain = Domain::query()->create([
+            'domain' => 'sincliente.test',
+            'server_id' => $server->id,
+            'username' => 'sincliente',
+            'plan' => 'revision_enthusiast',
+            'suspended' => false,
+        ]);
+        $gateway = new class extends StripeHostingPlanGateway
+        {
+            public function catalog(Team $team): array
+            {
+                return [];
+            }
+        };
+        $this->app->instance(StripeHostingPlanGateway::class, $gateway);
+
+        $token = $user->createToken('hosting')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/hosting/'.$domain->id.'/client', ['enterprise_id' => $enterprise->id])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.enterprise.id', $enterprise->id)
+            ->assertJsonPath('data.enterprise.name', $enterprise->name);
+
+        $domain->refresh();
+        $this->assertNotNull($domain->service_id);
+        $this->assertSame($enterprise->id, Service::withoutGlobalScopes()->find($domain->service_id)?->enterprise_id);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/hosting/'.$domain->id.'/client', ['enterprise_id' => null])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.enterprise', null);
+
+        $this->assertNull($domain->fresh()->service_id);
     }
 
     public function test_admin_provisions_a_flex_account_and_mailbox(): void
@@ -486,13 +571,15 @@ class HostingApiTest extends TestCase
             ['name' => 'rs-s7', 'quota_mb' => 1024000, 'unlimited' => false],
             ['name' => 'rs-s1', 'quota_mb' => 100, 'unlimited' => false],
             ['name' => 'rs-s3', 'quota_mb' => 1024, 'unlimited' => false],
+            ['name' => 'Beginner', 'quota_mb' => 500, 'unlimited' => false],
+            ['name' => 'revision_flex', 'quota_mb' => null, 'unlimited' => true],
         ];
         $connector = \Mockery::mock(ControlPanelConnector::class);
         $connector->shouldReceive('phpVersion')->andReturn(['version' => null]);
         $connector->shouldReceive('siteType')->andReturn(['site_type' => null]);
         $connector->shouldReceive('listPlans')->andReturn([
             'success' => true,
-            'plans' => ['rs-s7', 'rs-s1', 'rs-s3'],
+            'plans' => ['rs-s7', 'rs-s1', 'rs-s3', 'Beginner', 'revision_flex'],
             'packages' => $packages,
         ]);
         $connector->shouldReceive('changePlan')
@@ -504,6 +591,45 @@ class HostingApiTest extends TestCase
             $mock->shouldReceive('supports')->andReturn(true);
             $mock->shouldReceive('forServer')->andReturn($connector);
         });
+        $gateway = new class extends StripeHostingPlanGateway
+        {
+            public function catalog(Team $team): array
+            {
+                return [
+                    [
+                        'price_id' => 'price_s7',
+                        'product_name' => 'Hosting S7',
+                        'plan' => 'rs-s7',
+                        'currency' => 'eur',
+                        'interval' => 'month',
+                        'interval_count' => 1,
+                        'unit_amount' => 1990,
+                        'whm_package' => 'rs-s7',
+                    ],
+                    [
+                        'price_id' => 'price_s1',
+                        'product_name' => 'Hosting S1',
+                        'plan' => 'rs-s1',
+                        'currency' => 'eur',
+                        'interval' => 'month',
+                        'interval_count' => 1,
+                        'unit_amount' => 490,
+                        'whm_package' => 'rs-s1',
+                    ],
+                    [
+                        'price_id' => 'price_s3',
+                        'product_name' => 'Hosting S3',
+                        'plan' => 'rs-s3',
+                        'currency' => 'eur',
+                        'interval' => 'month',
+                        'interval_count' => 1,
+                        'unit_amount' => 990,
+                        'whm_package' => 'rs-s3',
+                    ],
+                ];
+            }
+        };
+        $this->app->instance(StripeHostingPlanGateway::class, $gateway);
 
         $token = $user->createToken('hosting')->plainTextToken;
 
@@ -511,10 +637,13 @@ class HostingApiTest extends TestCase
             ->getJson('/api/hosting/'.$domain->id)
             ->assertOk()
             ->assertJsonPath('data.can_change_plan', true)
-            ->assertJsonPath('data.plans.1.name', 'rs-s1')
-            ->assertJsonPath('data.plans.1.allowed', false)
-            ->assertJsonPath('data.plans.2.name', 'rs-s3')
-            ->assertJsonPath('data.plans.2.allowed', true);
+            ->assertJsonPath('data.plans.0.name', 'rs-s1')
+            ->assertJsonPath('data.plans.0.allowed', false)
+            ->assertJsonPath('data.plans.1.name', 'rs-s3')
+            ->assertJsonPath('data.plans.1.allowed', true)
+            ->assertJsonPath('data.plans.2.name', 'rs-s7')
+            ->assertJsonPath('data.plans.3.name', 'revision_flex')
+            ->assertJsonCount(4, 'data.plans');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/hosting/'.$domain->id.'/plan', [

@@ -10,6 +10,42 @@ use App\Models\ServiceSync;
 class HostingAccountPresenter
 {
     /**
+     * Compact row for the hosting accounts table.
+     *
+     * @return array{
+     *     id: int,
+     *     domain: string|null,
+     *     username: string|null,
+     *     plan: string|null,
+     *     site_type: string|null,
+     *     php_version: string|null,
+     *     suspended: bool,
+     *     server: string|null,
+     *     enterprise: array{id: int, name: string}|null,
+     *     customer_name: string|null,
+     *     administrator: array{id: int, name: string}|null
+     * }
+     */
+    public static function listItem(Domain $domain): array
+    {
+        $owner = self::owner($domain);
+
+        return [
+            'id' => $domain->id,
+            'domain' => $domain->domain,
+            'username' => $domain->username,
+            'plan' => $domain->plan,
+            'site_type' => $domain->site_type,
+            'php_version' => $domain->php_version,
+            'suspended' => (bool) $domain->suspended,
+            'server' => $domain->server?->name,
+            'enterprise' => $owner['enterprise'],
+            'customer_name' => $owner['customer_name'],
+            'administrator' => $owner['administrator'],
+        ];
+    }
+
+    /**
      * Cached cPanel account shown on the hosting detail page.
      *
      * @return array<string, mixed>
@@ -63,17 +99,24 @@ class HostingAccountPresenter
                 'recommended' => $server?->getProvisioningSpfRecord() ?: DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT,
             ],
             'enterprise' => $owner['enterprise'],
+            'customer_name' => $owner['customer_name'],
+            'administrator' => $owner['administrator'],
             'subscription' => $owner['subscription'],
             'updated_at' => $domain->updated_at?->toIso8601String(),
         ];
     }
 
     /**
-     * @return array{enterprise: array{id: int, name: string}|null, subscription: array{id: int, name: string, amount: float|null, currency: string|null, interval: string|null, status: string|null}|null}
+     * @return array{
+     *     enterprise: array{id: int, name: string}|null,
+     *     customer_name: string|null,
+     *     administrator: array{id: int, name: string}|null,
+     *     subscription: array{id: int, name: string, amount: float|null, currency: string|null, interval: string|null, status: string|null}|null
+     * }
      */
     private static function owner(Domain $domain): array
     {
-        $domain->loadMissing(['server', 'service.enterprise', 'service.serviceSync']);
+        $domain->loadMissing(['server', 'service.enterprise.contacts', 'service.serviceSync']);
 
         $enterprise = $domain->service?->enterprise;
         $sync = $domain->service?->serviceSync;
@@ -86,15 +129,37 @@ class HostingAccountPresenter
             if (! $enterprise instanceof Enterprise && $matched instanceof ServiceSync && filled($matched->customer_id))
             {
                 $enterprise = Enterprise::query()
+                    ->with('contacts')
                     ->where('team_id', $domain->server?->team_id)
                     ->where('code', $matched->customer_id)
                     ->first();
             }
         }
 
+        if ($enterprise instanceof Enterprise)
+        {
+            $enterprise->loadMissing('contacts');
+        }
+
+        $customerName = $sync instanceof ServiceSync && filled($sync->customer_name)
+            ? (string) $sync->customer_name
+            : null;
+
+        $administrator = $enterprise instanceof Enterprise ? $enterprise->administrativeContact() : null;
+        $administratorName = $administrator !== null
+            ? trim($administrator->name.' '.(string) ($administrator->surname ?? ''))
+            : '';
+
         return [
             'enterprise' => $enterprise instanceof Enterprise
                 ? ['id' => (int) $enterprise->id, 'name' => (string) $enterprise->name]
+                : null,
+            'customer_name' => $customerName,
+            'administrator' => $administrator !== null
+                ? [
+                    'id' => (int) $administrator->id,
+                    'name' => $administratorName !== '' ? $administratorName : (string) $administrator->name,
+                ]
                 : null,
             'subscription' => $sync instanceof ServiceSync
                 ? [

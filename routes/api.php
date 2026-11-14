@@ -897,11 +897,13 @@ Route::middleware('auth.api')->group(function ()
     Route::delete('enterprises/{id}/contacts/{contactId}', [\App\Http\Controllers\Api\EnterpriseController::class, 'detachContact'])->whereNumber(['id', 'contactId']);
     Route::get('enterprises/{id}', [\App\Http\Controllers\Api\EnterpriseController::class, 'show']);
     Route::get('subscriptions', [ApiSubscriptionController::class, 'index']);
+    Route::get('subscriptions/categories', [ApiSubscriptionController::class, 'categories']);
     Route::get('hosting', [\App\Http\Controllers\Api\HostingController::class, 'index']);
     Route::get('hosting/{domain}', [\App\Http\Controllers\Api\HostingController::class, 'show'])->whereNumber('domain');
     Route::post('hosting/{domain}/password', [\App\Http\Controllers\Api\HostingController::class, 'updatePassword'])->whereNumber('domain');
     Route::post('hosting/{domain}/session', [\App\Http\Controllers\Api\HostingController::class, 'createSession'])->whereNumber('domain');
     Route::post('hosting/{domain}/plan', [\App\Http\Controllers\Api\HostingController::class, 'updatePlan'])->whereNumber('domain');
+    Route::patch('hosting/{domain}/client', [\App\Http\Controllers\Api\HostingController::class, 'updateClient'])->whereNumber('domain');
     Route::post('hosting/{domain}/email-password', [\App\Http\Controllers\Api\HostingController::class, 'updateEmailPassword'])->whereNumber('domain');
     Route::post('hosting/{domain}/emails', [\App\Http\Controllers\Api\HostingController::class, 'storeEmail'])->whereNumber('domain');
     Route::post('hosting/{domain}/spf', [\App\Http\Controllers\Api\HostingController::class, 'ensureSpf'])->whereNumber('domain');
@@ -911,6 +913,7 @@ Route::middleware('auth.api')->group(function ()
     Route::post('domains/register', [\App\Http\Controllers\Api\DomainRegistrationController::class, 'register']);
     Route::get('subscriptions/{id}', [ApiSubscriptionController::class, 'show'])->whereNumber('id');
     Route::patch('subscriptions/{id}/metadata', [ApiSubscriptionController::class, 'updateMetadata'])->whereNumber('id');
+    Route::patch('subscriptions/{id}/service-category', [ApiSubscriptionController::class, 'updateServiceCategory'])->whereNumber('id');
     Route::get('search', [WebContactController::class, 'search']);
 
     // Mailbox inbox (synced IMAP emails)
