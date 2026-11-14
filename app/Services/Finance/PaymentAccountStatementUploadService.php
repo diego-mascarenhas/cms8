@@ -12,6 +12,8 @@ use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use RuntimeException;
 
 class PaymentAccountStatementUploadService
@@ -71,13 +73,14 @@ class PaymentAccountStatementUploadService
         $originalName = (string) $file->getClientOriginalName();
         $extension = strtolower((string) $file->getClientOriginalExtension());
         $isCsv = in_array($extension, ['csv', 'txt'], true);
+        $isSpreadsheet = in_array($extension, ['xlsx', 'xls'], true);
 
-        $csvRows = $isCsv ? $this->parseCsvRows((string) $file->get()) : [];
+        $parsedRows = $this->parseUploadedRows($file);
         [$year, $month] = $this->resolvePeriod(
             $periodYear,
             $periodQuarter ? (($periodQuarter - 1) * 3) + 1 : $periodMonth,
             $originalName,
-            $csvRows,
+            $parsedRows,
         );
 
         $account->loadMissing('currency');
@@ -95,6 +98,13 @@ class PaymentAccountStatementUploadService
         if ($statementBalance !== null)
         {
             $meta['stated_balance'] = round($statementBalance, 2);
+        } elseif ($parsedRows !== [])
+        {
+            $balanceFromRows = $this->inferStatedBalance($parsedRows);
+            if ($balanceFromRows !== null)
+            {
+                $meta['stated_balance'] = $balanceFromRows;
+            }
         }
 
         $statement = BankStatement::query()->create([
@@ -107,14 +117,16 @@ class PaymentAccountStatementUploadService
             'original_filename' => $originalName,
             'storage_path' => $storedPath,
             'disk' => self::DISK,
-            'mime_type' => $file->getMimeType() ?: ($isCsv ? 'text/csv' : 'application/octet-stream'),
+            'mime_type' => $file->getMimeType() ?: ($isCsv ? 'text/csv' : ($isSpreadsheet
+                ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                : 'application/octet-stream')),
             'file_size' => $file->getSize() ?: null,
             'validation_summary' => $meta,
         ]);
 
-        if ($csvRows !== [])
+        if ($parsedRows !== [])
         {
-            $this->persistCsvLines($statement, $csvRows, $account);
+            $this->persistCsvLines($statement, $parsedRows, $account);
         }
 
         $validation = array_merge($meta, $this->validateAgainstPayments($statement, $account));
@@ -279,19 +291,21 @@ class PaymentAccountStatementUploadService
         foreach ($rows as $index => $row)
         {
             $occurredAt = $this->parseDate($this->rowValue($row, [
-                'TRANSACTION_DATE', 'DATE', 'FECHA', 'VALUE_DATE', 'BOOKING_DATE',
+                'TRANSACTION_DATE', 'DATE', 'FECHA', 'FECHA DE LA OPERACION', 'FECHA OPERACION',
+                'FECHA VALOR', 'VALUE_DATE', 'BOOKING_DATE',
             ]));
             $amount = $this->parseAmount($this->rowValue($row, [
                 'TRANSACTION_AMOUNT', 'AMOUNT', 'IMPORTE', 'MONTO', 'CREDIT', 'DEBIT',
             ]));
             $reference = $this->rowValue($row, [
-                'EXTERNAL_REFERENCE', 'REFERENCE', 'REFERENCIA', 'CONCEPTO', 'PAY_BANK_TRANSFER_ID',
+                'EXTERNAL_REFERENCE', 'REFERENCE', 'REFERENCIA', 'CONCEPTO', 'TIPO MOVIMIENTO',
+                'PAY_BANK_TRANSFER_ID',
             ]);
             $description = $this->rowValue($row, [
-                'DESCRIPTION', 'DESCRIPCION', 'DETALLE', 'PAYMENT_METHOD_TYPE', 'MEMO',
+                'DESCRIPTION', 'DESCRIPCION', 'DETALLE', 'TIPO MOVIMIENTO', 'PAYMENT_METHOD_TYPE', 'MEMO',
             ]);
             $externalId = $this->rowValue($row, [
-                'SOURCE_ID', 'EXTERNAL_ID', 'ID', 'OPERATION_ID',
+                'SOURCE_ID', 'EXTERNAL_ID', 'ID', 'OPERATION_ID', 'NRO. APUNTE', 'NRO APUNTE', 'APUNTE',
             ]);
 
             if ($externalId === '')
@@ -322,6 +336,30 @@ class PaymentAccountStatementUploadService
     /**
      * @return list<array<string, string>>
      */
+    public function parseUploadedRows(UploadedFile $file): array
+    {
+        $extension = strtolower((string) $file->getClientOriginalExtension());
+
+        if (in_array($extension, ['csv', 'txt'], true))
+        {
+            return $this->parseCsvRows((string) $file->get());
+        }
+
+        if (in_array($extension, ['xlsx', 'xls'], true))
+        {
+            $path = $file->getRealPath() ?: $file->getPathname();
+
+            return is_string($path) && $path !== ''
+                ? $this->parseSpreadsheetRows($path)
+                : [];
+        }
+
+        return [];
+    }
+
+    /**
+     * @return list<array<string, string>>
+     */
     public function parseCsvRows(string $csv): array
     {
         $csv = preg_replace("/^\xEF\xBB\xBF/", '', $csv) ?? $csv;
@@ -333,7 +371,7 @@ class PaymentAccountStatementUploadService
 
         $delimiter = substr_count($lines[0], ';') > substr_count($lines[0], ',') ? ';' : ',';
         $headers = array_map(
-            fn ($header) => strtoupper(trim((string) $header)),
+            fn ($header) => $this->normalizeHeader((string) $header),
             str_getcsv(array_shift($lines), $delimiter),
         );
 
@@ -363,6 +401,152 @@ class PaymentAccountStatementUploadService
         }
 
         return $rows;
+    }
+
+    /**
+     * Ruralvia / Caja Rural exports: metadata rows, then headers, then movements.
+     *
+     * @return list<array<string, string>>
+     */
+    public function parseSpreadsheetRows(string $path): array
+    {
+        $reader = IOFactory::createReaderForFile($path);
+        $reader->setReadDataOnly(true);
+        $sheet = $reader->load($path)->getActiveSheet();
+        $matrix = $sheet->toArray(null, true, true, false);
+
+        if ($matrix === [])
+        {
+            return [];
+        }
+
+        $headerIndex = null;
+        $headers = [];
+
+        foreach ($matrix as $index => $cells)
+        {
+            $normalized = array_map(fn ($cell) => $this->normalizeHeader((string) ($cell ?? '')), $cells);
+            $joined = implode(' ', array_filter($normalized));
+
+            if (
+                str_contains($joined, 'FECHA')
+                && (str_contains($joined, 'IMPORTE') || str_contains($joined, 'AMOUNT') || str_contains($joined, 'MONTO'))
+            ) {
+                $headerIndex = $index;
+                $headers = $normalized;
+
+                break;
+            }
+        }
+
+        if ($headerIndex === null)
+        {
+            return [];
+        }
+
+        $rows = [];
+
+        foreach (array_slice($matrix, $headerIndex + 1) as $cells)
+        {
+            $row = [];
+            $hasValue = false;
+
+            foreach ($headers as $column => $header)
+            {
+                if ($header === '')
+                {
+                    continue;
+                }
+
+                $raw = $cells[$column] ?? null;
+                $value = $this->cellToString($raw, $header);
+
+                if ($value !== '')
+                {
+                    $hasValue = true;
+                }
+
+                $row[$header] = $value;
+            }
+
+            if ($hasValue)
+            {
+                $rows[] = $row;
+            }
+        }
+
+        return $rows;
+    }
+
+    private function normalizeHeader(string $header): string
+    {
+        $header = Str::upper(Str::ascii(trim($header)));
+        $header = preg_replace('/\s+/', ' ', $header) ?? $header;
+
+        return trim($header);
+    }
+
+    private function cellToString(mixed $raw, string $header): string
+    {
+        if ($raw === null || $raw === '')
+        {
+            return '';
+        }
+
+        if (is_numeric($raw) && $this->headerLooksLikeDate($header))
+        {
+            $serial = (float) $raw;
+
+            if ($serial > 20000 && $serial < 80000)
+            {
+                try
+                {
+                    return ExcelDate::excelToDateTimeObject($serial)->format('Y-m-d');
+                } catch (\Throwable)
+                {
+                    // Fall through to string cast.
+                }
+            }
+        }
+
+        if ($raw instanceof \DateTimeInterface)
+        {
+            return Carbon::parse($raw->format('Y-m-d H:i:s'))->toDateString();
+        }
+
+        if (is_float($raw) || is_int($raw))
+        {
+            return (string) $raw;
+        }
+
+        return trim((string) $raw);
+    }
+
+    private function headerLooksLikeDate(string $header): bool
+    {
+        return str_contains($header, 'FECHA')
+            || str_contains($header, 'DATE')
+            || str_contains($header, 'VALUE');
+    }
+
+    /**
+     * @param  list<array<string, string>>  $rows
+     */
+    private function inferStatedBalance(array $rows): ?float
+    {
+        foreach ($rows as $row)
+        {
+            $balance = $this->rowValue($row, ['SALDO', 'BALANCE', 'RUNNING BALANCE']);
+
+            if ($balance === '')
+            {
+                continue;
+            }
+
+            return $this->parseAmount($balance);
+        }
+
+        return null;
     }
 
     /**
@@ -458,7 +642,8 @@ class PaymentAccountStatementUploadService
         foreach ($rows as $row)
         {
             $date = $this->parseDate($this->rowValue($row, [
-                'TRANSACTION_DATE', 'DATE', 'FECHA', 'VALUE_DATE', 'BOOKING_DATE',
+                'TRANSACTION_DATE', 'DATE', 'FECHA', 'FECHA DE LA OPERACION', 'FECHA OPERACION',
+                'FECHA VALOR', 'VALUE_DATE', 'BOOKING_DATE',
             ]));
             if ($date === null)
             {
@@ -538,9 +723,25 @@ class PaymentAccountStatementUploadService
             return null;
         }
 
+        if (is_numeric($value))
+        {
+            $serial = (float) $value;
+
+            if ($serial > 20000 && $serial < 80000)
+            {
+                try
+                {
+                    return Carbon::instance(ExcelDate::excelToDateTimeObject($serial))->startOfDay();
+                } catch (\Throwable)
+                {
+                    // Fall through.
+                }
+            }
+        }
+
         try
         {
-            return Carbon::parse($value);
+            return Carbon::parse($value)->startOfDay();
         } catch (\Throwable)
         {
             return null;

@@ -982,8 +982,18 @@ Route::middleware('auth.api')->group(function ()
 
     Route::get('payment-accounts', [PaymentAccountStatementController::class, 'index'])
         ->name('api.payment-accounts.index');
+    Route::get('payment-accounts/{paymentAccount}/statements', [PaymentAccountStatementController::class, 'statements'])
+        ->name('api.payment-accounts.statements.index');
     Route::post('payment-accounts/{paymentAccount}/statements', [PaymentAccountStatementController::class, 'store'])
         ->name('api.payment-accounts.statements.store');
+    Route::get('payment-accounts/{paymentAccount}/statements/{statement}/reconcile', [PaymentAccountStatementController::class, 'reconcile'])
+        ->name('api.payment-accounts.statements.reconcile');
+    Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/dismiss', [PaymentAccountStatementController::class, 'dismissLine'])
+        ->name('api.payment-accounts.statements.lines.dismiss');
+    Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/undismiss', [PaymentAccountStatementController::class, 'undismissLine'])
+        ->name('api.payment-accounts.statements.lines.undismiss');
+    Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/transfer', [PaymentAccountStatementController::class, 'transferLine'])
+        ->name('api.payment-accounts.statements.lines.transfer');
 
     // Invoices - for user-based authentication (Sanctum tokens)
     Route::get('invoices', [InvoiceController::class, 'index']);

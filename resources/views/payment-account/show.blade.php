@@ -111,6 +111,7 @@
                         <th class="text-end" title="{{ __('Suma de los pagos del período') }}">{{ __('Libro') }}</th>
                         <th class="text-end" title="{{ __('Importe del extracto') }}">{{ __('Saldo') }}</th>
                         <th class="text-end">{{ __('Diferencia') }}</th>
+                        <th class="text-end">{{ __('Acciones') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -141,6 +142,11 @@
                                 @else
                                     {{ number_format((float) $summary['difference'], 2, ',', '.') }}
                                 @endif
+                            </td>
+                            <td class="text-end">
+                                <a href="{{ route('payment-account.statements.reconcile', [$account, $statement]) }}" class="btn btn-sm btn-label-primary">
+                                    {{ __('Conciliar') }}
+                                </a>
                             </td>
                         </tr>
                     @endforeach
