@@ -280,9 +280,9 @@ class Enterprise extends Model
     }
 
     /**
-     * Email of the company administrator for this enterprise (cPanel contact, notices).
+     * Company administrator contact for this enterprise (Administrador role).
      */
-    public function administrativeContactEmail(): ?string
+    public function administrativeContact(): ?Contact
     {
         $this->loadMissing('contacts');
 
@@ -290,27 +290,67 @@ class Enterprise extends Model
             ->filter(function (Contact $contact): bool
             {
                 $position = trim((string) ($contact->pivot->position ?? ''));
-                $email = trim((string) ($contact->email ?? ''));
 
-                return strcasecmp($position, ContactEnterprise::ROLES[0]) === 0
-                    && $email !== ''
-                    && filter_var($email, FILTER_VALIDATE_EMAIL);
+                return strcasecmp($position, ContactEnterprise::ROLES[0]) === 0;
             })
             ->values();
 
-        if ($admins->isNotEmpty())
+        if ($admins->isEmpty())
         {
-            $current = $admins->filter(function (Contact $contact): bool
+            return null;
+        }
+
+        $current = $admins->filter(function (Contact $contact): bool
+        {
+            return (int) $contact->current_enterprise_id === (int) $this->id;
+        })->values();
+
+        if ($current->count() === 1)
+        {
+            return $current->first();
+        }
+
+        return $admins->count() === 1 ? $admins->first() : null;
+    }
+
+    /**
+     * Email of the company administrator for this enterprise (cPanel contact, notices).
+     */
+    public function administrativeContactEmail(): ?string
+    {
+        $chosen = $this->administrativeContact();
+        $email = trim((string) ($chosen?->email ?? ''));
+
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL))
+        {
+            return $email;
+        }
+
+        $adminsWithEmail = $this->contacts
+            ->filter(function (Contact $contact): bool
+            {
+                $position = trim((string) ($contact->pivot->position ?? ''));
+                $adminEmail = trim((string) ($contact->email ?? ''));
+
+                return strcasecmp($position, ContactEnterprise::ROLES[0]) === 0
+                    && $adminEmail !== ''
+                    && filter_var($adminEmail, FILTER_VALIDATE_EMAIL);
+            })
+            ->values();
+
+        if ($adminsWithEmail->isNotEmpty())
+        {
+            $current = $adminsWithEmail->filter(function (Contact $contact): bool
             {
                 return (int) $contact->current_enterprise_id === (int) $this->id;
             })->values();
 
-            $chosen = $current->count() === 1 ? $current->first() : $admins->first();
-            $email = trim((string) ($chosen?->email ?? ''));
+            $fallback = $current->count() === 1 ? $current->first() : $adminsWithEmail->first();
+            $adminEmail = trim((string) ($fallback?->email ?? ''));
 
-            if ($email !== '')
+            if ($adminEmail !== '')
             {
-                return $email;
+                return $adminEmail;
             }
         }
 

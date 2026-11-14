@@ -46,6 +46,20 @@ class HostingApiTest extends TestCase
             'team_id' => $team->id,
         ]);
         $enterprise = $this->enterprise($team);
+        $this->seed([ContactStatusSeeder::class, LanguageSeeder::class]);
+        Country::query()->updateOrCreate(['id' => 724], ['name' => 'Spain', 'code' => 'ES']);
+        $admin = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Ana',
+            'surname' => 'Responsable',
+            'email' => 'ana@cliente.test',
+            'language' => 'es',
+            'country' => 724,
+            'creator_id' => $user->id,
+            'status_id' => ContactStatus::query()->value('id') ?? 1,
+            'current_enterprise_id' => $enterprise->id,
+        ]);
+        $admin->enterprises()->attach($enterprise->id, ['position' => ContactEnterprise::ROLES[0]]);
         $service = Service::withoutGlobalScopes()->create([
             'enterprise_id' => $enterprise->id,
             'category_id' => null,
@@ -84,7 +98,9 @@ class HostingApiTest extends TestCase
             ->assertJsonPath('data.data.0.server', 'Odin')
             ->assertJsonPath('data.data.0.suspended', false)
             ->assertJsonPath('data.data.0.enterprise.id', $enterprise->id)
-            ->assertJsonPath('data.data.0.enterprise.name', $enterprise->name);
+            ->assertJsonPath('data.data.0.enterprise.name', $enterprise->name)
+            ->assertJsonPath('data.data.0.administrator.id', $admin->id)
+            ->assertJsonPath('data.data.0.administrator.name', 'Ana Responsable');
     }
 
     public function test_admin_provisions_a_flex_account_and_mailbox(): void

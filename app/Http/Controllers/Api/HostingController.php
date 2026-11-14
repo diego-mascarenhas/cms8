@@ -541,7 +541,7 @@ class HostingController extends Controller
         return Domain::query()
             ->with([
                 'server:id,name,team_id',
-                'service.enterprise',
+                'service.enterprise.contacts',
                 'service.serviceSync',
             ])
             ->when($teamId, function (Builder $builder) use ($teamId)
