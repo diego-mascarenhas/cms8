@@ -1085,14 +1085,28 @@ class DashboardController extends Controller
             ->with(['team:id,name'])
             ->where('status', TeamUsageInvoice::STATUS_DRAFT)
             ->whereNotNull('stripe_invoice_id')
+            ->whereHas('team', function ($query)
+            {
+                $query->where('personal_team', false)
+                    ->where('name', '!=', DemoTeam::TEAM_NAME);
+            })
             ->orderByDesc('period_to')
             ->orderByDesc('id');
 
         $currency = strtolower((string) ($drafts->clone()->value('currency') ?: 'eur'));
-        $openCount = TeamUsageInvoice::query()->where('status', TeamUsageInvoice::STATUS_OPEN)->count();
+        $billableTeams = function ($query)
+        {
+            $query->where('personal_team', false)
+                ->where('name', '!=', DemoTeam::TEAM_NAME);
+        };
+        $openCount = TeamUsageInvoice::query()
+            ->where('status', TeamUsageInvoice::STATUS_OPEN)
+            ->whereHas('team', $billableTeams)
+            ->count();
         $overdueCutoff = now()->subDays(7);
         $overdueCount = TeamUsageInvoice::query()
             ->where('status', TeamUsageInvoice::STATUS_OPEN)
+            ->whereHas('team', $billableTeams)
             ->where(function ($query) use ($overdueCutoff)
             {
                 $query->where(function ($inner) use ($overdueCutoff)
