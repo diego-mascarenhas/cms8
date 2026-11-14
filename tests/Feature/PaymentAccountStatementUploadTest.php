@@ -75,11 +75,10 @@ class PaymentAccountStatementUploadTest extends TestCase
 
         $file = UploadedFile::fake()->createWithContent('extracto-2026-07.csv', $csv);
 
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->post(route('payment-account.statements.store', $account), [
                 'files' => [$file],
             ])
-            ->assertRedirect(route('payment-account.show', $account))
             ->assertSessionHas('success');
 
         $statement = BankStatement::query()
@@ -87,6 +86,11 @@ class PaymentAccountStatementUploadTest extends TestCase
             ->first();
 
         $this->assertNotNull($statement);
+        $response->assertRedirect(route('payment-account.statements.reconcile', [
+            $account,
+            $statement,
+            'filter' => 'open',
+        ]));
         $this->assertSame(2026, $statement->period_year);
         $this->assertSame(7, $statement->period_month);
         $this->assertTrue($statement->isDownloadable());
@@ -125,15 +129,21 @@ class PaymentAccountStatementUploadTest extends TestCase
             "FECHA;IMPORTE\n2026-01-05;10.00\n",
         );
 
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->post(route('payment-account.statements.store', $account), [
                 'files' => [$pdf, $csv],
                 'period_year' => 2026,
                 'period_month' => 4,
-            ])
-            ->assertRedirect(route('payment-account.show', $account));
+            ]);
 
         $this->assertSame(2, BankStatement::query()->where('payment_account_id', $account->id)->count());
+        $latest = BankStatement::query()->where('payment_account_id', $account->id)->orderByDesc('id')->first();
+        $this->assertNotNull($latest);
+        $response->assertRedirect(route('payment-account.statements.reconcile', [
+            $account,
+            $latest,
+            'filter' => 'open',
+        ]));
         $this->assertTrue(
             BankStatement::query()
                 ->where('payment_account_id', $account->id)
@@ -200,18 +210,22 @@ class PaymentAccountStatementUploadTest extends TestCase
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         );
 
-        $this->actingAs($user)
+        $response = $this->actingAs($user)
             ->post(route('payment-account.statements.store', $account), [
                 'files' => [$file],
                 'period_year' => 2026,
                 'period' => 'q:3',
                 'statement_balance' => '60.00',
             ])
-            ->assertRedirect(route('payment-account.show', $account))
             ->assertSessionHas('success');
 
         $statement = BankStatement::query()->where('payment_account_id', $account->id)->first();
         $this->assertNotNull($statement);
+        $response->assertRedirect(route('payment-account.statements.reconcile', [
+            $account,
+            $statement,
+            'filter' => 'open',
+        ]));
         $this->assertSame('Q3 2026', $statement->periodLabel());
         $this->assertSame(60.0, (float) data_get($statement->validation_summary, 'book_total'));
         $this->assertSame(60.0, (float) data_get($statement->validation_summary, 'statement_total'));

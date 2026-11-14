@@ -65,8 +65,8 @@
     }
     $oldLines = old('lines', [
         [
-            'concept' => (string) request('concept', ''),
-            'base_amount' => (string) request('base_amount', '0.00'),
+            'concept' => (string) request('concept', request('remarks', '')),
+            'base_amount' => (string) request('base_amount', request('amount', '0.00')),
             'vat_percent' => (string) request('vat_percent', $defaultVatPercent),
             'retention_percent' => '0',
             'allocation_percent' => '100',
@@ -300,7 +300,11 @@
                         <select id="currency_id" name="currency_id" class="form-select select2 @error('currency_id') is-invalid @enderror">
                             <option value="">Selecciona moneda</option>
                             @foreach ($currencies as $currency)
-                                <option value="{{ $currency->id }}" {{ (string) ($selectedCurrencyId ?? '') === (string) $currency->id ? 'selected' : '' }}>
+                                <option
+                                    value="{{ $currency->id }}"
+                                    data-currency-code="{{ $currency->code }}"
+                                    {{ (string) ($selectedCurrencyId ?? '') === (string) $currency->id ? 'selected' : '' }}
+                                >
                                     {{ $currency->code }} - {{ $currency->name }}
                                 </option>
                             @endforeach
@@ -471,6 +475,21 @@
             $initialPayments = old('payments');
             if (! is_array($initialPayments)) {
                 $initialPayments = [];
+                $prefillAccountId = request('account_id');
+                $prefillAmount = request('amount');
+                $prefillPaymentDate = request('payment_date', request('date'));
+                if (filled($prefillAccountId) || filled($prefillAmount) || filled($prefillPaymentDate))
+                {
+                    $initialPayments = [[
+                        'payment_date' => filled($prefillPaymentDate) ? (string) $prefillPaymentDate : now()->toDateString(),
+                        'amount' => filled($prefillAmount) ? (string) $prefillAmount : '',
+                        'type_id' => $defaultPaymentTypeId,
+                        'account_id' => filled($prefillAccountId) ? (string) $prefillAccountId : $defaultPaymentAccountId,
+                        'status' => '2',
+                        'document_amount' => '',
+                        'exchange_rate' => '',
+                    ]];
+                }
             }
         @endphp
 
@@ -535,7 +554,7 @@
                             @enderror
                         </div>
                         <div class="col-md-2 col-lg-2">
-                            <label class="form-label" for="payment_amount_{{ $paymentIndex }}">Importe pagado</label>
+                            <label class="form-label payment-amount-label" for="payment_amount_{{ $paymentIndex }}">Importe pagado</label>
                             @php
                                 $paymentAmountValue = old('payments.'.$paymentIndex.'.amount', $payment['amount'] ?? '');
                                 $paymentAmountDisplay = filled($paymentAmountValue)
@@ -562,7 +581,7 @@
                         <div class="col-12 payment-fx-fields {{ filled($paymentDocumentAmountValue) || filled($paymentExchangeRateValue) ? '' : 'd-none' }}">
                             <div class="row g-3">
                                 <div class="col-md-4">
-                                    <label class="form-label" for="payment_document_amount_{{ $paymentIndex }}">Importe aplicado (moneda del gasto)</label>
+                                    <label class="form-label payment-document-amount-label" for="payment_document_amount_{{ $paymentIndex }}">Importe aplicado</label>
                                     <input
                                         type="text"
                                         inputmode="decimal"
@@ -574,9 +593,10 @@
                                     @error('payments.'.$paymentIndex.'.document_amount')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
+                                    <small class="text-muted">Parte del gasto cubierta con este pago</small>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label" for="payment_exchange_rate_{{ $paymentIndex }}">Tipo de cambio</label>
+                                    <label class="form-label payment-exchange-rate-label" for="payment_exchange_rate_{{ $paymentIndex }}">Tipo de cambio</label>
                                     <input
                                         type="text"
                                         inputmode="decimal"
@@ -589,6 +609,7 @@
                                     @error('payments.'.$paymentIndex.'.exchange_rate')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
+                                    <small class="text-muted payment-exchange-rate-hint">Usa el importe del banco, no el tipo mid-market</small>
                                 </div>
                                 <div class="col-md-4 d-flex align-items-end">
                                     <small class="text-muted payment-fx-hint">Si la cuenta es otra divisa, completa importe aplicado y tipo de cambio.</small>
@@ -1243,11 +1264,72 @@
             return String(account.currency_id) !== String(expenseCurrencyId);
         }
 
+        function expenseCurrencyCode() {
+            var selected = $currencySelect.find('option:selected');
+            var codeAttr = String(selected.data('currency-code') || '').toUpperCase();
+
+            if (codeAttr) {
+                return codeAttr;
+            }
+
+            var text = String(selected.text() || '').trim();
+            var match = text.match(/^([A-Z]{3})\b/);
+
+            if (match) {
+                return match[1];
+            }
+
+            var currencyId = $currencySelect.val() || '';
+            var fromAccounts = paymentAccountOptions.find(function (option) {
+                return String(option.currency_id) === String(currencyId);
+            });
+
+            return fromAccounts && fromAccounts.currency_code
+                ? String(fromAccounts.currency_code).toUpperCase()
+                : 'EUR';
+        }
+
+        function updatePaymentFxLabels($block) {
+            var needsFx = paymentNeedsFx($block);
+            var expenseCode = expenseCurrencyCode();
+            var accountId = $block.find('.payment-account-select').val() || '';
+            var account = findPaymentAccountOption(accountId);
+            var accountCode = account && account.currency_code
+                ? String(account.currency_code).toUpperCase()
+                : expenseCode;
+            var amountLabel = needsFx
+                ? 'Importe pagado (' + accountCode + ')'
+                : 'Importe (' + expenseCode + ')';
+
+            $block.find('.payment-amount-label').text(amountLabel);
+            $block.find('.payment-document-amount-label').text('Importe aplicado (' + expenseCode + ')');
+            $block.find('.payment-exchange-rate-label').text('Tipo de cambio (' + accountCode + '/' + expenseCode + ')');
+            $block.find('.payment-exchange-rate-hint').text(
+                'Usa el importe del banco (' + accountCode + '), no el tipo mid-market'
+            );
+
+            var applied = asNumber($block.find('.payment-document-amount').val());
+            var rate = asNumber($block.find('.payment-exchange-rate').val());
+
+            if (needsFx && applied > 0 && rate > 0) {
+                $block.find('.payment-fx-hint').text(
+                    applied.toFixed(2) + ' ' + expenseCode + ' × ' + rate + ' ≈ ' + (applied * rate).toFixed(2) + ' ' + accountCode
+                );
+            } else if (needsFx) {
+                $block.find('.payment-fx-hint').text(
+                    'Ej.: 39,00 ' + expenseCode + ' → 39,87 ' + accountCode + ' según el extracto'
+                );
+            } else {
+                $block.find('.payment-fx-hint').text('');
+            }
+        }
+
         function togglePaymentFxFields($block) {
             var needsFx = paymentNeedsFx($block);
             var $fx = $block.find('.payment-fx-fields');
 
             $fx.toggleClass('d-none', !needsFx);
+            updatePaymentFxLabels($block);
 
             if (!needsFx) {
                 $block.find('.payment-document-amount').val('');
@@ -1265,6 +1347,7 @@
                 if (remaining > 0) {
                     setAmountInputValue($block.find('.payment-document-amount').get(0), remaining);
                     syncPaymentExchangeRate($block);
+                    updatePaymentFxLabels($block);
                 }
             }
         }
@@ -1418,7 +1501,7 @@
                 '      <input type="text" id="payment_date_' + index + '" name="payments[' + index + '][payment_date]" class="form-control expense-date payment-date" value="' + escapeHtml(paymentDate) + '">',
                 '    </div>',
                 '    <div class="col-md-2 col-lg-2">',
-                '      <label class="form-label" for="payment_amount_' + index + '">Importe pagado</label>',
+                '      <label class="form-label payment-amount-label" for="payment_amount_' + index + '">Importe pagado</label>',
                 '      <input type="text" inputmode="decimal" id="payment_amount_' + index + '" name="payments[' + index + '][amount]" class="form-control text-end payment-amount" value="' + escapeHtml(amount) + '">',
                 '    </div>',
                 '    <div class="col-md-2 col-lg-2">',
@@ -1454,15 +1537,17 @@
                 '    <div class="col-12 payment-fx-fields d-none">',
                 '      <div class="row g-3">',
                 '        <div class="col-md-4">',
-                '          <label class="form-label" for="payment_document_amount_' + index + '">Importe aplicado (moneda del gasto)</label>',
+                '          <label class="form-label payment-document-amount-label" for="payment_document_amount_' + index + '">Importe aplicado</label>',
                 '          <input type="text" inputmode="decimal" id="payment_document_amount_' + index + '" name="payments[' + index + '][document_amount]" class="form-control text-end payment-document-amount" value="">',
+                '          <small class="text-muted">Parte del gasto cubierta con este pago</small>',
                 '        </div>',
                 '        <div class="col-md-4">',
-                '          <label class="form-label" for="payment_exchange_rate_' + index + '">Tipo de cambio</label>',
+                '          <label class="form-label payment-exchange-rate-label" for="payment_exchange_rate_' + index + '">Tipo de cambio</label>',
                 '          <input type="text" inputmode="decimal" id="payment_exchange_rate_' + index + '" name="payments[' + index + '][exchange_rate]" class="form-control text-end payment-exchange-rate" value="" placeholder="Cuenta por 1 del gasto">',
+                '          <small class="text-muted payment-exchange-rate-hint">Usa el importe del banco, no el tipo mid-market</small>',
                 '        </div>',
                 '        <div class="col-md-4 d-flex align-items-end">',
-                '          <small class="text-muted payment-fx-hint">Si la cuenta es otra divisa, completa importe aplicado y tipo de cambio.</small>',
+                '          <small class="text-muted payment-fx-hint"></small>',
                 '        </div>',
                 '      </div>',
                 '    </div>',
@@ -2617,6 +2702,7 @@
             var $block = $(this).closest('.expense-payment-block');
             capPaymentAmountInput($(this));
             syncPaymentExchangeRate($block);
+            updatePaymentFxLabels($block);
             updatePaymentsSummary();
         });
 
@@ -2624,6 +2710,7 @@
             var $block = $(this).closest('.expense-payment-block');
             capPaymentAmountInput($(this));
             syncPaymentExchangeRate($block);
+            updatePaymentFxLabels($block);
             updatePaymentsSummary();
         });
 
@@ -2636,6 +2723,7 @@
                 setAmountInputValue($block.find('.payment-amount').get(0), roundMoney(applied * rate));
             }
 
+            updatePaymentFxLabels($block);
             updatePaymentsSummary();
         });
 

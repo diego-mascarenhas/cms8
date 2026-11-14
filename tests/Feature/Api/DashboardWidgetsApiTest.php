@@ -375,10 +375,12 @@ class DashboardWidgetsApiTest extends TestCase
         $billed = Team::factory()->create([
             'name' => 'REVISION ALPHA S.L.',
             'stripe_id' => 'cus_revision',
+            'personal_team' => false,
         ]);
         $named = Team::factory()->create([
             'name' => 'IDONEO',
             'stripe_id' => null,
+            'personal_team' => false,
         ]);
         $stripeEnterprise = Enterprise::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -409,6 +411,18 @@ class DashboardWidgetsApiTest extends TestCase
             'stripe_invoice_id' => 'in_draft_name',
             'period_to' => now()->subMonth()->startOfMonth(),
         ]);
+        $personal = Team::factory()->create([
+            'name' => "Rapha's Team",
+            'personal_team' => true,
+        ]);
+        TeamUsageInvoice::factory()->create([
+            'team_id' => $personal->id,
+            'status' => TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 276,
+            'currency' => 'EUR',
+            'stripe_invoice_id' => 'in_draft_personal',
+            'period_to' => now()->subDays(3),
+        ]);
 
         $this->withHeader('Authorization', 'Bearer '.$user->createToken('dashboard')->plainTextToken)
             ->getJson('/api/dashboard')
@@ -420,6 +434,9 @@ class DashboardWidgetsApiTest extends TestCase
             ->assertJsonFragment([
                 'team_name' => 'IDONEO',
                 'enterprise_id' => $idoneo->id,
+            ])
+            ->assertJsonMissing([
+                'team_name' => "Rapha's Team",
             ]);
     }
 
