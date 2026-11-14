@@ -94,6 +94,21 @@ class PaymentAccountController extends Controller
             return $difference !== null && abs((float) $difference) > 0.05;
         })->count();
 
+        $latest = collect($results)->last();
+        /** @var \App\Models\BankStatement|null $latestStatement */
+        $latestStatement = is_array($latest) ? ($latest['statement'] ?? null) : null;
+
+        if ($latestStatement instanceof BankStatement)
+        {
+            return redirect()
+                ->route('payment-account.statements.reconcile', [$paymentAccount, $latestStatement, 'filter' => 'open'])
+                ->with('success', __(':count extracto(s) subido(s). Empatados: :balanced. Con diferencia: :open.', [
+                    'count' => $uploaded,
+                    'balanced' => $balanced,
+                    'open' => $open,
+                ]));
+        }
+
         return redirect()
             ->route('payment-account.show', $paymentAccount)
             ->with('success', __(':count extracto(s) subido(s). Empatados: :balanced. Con diferencia: :open.', [
