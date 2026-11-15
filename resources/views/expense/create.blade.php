@@ -114,6 +114,16 @@
     <form class="card-body" action="{{ $documentFlow['store_route'] }}" method="POST" enctype="multipart/form-data" novalidate>
         @csrf
         @php
+            $reconcileStatementId = old('bank_statement_id', request('bank_statement_id', request('statement_id')));
+            $reconcileLineId = old('bank_statement_line_id', request('bank_statement_line_id', request('statement_line_id')));
+        @endphp
+        @if (filled($reconcileStatementId))
+            <input type="hidden" name="bank_statement_id" value="{{ $reconcileStatementId }}">
+        @endif
+        @if (filled($reconcileLineId))
+            <input type="hidden" name="bank_statement_line_id" value="{{ $reconcileLineId }}">
+        @endif
+        @php
             $selectedDocumentType = old('document_type', 'invoice');
             if (in_array($selectedDocumentType, $disabledDocumentTypes, true)) {
                 $selectedDocumentType = 'invoice';

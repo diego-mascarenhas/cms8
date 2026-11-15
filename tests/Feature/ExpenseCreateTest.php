@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\BankStatement;
+use App\Models\BankStatementLine;
 use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -976,6 +978,148 @@ class ExpenseCreateTest extends TestCase
         $this->assertNotNull(
             Invoice::withoutGlobalScopes()->where('number', 'API-GASTO-1')->first(),
         );
+    }
+
+    public function test_create_page_keeps_reconcile_line_ids_as_hidden_fields(): void
+    {
+        $user = $this->makeAdminUser();
+        $this->createAccountForTeam($user);
+        $this->createPaymentType();
+
+        $this->actingAs($user)
+            ->get(route('expense.create', [
+                'statement_id' => 44,
+                'statement_line_id' => 91,
+            ]))
+            ->assertOk()
+            ->assertSee('name="bank_statement_id"', false)
+            ->assertSee('value="44"', false)
+            ->assertSee('name="bank_statement_line_id"', false)
+            ->assertSee('value="91"', false);
+    }
+
+    public function test_store_from_reconcile_links_statement_line_and_redirects(): void
+    {
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+        $account = $this->createAccountForTeam($user);
+        $paymentType = $this->createPaymentType();
+        [$statement, $line] = $this->createOpenStatementLine($user, $account, -12.10);
+
+        $this->actingAs($user)
+            ->post(route('expense.store'), [
+                'document_type' => 'invoice',
+                'enterprise_id' => $supplier->id,
+                'date' => '2026-11-12',
+                'document_number' => 'REC-GASTO-1',
+                'bank_statement_id' => $statement->id,
+                'bank_statement_line_id' => $line->id,
+                'lines' => [[
+                    'concept' => 'Hosting',
+                    'base_amount' => '10.00',
+                    'vat_percent' => '21',
+                    'retention_percent' => '0',
+                    'allocation_percent' => '100',
+                ]],
+                'payments' => [[
+                    'payment_date' => '2026-11-12',
+                    'amount' => '12.10',
+                    'type_id' => $paymentType->id,
+                    'account_id' => $account->id,
+                    'status' => 2,
+                ]],
+                'submit_action' => 'save',
+            ])
+            ->assertRedirect(route('payment-account.statements.reconcile', [
+                $account->id,
+                $statement->id,
+                'filter' => 'matched',
+            ]))
+            ->assertSessionHas('success');
+
+        $line->refresh();
+        $this->assertNotNull($line->payment_id);
+        $this->assertSame('matched', $line->match_status);
+
+        $payment = Payment::withoutGlobalScopes()->find($line->payment_id);
+        $this->assertNotNull($payment);
+        $this->assertSame((int) $account->id, (int) $payment->account_id);
+    }
+
+    public function test_api_store_from_reconcile_links_statement_line(): void
+    {
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+        $account = $this->createAccountForTeam($user);
+        $paymentType = $this->createPaymentType();
+        [$statement, $line] = $this->createOpenStatementLine($user, $account, -12.10);
+        $token = $user->createToken('expense-api')->plainTextToken;
+
+        $this->withToken($token)
+            ->postJson('/api/expenses', [
+                'document_type' => 'invoice',
+                'enterprise_id' => $supplier->id,
+                'date' => '2026-11-12',
+                'document_number' => 'API-REC-1',
+                'bank_statement_id' => $statement->id,
+                'bank_statement_line_id' => $line->id,
+                'lines' => [[
+                    'concept' => 'Hosting',
+                    'base_amount' => '10.00',
+                    'vat_percent' => '21',
+                    'retention_percent' => '0',
+                    'allocation_percent' => '100',
+                ]],
+                'payments' => [[
+                    'payment_date' => '2026-11-12',
+                    'amount' => '12.10',
+                    'type_id' => $paymentType->id,
+                    'account_id' => $account->id,
+                    'status' => 2,
+                ]],
+                'submit_action' => 'save',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('reconcile.linked', true)
+            ->assertJsonPath('reconcile.account_id', $account->id)
+            ->assertJsonPath('reconcile.statement_id', $statement->id)
+            ->assertJsonPath('reconcile.line_id', $line->id);
+
+        $line->refresh();
+        $this->assertNotNull($line->payment_id);
+        $this->assertSame('matched', $line->match_status);
+    }
+
+    /**
+     * @return array{0: BankStatement, 1: BankStatementLine}
+     */
+    private function createOpenStatementLine(User $user, PaymentAccount $account, float $amount): array
+    {
+        $statement = BankStatement::query()->create([
+            'team_id' => (int) $user->current_team_id,
+            'payment_account_id' => $account->id,
+            'provider' => BankStatement::PROVIDER_UPLOAD,
+            'period_year' => 2026,
+            'period_month' => 11,
+            'source' => BankStatement::SOURCE_UPLOAD,
+            'original_filename' => 'movimientos.xlsx',
+            'validation_summary' => [],
+        ]);
+
+        $line = BankStatementLine::query()->create([
+            'bank_statement_id' => $statement->id,
+            'payment_account_id' => $account->id,
+            'external_id' => 'expense-line-1',
+            'reference' => 'tgss cuota',
+            'description' => 'tgss cuota',
+            'occurred_at' => '2026-11-12',
+            'amount' => $amount,
+            'currency' => 'EUR',
+            'match_status' => 'statement_only',
+        ]);
+
+        return [$statement, $line];
     }
 
     private function makeAdminUser(): User

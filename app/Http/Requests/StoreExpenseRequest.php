@@ -71,6 +71,8 @@ class StoreExpenseRequest extends FormRequest
             'tags' => ['nullable', 'string', 'max:255'],
             'submit_action' => ['nullable', Rule::in(['draft', 'save'])],
             'charge_automatically' => ['sometimes', 'boolean'],
+            'bank_statement_id' => ['nullable', 'integer', 'exists:bank_statements,id'],
+            'bank_statement_line_id' => ['nullable', 'integer', 'exists:bank_statement_lines,id'],
         ];
     }
 

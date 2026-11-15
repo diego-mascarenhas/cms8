@@ -9,6 +9,8 @@ use App\Http\Requests\DetectExpenseDocumentRequest;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Http\Requests\StoreExpenseSupplierRequest;
 use App\Http\Requests\SuggestExpenseCategoriesRequest;
+use App\Models\BankStatement;
+use App\Models\BankStatementLine;
 use App\Models\Category;
 use App\Models\Country;
 use App\Models\Currency;
@@ -21,6 +23,7 @@ use App\Models\PaymentType;
 use App\Services\ExpenseDocumentDetectionService;
 use App\Services\ExpenseDuplicateDocumentService;
 use App\Services\ExpenseSupplierService;
+use App\Services\Finance\BankStatementReconcileService;
 use App\Services\Finance\InvoiceAnalyticsService;
 use App\Services\Finance\ManualInvoiceDocumentService;
 use App\Services\Finance\PaymentAccountCompatibilityService;
@@ -48,6 +51,7 @@ class ExpenseController extends Controller
         private readonly VatReportingService $vatReportingService,
         private readonly VatHaciendaCsvExportService $vatHaciendaCsvExportService,
         private readonly InvoiceAnalyticsService $invoiceAnalyticsService,
+        private readonly BankStatementReconcileService $bankStatementReconcileService,
     ) {}
 
     public function index(Request $request, ExpenseDataTable $dataTable)
@@ -849,6 +853,17 @@ class ExpenseController extends Controller
                 ? 'Nota de crédito guardada correctamente.'
                 : 'Gasto guardado correctamente.');
 
+        $reconcile = $this->attachExpenseToStatementLine(
+            $result['invoice'],
+            $validated,
+            ! $result['is_draft'],
+        );
+
+        if ($reconcile['linked'] ?? false)
+        {
+            $message .= ' Movimiento del extracto asociado.';
+        }
+
         if ($request->expectsJson())
         {
             return response()->json([
@@ -856,10 +871,160 @@ class ExpenseController extends Controller
                 'message' => $message,
                 'is_draft' => $result['is_draft'],
                 'invoice_id' => $result['invoice']?->id,
+                'reconcile' => $reconcile,
             ]);
         }
 
+        if (($reconcile['account_id'] ?? null) && ($reconcile['statement_id'] ?? null))
+        {
+            return redirect()
+                ->route('payment-account.statements.reconcile', [
+                    $reconcile['account_id'],
+                    $reconcile['statement_id'],
+                    'filter' => ($reconcile['linked'] ?? false) ? 'matched' : 'open',
+                ])
+                ->with('success', $message);
+        }
+
         return redirect()->route('expense.index')->with('success', $message);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array{
+     *     linked: bool,
+     *     account_id: int|null,
+     *     statement_id: int|null,
+     *     line_id: int|null,
+     *     message?: string
+     * }
+     */
+    private function attachExpenseToStatementLine(
+        ?Invoice $invoice,
+        array $validated,
+        bool $shouldLink,
+    ): array {
+        $lineId = isset($validated['bank_statement_line_id'])
+            ? (int) $validated['bank_statement_line_id']
+            : 0;
+        $statementId = isset($validated['bank_statement_id'])
+            ? (int) $validated['bank_statement_id']
+            : 0;
+
+        if ($lineId <= 0)
+        {
+            return [
+                'linked' => false,
+                'account_id' => null,
+                'statement_id' => null,
+                'line_id' => null,
+            ];
+        }
+
+        $line = BankStatementLine::query()
+            ->with('statement')
+            ->find($lineId);
+
+        if (! $line instanceof BankStatementLine || ! $line->statement instanceof BankStatement)
+        {
+            return [
+                'linked' => false,
+                'account_id' => null,
+                'statement_id' => $statementId ?: null,
+                'line_id' => $lineId,
+                'message' => 'No se encontró el movimiento del extracto.',
+            ];
+        }
+
+        $statement = $line->statement;
+        $accountId = (int) $statement->payment_account_id;
+
+        if ($statementId > 0 && (int) $statement->id !== $statementId)
+        {
+            return [
+                'linked' => false,
+                'account_id' => $accountId ?: null,
+                'statement_id' => (int) $statement->id,
+                'line_id' => $lineId,
+                'message' => 'El movimiento no pertenece al extracto indicado.',
+            ];
+        }
+
+        if (! $shouldLink || ! $invoice instanceof Invoice || $accountId <= 0)
+        {
+            return [
+                'linked' => false,
+                'account_id' => $accountId ?: null,
+                'statement_id' => (int) $statement->id,
+                'line_id' => $lineId,
+            ];
+        }
+
+        $account = PaymentAccount::query()->find($accountId);
+
+        if (! $account instanceof PaymentAccount
+            || (int) $account->team_id !== (int) $invoice->team_id)
+        {
+            return [
+                'linked' => false,
+                'account_id' => $accountId,
+                'statement_id' => (int) $statement->id,
+                'line_id' => $lineId,
+                'message' => 'La cuenta del extracto no es válida.',
+            ];
+        }
+
+        $lineAmount = abs(round((float) $line->amount, 2));
+        $payment = Payment::withoutGlobalScopes()
+            ->where('invoice_id', $invoice->id)
+            ->where('account_id', $account->id)
+            ->orderByDesc('id')
+            ->get()
+            ->first(function (Payment $candidate) use ($lineAmount): bool
+            {
+                return abs(round((float) $candidate->amount, 2) - $lineAmount) <= 0.05;
+            });
+
+        if (! $payment instanceof Payment)
+        {
+            $payment = Payment::withoutGlobalScopes()
+                ->where('invoice_id', $invoice->id)
+                ->where('account_id', $account->id)
+                ->orderByDesc('id')
+                ->first();
+        }
+
+        if (! $payment instanceof Payment)
+        {
+            return [
+                'linked' => false,
+                'account_id' => $accountId,
+                'statement_id' => (int) $statement->id,
+                'line_id' => $lineId,
+                'message' => 'El gasto no tiene un pago en la cuenta del extracto para asociar.',
+            ];
+        }
+
+        try
+        {
+            $this->bankStatementReconcileService->attachExistingPayment($line, $payment, $account);
+        } catch (\RuntimeException $exception)
+        {
+            return [
+                'linked' => false,
+                'account_id' => $accountId,
+                'statement_id' => (int) $statement->id,
+                'line_id' => $lineId,
+                'message' => $exception->getMessage(),
+            ];
+        }
+
+        return [
+            'linked' => true,
+            'account_id' => $accountId,
+            'statement_id' => (int) $statement->id,
+            'line_id' => $lineId,
+        ];
     }
 
     public function show(

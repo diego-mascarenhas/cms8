@@ -207,6 +207,8 @@
                                                 <a
                                                     href="{{ route('expense.create', [
                                                         'account_id' => $account->id,
+                                                        'statement_id' => $statement->id,
+                                                        'statement_line_id' => $line->id,
                                                         'amount' => abs($amount),
                                                         'base_amount' => abs($amount),
                                                         'date' => $line->occurred_at?->format('Y-m-d'),
