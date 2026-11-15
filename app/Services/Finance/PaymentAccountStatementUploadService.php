@@ -124,12 +124,16 @@ class PaymentAccountStatementUploadService
             'validation_summary' => $meta,
         ]);
 
+        $skippedDuplicates = 0;
+
         if ($parsedRows !== [])
         {
-            $this->persistCsvLines($statement, $parsedRows, $account);
+            $skippedDuplicates = $this->persistCsvLines($statement, $parsedRows, $account);
         }
 
-        $validation = array_merge($meta, $this->validateAgainstPayments($statement, $account));
+        $validation = array_merge($meta, $this->validateAgainstPayments($statement, $account), [
+            'skipped_duplicates' => $skippedDuplicates,
+        ]);
         $statement->forceFill(['validation_summary' => $validation])->save();
 
         return [
@@ -282,11 +286,24 @@ class PaymentAccountStatementUploadService
     }
 
     /**
+     * Persist parsed rows. Same external_id on the same payment account is kept once
+     * across statements so re-uploads do not duplicate reconcile work.
+     *
      * @param  list<array<string, string>>  $rows
+     * @return int Skipped rows that already exist for this account
      */
-    private function persistCsvLines(BankStatement $statement, array $rows, PaymentAccount $account): void
+    private function persistCsvLines(BankStatement $statement, array $rows, PaymentAccount $account): int
     {
         $currency = strtoupper((string) ($account->currency?->code ?? 'ARS'));
+        $accountId = (int) $account->id;
+        $seenInFile = [];
+        $skipped = 0;
+
+        $existingExternalIds = BankStatementLine::query()
+            ->where('payment_account_id', $accountId)
+            ->whereNotNull('external_id')
+            ->pluck('external_id')
+            ->flip();
 
         foreach ($rows as $index => $row)
         {
@@ -313,24 +330,33 @@ class PaymentAccountStatementUploadService
                 $externalId = 'row-'.($index + 1).'-'.substr(sha1(json_encode($row) ?: (string) $index), 0, 12);
             }
 
-            BankStatementLine::query()->updateOrCreate(
-                [
-                    'bank_statement_id' => $statement->id,
-                    'external_id' => $externalId,
-                ],
-                [
-                    'reference' => $reference !== '' ? Str::limit($reference, 255, '') : null,
-                    'occurred_at' => $occurredAt,
-                    'amount' => $amount,
-                    'currency' => $currency,
-                    'payer_name' => $this->nullableString($this->rowValue($row, ['PAYER_NAME', 'TITULAR', 'COUNTERPARTY'])),
-                    'payer_id_type' => $this->nullableString($this->rowValue($row, ['PAYER_ID_TYPE'])),
-                    'payer_id_number' => $this->nullableString($this->rowValue($row, ['PAYER_ID_NUMBER'])),
-                    'description' => $description !== '' ? Str::limit($description, 1000, '') : null,
-                    'raw' => $row,
-                ],
-            );
+            if (isset($existingExternalIds[$externalId]) || isset($seenInFile[$externalId]))
+            {
+                $skipped++;
+
+                continue;
+            }
+
+            BankStatementLine::query()->create([
+                'bank_statement_id' => $statement->id,
+                'payment_account_id' => $accountId,
+                'external_id' => $externalId,
+                'reference' => $reference !== '' ? Str::limit($reference, 255, '') : null,
+                'occurred_at' => $occurredAt,
+                'amount' => $amount,
+                'currency' => $currency,
+                'payer_name' => $this->nullableString($this->rowValue($row, ['PAYER_NAME', 'TITULAR', 'COUNTERPARTY'])),
+                'payer_id_type' => $this->nullableString($this->rowValue($row, ['PAYER_ID_TYPE'])),
+                'payer_id_number' => $this->nullableString($this->rowValue($row, ['PAYER_ID_NUMBER'])),
+                'description' => $description !== '' ? Str::limit($description, 1000, '') : null,
+                'raw' => $row,
+            ]);
+
+            $seenInFile[$externalId] = true;
+            $existingExternalIds[$externalId] = true;
         }
+
+        return $skipped;
     }
 
     /**

@@ -13,6 +13,7 @@ use App\Models\PaymentAccount;
 use App\Services\Finance\BankStatementInvoiceCandidateService;
 use App\Services\Finance\BankStatementReconcileService;
 use App\Services\Finance\PaymentAccountStatementUploadService;
+use App\Services\Finance\PaymentReportingCurrencyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -24,11 +25,15 @@ class PaymentAccountStatementController extends Controller
         private readonly PaymentAccountStatementUploadService $statementUploadService,
         private readonly BankStatementReconcileService $statementReconcileService,
         private readonly BankStatementInvoiceCandidateService $invoiceCandidateService,
+        private readonly PaymentReportingCurrencyService $paymentReportingCurrencyService,
     ) {}
 
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', PaymentAccount::class);
+
+        $teamId = (int) $request->user()->currentTeam->id;
+        $reportingCurrency = $this->paymentReportingCurrencyService->reportingCurrencyForTeam($teamId);
 
         $accounts = PaymentAccount::query()
             ->with('currency:id,code')
@@ -40,10 +45,24 @@ class PaymentAccountStatementController extends Controller
                 'code' => (string) $account->code,
                 'currency_code' => strtoupper((string) ($account->currency?->code ?? '')),
             ])
+            ->sort(function (array $left, array $right) use ($reportingCurrency): int
+            {
+                $leftMatch = $left['currency_code'] === $reportingCurrency ? 0 : 1;
+                $rightMatch = $right['currency_code'] === $reportingCurrency ? 0 : 1;
+
+                return $leftMatch <=> $rightMatch
+                    ?: strcmp($left['name'], $right['name']);
+            })
             ->values();
+
+        $preferredAccount = $accounts->first(
+            fn (array $account): bool => $account['currency_code'] === $reportingCurrency,
+        ) ?? $accounts->first();
 
         return response()->json([
             'success' => true,
+            'reporting_currency' => $reportingCurrency,
+            'default_account_id' => isset($preferredAccount['id']) ? (int) $preferredAccount['id'] : null,
             'data' => $accounts,
         ]);
     }

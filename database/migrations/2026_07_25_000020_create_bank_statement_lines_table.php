@@ -12,6 +12,10 @@ return new class extends Migration
         {
             $table->id();
             $table->foreignId('bank_statement_id')->constrained('bank_statements')->cascadeOnDelete();
+            $table->foreignId('payment_account_id')
+                ->nullable()
+                ->constrained('payment_accounts')
+                ->cascadeOnDelete();
             $table->string('external_id')->nullable();
             $table->string('reference')->nullable();
             $table->timestamp('occurred_at')->nullable();
@@ -31,6 +35,10 @@ return new class extends Migration
             $table->unique(
                 ['bank_statement_id', 'external_id'],
                 'bank_statement_lines_statement_external_unique',
+            );
+            $table->unique(
+                ['payment_account_id', 'external_id'],
+                'bank_statement_lines_account_external_unique',
             );
             $table->index(['payment_sync_id']);
             $table->index(['payment_id']);

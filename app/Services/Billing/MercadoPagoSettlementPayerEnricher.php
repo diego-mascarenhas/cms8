@@ -343,12 +343,23 @@ class MercadoPagoSettlementPayerEnricher
             $payerIdNumber = trim((string) ($row['PAYER_ID_NUMBER'] ?? ''));
             $reference = trim((string) ($row['EXTERNAL_REFERENCE'] ?? $row['PAY_BANK_TRANSFER_ID'] ?? ''));
 
-            BankStatementLine::query()->updateOrCreate(
-                [
+            $lineKeys = filled($statement->payment_account_id)
+                ? [
+                    'payment_account_id' => (int) $statement->payment_account_id,
+                    'external_id' => (string) $sourceId,
+                ]
+                : [
                     'bank_statement_id' => $statement->id,
                     'external_id' => (string) $sourceId,
-                ],
+                ];
+
+            BankStatementLine::query()->updateOrCreate(
+                $lineKeys,
                 [
+                    'bank_statement_id' => $statement->id,
+                    'payment_account_id' => $statement->payment_account_id
+                        ? (int) $statement->payment_account_id
+                        : null,
                     'reference' => $reference !== '' ? $reference : null,
                     'occurred_at' => $occurredAt,
                     'amount' => $amount,
