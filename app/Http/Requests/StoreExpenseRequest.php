@@ -195,7 +195,22 @@ class StoreExpenseRequest extends FormRequest
             return null;
         }
 
-        if (str_contains($normalized, ','))
+        $hasComma = str_contains($normalized, ',');
+        $hasDot = str_contains($normalized, '.');
+
+        if ($hasComma && $hasDot)
+        {
+            if (strrpos($normalized, ',') > strrpos($normalized, '.'))
+            {
+                $normalized = str_replace('.', '', $normalized);
+                $normalized = str_replace(',', '.', $normalized);
+            }
+            else
+            {
+                $normalized = str_replace(',', '', $normalized);
+            }
+        }
+        elseif ($hasComma)
         {
             $normalized = str_replace('.', '', $normalized);
             $normalized = str_replace(',', '.', $normalized);
