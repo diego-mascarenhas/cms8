@@ -150,6 +150,67 @@ class BankStatementReconcileService
     }
 
     /**
+     * Attach an already-created payment (e.g. from "Crear gasto") to an open statement line.
+     */
+    public function attachExistingPayment(
+        BankStatementLine $line,
+        Payment $payment,
+        PaymentAccount $account,
+    ): BankStatementLine {
+        if ($line->payment_id)
+        {
+            throw new RuntimeException('Este movimiento ya está vinculado a un pago.');
+        }
+
+        if ($line->isDismissed())
+        {
+            throw new RuntimeException('Restaurá el movimiento antes de asociarlo.');
+        }
+
+        $statement = $line->statement;
+
+        if (! $statement instanceof BankStatement
+            || (int) $statement->payment_account_id !== (int) $account->id)
+        {
+            throw new RuntimeException('El movimiento no pertenece a esta cuenta.');
+        }
+
+        if ((int) $payment->account_id !== (int) $account->id)
+        {
+            throw new RuntimeException('El pago no está en la misma cuenta del extracto.');
+        }
+
+        if ((int) $payment->team_id !== (int) $account->team_id)
+        {
+            throw new RuntimeException('El pago no pertenece al mismo equipo.');
+        }
+
+        return DB::transaction(function () use ($line, $payment, $account, $statement): BankStatementLine
+        {
+            if (blank($payment->source_reference_id))
+            {
+                $payment->forceFill([
+                    'source_provider' => filled($payment->source_provider) ? $payment->source_provider : 'manual',
+                    'source_reference_id' => 'statement-line:'.$line->id,
+                ])->save();
+            }
+
+            $line->forceFill([
+                'payment_id' => $payment->id,
+                'match_status' => 'matched',
+                'reconcile_dismissed_at' => null,
+            ])->save();
+
+            $validation = $this->statementUploadService->validateAgainstPayments($statement, $account);
+            $statement->forceFill([
+                'validation_summary' => array_merge($statement->validation_summary ?? [], $validation),
+            ])->save();
+
+            return $line->fresh(['payment']) ?? $line;
+        });
+    }
+
+    /**
      * Create a payment on an existing invoice and match the bank statement line to it.
      *
      * @return array{payment: Payment, invoice: Invoice, line: BankStatementLine}
