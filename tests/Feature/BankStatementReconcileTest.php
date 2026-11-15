@@ -305,6 +305,7 @@ class BankStatementReconcileTest extends TestCase
 
         $line = BankStatementLine::query()->create([
             'bank_statement_id' => $statement->id,
+            'payment_account_id' => $bank->id,
             'external_id' => '1197',
             'reference' => 'trf. stripe',
             'description' => 'trf. stripe',

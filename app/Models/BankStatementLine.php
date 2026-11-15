@@ -9,6 +9,7 @@ class BankStatementLine extends Model
 {
     protected $fillable = [
         'bank_statement_id',
+        'payment_account_id',
         'external_id',
         'reference',
         'occurred_at',
@@ -35,6 +36,11 @@ class BankStatementLine extends Model
     public function statement(): BelongsTo
     {
         return $this->belongsTo(BankStatement::class, 'bank_statement_id');
+    }
+
+    public function paymentAccount(): BelongsTo
+    {
+        return $this->belongsTo(PaymentAccount::class);
     }
 
     public function paymentSync(): BelongsTo
