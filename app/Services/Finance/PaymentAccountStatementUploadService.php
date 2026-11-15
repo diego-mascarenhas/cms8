@@ -20,6 +20,11 @@ class PaymentAccountStatementUploadService
 {
     private const DISK = 'originals';
 
+    /** Bank fee lines that should be ignored automatically on import. */
+    private const AUTO_DISMISS_PHRASES = [
+        'comision cambio divisa on line',
+    ];
+
     /**
      * @param  list<UploadedFile>  $files
      * @return list<array{statement: BankStatement, validation: array<string, mixed>}>
@@ -146,6 +151,7 @@ class PaymentAccountStatementUploadService
      * @return array{
      *     matched: int,
      *     statement_only: int,
+     *     dismissed: int,
      *     payment_only: int,
      *     line_count: int,
      *     payment_count: int,
@@ -169,6 +175,7 @@ class PaymentAccountStatementUploadService
         $matchedPaymentIds = [];
         $matched = 0;
         $statementOnly = 0;
+        $dismissed = 0;
 
         foreach ($lines as $line)
         {
@@ -188,6 +195,19 @@ class PaymentAccountStatementUploadService
                 $line->forceFill([
                     'payment_id' => $payment->id,
                     'match_status' => 'matched',
+                    'reconcile_dismissed_at' => null,
+                ])->save();
+
+                continue;
+            }
+
+            if ($line->isDismissed() || $this->shouldAutoDismissLine($line))
+            {
+                $dismissed++;
+                $line->forceFill([
+                    'payment_id' => null,
+                    'match_status' => 'dismissed',
+                    'reconcile_dismissed_at' => $line->reconcile_dismissed_at ?? now(),
                 ])->save();
 
                 continue;
@@ -197,6 +217,7 @@ class PaymentAccountStatementUploadService
             $line->forceFill([
                 'payment_id' => null,
                 'match_status' => 'statement_only',
+                'reconcile_dismissed_at' => null,
             ])->save();
         }
 
@@ -224,6 +245,7 @@ class PaymentAccountStatementUploadService
         return [
             'matched' => $matched,
             'statement_only' => $statementOnly,
+            'dismissed' => $dismissed,
             'payment_only' => $paymentOnly,
             'line_count' => $lines->count(),
             'payment_count' => $payments->count(),
@@ -232,6 +254,25 @@ class PaymentAccountStatementUploadService
             'difference' => $difference,
             'balanced' => $difference !== null && abs($difference) <= 0.05,
         ];
+    }
+
+    public function shouldAutoDismissLine(BankStatementLine $line): bool
+    {
+        $haystack = Str::lower(Str::ascii(trim(implode(' ', array_filter([
+            (string) $line->reference,
+            (string) $line->description,
+        ])))));
+        $haystack = preg_replace('/\s+/u', ' ', $haystack) ?? $haystack;
+
+        foreach (self::AUTO_DISMISS_PHRASES as $phrase)
+        {
+            if (str_contains($haystack, $phrase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
