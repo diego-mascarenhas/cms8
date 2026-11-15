@@ -5,11 +5,16 @@ namespace Tests\Feature;
 use App\Enums\TransactionType;
 use App\Models\BankStatement;
 use App\Models\BankStatementLine;
+use App\Models\Enterprise;
+use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\Team;
 use App\Models\User;
 use Database\Seeders\CurrencySeeder;
+use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\InvoiceTypeSeeder;
 use Database\Seeders\PaymentTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -27,6 +32,9 @@ class BankStatementReconcileTest extends TestCase
         $this->seed([
             CurrencySeeder::class,
             PaymentTypeSeeder::class,
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            InvoiceTypeSeeder::class,
         ]);
     }
 
@@ -99,6 +107,69 @@ class BankStatementReconcileTest extends TestCase
         $line->refresh();
         $this->assertFalse($line->isDismissed());
         $this->assertSame('statement_only', $line->match_status);
+    }
+
+    public function test_admin_can_link_open_line_to_existing_invoice(): void
+    {
+        [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();
+        $teamId = (int) $user->current_team_id;
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'Cliente Web',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-WEB-001',
+            'date' => '2026-09-20',
+            'due_date' => '2026-10-20',
+            'gross_amount' => 2000,
+            'discount' => 0,
+            'total_amount' => 2000,
+            'balance' => 2000,
+            'status' => 2,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('payment-account.statements.reconcile', [$bank, $statement]))
+            ->assertOk()
+            ->assertSee(__('Asociar factura'))
+            ->assertSee(__('Archivos subidos'));
+
+        $this->actingAs($user)
+            ->post(route('payment-account.statements.lines.link-invoice', [$bank, $statement, $line]), [
+                'invoice_id' => $invoice->id,
+                'remarks' => 'Cobro desde extracto',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $line->refresh();
+        $invoice->refresh();
+
+        $this->assertNotNull($line->payment_id);
+        $this->assertSame('matched', $line->match_status);
+        $this->assertSame(152.38, (float) $invoice->balance);
+    }
+
+    public function test_admin_can_delete_statement_from_account_show(): void
+    {
+        [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();
+
+        $this->actingAs($user)
+            ->delete(route('payment-account.statements.destroy', [$bank, $statement]))
+            ->assertRedirect(route('payment-account.show', $bank))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('bank_statements', ['id' => $statement->id]);
+        $this->assertDatabaseMissing('bank_statement_lines', ['id' => $line->id]);
     }
 
     /**

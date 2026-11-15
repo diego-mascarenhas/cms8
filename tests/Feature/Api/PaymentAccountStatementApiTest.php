@@ -5,11 +5,16 @@ namespace Tests\Feature\Api;
 use App\Enums\TransactionType;
 use App\Models\BankStatement;
 use App\Models\BankStatementLine;
+use App\Models\Enterprise;
+use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\Team;
 use App\Models\User;
 use Database\Seeders\CurrencySeeder;
+use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\InvoiceTypeSeeder;
 use Database\Seeders\PaymentTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -29,6 +34,9 @@ class PaymentAccountStatementApiTest extends TestCase
         $this->seed([
             CurrencySeeder::class,
             PaymentTypeSeeder::class,
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            InvoiceTypeSeeder::class,
         ]);
         Storage::fake('originals');
     }
@@ -325,6 +333,90 @@ class PaymentAccountStatementApiTest extends TestCase
 
         $openLine->refresh();
         $this->assertFalse($openLine->isDismissed());
+    }
+
+    public function test_api_can_list_invoice_candidates_and_link_statement_line(): void
+    {
+        [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();
+        $teamId = (int) $user->current_team_id;
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'Cliente Conciliación',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-CONC-001',
+            'date' => '2026-09-20',
+            'due_date' => '2026-10-20',
+            'gross_amount' => 2000,
+            'discount' => 0,
+            'total_amount' => 2000,
+            'balance' => 2000,
+            'status' => 2,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/invoice-candidates')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('operation', 'sell')
+            ->assertJsonPath('invoices.0.id', $invoice->id)
+            ->assertJsonPath('invoices.0.number', 'F-CONC-001');
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/link-invoice', [
+                'invoice_id' => $invoice->id,
+                'remarks' => 'Cobro extracto',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('line_id', $line->id);
+
+        $line->refresh();
+        $invoice->refresh();
+
+        $this->assertNotNull($line->payment_id);
+        $this->assertSame('matched', $line->match_status);
+        $this->assertSame(152.38, (float) $invoice->balance);
+
+        $payment = Payment::withoutGlobalScopes()->find($line->payment_id);
+        $this->assertNotNull($payment);
+        $this->assertSame(TransactionType::INCOME, $payment->transaction_type);
+        $this->assertSame((int) $invoice->id, (int) $payment->invoice_id);
+        $this->assertSame(1847.62, (float) $payment->amount);
+        $this->assertSame('manual', $payment->source_provider);
+        $this->assertSame('statement-line:'.$line->id, $payment->source_reference_id);
+    }
+
+    public function test_api_can_delete_uploaded_statement(): void
+    {
+        [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();
+
+        $statement->forceFill([
+            'disk' => 'originals',
+            'storage_path' => 'statements/test-delete.csv',
+            'original_filename' => 'test-delete.csv',
+            'file_size' => 120,
+        ])->save();
+
+        Storage::disk('originals')->put('statements/test-delete.csv', "DATE;amount\n2026-09-29;10");
+
+        $this->actingAs($user, 'sanctum')
+            ->deleteJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseMissing('bank_statements', ['id' => $statement->id]);
+        $this->assertDatabaseMissing('bank_statement_lines', ['id' => $line->id]);
+        $this->assertFalse(Storage::disk('originals')->exists('statements/test-delete.csv'));
     }
 
     /**

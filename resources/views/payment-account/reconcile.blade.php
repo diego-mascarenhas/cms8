@@ -20,6 +20,9 @@
                 <i class="ti ti-upload me-1"></i>{{ __('Subir extracto') }}
             </button>
         @endcan
+        <a href="{{ route('payment-account.show', $account) }}#statement-files" class="btn btn-label-info waves-effect waves-light">
+            <i class="ti ti-files me-1"></i>{{ __('Archivos subidos') }}
+        </a>
         @if ($statement->isDownloadable())
             <a href="{{ route('payment-account.statements.download', [$account, $statement]) }}" class="btn btn-label-secondary waves-effect waves-light">
                 <i class="ti ti-download me-1"></i>{{ __('Descargar extracto') }}
@@ -160,7 +163,7 @@
                                                 @csrf
                                                 <button type="submit" class="btn btn-sm btn-label-secondary">{{ __('Restaurar') }}</button>
                                             </form>
-                                        @elseif (! $line->payment_id)
+                                            @elseif (! $line->payment_id)
                                             @if ($isCredit)
                                                 <button
                                                     type="button"
@@ -182,6 +185,12 @@
                                                     class="btn btn-sm btn-label-danger"
                                                 >{{ __('Crear gasto') }}</a>
                                             @endif
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-label-info"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#linkInvoiceModal{{ $line->id }}"
+                                            >{{ __('Asociar factura') }}</button>
                                             <form method="POST" action="{{ route('payment-account.statements.lines.dismiss', [$account, $statement, $line]) }}">
                                                 @csrf
                                                 <button type="submit" class="btn btn-sm btn-label-secondary">{{ __('Ignorar') }}</button>
@@ -253,6 +262,62 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancelar') }}</button>
                             <button type="submit" class="btn btn-primary">{{ __('Registrar traspaso') }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
+
+        @if (! $line->payment_id && ! $line->isDismissed())
+            @php
+                $lineOperation = (float) $line->amount < 0 ? 'buy' : 'sell';
+                $lineInvoiceOptions = collect($linkableInvoices ?? [])->where('operation', $lineOperation);
+            @endphp
+            <div class="modal fade" id="linkInvoiceModal{{ $line->id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form class="modal-content" method="POST" action="{{ route('payment-account.statements.lines.link-invoice', [$account, $statement, $line]) }}">
+                        @csrf
+                        <div class="modal-header">
+                            <h5 class="modal-title">{{ __('Asociar a factura existente') }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="mb-3">
+                                {{ __('Se registrará un pago de') }}
+                                <strong>{{ number_format(abs((float) $line->amount), 2, ',', '.') }}</strong>
+                                {{ __('en la factura elegida y se empatará este movimiento del extracto.') }}
+                            </p>
+                            <div class="mb-3">
+                                <label class="form-label" for="invoice_id_{{ $line->id }}">{{ __('Factura') }} (*)</label>
+                                <select name="invoice_id" id="invoice_id_{{ $line->id }}" class="form-select" required>
+                                    <option value="">{{ __('Elegir…') }}</option>
+                                    @forelse ($lineInvoiceOptions as $invoiceOption)
+                                        <option value="{{ $invoiceOption->id }}">
+                                            {{ $invoiceOption->number }}
+                                            · {{ $invoiceOption->enterprise?->name ?? '—' }}
+                                            · {{ __('Saldo') }} {{ number_format((float) $invoiceOption->balance, 2, ',', '.') }}
+                                            {{ strtoupper((string) ($invoiceOption->currency?->code ?? '')) }}
+                                        </option>
+                                    @empty
+                                        <option value="" disabled>{{ __('No hay facturas con saldo pendiente') }}</option>
+                                    @endforelse
+                                </select>
+                            </div>
+                            <div class="mb-0">
+                                <label class="form-label" for="link_remarks_{{ $line->id }}">{{ __('Nota') }}</label>
+                                <input
+                                    type="text"
+                                    name="remarks"
+                                    id="link_remarks_{{ $line->id }}"
+                                    class="form-control"
+                                    value="{{ old('remarks', $line->reference ?: $line->description) }}"
+                                    maxlength="1000"
+                                >
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancelar') }}</button>
+                            <button type="submit" class="btn btn-primary" @disabled($lineInvoiceOptions->isEmpty())>{{ __('Asociar') }}</button>
                         </div>
                     </form>
                 </div>

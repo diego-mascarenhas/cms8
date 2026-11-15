@@ -1068,10 +1068,12 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/payment-account/{paymentAccount}', [PaymentAccountController::class, 'show'])->name('payment-account.show');
     Route::post('/payment-account/{paymentAccount}/statements', [PaymentAccountController::class, 'storeStatements'])->name('payment-account.statements.store');
     Route::get('/payment-account/{paymentAccount}/statements/{statement}/download', [PaymentAccountController::class, 'downloadStatement'])->name('payment-account.statements.download');
+    Route::delete('/payment-account/{paymentAccount}/statements/{statement}', [PaymentAccountController::class, 'destroyStatement'])->name('payment-account.statements.destroy');
     Route::get('/payment-account/{paymentAccount}/statements/{statement}/reconcile', [PaymentAccountController::class, 'reconcileStatement'])->name('payment-account.statements.reconcile');
     Route::post('/payment-account/{paymentAccount}/statements/{statement}/lines/{line}/dismiss', [PaymentAccountController::class, 'dismissStatementLine'])->name('payment-account.statements.lines.dismiss');
     Route::post('/payment-account/{paymentAccount}/statements/{statement}/lines/{line}/undismiss', [PaymentAccountController::class, 'undismissStatementLine'])->name('payment-account.statements.lines.undismiss');
     Route::post('/payment-account/{paymentAccount}/statements/{statement}/lines/{line}/transfer', [PaymentAccountController::class, 'transferStatementLine'])->name('payment-account.statements.lines.transfer');
+    Route::post('/payment-account/{paymentAccount}/statements/{statement}/lines/{line}/link-invoice', [PaymentAccountController::class, 'linkStatementLineInvoice'])->name('payment-account.statements.lines.link-invoice');
     Route::get('/payment-account/{paymentAccount}/edit', [PaymentAccountController::class, 'edit'])->name('payment-account.edit');
     Route::put('/payment-account/{paymentAccount}', [PaymentAccountController::class, 'update'])->name('payment-account.update');
 

@@ -3,16 +3,21 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreBankStatementLinkInvoiceRequest;
 use App\Http\Requests\StoreBankStatementTransferRequest;
 use App\Http\Requests\StorePaymentAccountStatementRequest;
 use App\Models\BankStatement;
 use App\Models\BankStatementLine;
+use App\Models\Invoice;
 use App\Models\PaymentAccount;
 use App\Services\Finance\BankStatementReconcileService;
 use App\Services\Finance\PaymentAccountStatementUploadService;
+use App\Support\SearchNormalizer;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PaymentAccountStatementController extends Controller
 {
@@ -134,6 +139,9 @@ class PaymentAccountStatementController extends Controller
                     'id' => (int) $statement->id,
                     'filename' => (string) ($statement->original_filename ?? ''),
                     'period_label' => $statement->periodLabel(),
+                    'downloadable' => $statement->isDownloadable(),
+                    'file_size' => $statement->file_size ? (int) $statement->file_size : null,
+                    'created_at' => $statement->created_at?->toIso8601String(),
                     'line_count' => (int) ($summary['line_count'] ?? $statement->lines_count),
                     'matched_lines' => (int) ($summary['matched'] ?? 0),
                     'statement_only_lines' => (int) ($summary['statement_only'] ?? 0),
@@ -318,6 +326,139 @@ class PaymentAccountStatementController extends Controller
             'inflow_payment_id' => (int) $result['inflow']->id,
             'outflow_payment_id' => (int) $result['outflow']->id,
             'line_id' => (int) $result['line']->id,
+        ]);
+    }
+
+    public function invoiceCandidates(
+        Request $request,
+        PaymentAccount $paymentAccount,
+        BankStatement $statement,
+        BankStatementLine $line,
+    ): JsonResponse {
+        $this->authorize('update', $paymentAccount);
+        $this->assertStatementBelongsToAccount($paymentAccount, $statement);
+        $this->assertLineBelongsToStatement($statement, $line);
+
+        $isExpense = (float) $line->amount < 0;
+        $operation = $isExpense ? 'buy' : 'sell';
+        $search = trim((string) $request->query('search', ''));
+
+        $query = Invoice::query()
+            ->with(['enterprise:id,name', 'currency:id,code'])
+            ->where('team_id', $paymentAccount->team_id)
+            ->where('operation', $operation)
+            ->where('balance', '>', 0)
+            ->orderByDesc('date')
+            ->orderByDesc('id');
+
+        if ($search !== '')
+        {
+            $query->where(function ($builder) use ($search): void
+            {
+                SearchNormalizer::applyColumnsNavbarConditions($builder, ['number'], $search);
+                $builder->orWhereHas('enterprise', function ($enterpriseQuery) use ($search): void
+                {
+                    SearchNormalizer::applyColumnsNavbarConditions($enterpriseQuery, ['name'], $search);
+                });
+            });
+        }
+
+        $invoices = $query
+            ->limit(20)
+            ->get(['id', 'number', 'date', 'total_amount', 'balance', 'currency_id', 'enterprise_id', 'operation'])
+            ->map(function (Invoice $invoice): array
+            {
+                $date = $invoice->date;
+
+                return [
+                    'id' => (int) $invoice->id,
+                    'number' => (string) $invoice->number,
+                    'date' => filled($date) ? Carbon::parse($date)->format('Y-m-d') : null,
+                    'enterprise_name' => (string) ($invoice->enterprise?->name ?? ''),
+                    'total_amount' => round((float) $invoice->total_amount, 2),
+                    'balance' => round((float) $invoice->balance, 2),
+                    'currency_code' => strtoupper((string) ($invoice->currency?->code ?? '')),
+                    'operation' => (string) $invoice->operation,
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'operation' => $operation,
+            'amount' => abs(round((float) $line->amount, 2)),
+            'invoices' => $invoices,
+        ]);
+    }
+
+    public function linkInvoice(
+        StoreBankStatementLinkInvoiceRequest $request,
+        PaymentAccount $paymentAccount,
+        BankStatement $statement,
+        BankStatementLine $line,
+    ): JsonResponse {
+        $this->authorize('update', $paymentAccount);
+        $this->assertStatementBelongsToAccount($paymentAccount, $statement);
+        $this->assertLineBelongsToStatement($statement, $line);
+
+        $invoice = Invoice::query()
+            ->where('team_id', $paymentAccount->team_id)
+            ->findOrFail((int) $request->validated('invoice_id'));
+
+        try
+        {
+            $result = $this->statementReconcileService->linkToInvoice(
+                $line,
+                $invoice,
+                $paymentAccount,
+                isset($request->validated()['type_id']) ? (int) $request->validated('type_id') : null,
+                $request->validated('remarks') ?? null,
+            );
+        } catch (RuntimeException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Pago asociado a la factura y movimiento empatado.'),
+            'payment_id' => (int) $result['payment']->id,
+            'invoice_id' => (int) $result['invoice']->id,
+            'line_id' => (int) $result['line']->id,
+            'invoice_balance' => round((float) $result['invoice']->balance, 2),
+        ]);
+    }
+
+    public function download(PaymentAccount $paymentAccount, BankStatement $statement): StreamedResponse|JsonResponse
+    {
+        $this->authorize('view', $paymentAccount);
+        $this->assertStatementBelongsToAccount($paymentAccount, $statement);
+
+        try
+        {
+            return $this->statementUploadService->downloadStream($statement);
+        } catch (RuntimeException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 404);
+        }
+    }
+
+    public function destroy(PaymentAccount $paymentAccount, BankStatement $statement): JsonResponse
+    {
+        $this->authorize('update', $paymentAccount);
+        $this->assertStatementBelongsToAccount($paymentAccount, $statement);
+
+        $this->statementReconcileService->deleteStatement($statement);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Extracto eliminado.'),
         ]);
     }
 

@@ -99,7 +99,7 @@
 </div>
 
 @if ($statements->isNotEmpty())
-<div class="card mb-4">
+<div class="card mb-4" id="statement-files">
     <div class="card-header">
         <h5 class="card-title mb-0">{{ __('Validación de extractos') }}</h5>
     </div>
@@ -150,9 +150,23 @@
                                 @endif
                             </td>
                             <td class="text-end">
-                                <a href="{{ route('payment-account.statements.reconcile', [$account, $statement]) }}" class="btn btn-sm btn-label-primary">
-                                    {{ __('Conciliar') }}
-                                </a>
+                                <div class="d-inline-flex flex-wrap justify-content-end gap-1">
+                                    <a href="{{ route('payment-account.statements.reconcile', [$account, $statement]) }}" class="btn btn-sm btn-label-primary">
+                                        {{ __('Conciliar') }}
+                                    </a>
+                                    @if ($statement->isDownloadable())
+                                        <a href="{{ route('payment-account.statements.download', [$account, $statement]) }}" class="btn btn-sm btn-label-secondary">
+                                            {{ __('Descargar') }}
+                                        </a>
+                                    @endif
+                                    @can('update', $account)
+                                        <form method="POST" action="{{ route('payment-account.statements.destroy', [$account, $statement]) }}" onsubmit="return confirm(@json(__('¿Eliminar este extracto y sus líneas?')));">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-label-danger">{{ __('Eliminar') }}</button>
+                                        </form>
+                                    @endcan
+                                </div>
                             </td>
                         </tr>
                     @endforeach

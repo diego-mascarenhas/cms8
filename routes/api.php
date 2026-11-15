@@ -988,12 +988,20 @@ Route::middleware('auth.api')->group(function ()
         ->name('api.payment-accounts.statements.store');
     Route::get('payment-accounts/{paymentAccount}/statements/{statement}/reconcile', [PaymentAccountStatementController::class, 'reconcile'])
         ->name('api.payment-accounts.statements.reconcile');
+    Route::get('payment-accounts/{paymentAccount}/statements/{statement}/download', [PaymentAccountStatementController::class, 'download'])
+        ->name('api.payment-accounts.statements.download');
+    Route::delete('payment-accounts/{paymentAccount}/statements/{statement}', [PaymentAccountStatementController::class, 'destroy'])
+        ->name('api.payment-accounts.statements.destroy');
     Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/dismiss', [PaymentAccountStatementController::class, 'dismissLine'])
         ->name('api.payment-accounts.statements.lines.dismiss');
     Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/undismiss', [PaymentAccountStatementController::class, 'undismissLine'])
         ->name('api.payment-accounts.statements.lines.undismiss');
     Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/transfer', [PaymentAccountStatementController::class, 'transferLine'])
         ->name('api.payment-accounts.statements.lines.transfer');
+    Route::get('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/invoice-candidates', [PaymentAccountStatementController::class, 'invoiceCandidates'])
+        ->name('api.payment-accounts.statements.lines.invoice-candidates');
+    Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/link-invoice', [PaymentAccountStatementController::class, 'linkInvoice'])
+        ->name('api.payment-accounts.statements.lines.link-invoice');
 
     // Invoices - for user-based authentication (Sanctum tokens)
     Route::get('invoices', [InvoiceController::class, 'index']);

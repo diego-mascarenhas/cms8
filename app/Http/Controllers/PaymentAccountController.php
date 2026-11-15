@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\PaymentAccountDataTable;
 use App\DataTables\PaymentDataTable;
+use App\Http\Requests\StoreBankStatementLinkInvoiceRequest;
 use App\Http\Requests\StoreBankStatementTransferRequest;
 use App\Http\Requests\StorePaymentAccountRequest;
 use App\Http\Requests\StorePaymentAccountStatementRequest;
@@ -11,6 +12,7 @@ use App\Http\Requests\UpdatePaymentAccountRequest;
 use App\Models\BankStatement;
 use App\Models\BankStatementLine;
 use App\Models\Currency;
+use App\Models\Invoice;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
 use App\Services\Finance\BankStatementReconcileService;
@@ -173,6 +175,16 @@ class PaymentAccountController extends Controller
             'all' => $statement->lines->count(),
         ];
 
+        $linkableInvoices = Invoice::query()
+            ->with(['enterprise:id,name', 'currency:id,code'])
+            ->where('team_id', $paymentAccount->team_id)
+            ->where('balance', '>', 0)
+            ->whereIn('operation', ['buy', 'sell'])
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->limit(80)
+            ->get(['id', 'number', 'date', 'total_amount', 'balance', 'currency_id', 'enterprise_id', 'operation']);
+
         return view('payment-account.reconcile', [
             'account' => $paymentAccount,
             'statement' => $statement,
@@ -180,6 +192,7 @@ class PaymentAccountController extends Controller
             'filter' => $filter,
             'counts' => $counts,
             'transferAccounts' => $transferAccounts,
+            'linkableInvoices' => $linkableInvoices,
             'summary' => $statement->validation_summary ?? [],
         ]);
     }
@@ -251,6 +264,55 @@ class PaymentAccountController extends Controller
         return redirect()
             ->route('payment-account.statements.reconcile', [$paymentAccount, $statement, 'filter' => 'matched'])
             ->with('success', __('Traspaso registrado y movimiento empatado.'));
+    }
+
+    public function linkStatementLineInvoice(
+        StoreBankStatementLinkInvoiceRequest $request,
+        PaymentAccount $paymentAccount,
+        BankStatement $statement,
+        BankStatementLine $line,
+    ): RedirectResponse {
+        $this->authorize('update', $paymentAccount);
+        $this->assertStatementBelongsToAccount($paymentAccount, $statement);
+        $this->assertLineBelongsToStatement($statement, $line);
+
+        $invoice = Invoice::query()
+            ->where('team_id', $paymentAccount->team_id)
+            ->findOrFail((int) $request->validated('invoice_id'));
+
+        try
+        {
+            $this->statementReconcileService->linkToInvoice(
+                $line,
+                $invoice,
+                $paymentAccount,
+                isset($request->validated()['type_id']) ? (int) $request->validated('type_id') : null,
+                $request->validated('remarks') ?? null,
+            );
+        } catch (RuntimeException $exception)
+        {
+            return redirect()
+                ->route('payment-account.statements.reconcile', [$paymentAccount, $statement, 'filter' => 'open'])
+                ->withErrors(['link_invoice' => $exception->getMessage()]);
+        }
+
+        return redirect()
+            ->route('payment-account.statements.reconcile', [$paymentAccount, $statement, 'filter' => 'matched'])
+            ->with('success', __('Pago asociado a la factura y movimiento empatado.'));
+    }
+
+    public function destroyStatement(
+        PaymentAccount $paymentAccount,
+        BankStatement $statement,
+    ): RedirectResponse {
+        $this->authorize('update', $paymentAccount);
+        $this->assertStatementBelongsToAccount($paymentAccount, $statement);
+
+        $this->statementReconcileService->deleteStatement($statement);
+
+        return redirect()
+            ->route('payment-account.show', $paymentAccount)
+            ->with('success', __('Extracto eliminado.'));
     }
 
     public function create(): View
