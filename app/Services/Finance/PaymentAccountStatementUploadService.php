@@ -172,6 +172,13 @@ class PaymentAccountStatementUploadService
 
         foreach ($lines as $line)
         {
+            if ($this->preserveStatementLineLink($line, $payments, $matchedPaymentIds))
+            {
+                $matched++;
+
+                continue;
+            }
+
             $payment = $this->findMatchingPayment($line, $payments, $matchedPaymentIds);
 
             if ($payment instanceof Payment)
@@ -225,6 +232,70 @@ class PaymentAccountStatementUploadService
             'difference' => $difference,
             'balanced' => $difference !== null && abs($difference) <= 0.05,
         ];
+    }
+
+    /**
+     * Keep explicit reconcile links (including 1 movimiento → N facturas) instead of
+     * clearing them when no single payment equals the full bank amount.
+     *
+     * @param  \Illuminate\Support\Collection<int, Payment>  $payments
+     * @param  array<int, true>  $matchedPaymentIds
+     */
+    private function preserveStatementLineLink(
+        BankStatementLine $line,
+        $payments,
+        array &$matchedPaymentIds,
+    ): bool {
+        if (! $line->payment_id)
+        {
+            return false;
+        }
+
+        $prefix = 'statement-line:'.$line->id;
+        $linkedPayments = $payments->filter(function (Payment $payment) use ($prefix): bool
+        {
+            $source = (string) ($payment->source_reference_id ?? '');
+
+            return $source === $prefix || str_starts_with($source, $prefix.':');
+        });
+
+        // Payments created from reconcile may fall outside the statement period window
+        // used for auto-matching; load them explicitly so we do not wipe the link.
+        if ($linkedPayments->isEmpty())
+        {
+            $linkedPayments = Payment::withoutGlobalScopes()
+                ->where(function ($query) use ($prefix): void
+                {
+                    $query->where('source_reference_id', $prefix)
+                        ->orWhere('source_reference_id', 'like', $prefix.':%');
+                })
+                ->get();
+        }
+
+        if ($linkedPayments->isEmpty())
+        {
+            return false;
+        }
+
+        $primary = $linkedPayments->firstWhere('id', (int) $line->payment_id)
+            ?? $linkedPayments->sortBy('id')->first();
+
+        if (! $primary instanceof Payment)
+        {
+            return false;
+        }
+
+        foreach ($linkedPayments as $linkedPayment)
+        {
+            $matchedPaymentIds[(int) $linkedPayment->id] = true;
+        }
+
+        $line->forceFill([
+            'payment_id' => (int) $primary->id,
+            'match_status' => 'matched',
+        ])->save();
+
+        return true;
     }
 
     /**

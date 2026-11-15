@@ -497,6 +497,123 @@ class PaymentAccountStatementApiTest extends TestCase
         $this->assertNull(Payment::withoutGlobalScopes()->find($paymentId));
     }
 
+    public function test_link_invoice_can_split_one_movement_across_multiple_invoices(): void
+    {
+        [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();
+        $teamId = (int) $user->current_team_id;
+
+        $line->forceFill([
+            'amount' => -859.20,
+            'currency' => 'EUR',
+            'occurred_at' => '2026-01-02',
+            'reference' => 'tj-ovhcloud',
+            'description' => 'tj-ovhcloud',
+        ])->save();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'OVH HISPANO S.L.',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $mainInvoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'ES4114126',
+            'date' => '2026-01-01',
+            'due_date' => '2026-01-01',
+            'gross_amount' => 845.87,
+            'discount' => 0,
+            'total_amount' => 845.87,
+            'balance' => 845.87,
+            'status' => 2,
+        ]);
+
+        $smallInvoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'ES4128674',
+            'date' => '2026-01-01',
+            'due_date' => '2026-01-01',
+            'gross_amount' => 13.33,
+            'discount' => 0,
+            'total_amount' => 13.33,
+            'balance' => 13.33,
+            'status' => 2,
+        ]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/link-invoice', [
+                'invoice_ids' => [$mainInvoice->id, $smallInvoice->id],
+                'remarks' => 'OVH cloud',
+            ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('invoice_id', $mainInvoice->id)
+            ->assertJsonPath('invoice_ids.0', $mainInvoice->id)
+            ->assertJsonPath('invoice_ids.1', $smallInvoice->id)
+            ->assertJsonPath('redirect_url', '/expense/edit/'.$mainInvoice->id)
+            ->assertJsonPath('invoice_operation', 'buy');
+
+        $line->refresh();
+        $mainInvoice->refresh();
+        $smallInvoice->refresh();
+
+        $this->assertNotNull($line->payment_id);
+        $this->assertSame('matched', $line->match_status);
+        $this->assertSame(0.0, (float) $mainInvoice->balance);
+        $this->assertSame(0.0, (float) $smallInvoice->balance);
+
+        $payments = Payment::withoutGlobalScopes()
+            ->where(function ($query) use ($line): void
+            {
+                $query->where('source_reference_id', 'statement-line:'.$line->id)
+                    ->orWhere('source_reference_id', 'like', 'statement-line:'.$line->id.':%');
+            })
+            ->orderBy('id')
+            ->get();
+
+        $this->assertCount(2, $payments);
+        $this->assertSame(845.87, (float) $payments[0]->amount);
+        $this->assertSame((int) $mainInvoice->id, (int) $payments[0]->invoice_id);
+        $this->assertSame(13.33, (float) $payments[1]->amount);
+        $this->assertSame((int) $smallInvoice->id, (int) $payments[1]->invoice_id);
+        $this->assertSame((int) $payments[0]->id, (int) $line->payment_id);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/unlink')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $line->refresh();
+        $mainInvoice->refresh();
+        $smallInvoice->refresh();
+
+        $this->assertNull($line->payment_id);
+        $this->assertSame('statement_only', $line->match_status);
+        $this->assertSame(845.87, (float) $mainInvoice->balance);
+        $this->assertSame(13.33, (float) $smallInvoice->balance);
+        $this->assertCount(
+            0,
+            Payment::withoutGlobalScopes()
+                ->where(function ($query) use ($line): void
+                {
+                    $query->where('source_reference_id', 'statement-line:'.$line->id)
+                        ->orWhere('source_reference_id', 'like', 'statement-line:'.$line->id.':%');
+                })
+                ->get(),
+        );
+    }
+
     public function test_invoice_candidates_rank_by_bank_alias_amount_and_date(): void
     {
         [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();

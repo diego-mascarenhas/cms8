@@ -4,10 +4,12 @@
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
 @endsection
 
 @section('vendor-script')
 <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
+<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
 @section('content')
@@ -190,7 +192,15 @@
                                                 >{{ __('Ver factura') }}</a>
                                             @endif
                                             @if ($canUnlink)
-                                                <form method="POST" action="{{ route('payment-account.statements.lines.unlink', [$account, $statement, $line]) }}" onsubmit="return confirm(@json(__('¿Desasociar este movimiento y revertir el pago?')))">
+                                                <form
+                                                    method="POST"
+                                                    action="{{ route('payment-account.statements.lines.unlink', [$account, $statement, $line]) }}"
+                                                    class="js-unlink-statement-line"
+                                                    data-title="{{ __('¿Desasociar este movimiento y revertir el pago?') }}"
+                                                    data-text="{{ __('El saldo de la factura se restaurará.') }}"
+                                                    data-confirm="{{ __('Sí, desasociar') }}"
+                                                    data-cancel="{{ __('Cancelar') }}"
+                                                >
                                                     @csrf
                                                     <button type="submit" class="btn btn-sm btn-label-warning">{{ __('Desasociar') }}</button>
                                                 </form>
@@ -327,7 +337,7 @@
                         </div>
                         <div class="modal-body">
                             <p class="mb-2">
-                                {{ __('Se creará un pago por el importe del movimiento. Si la factura está en otra divisa, se salda el saldo completo de la factura y se guarda el tipo de cambio implícito.') }}
+                                {{ __('Podés asociar una o varias facturas. El importe del movimiento se reparte entre sus saldos. Si hay una sola factura en otra divisa, se salda su saldo y se guarda el tipo de cambio implícito.') }}
                             </p>
                             <p class="mb-3 text-muted small">
                                 {{ $line->occurred_at?->format('d/m/Y') ?? '—' }}
@@ -335,18 +345,19 @@
                                 · {{ $line->reference ?: $line->description ?: '—' }}
                             </p>
                             <div class="mb-3">
-                                <label class="form-label" for="invoice_id_{{ $line->id }}">{{ __('Factura') }} (*)</label>
+                                <label class="form-label" for="invoice_ids_{{ $line->id }}">{{ __('Facturas') }} (*)</label>
                                 <select
-                                    name="invoice_id"
-                                    id="invoice_id_{{ $line->id }}"
+                                    name="invoice_ids[]"
+                                    id="invoice_ids_{{ $line->id }}"
                                     class="form-select js-link-invoice-select"
+                                    multiple
                                     required
                                     data-line-currency="{{ $lineCurrency }}"
                                     data-bank-amount="{{ $bankAmount }}"
                                     data-fx-target="link_fx_{{ $line->id }}"
+                                    data-alloc-target="link_alloc_{{ $line->id }}"
                                     data-placeholder="{{ __('Buscar número o empresa…') }}"
                                 >
-                                    <option value="">{{ __('Elegir…') }}</option>
                                     @forelse ($lineInvoiceOptions as $invoiceOption)
                                         @php
                                             $optionCurrency = strtoupper((string) ($invoiceOption['currency_code'] ?? ''));
@@ -385,6 +396,7 @@
                                     @endforelse
                                 </select>
                             </div>
+                            <div id="link_alloc_{{ $line->id }}" class="alert alert-secondary d-none mb-3" role="alert"></div>
                             <div id="link_fx_{{ $line->id }}" class="alert alert-info d-none mb-3" role="alert"></div>
                             <div class="mb-0">
                                 <label class="form-label" for="link_remarks_{{ $line->id }}">{{ __('Nota') }}</label>
@@ -425,6 +437,50 @@
 @section('page-script')
 <script>
 $(function () {
+    $(document).on('submit', 'form.js-unlink-statement-line', function (event) {
+        event.preventDefault();
+
+        var $form = $(this);
+
+        if ($form.data('confirmed')) {
+            $form.removeData('confirmed');
+
+            return true;
+        }
+
+        if (typeof Swal === 'undefined') {
+            if (window.confirm(($form.data('title') || '') + '\n' + ($form.data('text') || ''))) {
+                $form.data('confirmed', true);
+                $form.trigger('submit');
+            }
+
+            return false;
+        }
+
+        Swal.fire({
+            title: $form.data('title') || @json(__('¿Desasociar este movimiento y revertir el pago?')),
+            text: $form.data('text') || @json(__('El saldo de la factura se restaurará.')),
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: $form.data('confirm') || @json(__('Sí, desasociar')),
+            cancelButtonText: $form.data('cancel') || @json(__('Cancelar')),
+            customClass: {
+                confirmButton: 'btn btn-warning me-3',
+                cancelButton: 'btn btn-label-secondary'
+            },
+            buttonsStyling: false
+        }).then(function (result) {
+            if (! result.isConfirmed) {
+                return;
+            }
+
+            $form.data('confirmed', true);
+            $form.trigger('submit');
+        });
+
+        return false;
+    });
+
     function formatMoney(amount, currency) {
         try {
             return new Intl.NumberFormat('es-ES', {
@@ -485,31 +541,80 @@ $(function () {
             .find('.small').text(subtitle).end();
     }
 
-    function updateFxHelper($select) {
-        var targetId = $select.data('fx-target');
-        var $box = targetId ? $('#' + targetId) : $();
-        if (! $box.length) {
-            return;
-        }
-
-        var $option = $select.find('option:selected');
+    function updateLinkHelpers($select) {
         var lineCurrency = String($select.data('line-currency') || '').toUpperCase();
         var bankAmount = Number($select.data('bank-amount') || 0);
-        var meta = optionMeta($option);
+        var $selected = $select.find('option:selected').filter(function () {
+            return Boolean($(this).val());
+        });
+        var fxTargetId = $select.data('fx-target');
+        var allocTargetId = $select.data('alloc-target');
+        var $fxBox = fxTargetId ? $('#' + fxTargetId) : $();
+        var $allocBox = allocTargetId ? $('#' + allocTargetId) : $();
 
-        if (! $option.val() || ! meta.currency || ! lineCurrency || meta.currency === lineCurrency || meta.balance <= 0) {
-            $box.addClass('d-none').text('');
+        if ($fxBox.length) {
+            $fxBox.addClass('d-none').text('');
+        }
+
+        if ($allocBox.length) {
+            $allocBox.addClass('d-none').text('');
+        }
+
+        if (! $selected.length) {
             return;
         }
 
-        var rate = bankAmount / meta.balance;
-        $box
-            .removeClass('d-none')
-            .text(
-                'Divisas distintas: pago ' + formatMoney(bankAmount, lineCurrency)
-                + ' → se aplica ' + formatMoney(meta.balance, meta.currency)
-                + ' a la factura (TC ≈ ' + rate.toFixed(6) + ' ' + lineCurrency + '/' + meta.currency + ').'
-            );
+        if ($selected.length === 1) {
+            var meta = optionMeta($selected.first());
+
+            if ($fxBox.length && meta.currency && lineCurrency && meta.currency !== lineCurrency && meta.balance > 0) {
+                var rate = bankAmount / meta.balance;
+                $fxBox
+                    .removeClass('d-none')
+                    .text(
+                        'Divisas distintas: pago ' + formatMoney(bankAmount, lineCurrency)
+                        + ' → se aplica ' + formatMoney(meta.balance, meta.currency)
+                        + ' a la factura (TC ≈ ' + rate.toFixed(6) + ' ' + lineCurrency + '/' + meta.currency + ').'
+                    );
+            }
+
+            return;
+        }
+
+        if (! $allocBox.length) {
+            return;
+        }
+
+        var remaining = bankAmount;
+        var parts = [];
+
+        $selected.each(function () {
+            var selectedMeta = optionMeta($(this));
+            var allocated = Math.min(remaining, selectedMeta.balance);
+
+            if (allocated <= 0) {
+                return;
+            }
+
+            parts.push(formatMoney(allocated, selectedMeta.currency || lineCurrency || 'EUR'));
+            remaining = Math.round((remaining - allocated) * 100) / 100;
+        });
+
+        if (! parts.length) {
+            return;
+        }
+
+        var message = @json(__('Reparto')) + ': ' + parts.join(' + ')
+            + ' = ' + formatMoney(bankAmount - remaining, lineCurrency || 'EUR');
+
+        if (remaining > 0.05) {
+            message += ' · ' + @json(__('Faltan')) + ' ' + formatMoney(remaining, lineCurrency || 'EUR');
+            $allocBox.removeClass('alert-secondary').addClass('alert-warning');
+        } else {
+            $allocBox.removeClass('alert-warning').addClass('alert-secondary');
+        }
+
+        $allocBox.removeClass('d-none').text(message);
     }
 
     $('.js-link-invoice-select').each(function () {
@@ -526,6 +631,7 @@ $(function () {
             width: '100%',
             placeholder: $select.data('placeholder') || @json(__('Elegir…')),
             allowClear: true,
+            closeOnSelect: false,
             minimumResultsForSearch: 0,
             templateResult: function (data) {
                 return formatInvoiceOption(data, false);
@@ -535,9 +641,9 @@ $(function () {
             }
         });
 
-        updateFxHelper($select);
+        updateLinkHelpers($select);
         $select.on('change', function () {
-            updateFxHelper($select);
+            updateLinkHelpers($select);
         });
     });
 });
