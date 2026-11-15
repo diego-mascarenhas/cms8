@@ -349,7 +349,7 @@ class PaymentAccountStatementUploadService
                 'payer_id_type' => $this->nullableString($this->rowValue($row, ['PAYER_ID_TYPE'])),
                 'payer_id_number' => $this->nullableString($this->rowValue($row, ['PAYER_ID_NUMBER'])),
                 'description' => $description !== '' ? Str::limit($description, 1000, '') : null,
-                'raw' => $row,
+                'raw' => $this->sanitizeRawRow($row),
             ]);
 
             $seenInFile[$externalId] = true;
@@ -512,6 +512,53 @@ class PaymentAccountStatementUploadService
         return trim($header);
     }
 
+    /**
+     * Normalize importer-owned raw payload: clean money floats and date formats.
+     *
+     * @param  array<string, string>  $row
+     * @return array<string, string>
+     */
+    private function sanitizeRawRow(array $row): array
+    {
+        $clean = [];
+
+        foreach ($row as $header => $value)
+        {
+            $headerKey = (string) $header;
+            $stringValue = trim((string) $value);
+
+            if ($stringValue === '')
+            {
+                $clean[$headerKey] = '';
+
+                continue;
+            }
+
+            if ($this->headerLooksLikeAmount($headerKey) && is_numeric($stringValue))
+            {
+                $clean[$headerKey] = number_format((float) $stringValue, 2, '.', '');
+
+                continue;
+            }
+
+            if ($this->headerLooksLikeDate($headerKey))
+            {
+                $normalizedDate = $this->normalizeDateString($stringValue);
+
+                if ($normalizedDate !== null)
+                {
+                    $clean[$headerKey] = $normalizedDate;
+
+                    continue;
+                }
+            }
+
+            $clean[$headerKey] = $stringValue;
+        }
+
+        return $clean;
+    }
+
     private function cellToString(mixed $raw, string $header): string
     {
         if ($raw === null || $raw === '')
@@ -542,10 +589,32 @@ class PaymentAccountStatementUploadService
 
         if (is_float($raw) || is_int($raw))
         {
+            if ($this->headerLooksLikeAmount($header))
+            {
+                return number_format((float) $raw, 2, '.', '');
+            }
+
+            if (is_float($raw) && floor($raw) !== $raw)
+            {
+                return rtrim(rtrim(sprintf('%.8F', $raw), '0'), '.') ?: '0';
+            }
+
             return (string) $raw;
         }
 
-        return trim((string) $raw);
+        $value = trim((string) $raw);
+
+        if ($this->headerLooksLikeDate($header))
+        {
+            return $this->normalizeDateString($value) ?? $value;
+        }
+
+        if ($this->headerLooksLikeAmount($header) && is_numeric($value))
+        {
+            return number_format((float) $value, 2, '.', '');
+        }
+
+        return $value;
     }
 
     private function headerLooksLikeDate(string $header): bool
@@ -553,6 +622,32 @@ class PaymentAccountStatementUploadService
         return str_contains($header, 'FECHA')
             || str_contains($header, 'DATE')
             || str_contains($header, 'VALUE');
+    }
+
+    private function headerLooksLikeAmount(string $header): bool
+    {
+        return str_contains($header, 'IMPORTE')
+            || str_contains($header, 'AMOUNT')
+            || str_contains($header, 'MONTO')
+            || str_contains($header, 'SALDO')
+            || str_contains($header, 'BALANCE')
+            || str_contains($header, 'CREDIT')
+            || str_contains($header, 'DEBIT');
+    }
+
+    private function normalizeDateString(string $value): ?string
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}/', $value) === 1)
+        {
+            return substr($value, 0, 10);
+        }
+
+        if (preg_match('#^(\d{1,2})/(\d{1,2})/(\d{4})$#', $value, $matches) === 1)
+        {
+            return sprintf('%04d-%02d-%02d', (int) $matches[3], (int) $matches[2], (int) $matches[1]);
+        }
+
+        return null;
     }
 
     /**

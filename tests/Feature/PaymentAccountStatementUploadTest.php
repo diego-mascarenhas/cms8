@@ -162,6 +162,46 @@ class PaymentAccountStatementUploadTest extends TestCase
         $this->assertSame([2026, 11], $service->inferPeriodFromFilename('movimientos_11_2026.csv'));
     }
 
+    public function test_raw_payload_normalizes_dates_and_money_floats(): void
+    {
+        $user = $this->makeAdminUser();
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => (int) $user->current_team_id,
+            'code' => 'RURAL',
+            'name' => 'Caja Rural',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
+
+        $csv = implode("\n", [
+            'FECHA DE LA OPERACION;FECHA VALOR;CONCEPTO;IMPORTE;SALDO;NRO. APUNTE',
+            '31/03/2025;31/03/2025;rcbo.tgss;-314;2443.80999999999995;400',
+            '29/03/2025;28/03/2025;trf. fernando;-637.049999999999955;2757.80999999999995;399',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('payment-account.statements.store', $account), [
+                'files' => [UploadedFile::fake()->createWithContent('ruralvia.csv', $csv)],
+                'period_year' => 2025,
+                'period_month' => 3,
+            ])
+            ->assertSessionHas('success');
+
+        $statement = BankStatement::query()->where('payment_account_id', $account->id)->first();
+        $this->assertNotNull($statement);
+
+        $line = $statement->lines()->where('external_id', '400')->first();
+        $this->assertNotNull($line);
+        $this->assertSame([
+            'FECHA DE LA OPERACION' => '2025-03-31',
+            'FECHA VALOR' => '2025-03-31',
+            'CONCEPTO' => 'rcbo.tgss',
+            'IMPORTE' => '-314.00',
+            'SALDO' => '2443.81',
+            'NRO. APUNTE' => '400',
+        ], $line->raw);
+    }
+
     public function test_any_document_for_a_quarter_reconciles_and_is_visible_to_the_accountant(): void
     {
         $user = $this->makeAdminUser();
