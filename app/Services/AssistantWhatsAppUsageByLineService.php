@@ -59,6 +59,8 @@ class AssistantWhatsAppUsageByLineService
         }
 
         $usageKey = 'assistant-whatsapp-usage-lines:'.$team->id.':'.$from->getTimestamp().':'.(int) floor($to->getTimestamp() / 60);
+        $usageTtlSeconds = 300;
+
         if (! app()->runningUnitTests())
         {
             $cached = Cache::get($usageKey);
@@ -68,6 +70,50 @@ class AssistantWhatsAppUsageByLineService
             }
         }
 
+        $lock = null;
+        if (! app()->runningUnitTests())
+        {
+            $lock = Cache::lock('lock:'.$usageKey, 45);
+
+            try
+            {
+                $lock->block(40);
+            } catch (\Throwable)
+            {
+                // Prefer a warm cache if another worker finished while we waited.
+            }
+
+            $cached = Cache::get($usageKey);
+            if (is_array($cached))
+            {
+                optional($lock)->release();
+
+                return $cached;
+            }
+        }
+
+        try
+        {
+            return $this->buildForTeam($team, $from, $to, $usageKey, $usageTtlSeconds);
+        } finally
+        {
+            if ($lock !== null)
+            {
+                optional($lock)->release();
+            }
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildForTeam(
+        Team $team,
+        Carbon $from,
+        Carbon $to,
+        string $usageKey,
+        int $usageTtlSeconds,
+    ): array {
         $this->tokens->usingTeam($team);
         $currency = TokenBillingRateService::displayCurrency();
         $defaultModel = $this->displayModel(null);
@@ -171,7 +217,7 @@ class AssistantWhatsAppUsageByLineService
 
         if (! app()->runningUnitTests())
         {
-            Cache::put($usageKey, $payload, 60);
+            Cache::put($usageKey, $payload, $usageTtlSeconds);
         }
 
         return $payload;

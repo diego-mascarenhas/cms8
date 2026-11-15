@@ -72,6 +72,7 @@ class InvoicedLineItemsService
                     ->where('team_id', $teamId)
                     ->when($operation !== null, fn (Builder $invoiceQuery) => $invoiceQuery->where('operation', $operation))
                     ->whereNotIn('status', InvoiceAnalyticsService::EXCLUDED_INVOICE_STATUSES)
+                    ->withoutCreditNotes()
                     ->whereNotNull('date')
                     ->whereDate('date', '>=', $from->toDateString())
                     ->whereDate('date', '<=', $to->toDateString());

@@ -89,15 +89,10 @@ class RevisionAlphaOrganization
                 'area' => 'Consultora tecnológica',
                 'url' => 'https://mi.humano.app/slash',
             ],
-            'mix' => [
-                'name' => 'Mix Vasallo',
-                'area' => 'Diseño',
-                'url' => 'https://mixvasallo.com',
-            ],
-            'conga' => [
-                'name' => 'CONGA',
+            'social_network' => [
+                'name' => 'Social Network',
                 'area' => 'Marketing',
-                'url' => 'https://somosconga.com',
+                'url' => 'https://www.socialnetwork.com.ar/',
             ],
             'fanyion' => [
                 'name' => 'FANYION',
@@ -125,7 +120,7 @@ class RevisionAlphaOrganization
         return [
             [
                 'key' => 'magoo',
-                'name' => 'Magoo',
+                'name' => 'Diego',
                 'kind' => 'internal',
                 'titles' => [
                     'CEO · REVISION ALPHA',
@@ -156,30 +151,50 @@ class RevisionAlphaOrganization
                 'summary' => 'Pagos, trato con clientes, anota lo relevante y da seguimiento. Horario España: 18:30 a 23:30.',
             ],
             [
-                'key' => 'mix',
-                'name' => 'Mix Vasallo',
-                'kind' => 'alliance',
-                'titles' => ['Diseño'],
-                'company_keys' => ['mix'],
+                'key' => 'german',
+                'name' => 'Germán',
+                'kind' => 'internal',
+                'titles' => [
+                    'Desarrollador Senior · IDONEO',
+                ],
+                'company_keys' => ['idoneo'],
                 'emails' => [],
-                'weekly_hours' => null,
-                'work_starts_at' => null,
-                'work_ends_at' => null,
+                'weekly_hours' => 56,
+                'work_starts_at' => '09:00',
+                'work_ends_at' => '17:00',
                 'monthly_salary' => null,
-                'summary' => 'Marca e identidad visual. Entra cuando el trabajo es diseño, no operación diaria.',
+                'summary' => 'Disponible lunes a lunes en horario de Argentina, jornadas de 8 h. Suele arrancar a las 9 (ARG) y está disponible para reuniones.',
             ],
             [
-                'key' => 'conga',
-                'name' => 'CONGA',
+                'key' => 'alejandra',
+                'name' => 'Alejandra',
                 'kind' => 'alliance',
-                'titles' => ['Marketing'],
-                'company_keys' => ['conga'],
+                'titles' => ['Diseño'],
+                'company_keys' => [],
+                'emails' => [],
+                'weekly_hours' => 4,
+                'work_starts_at' => null,
+                'work_ends_at' => null,
+                'monthly_salary' => null,
+                'summary' => 'Diseño. Ofrece 4 horas semanales.',
+            ],
+            [
+                'key' => 'anita',
+                'name' => 'Anita',
+                'kind' => 'alliance',
+                'titles' => [
+                    'CEO · Social Network',
+                    'Marketing',
+                    'Community Manager',
+                    'Publicidad',
+                ],
+                'company_keys' => ['social_network'],
                 'emails' => [],
                 'weekly_hours' => null,
                 'work_starts_at' => null,
                 'work_ends_at' => null,
                 'monthly_salary' => null,
-                'summary' => 'Campañas y publicidad. Puede asesorar agencias que venden Idoneo (10%).',
+                'summary' => 'Marketing, community manager y publicidad.',
             ],
             [
                 'key' => 'fanyion',
@@ -239,7 +254,7 @@ class RevisionAlphaOrganization
                 'scope' => 'Agencias y empresas del holding a las que acompaña en Idoneo / Humano.',
             ],
             [
-                'person_key' => 'conga',
+                'person_key' => 'anita',
                 'role' => 'Asesor',
                 'percent' => self::ADVISOR_PERCENT,
                 'scope' => 'Agencias de marketing que asesora para vender o usar Idoneo Ads, Mailer y Landings.',
@@ -288,10 +303,20 @@ class RevisionAlphaOrganization
         $currentKey = self::personKeyFor($user);
 
         $peopleByKey = [];
-        foreach ($people as $person)
+        foreach ($people as &$person)
         {
+            $personCompanies = [];
+            foreach ($person['company_keys'] as $companyKey)
+            {
+                if (isset($companies[$companyKey]))
+                {
+                    $personCompanies[] = $companies[$companyKey];
+                }
+            }
+            $person['companies'] = $personCompanies;
             $peopleByKey[$person['key']] = $person;
         }
+        unset($person);
 
         $processesByDepartment = [];
         foreach (array_keys($departments) as $departmentKey)
@@ -641,7 +666,7 @@ class RevisionAlphaOrganization
         return [
             self::process('admin-invoices-review', 'Emisión de facturas', 'administration', 'leticia', 'revision_alpha', '4 hs mensuales', [], [
                 'Revisar servicios del mes en el CMS (altas, bajas, cambios).',
-                'Aprobar lo que se factura y dejar anotado lo que Magoo debe revisar.',
+                'Aprobar lo que se factura y dejar anotado lo que Diego debe revisar.',
                 'Confirmar que cada factura tiene cliente, vencimiento y servicio.',
             ], 'Cuando corresponda en el mes'),
             self::process('admin-invoices-load', 'Subir facturas al sistema', 'administration', 'leticia', 'revision_alpha', 'Viernes 19:00–20:00', [
@@ -660,7 +685,7 @@ class RevisionAlphaOrganization
             ], [
                 'Primera media hora de la jornada: responder emails y tickets abiertos.',
                 'Dejar listo lo urgente antes de los llamados a Argentina.',
-                'Lo que no se cierra en 30 minutos queda anotado para después o para Magoo.',
+                'Lo que no se cierra en 30 minutos queda anotado para después o para Diego.',
             ], null, null, true),
             self::process('admin-payments-in', 'Ingreso de pagos', 'administration', 'leticia', 'revision_alpha', 'Cuando entra un cobro', [], [
                 'Cruzar transferencias y cobros con la factura del cliente.',
@@ -669,7 +694,7 @@ class RevisionAlphaOrganization
             ], 'Cuando entra un cobro'),
             self::process('admin-clients', 'Hablar con clientes y seguimiento', 'administration', 'leticia', 'revision_alpha', 'Cuando entra', [], [
                 'Atender consultas de clientes por el canal que entre (email, WhatsApp, teléfono).',
-                'Anotar lo relevante para Magoo: impagos, bajas, incidencias, compromisos.',
+                'Anotar lo relevante para Diego: impagos, bajas, incidencias, compromisos.',
                 'Dar seguimiento al día siguiente: qué quedó pendiente y quién lo tiene.',
             ], 'En cualquier momento de su ventana'),
             self::process('admin-afip', 'Cierre contable de la semana', 'administration', 'leticia', 'revision_alpha', 'Viernes 20:00–21:00', [
@@ -677,7 +702,7 @@ class RevisionAlphaOrganization
             ], [
                 'Viernes, después de subir facturas: cuadrar cobros e ingresos del CMS.',
                 'Antes del día 10 del mes: subir el lote al Cloud y avisar a la contadora.',
-                'Dejar listo el cierre antes del plan de publicaciones (21:00) para que Magoo apruebe el lunes a primera hora.',
+                'Dejar listo el cierre antes del plan de publicaciones (21:00) para que Diego apruebe el lunes a primera hora.',
             ], null, null, true),
             self::process('admin-cash', 'Arqueo de caja', 'administration', 'magoo', 'revision_alpha', 'Al cerrar la semana', [], [
                 'Revisar el cierre que deja Leticia.',
@@ -752,7 +777,7 @@ class RevisionAlphaOrganization
             ], 'Cuando salta una alerta'),
             self::process('tech-vps', 'VPS, cPanel y VPN', 'technical', 'magoo', 'revision_alpha', 'Bajo demanda', [], [
                 'Alta de VPS, tunning cPanel/VPS y usuarios VPN según el procedimiento interno.',
-                'Magoo instala sistemas y elige/cambia hardware cuando hace falta.',
+                'Diego instala sistemas y elige/cambia hardware cuando hace falta.',
             ]),
         ];
     }
@@ -771,7 +796,7 @@ class RevisionAlphaOrganization
             ], [
                 'Después de emails y tickets (19:00 ESP = 14:00 ARG): llamar a clientes en Argentina.',
                 'Lista: impago, renovación, baja, seguimiento y oportunidades abiertas.',
-                'Anotar el resultado y el próximo paso con fecha. Dejar a Magoo solo lo que no se cerró.',
+                'Anotar el resultado y el próximo paso con fecha. Dejar a Diego solo lo que no se cerró.',
             ], null, null, true),
             self::process('com-prospecting', 'Prospección', 'commercial', 'leticia', 'revision_alpha', 'Mar y jue 20:00–23:00', [
                 ['weekday' => 2, 'starts_at' => '20:00', 'ends_at' => '23:00'],
@@ -786,7 +811,7 @@ class RevisionAlphaOrganization
                 'Baja: preguntar el motivo, anotarlo, y recién entonces gestionar la baja.',
             ]),
             self::process('com-meetings', 'Reuniones con clientes y proveedores', 'commercial', 'magoo', 'revision_alpha', 'Cuando se agenda', [], [
-                'Magoo lleva la reunión. Leticia confirma agenda y deja notas de seguimiento.',
+                'Diego lleva la reunión. Leticia confirma agenda y deja notas de seguimiento.',
             ]),
             self::process('com-affiliates', 'Programa de afiliados', 'commercial', 'magoo', 'idoneo', 'Cuando hay movimiento', [], [
                 'Agencia que vende un producto Idoneo: 30% del cobro.',
@@ -835,7 +860,7 @@ class RevisionAlphaOrganization
                 ['weekday' => 4, 'starts_at' => '12:00', 'ends_at' => '14:00'],
             ], [
                 'Jueves 12:00–14:00: armar o ajustar la publicidad de la semana.',
-                'Montar la campaña en Idoneo Ads / Meta / Google. CONGA entra si la pieza es de marketing.',
+                'Montar la campaña en Idoneo Ads / Meta / Google. Anita (Social Network) entra si la pieza es de marketing.',
                 'Leticia lo baja a acciones en su plan de marketing.',
             ], null, null, true),
             self::process('ads-plan', 'Plan de marketing', 'advertising', 'leticia', 'revision_alpha', 'Lun y mié 20:00–23:00', [
@@ -844,7 +869,7 @@ class RevisionAlphaOrganization
             ], [
                 'Después de los llamados: armar y ejecutar el plan de marketing de la semana.',
                 'Lunes: definir qué se promociona, a quién y por qué canal.',
-                'Miércoles: preparar acciones; el jueves Magoo genera la publicidad 12:00–14:00.',
+                'Miércoles: preparar acciones; el jueves Diego genera la publicidad 12:00–14:00.',
             ], null, null, true),
             self::process('ads-product', 'Producto Idoneo Ads', 'advertising', 'magoo', 'idoneo', 'Cuando hay incidencia', [], [
                 'Que una agencia pueda conectar cuentas, ver campañas y no perder el hilo del cliente.',
@@ -862,9 +887,9 @@ class RevisionAlphaOrganization
             self::process('media-plan', 'Plan de publicaciones', 'media', 'leticia', 'revision_alpha', 'Viernes 21:00–23:00', [
                 ['weekday' => 5, 'starts_at' => '21:00', 'ends_at' => '23:00'],
             ], [
-                'Viernes a la noche, después de facturas y cierre contable: dejar el plan listo para que Magoo lo apruebe el lunes a primera hora.',
+                'Viernes a la noche, después de facturas y cierre contable: dejar el plan listo para que Diego lo apruebe el lunes a primera hora.',
                 'Definir qué se publica la semana siguiente (redes, mailer, web) y en qué día sale cada pieza.',
-                'Si falta una pieza, avisar a Magoo o a CONGA en el mismo plan.',
+                'Si falta una pieza, avisar a Diego o a Anita (Social Network) en el mismo plan.',
             ], null, null, true),
             self::process('media-mailer', 'Mailer y newsletters', 'media', 'magoo', 'idoneo', 'Cuando hay envío', [], [
                 'Confeccionar y enviar comunicados / newsletters.',
@@ -878,7 +903,7 @@ class RevisionAlphaOrganization
                 ['weekday' => 4, 'starts_at' => '20:00', 'ends_at' => '21:00'],
             ], [
                 'Jueves, después de los llamados a Argentina: enviar avisos de facturación, vencimiento o cobro pendiente.',
-                'Magoo aprueba el texto si cambia el mensaje habitual.',
+                'Diego aprueba el texto si cambia el mensaje habitual.',
                 'Confirmar que salió y anotar quién no respondió.',
             ], null, null, true),
         ];
@@ -896,7 +921,7 @@ class RevisionAlphaOrganization
             ]),
             self::process('prod-shop', 'Producto Shop / Wapify', 'product', 'magoo', 'idoneo', 'Cuando hay incidencia', [], [
                 'Wapify es el producto de tienda y catálogo por WhatsApp, no una persona del equipo.',
-                'Magoo entra si el fallo es del SaaS.',
+                'Diego entra si el fallo es del SaaS.',
             ]),
             self::process('prod-affiliates', 'Producto Affiliates', 'product', 'magoo', 'idoneo', 'Cuando hay movimiento', [], [
                 'Que la agencia vea su 30% y el asesor su 10% por proyecto o empresa.',

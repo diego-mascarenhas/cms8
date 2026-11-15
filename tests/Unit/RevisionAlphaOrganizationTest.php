@@ -109,7 +109,7 @@ class RevisionAlphaOrganizationTest extends TestCase
 
         $mondayNine = $coverage['days'][1]['09:00'];
         $this->assertTrue($mondayNine['covered']);
-        $this->assertSame('Magoo', $mondayNine['covers'][0]['person']);
+        $this->assertSame('Diego', $mondayNine['covers'][0]['person']);
 
         $tuesdayTen = $coverage['days'][2]['10:00'];
         $this->assertFalse($tuesdayTen['covered']);

@@ -47,8 +47,8 @@ class HumanoLabsStudios
             [
                 'key' => 'design',
                 'area' => 'Diseño',
-                'name' => 'Mix Vasallo',
-                'url' => 'https://mixvasallo.com',
+                'name' => 'Alejandra',
+                'url' => '',
                 'keywords' => [
                     'diseno',
                     'branding',
@@ -59,22 +59,22 @@ class HumanoLabsStudios
                     'cambio de imagen',
                     'cambiar mi imagen',
                     'imagen de marca',
-                    'mix vasallo',
-                    'mixvasallo',
+                    'alejandra',
                 ],
             ],
             [
                 'key' => 'marketing',
                 'area' => 'Marketing',
-                'name' => 'CONGA',
-                'url' => 'https://somosconga.com',
+                'name' => 'Social Network',
+                'url' => 'https://www.socialnetwork.com.ar/',
                 'keywords' => [
                     'marketing',
                     'publicidad',
                     'anuncios',
                     'campanas',
-                    'somosconga',
-                    'conga',
+                    'community manager',
+                    'social network',
+                    'socialnetwork',
                 ],
             ],
             [
@@ -202,7 +202,8 @@ class HumanoLabsStudios
         $lines = [];
         foreach (self::all() as $studio)
         {
-            $lines[] = '- **'.$studio['area'].'** — '.$studio['name'].' ('.$studio['url'].')';
+            $suffix = $studio['url'] !== '' ? ' ('.$studio['url'].')' : '';
+            $lines[] = '- **'.$studio['area'].'** — '.$studio['name'].$suffix;
         }
 
         return implode("\n", $lines);
@@ -224,6 +225,14 @@ class HumanoLabsStudios
             default => 'Eso lo vemos en '.$studio['name'].'.',
         };
 
-        return $line."\n".$studio['url']."\n\n¿Qué les gustaría cambiar?";
+        $parts = [$line];
+        if ($studio['url'] !== '')
+        {
+            $parts[] = $studio['url'];
+        }
+        $parts[] = '';
+        $parts[] = '¿Qué les gustaría cambiar?';
+
+        return implode("\n", $parts);
     }
 }

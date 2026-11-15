@@ -279,6 +279,85 @@ class InvoiceAnalyticsServiceTest extends TestCase
         $this->assertEqualsWithDelta(1000.0, $report['conversion']['native_totals']['income']['EUR'], 0.01);
     }
 
+    public function test_build_year_report_excludes_credit_note_items_from_categories_and_flow(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $incomeCategory = Category::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Hosting sales',
+        ]);
+
+        $year = 2024;
+
+        $sellInvoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'S-100',
+            'date' => Carbon::create($year, 5, 10)->toDateString(),
+            'due_date' => Carbon::create($year, 5, 30),
+            'gross_amount' => 1000,
+            'discount' => 0,
+            'total_amount' => 1000,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+        InvoiceItem::query()->create([
+            'invoice_id' => $sellInvoice->id,
+            'category_id' => $incomeCategory->id,
+            'description' => 'Plan A',
+            'quantity' => 1,
+            'unit_price' => 1000,
+            'discount' => 0,
+        ]);
+
+        $creditNote = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 2,
+            'operation' => 'sell',
+            'number' => 'CN-100',
+            'date' => Carbon::create($year, 5, 20)->toDateString(),
+            'due_date' => null,
+            'gross_amount' => 400,
+            'discount' => 0,
+            'total_amount' => 400,
+            'balance' => 0,
+            'status' => 4,
+            'source_reference_id' => 'cn_test_exclude',
+        ]);
+        InvoiceItem::query()->create([
+            'invoice_id' => $creditNote->id,
+            'category_id' => $incomeCategory->id,
+            'description' => 'Credit note line',
+            'quantity' => 1,
+            'unit_price' => 400,
+            'discount' => 0,
+        ]);
+
+        $report = $this->service->buildYearReport($team->id, $year);
+        $categories = $this->service->buildCategoryBreakdownForRange(
+            $team->id,
+            Carbon::create($year, 1, 1)->startOfDay(),
+            Carbon::create($year, 12, 31)->endOfDay(),
+        );
+
+        $this->assertEqualsWithDelta(1000.0, $report['summary']['income'], 0.01);
+        $this->assertEqualsWithDelta(1000.0, $report['monthly_trend'][4]['income'], 0.01);
+        $this->assertSame('Hosting sales', $categories['income_categories'][0]['name']);
+        $this->assertEqualsWithDelta(1000.0, $categories['income_categories'][0]['total'], 0.01);
+    }
+
     public function test_resolve_year_bounds_uses_invoice_dates(): void
     {
         $user = User::factory()->withPersonalTeam()->create();

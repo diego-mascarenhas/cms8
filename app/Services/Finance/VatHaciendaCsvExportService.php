@@ -324,14 +324,20 @@ class VatHaciendaCsvExportService
     /**
      * Monthly income and expense using the same converted invoice totals as the accountant books.
      *
+     * @param  bool  $includeCreditNotes  When false, credit notes are omitted (cash-flow / category analytics).
      * @return array{
      *     months: array<int, array{income: float, expense: float}>,
      *     missing_pairs: list<string>,
      *     native_totals: array{income: array<string, float>, expense: array<string, float>},
      * }
      */
-    public function monthlyBookTotals(int $teamId, Carbon $from, Carbon $to, string $targetCurrency): array
-    {
+    public function monthlyBookTotals(
+        int $teamId,
+        Carbon $from,
+        Carbon $to,
+        string $targetCurrency,
+        bool $includeCreditNotes = true,
+    ): array {
         $books = $this->presentationBooks($teamId, $from, $to, $targetCurrency)['books'];
         $months = [];
 
@@ -344,10 +350,14 @@ class VatHaciendaCsvExportService
         $nativeTotals = ['income' => [], 'expense' => []];
         $sides = [
             'sell' => 'income',
-            'sell_credit_notes' => 'income',
             'buy' => 'expense',
-            'buy_credit_notes' => 'expense',
         ];
+
+        if ($includeCreditNotes)
+        {
+            $sides['sell_credit_notes'] = 'income';
+            $sides['buy_credit_notes'] = 'expense';
+        }
 
         foreach ($sides as $book => $side)
         {

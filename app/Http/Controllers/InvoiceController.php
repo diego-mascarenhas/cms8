@@ -139,7 +139,7 @@ class InvoiceController extends Controller
         $preferredTypeId = $paymentTypes->firstWhere('id', 2)?->id
             ?? $paymentTypes->first()?->id;
         [$defaultPaymentAccountId, $defaultPaymentTypeId] = app(PaymentAccountCompatibilityService::class)
-            ->resolveDefaults($paymentAccounts, $paymentTypes, $preferredTypeId);
+            ->resolveDefaults($paymentAccounts, $paymentTypes, $preferredTypeId ? (int) $preferredTypeId : null);
         $paymentAccountOptions = app(PaymentAccountCompatibilityService::class)
             ->mapAccountsForFrontend($paymentAccounts);
 

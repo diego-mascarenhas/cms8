@@ -14,7 +14,7 @@ use Illuminate\Support\Collection;
  */
 class InvoiceAnalyticsService
 {
-    /** @var list<int> Void, credit notes, error, draft — excluded from totals. */
+    /** @var list<int> Void, credit-note statuses, error, draft — excluded from totals. */
     public const EXCLUDED_INVOICE_STATUSES = [3, 4, 6, 7, 9];
 
     public function __construct(
@@ -212,6 +212,7 @@ class InvoiceAnalyticsService
             ->where('team_id', $teamId)
             ->whereNotNull('date')
             ->whereNotIn('status', self::EXCLUDED_INVOICE_STATUSES)
+            ->withoutCreditNotes()
             ->pluck('date')
             ->map(fn ($date) => Carbon::parse($date)->year)
             ->unique()
@@ -243,6 +244,7 @@ class InvoiceAnalyticsService
             $from,
             $to,
             $reportingCurrency,
+            includeCreditNotes: false,
         );
 
         $rows = collect($books['months'])->map(function (array $totals, int $month): object
@@ -386,6 +388,7 @@ class InvoiceAnalyticsService
                 $query->withoutGlobalScopes()
                     ->where('team_id', $teamId)
                     ->whereNotIn('status', self::EXCLUDED_INVOICE_STATUSES)
+                    ->withoutCreditNotes()
                     ->whereNotNull('date')
                     ->whereDate('date', '>=', $from->toDateString())
                     ->whereDate('date', '<=', $to->toDateString());

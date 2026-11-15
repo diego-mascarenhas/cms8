@@ -66,6 +66,7 @@
     $oldLines = old('lines', [
         [
             'concept' => (string) request('concept', request('remarks', '')),
+            'category_id' => (string) ($defaultCategoryId ?? ''),
             'base_amount' => (string) request('base_amount', request('amount', '0.00')),
             'vat_percent' => (string) request('vat_percent', $defaultVatPercent),
             'retention_percent' => '0',
@@ -819,6 +820,9 @@
     ])->values();
     $defaultPaymentTypeIdJs = $defaultPaymentTypeId ?? null;
     $defaultPaymentAccountIdJs = $defaultPaymentAccountId ?? null;
+    $defaultPaymentAccountSourceJs = $defaultPaymentAccountSource ?? 'fallback';
+    $defaultCategoryIdJs = $defaultCategoryId ?? null;
+    $defaultCategoryNameJs = $defaultCategoryName ?? null;
     $expenseCategoryOptionsJs = collect($expenseCategoryOptions ?? [])->values();
 @endphp
 <script>
@@ -829,6 +833,8 @@
         var partyNoun = documentFlow.mode === 'sell' ? 'cliente' : 'proveedor';
         var $createSupplierModal = $('#createSupplierModal');
         var expenseCategoryOptions = @json($expenseCategoryOptionsJs);
+        var defaultCategoryId = @json($defaultCategoryIdJs);
+        var defaultCategoryName = @json($defaultCategoryNameJs);
 
         $('select.select2').not('.select2-supplier-country').not('.select2-enterprise').not('.payment-type-select').not('.payment-account-select').not('.payment-status-select').each(function () {
             var $this = $(this);
@@ -1053,6 +1059,7 @@
         var paymentStatusOptions = @json($paymentStatusOptions);
         var defaultPaymentTypeId = @json($defaultPaymentTypeIdJs);
         var defaultPaymentAccountId = @json($defaultPaymentAccountIdJs);
+        var defaultPaymentAccountSource = @json($defaultPaymentAccountSourceJs);
         var $paymentsContainer = $('#expense-payments-container');
         var nextPaymentIndex = $paymentsContainer.find('.expense-payment-block').length;
 
@@ -1417,12 +1424,39 @@
             return html;
         }
 
-        function refreshPaymentBlockSelectors($block) {
+        function preferredAccountForCurrency(currencyId, typeId) {
+            if (!currencyId) {
+                return null;
+            }
+
+            return paymentAccountOptions.find(function (option) {
+                if (String(option.currency_id) !== String(currencyId)) {
+                    return false;
+                }
+
+                if (typeId && !accountAcceptsType(option, typeId)) {
+                    return false;
+                }
+
+                return true;
+            }) || null;
+        }
+
+        function refreshPaymentBlockSelectors($block, options) {
+            options = options || {};
             var currencyId = $currencySelect.val() || '';
             var $accountSelect = $block.find('.payment-account-select');
             var $typeSelect = $block.find('.payment-type-select');
             var accountId = $accountSelect.val() || '';
             var typeId = $typeSelect.val() || '';
+
+            if (options.preferCurrencyAccount && defaultPaymentAccountSource !== 'last_payment') {
+                var currencyMatch = preferredAccountForCurrency(currencyId, typeId);
+
+                if (currencyMatch) {
+                    accountId = currencyMatch.id;
+                }
+            }
 
             var accounts = filteredPaymentAccounts(currencyId, typeId);
             if (accountId && !accounts.some(function (option) {
@@ -1464,9 +1498,9 @@
             togglePaymentFxFields($block);
         }
 
-        function refreshAllPaymentBlocks() {
+        function refreshAllPaymentBlocks(preferCurrencyAccount) {
             $paymentsContainer.find('.expense-payment-block').each(function () {
-                refreshPaymentBlockSelectors($(this));
+                refreshPaymentBlockSelectors($(this), { preferCurrencyAccount: !!preferCurrencyAccount });
             });
 
             initPaymentSelects($paymentsContainer);
@@ -1925,15 +1959,33 @@
 
         function suggestionForLineIndex(lineIndex) {
             var item = suggestedCategoryItems[lineIndex] || null;
-            if (!item || !item.category_id) {
-                return null;
+
+            if ((!item || !item.category_id) && suggestedCategoryItems.length > 0) {
+                for (var i = suggestedCategoryItems.length - 1; i >= 0; i -= 1) {
+                    if (suggestedCategoryItems[i] && suggestedCategoryItems[i].category_id) {
+                        item = suggestedCategoryItems[i];
+                        break;
+                    }
+                }
             }
 
-            return {
-                category_id: item.category_id,
-                category_name: item.category_name || categoryNameById(item.category_id),
-                description: item.description || '',
-            };
+            if (item && item.category_id) {
+                return {
+                    category_id: item.category_id,
+                    category_name: item.category_name || categoryNameById(item.category_id),
+                    description: item.description || '',
+                };
+            }
+
+            if (defaultCategoryId) {
+                return {
+                    category_id: defaultCategoryId,
+                    category_name: defaultCategoryName || categoryNameById(defaultCategoryId),
+                    description: '',
+                };
+            }
+
+            return null;
         }
 
         function applySuggestedCategoriesToLines(onlyEmpty) {
@@ -2458,6 +2510,12 @@
         }
 
         $('#add-expense-line').on('click', function () {
+            var previousCategoryId = $.trim(String(
+                $linesBody.find('.expense-line').last().find('.line-category-id').val() || ''
+            ));
+            var previousCategoryName = previousCategoryId
+                ? $.trim(String($linesBody.find('.expense-line').last().find('.line-category-badge').text() || ''))
+                : '';
             var $row = $(createLineRow(nextLineIndex));
             $linesBody.append($row);
             applyClientTaxProfile($row);
@@ -2466,6 +2524,10 @@
             var suggestion = suggestionForLineIndex(nextLineIndex);
             if (suggestion) {
                 setLineCategory($row, suggestion.category_id, suggestion.category_name);
+            } else if (previousCategoryId) {
+                setLineCategory($row, previousCategoryId, previousCategoryName);
+            } else if (defaultCategoryId) {
+                setLineCategory($row, defaultCategoryId, defaultCategoryName || categoryNameById(defaultCategoryId));
             }
 
             nextLineIndex += 1;
@@ -2769,7 +2831,9 @@
 
         $(document).on('input', '.line-base, .line-vat, .line-retention, .line-allocation', refreshSummary);
 
-        $currencySelect.on('change', refreshAllPaymentBlocks);
+        $currencySelect.on('change', function () {
+            refreshAllPaymentBlocks(true);
+        });
 
         $(document).on('change', '.payment-account-select', function () {
             var $block = $(this).closest('.expense-payment-block');

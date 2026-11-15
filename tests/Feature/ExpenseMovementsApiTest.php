@@ -426,6 +426,33 @@ class ExpenseMovementsApiTest extends TestCase
             'tax_percentage' => 0,
         ]);
 
+        $creditNote = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $client->id,
+            'type_id' => 2,
+            'operation' => 'sell',
+            'number' => 'CN-CHART',
+            'date' => '2026-03-15',
+            'due_date' => null,
+            'gross_amount' => 50,
+            'discount' => 0,
+            'total_amount' => 50,
+            'balance' => 0,
+            'currency_id' => 978,
+            'status' => 4,
+            'source_provider' => 'manual',
+            'source_reference_id' => 'cn_chart_exclude',
+        ]);
+        InvoiceItem::query()->create([
+            'invoice_id' => $creditNote->id,
+            'category_id' => $incomeCategory->id,
+            'description' => 'Nota de crédito',
+            'quantity' => 1,
+            'unit_price' => 50,
+            'discount' => 0,
+            'tax_percentage' => 0,
+        ]);
+
         $token = $user->createToken('movements-api')->plainTextToken;
 
         $this->withToken($token)
@@ -438,6 +465,13 @@ class ExpenseMovementsApiTest extends TestCase
             ->assertJsonPath('income_categories.0.total', 200)
             ->assertJsonPath('expense_categories.0.name', 'Hosting Charts')
             ->assertJsonPath('expense_categories.0.total', 100);
+
+        $this->withToken($token)
+            ->getJson('/api/expenses/movements?vat_year=2026&vat_period=m:3&operation=sell')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.data.0.invoice_number', 'FV-CHART');
     }
 
     public function test_api_can_update_invoice_item_category(): void
