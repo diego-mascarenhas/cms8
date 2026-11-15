@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceSync;
 use App\Models\ServiceSync;
 use App\Models\StripeSubscription;
+use App\Models\Team;
 use App\Models\User;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -163,5 +164,70 @@ class ClientProfileApiTest extends TestCase
             ->assertJsonPath('data.billing.0.country', 'Argentina')
             ->assertJsonPath('data.billing.0.tax_status', __('tax_status.Exempt from tax') === 'tax_status.Exempt from tax' ? 'Exento de impuestos' : __('tax_status.Exempt from tax'))
             ->assertJsonPath('data.billing.0.active', true);
+    }
+
+    public function test_usage_returns_period_stats_for_linked_customer_team(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $client = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Cliente Uso',
+            'code' => 'cus_usage_link',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $customerTeam = Team::factory()->create([
+            'user_id' => User::factory()->create()->id,
+            'stripe_id' => 'cus_usage_link',
+        ]);
+
+        $token = $user->createToken('client-usage')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/'.$client->id.'/usage')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('linked', true)
+            ->assertJsonPath('team_id', $customerTeam->id)
+            ->assertJsonStructure([
+                'data' => [
+                    'period_start',
+                    'period_end',
+                    'totals',
+                    'sources',
+                    'whatsapp',
+                    'mailer',
+                    'storage',
+                ],
+            ]);
+    }
+
+    public function test_usage_returns_404_when_client_has_no_linked_team(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $client = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Sin equipo',
+            'code' => 'cus_orphan',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $token = $user->createToken('client-usage-missing')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/'.$client->id.'/usage')
+            ->assertNotFound()
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('linked', false);
     }
 }

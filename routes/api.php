@@ -890,6 +890,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('enterprises/roster', [\App\Http\Controllers\Api\EnterpriseController::class, 'roster']);
     Route::get('enterprises/{id}/subscriptions', [ApiSubscriptionController::class, 'forEnterprise'])->whereNumber('id');
     Route::get('enterprises/{id}/profile', [\App\Http\Controllers\Api\EnterpriseController::class, 'profile'])->whereNumber('id');
+    Route::get('enterprises/{id}/usage', [\App\Http\Controllers\Api\EnterpriseController::class, 'usage'])->whereNumber('id');
     Route::get('enterprises/{id}/billing', [\App\Http\Controllers\Api\EnterpriseBillingController::class, 'show'])->whereNumber('id');
     Route::post('enterprises/{id}/billing/setup', [\App\Http\Controllers\Api\EnterpriseBillingController::class, 'setup'])->whereNumber('id');
     Route::post('enterprises/{id}/billing/confirm', [\App\Http\Controllers\Api\EnterpriseBillingController::class, 'confirm'])->whereNumber('id');
@@ -988,12 +989,22 @@ Route::middleware('auth.api')->group(function ()
         ->name('api.payment-accounts.statements.store');
     Route::get('payment-accounts/{paymentAccount}/statements/{statement}/reconcile', [PaymentAccountStatementController::class, 'reconcile'])
         ->name('api.payment-accounts.statements.reconcile');
+    Route::get('payment-accounts/{paymentAccount}/statements/{statement}/download', [PaymentAccountStatementController::class, 'download'])
+        ->name('api.payment-accounts.statements.download');
+    Route::delete('payment-accounts/{paymentAccount}/statements/{statement}', [PaymentAccountStatementController::class, 'destroy'])
+        ->name('api.payment-accounts.statements.destroy');
     Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/dismiss', [PaymentAccountStatementController::class, 'dismissLine'])
         ->name('api.payment-accounts.statements.lines.dismiss');
     Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/undismiss', [PaymentAccountStatementController::class, 'undismissLine'])
         ->name('api.payment-accounts.statements.lines.undismiss');
     Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/transfer', [PaymentAccountStatementController::class, 'transferLine'])
         ->name('api.payment-accounts.statements.lines.transfer');
+    Route::get('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/invoice-candidates', [PaymentAccountStatementController::class, 'invoiceCandidates'])
+        ->name('api.payment-accounts.statements.lines.invoice-candidates');
+    Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/link-invoice', [PaymentAccountStatementController::class, 'linkInvoice'])
+        ->name('api.payment-accounts.statements.lines.link-invoice');
+    Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/unlink', [PaymentAccountStatementController::class, 'unlinkLine'])
+        ->name('api.payment-accounts.statements.lines.unlink');
 
     // Invoices - for user-based authentication (Sanctum tokens)
     Route::get('invoices', [InvoiceController::class, 'index']);

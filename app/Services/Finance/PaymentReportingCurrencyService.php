@@ -299,7 +299,10 @@ class PaymentReportingCurrencyService
             )
             ->pluck('balance', 'account_id');
 
-        $accountsQuery = PaymentAccount::withoutGlobalScopes()->with('currency')->orderBy('name');
+        $accountsQuery = PaymentAccount::withoutGlobalScopes()
+            ->with('currency')
+            ->where('status', 1)
+            ->orderBy('name');
 
         if ($teamId)
         {

@@ -5,11 +5,16 @@ namespace Tests\Feature\Api;
 use App\Enums\TransactionType;
 use App\Models\BankStatement;
 use App\Models\BankStatementLine;
+use App\Models\Enterprise;
+use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\Team;
 use App\Models\User;
 use Database\Seeders\CurrencySeeder;
+use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\InvoiceTypeSeeder;
 use Database\Seeders\PaymentTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -29,6 +34,9 @@ class PaymentAccountStatementApiTest extends TestCase
         $this->seed([
             CurrencySeeder::class,
             PaymentTypeSeeder::class,
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            InvoiceTypeSeeder::class,
         ]);
         Storage::fake('originals');
     }
@@ -240,6 +248,27 @@ class PaymentAccountStatementApiTest extends TestCase
         @unlink($path);
     }
 
+    public function test_bearer_token_can_resolve_payment_account_route_binding(): void
+    {
+        $user = $this->makeAdminUser();
+        $teamId = (int) $user->current_team_id;
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'code' => 'BIND',
+            'name' => 'Binding account',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
+        $token = $user->createToken('statement-binding')->plainTextToken;
+
+        // withToken (not actingAs) exercises auth.api before SubstituteBindings.
+        $this->withToken($token)
+            ->getJson('/api/payment-accounts/'.$account->id.'/statements')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('account.id', $account->id);
+    }
+
     public function test_lists_statements_and_reconcile_lines_for_account(): void
     {
         [$user, $bank, $statement, $line, $stripe] = $this->seedStatementWithCreditLine();
@@ -304,6 +333,250 @@ class PaymentAccountStatementApiTest extends TestCase
 
         $openLine->refresh();
         $this->assertFalse($openLine->isDismissed());
+    }
+
+    public function test_api_can_list_invoice_candidates_and_link_statement_line(): void
+    {
+        [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();
+        $teamId = (int) $user->current_team_id;
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'Cliente Conciliación',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-CONC-001',
+            'date' => '2026-09-20',
+            'due_date' => '2026-10-20',
+            'gross_amount' => 2000,
+            'discount' => 0,
+            'total_amount' => 2000,
+            'balance' => 2000,
+            'status' => 2,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/invoice-candidates')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('operation', 'sell')
+            ->assertJsonPath('invoices.0.id', $invoice->id)
+            ->assertJsonPath('invoices.0.number', 'F-CONC-001');
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/link-invoice', [
+                'invoice_id' => $invoice->id,
+                'remarks' => 'Cobro extracto',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('line_id', $line->id);
+
+        $line->refresh();
+        $invoice->refresh();
+
+        $this->assertNotNull($line->payment_id);
+        $this->assertSame('matched', $line->match_status);
+        $this->assertSame(152.38, (float) $invoice->balance);
+
+        $payment = Payment::withoutGlobalScopes()->find($line->payment_id);
+        $this->assertNotNull($payment);
+        $this->assertSame(TransactionType::INCOME, $payment->transaction_type);
+        $this->assertSame((int) $invoice->id, (int) $payment->invoice_id);
+        $this->assertSame(1847.62, (float) $payment->amount);
+        $this->assertSame(1847.62, (float) $payment->document_amount);
+        $this->assertSame(1.0, (float) $payment->exchange_rate);
+        $this->assertSame('manual', $payment->source_provider);
+        $this->assertSame('statement-line:'.$line->id, $payment->source_reference_id);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/reconcile?filter=matched')
+            ->assertOk()
+            ->assertJsonPath('lines.0.invoice_id', $invoice->id)
+            ->assertJsonPath('lines.0.invoice_number', 'F-CONC-001')
+            ->assertJsonPath('lines.0.payment_document_amount', 1847.62);
+    }
+
+    public function test_link_invoice_applies_document_amount_when_currencies_differ(): void
+    {
+        [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();
+        $teamId = (int) $user->current_team_id;
+
+        $line->forceFill([
+            'amount' => -0.99,
+            'currency' => 'EUR',
+            'occurred_at' => '2026-09-17',
+            'reference' => 'tj-interserver.net',
+            'description' => 'tj-interserver.net',
+        ])->save();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'InterServer, Inc.',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 840,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => '49494175',
+            'date' => '2026-09-17',
+            'due_date' => '2026-09-17',
+            'gross_amount' => 1.14,
+            'discount' => 0,
+            'total_amount' => 1.14,
+            'balance' => 1.14,
+            'status' => 2,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/link-invoice', [
+                'invoice_id' => $invoice->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('document_amount', 1.14)
+            ->assertJsonPath('exchange_rate', 0.868421)
+            ->assertJsonPath('invoice_balance', 0);
+
+        $invoice->refresh();
+        $line->refresh();
+        $payment = Payment::withoutGlobalScopes()->find($line->payment_id);
+
+        $this->assertSame(0.0, (float) $invoice->balance);
+        $this->assertNotNull($payment);
+        $this->assertSame(0.99, (float) $payment->amount);
+        $this->assertSame(1.14, (float) $payment->document_amount);
+        $this->assertSame(0.868421, (float) $payment->exchange_rate);
+        $this->assertSame(TransactionType::EXPENSE, $payment->transaction_type);
+
+        $paymentId = (int) $payment->id;
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/reconcile?filter=matched')
+            ->assertOk()
+            ->assertJsonPath('lines.0.can_unlink', true)
+            ->assertJsonPath('lines.0.invoice_id', $invoice->id);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/unlink')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('invoice_balance', 1.14)
+            ->assertJsonPath('deleted_payment_ids.0', $paymentId);
+
+        $line->refresh();
+        $invoice->refresh();
+
+        $this->assertNull($line->payment_id);
+        $this->assertSame('statement_only', $line->match_status);
+        $this->assertSame(1.14, (float) $invoice->balance);
+        $this->assertNull(Payment::withoutGlobalScopes()->find($paymentId));
+    }
+
+    public function test_invoice_candidates_rank_by_bank_alias_amount_and_date(): void
+    {
+        [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();
+        $teamId = (int) $user->current_team_id;
+
+        $line->forceFill([
+            'reference' => 'tj-web*network solutions',
+            'description' => 'tj-web*network solutions',
+            'amount' => 24.19,
+            'occurred_at' => '2026-09-25',
+        ])->save();
+
+        $matched = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'Network Solutions, LLC',
+            'type_id' => 1,
+            'status_id' => 1,
+            'data' => [
+                'bank_aliases' => ['tj-web*network solutions'],
+                'bank_remarks' => 'Cobro Network Solutions',
+            ],
+        ]);
+        $other = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'Otra Empresa',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $preferred = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $matched->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-NET-001',
+            'date' => '2026-09-20',
+            'due_date' => '2026-10-20',
+            'gross_amount' => 24.19,
+            'discount' => 0,
+            'total_amount' => 24.19,
+            'balance' => 24.19,
+            'status' => 2,
+        ]);
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $other->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-OTHER-001',
+            'date' => '2026-09-24',
+            'due_date' => '2026-10-24',
+            'gross_amount' => 24.19,
+            'discount' => 0,
+            'total_amount' => 24.19,
+            'balance' => 24.19,
+            'status' => 2,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/invoice-candidates')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('suggested_invoice_id', $preferred->id)
+            ->assertJsonPath('suggested_remarks', 'Cobro Network Solutions')
+            ->assertJsonPath('invoices.0.id', $preferred->id)
+            ->assertJsonPath('invoices.0.matched_by_enterprise', true);
+    }
+
+    public function test_api_can_delete_uploaded_statement(): void
+    {
+        [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();
+
+        $statement->forceFill([
+            'disk' => 'originals',
+            'storage_path' => 'statements/test-delete.csv',
+            'original_filename' => 'test-delete.csv',
+            'file_size' => 120,
+        ])->save();
+
+        Storage::disk('originals')->put('statements/test-delete.csv', "DATE;amount\n2026-09-29;10");
+
+        $this->actingAs($user, 'sanctum')
+            ->deleteJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertDatabaseMissing('bank_statements', ['id' => $statement->id]);
+        $this->assertDatabaseMissing('bank_statement_lines', ['id' => $line->id]);
+        $this->assertFalse(Storage::disk('originals')->exists('statements/test-delete.csv'));
     }
 
     /**

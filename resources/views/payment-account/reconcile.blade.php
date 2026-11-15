@@ -2,6 +2,14 @@
 
 @section('title', __('Conciliación').' · '.$account->name)
 
+@section('vendor-style')
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+@endsection
+
+@section('vendor-script')
+<script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
+@endsection
+
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
@@ -20,6 +28,9 @@
                 <i class="ti ti-upload me-1"></i>{{ __('Subir extracto') }}
             </button>
         @endcan
+        <a href="{{ route('payment-account.show', $account) }}#statement-files" class="btn btn-label-info waves-effect waves-light">
+            <i class="ti ti-files me-1"></i>{{ __('Archivos subidos') }}
+        </a>
         @if ($statement->isDownloadable())
             <a href="{{ route('payment-account.statements.download', [$account, $statement]) }}" class="btn btn-label-secondary waves-effect waves-light">
                 <i class="ti ti-download me-1"></i>{{ __('Descargar extracto') }}
@@ -60,7 +71,7 @@
                 <div class="fw-semibold text-warning">{{ $counts['open'] }}</div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="text-muted small">{{ __('Empatados') }}</div>
+                <div class="text-muted small">{{ __('Asociados') }}</div>
                 <div class="fw-semibold text-success">{{ $counts['matched'] }}</div>
             </div>
             <div class="col-6 col-md-3">
@@ -90,7 +101,7 @@
 <ul class="nav nav-pills mb-3 gap-1">
     @foreach ([
         'open' => __('Pendientes').' ('.$counts['open'].')',
-        'matched' => __('Empatados').' ('.$counts['matched'].')',
+        'matched' => __('Asociados').' ('.$counts['matched'].')',
         'dismissed' => __('Ignorados').' ('.$counts['dismissed'].')',
         'all' => __('Todos').' ('.$counts['all'].')',
     ] as $key => $label)
@@ -147,7 +158,7 @@
                                 @if ($line->isDismissed())
                                     <span class="badge bg-label-secondary">{{ __('Ignorado') }}</span>
                                 @elseif ($line->payment_id)
-                                    <span class="badge bg-label-success">{{ __('Empatado') }}</span>
+                                    <span class="badge bg-label-success">{{ __('Asociado') }}</span>
                                 @else
                                     <span class="badge bg-label-warning">{{ __('Pendiente') }}</span>
                                 @endif
@@ -160,6 +171,30 @@
                                                 @csrf
                                                 <button type="submit" class="btn btn-sm btn-label-secondary">{{ __('Restaurar') }}</button>
                                             </form>
+                                        @elseif ($line->payment_id)
+                                            @php
+                                                $sourceReference = (string) ($line->payment?->source_reference_id ?? '');
+                                                $canUnlink = $sourceReference === 'statement-line:'.$line->id
+                                                    || (
+                                                        (string) ($line->payment?->source_provider ?? '') === 'transfer'
+                                                        && str_starts_with($sourceReference, 'transfer:')
+                                                        && str_ends_with($sourceReference, ':in')
+                                                    );
+                                            @endphp
+                                            @if ($line->payment?->invoice_id)
+                                                <a
+                                                    href="{{ route('invoice.show', $line->payment->invoice_id) }}"
+                                                    class="btn btn-sm btn-label-primary"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >{{ __('Ver factura') }}</a>
+                                            @endif
+                                            @if ($canUnlink)
+                                                <form method="POST" action="{{ route('payment-account.statements.lines.unlink', [$account, $statement, $line]) }}" onsubmit="return confirm(@json(__('¿Desasociar este movimiento y revertir el pago?')))">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-sm btn-label-warning">{{ __('Desasociar') }}</button>
+                                                </form>
+                                            @endif
                                         @elseif (! $line->payment_id)
                                             @if ($isCredit)
                                                 <button
@@ -182,6 +217,12 @@
                                                     class="btn btn-sm btn-label-danger"
                                                 >{{ __('Crear gasto') }}</a>
                                             @endif
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-label-info"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#linkInvoiceModal{{ $line->id }}"
+                                            >{{ __('Asociar factura') }}</button>
                                             <form method="POST" action="{{ route('payment-account.statements.lines.dismiss', [$account, $statement, $line]) }}">
                                                 @csrf
                                                 <button type="submit" class="btn btn-sm btn-label-secondary">{{ __('Ignorar') }}</button>
@@ -258,70 +299,245 @@
                 </div>
             </div>
         @endif
+
+        @if (! $line->payment_id && ! $line->isDismissed())
+            @php
+                $candidates = $invoiceCandidatesByLine[(int) $line->id] ?? [
+                    'invoices' => [],
+                    'suggested_invoice_id' => null,
+                    'suggested_remarks' => $line->reference ?: $line->description,
+                    'amount' => abs((float) $line->amount),
+                ];
+                $lineInvoiceOptions = collect($candidates['invoices'] ?? []);
+                $suggestedInvoiceId = $candidates['suggested_invoice_id'] ?? null;
+                $suggestedRemarks = $candidates['suggested_remarks']
+                    ?? ($line->reference ?: $line->description);
+                $lineCurrency = strtoupper((string) ($line->currency ?: $account->currency?->code ?: ''));
+                $bankAmount = abs((float) $line->amount);
+            @endphp
+            <div class="modal fade" id="linkInvoiceModal{{ $line->id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <form class="modal-content" method="POST" action="{{ route('payment-account.statements.lines.link-invoice', [$account, $statement, $line]) }}">
+                        @csrf
+                        <div class="modal-header">
+                            <h5 class="modal-title">{{ __('Asociar a factura existente') }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="mb-2">
+                                {{ __('Se creará un pago por el importe del movimiento. Si la factura está en otra divisa, se salda el saldo completo de la factura y se guarda el tipo de cambio implícito.') }}
+                            </p>
+                            <p class="mb-3 text-muted small">
+                                {{ $line->occurred_at?->format('d/m/Y') ?? '—' }}
+                                · {{ number_format($bankAmount, 2, ',', '.') }} {{ $lineCurrency }}
+                                · {{ $line->reference ?: $line->description ?: '—' }}
+                            </p>
+                            <div class="mb-3">
+                                <label class="form-label" for="invoice_id_{{ $line->id }}">{{ __('Factura') }} (*)</label>
+                                <select
+                                    name="invoice_id"
+                                    id="invoice_id_{{ $line->id }}"
+                                    class="form-select js-link-invoice-select"
+                                    required
+                                    data-line-currency="{{ $lineCurrency }}"
+                                    data-bank-amount="{{ $bankAmount }}"
+                                    data-fx-target="link_fx_{{ $line->id }}"
+                                    data-placeholder="{{ __('Buscar número o empresa…') }}"
+                                >
+                                    <option value="">{{ __('Elegir…') }}</option>
+                                    @forelse ($lineInvoiceOptions as $invoiceOption)
+                                        @php
+                                            $optionCurrency = strtoupper((string) ($invoiceOption['currency_code'] ?? ''));
+                                            $optionBalance = (float) ($invoiceOption['balance'] ?? 0);
+                                            $optionDate = filled($invoiceOption['date'] ?? null)
+                                                ? \Carbon\Carbon::parse($invoiceOption['date'])->format('d/m/Y')
+                                                : '';
+                                            $optionEnterprise = $invoiceOption['enterprise_name'] !== ''
+                                                ? $invoiceOption['enterprise_name']
+                                                : __('Sin empresa');
+                                            $matchedByEnterprise = ! empty($invoiceOption['matched_by_enterprise']);
+                                        @endphp
+                                        <option
+                                            value="{{ $invoiceOption['id'] }}"
+                                            @selected((int) ($suggestedInvoiceId ?? 0) === (int) $invoiceOption['id'])
+                                            data-number="{{ $invoiceOption['number'] }}"
+                                            data-date="{{ $optionDate }}"
+                                            data-enterprise="{{ $optionEnterprise }}"
+                                            data-matched="{{ $matchedByEnterprise ? '1' : '0' }}"
+                                            data-currency="{{ $optionCurrency }}"
+                                            data-balance="{{ $optionBalance }}"
+                                        >
+                                            {{ $invoiceOption['number'] }}
+                                            @if ($optionDate !== '')
+                                                · {{ $optionDate }}
+                                            @endif
+                                            @if ($matchedByEnterprise)
+                                                · {{ __('empresa') }}
+                                            @endif
+                                            · {{ $optionEnterprise }}
+                                            · {{ __('saldo') }} {{ number_format($optionBalance, 2, ',', '.') }}
+                                            {{ $optionCurrency }}
+                                        </option>
+                                    @empty
+                                        <option value="" disabled>{{ __('No hay facturas con saldo pendiente') }}</option>
+                                    @endforelse
+                                </select>
+                            </div>
+                            <div id="link_fx_{{ $line->id }}" class="alert alert-info d-none mb-3" role="alert"></div>
+                            <div class="mb-0">
+                                <label class="form-label" for="link_remarks_{{ $line->id }}">{{ __('Nota') }}</label>
+                                <input
+                                    type="text"
+                                    name="remarks"
+                                    id="link_remarks_{{ $line->id }}"
+                                    class="form-control"
+                                    value="{{ old('remarks', $suggestedRemarks) }}"
+                                    maxlength="1000"
+                                >
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancelar') }}</button>
+                            <button type="submit" class="btn btn-primary" @disabled($lineInvoiceOptions->isEmpty())>{{ __('Asociar') }}</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        @endif
     @endforeach
 
-    <div class="modal fade" id="uploadStatementModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <form class="modal-content" method="POST" action="{{ route('payment-account.statements.store', $account) }}" enctype="multipart/form-data">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title">{{ __('Subir extractos bancarios') }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted small">
-                        {{ __('Subí PDF, CSV u otro documento del mes o trimestre. Si el archivo no trae importes, indicá el saldo del extracto para conciliarlo.') }}
-                    </p>
-                    <div class="mb-3">
-                        <label for="statement-files" class="form-label">{{ __('Archivos') }} <span class="text-danger">*</span></label>
-                        <input type="file" name="files[]" id="statement-files" class="form-control" multiple required>
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="period_year" class="form-label">{{ __('Año') }}</label>
-                            <input type="number" name="period_year" id="period_year" class="form-control" min="2000" max="2100" value="{{ old('period_year', $statement->period_year ?? now()->year) }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="period" class="form-label">{{ __('Periodo') }}</label>
-                            @php
-                                $defaultPeriod = old('period');
-                                if ($defaultPeriod === null) {
-                                    $summary = $statement->validation_summary ?? [];
-                                    $defaultPeriod = ($summary['period_kind'] ?? '') === 'quarter'
-                                        ? 'q:'.(int) ($summary['period_quarter'] ?? 1)
-                                        : 'm:'.(int) ($statement->period_month ?? now()->month);
-                                }
-                            @endphp
-                            <select name="period" id="period" class="form-select">
-                                <option value="">{{ __('Automático') }}</option>
-                                <optgroup label="{{ __('Mes') }}">
-                                    @for ($month = 1; $month <= 12; $month++)
-                                        <option value="m:{{ $month }}" @selected($defaultPeriod === 'm:'.$month)>
-                                            {{ \Carbon\Carbon::create(null, $month, 1)->translatedFormat('F') }}
-                                        </option>
-                                    @endfor
-                                </optgroup>
-                                <optgroup label="{{ __('Trimestre') }}">
-                                    @for ($quarter = 1; $quarter <= 4; $quarter++)
-                                        <option value="q:{{ $quarter }}" @selected($defaultPeriod === 'q:'.$quarter)>Q{{ $quarter }}</option>
-                                    @endfor
-                                </optgroup>
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <label for="statement_balance" class="form-label">{{ __('Saldo del extracto') }}</label>
-                            <input type="number" step="0.01" name="statement_balance" id="statement_balance" class="form-control" value="{{ old('statement_balance') }}" placeholder="0.00">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="ti ti-upload me-1"></i>{{ __('Subir') }}
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+    @php
+        $reconcileSummary = $statement->validation_summary ?? [];
+        $reconcileDefaultPeriod = ($reconcileSummary['period_kind'] ?? '') === 'quarter'
+            ? 'q:'.(int) ($reconcileSummary['period_quarter'] ?? 1)
+            : 'm:'.(int) ($statement->period_month ?? now()->month);
+    @endphp
+    @include('payment-account.partials.upload-statement-modal', [
+        'account' => $account,
+        'defaultYear' => (int) ($statement->period_year ?? now()->year),
+        'defaultPeriod' => $reconcileDefaultPeriod,
+    ])
 @endcan
+@endsection
+
+@section('page-script')
+<script>
+$(function () {
+    function formatMoney(amount, currency) {
+        try {
+            return new Intl.NumberFormat('es-ES', {
+                style: 'currency',
+                currency: currency || 'EUR',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        } catch (error) {
+            return Number(amount).toFixed(2) + ' ' + (currency || '');
+        }
+    }
+
+    function optionMeta($option) {
+        return {
+            number: String($option.data('number') || $option.text() || ''),
+            date: String($option.data('date') || ''),
+            enterprise: String($option.data('enterprise') || ''),
+            matched: String($option.data('matched') || '') === '1',
+            currency: String($option.data('currency') || '').toUpperCase(),
+            balance: Number($option.data('balance') || 0)
+        };
+    }
+
+    function formatInvoiceOption(data, compact) {
+        if (! data.id) {
+            return data.text;
+        }
+
+        var meta = optionMeta($(data.element));
+        var titleParts = [meta.number];
+
+        if (meta.date) {
+            titleParts.push(meta.date);
+        }
+
+        if (meta.matched) {
+            titleParts.push(@json(__('empresa')));
+        }
+
+        var subtitle = [meta.enterprise || @json(__('Sin empresa'))]
+            .concat([@json(__('saldo')) + ' ' + formatMoney(meta.balance, meta.currency || 'EUR')])
+            .join(' · ');
+
+        if (compact) {
+            return $('<span class="text-truncate d-inline-block w-100"></span>').text(
+                titleParts.concat([meta.enterprise, @json(__('saldo')) + ' ' + formatMoney(meta.balance, meta.currency || 'EUR')]).join(' · ')
+            );
+        }
+
+        return $(
+            '<div class="py-1">' +
+                '<div class="fw-semibold text-truncate"></div>' +
+                '<div class="small text-muted text-truncate"></div>' +
+            '</div>'
+        )
+            .find('.fw-semibold').text(titleParts.join(' · ')).end()
+            .find('.small').text(subtitle).end();
+    }
+
+    function updateFxHelper($select) {
+        var targetId = $select.data('fx-target');
+        var $box = targetId ? $('#' + targetId) : $();
+        if (! $box.length) {
+            return;
+        }
+
+        var $option = $select.find('option:selected');
+        var lineCurrency = String($select.data('line-currency') || '').toUpperCase();
+        var bankAmount = Number($select.data('bank-amount') || 0);
+        var meta = optionMeta($option);
+
+        if (! $option.val() || ! meta.currency || ! lineCurrency || meta.currency === lineCurrency || meta.balance <= 0) {
+            $box.addClass('d-none').text('');
+            return;
+        }
+
+        var rate = bankAmount / meta.balance;
+        $box
+            .removeClass('d-none')
+            .text(
+                'Divisas distintas: pago ' + formatMoney(bankAmount, lineCurrency)
+                + ' → se aplica ' + formatMoney(meta.balance, meta.currency)
+                + ' a la factura (TC ≈ ' + rate.toFixed(6) + ' ' + lineCurrency + '/' + meta.currency + ').'
+            );
+    }
+
+    $('.js-link-invoice-select').each(function () {
+        var $select = $(this);
+        var $modal = $select.closest('.modal');
+
+        if ($select.hasClass('select2-hidden-accessible')) {
+            $select.select2('destroy');
+        }
+
+        $select.wrap('<div class="position-relative"></div>');
+        $select.select2({
+            dropdownParent: $modal.length ? $modal : $select.parent(),
+            width: '100%',
+            placeholder: $select.data('placeholder') || @json(__('Elegir…')),
+            allowClear: true,
+            minimumResultsForSearch: 0,
+            templateResult: function (data) {
+                return formatInvoiceOption(data, false);
+            },
+            templateSelection: function (data) {
+                return formatInvoiceOption(data, true);
+            }
+        });
+
+        updateFxHelper($select);
+        $select.on('change', function () {
+            updateFxHelper($select);
+        });
+    });
+});
+</script>
 @endsection

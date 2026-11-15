@@ -117,7 +117,7 @@ class ExpenseMovementsApiTest extends TestCase
 
         $token = $user->createToken('movements-api')->plainTextToken;
 
-        $this->withToken($token)
+        $response = $this->withToken($token)
             ->getJson('/api/expenses/movements?vat_year=2026&vat_period=q:2')
             ->assertOk()
             ->assertJsonPath('success', true)
@@ -134,6 +134,16 @@ class ExpenseMovementsApiTest extends TestCase
             ->assertJsonPath('data.data.1.signed_amount', -121)
             ->assertJsonPath('data.data.1.invoice_url', null)
             ->assertJsonPath('data.data.1.invoice_id', $expenseInvoice->id);
+
+        $haciendaShareUrl = $response->json('hacienda_share_url');
+        $this->assertIsString($haciendaShareUrl);
+        $this->assertStringContainsString('/hacienda/', $haciendaShareUrl);
+        $this->assertStringContainsString('vat_year=2026', $haciendaShareUrl);
+        $this->assertTrue(
+            str_contains($haciendaShareUrl, 'vat_period=q%3A2')
+            || str_contains($haciendaShareUrl, 'vat_period=q:2'),
+            'Expected vat_period=q:2 in hacienda share URL',
+        );
     }
 
     public function test_movements_can_filter_by_operation_and_search(): void

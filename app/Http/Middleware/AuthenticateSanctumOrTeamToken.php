@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Models\Team;
 use App\Models\User;
 use Closure;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,8 +14,11 @@ use Symfony\Component\HttpFoundation\Response;
  * Authenticate API requests with either:
  * - Team API tokens from Team Settings → API Tokens (/team/{id}/api-tokens)
  * - Laravel Sanctum personal access tokens (existing SPAs / mobile)
+ *
+ * Implements AuthenticatesRequests so Laravel runs this before SubstituteBindings
+ * (needed for route-model binding that depends on auth()->user()/currentTeam).
  */
-class AuthenticateSanctumOrTeamToken
+class AuthenticateSanctumOrTeamToken implements AuthenticatesRequests
 {
     public function handle(Request $request, Closure $next): Response
     {

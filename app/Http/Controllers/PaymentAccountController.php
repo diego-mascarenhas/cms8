@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\PaymentAccountDataTable;
 use App\DataTables\PaymentDataTable;
+use App\Http\Requests\StoreBankStatementLinkInvoiceRequest;
 use App\Http\Requests\StoreBankStatementTransferRequest;
 use App\Http\Requests\StorePaymentAccountRequest;
 use App\Http\Requests\StorePaymentAccountStatementRequest;
@@ -11,8 +12,10 @@ use App\Http\Requests\UpdatePaymentAccountRequest;
 use App\Models\BankStatement;
 use App\Models\BankStatementLine;
 use App\Models\Currency;
+use App\Models\Invoice;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
+use App\Services\Finance\BankStatementInvoiceCandidateService;
 use App\Services\Finance\BankStatementReconcileService;
 use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Services\Finance\PaymentAccountStatementUploadService;
@@ -29,6 +32,7 @@ class PaymentAccountController extends Controller
         private readonly PaymentAccountCompatibilityService $paymentAccountCompatibilityService,
         private readonly PaymentAccountStatementUploadService $statementUploadService,
         private readonly BankStatementReconcileService $statementReconcileService,
+        private readonly BankStatementInvoiceCandidateService $invoiceCandidateService,
     ) {}
 
     public function index(PaymentAccountDataTable $dataTable)
@@ -102,7 +106,7 @@ class PaymentAccountController extends Controller
         {
             return redirect()
                 ->route('payment-account.statements.reconcile', [$paymentAccount, $latestStatement, 'filter' => 'open'])
-                ->with('success', __(':count extracto(s) subido(s). Empatados: :balanced. Con diferencia: :open.', [
+                ->with('success', __(':count extracto(s) subido(s). Asociados: :balanced. Con diferencia: :open.', [
                     'count' => $uploaded,
                     'balanced' => $balanced,
                     'open' => $open,
@@ -111,7 +115,7 @@ class PaymentAccountController extends Controller
 
         return redirect()
             ->route('payment-account.show', $paymentAccount)
-            ->with('success', __(':count extracto(s) subido(s). Empatados: :balanced. Con diferencia: :open.', [
+            ->with('success', __(':count extracto(s) subido(s). Asociados: :balanced. Con diferencia: :open.', [
                 'count' => $uploaded,
                 'balanced' => $balanced,
                 'open' => $open,
@@ -145,7 +149,10 @@ class PaymentAccountController extends Controller
 
         $paymentAccount->load('currency');
         $statement->load([
-            'lines' => fn ($query) => $query->with('payment')->orderByDesc('occurred_at')->orderByDesc('id'),
+            'lines' => fn ($query) => $query
+                ->with('payment:id,remarks,amount,account_id,invoice_id,document_amount,exchange_rate,source_provider,source_reference_id')
+                ->orderByDesc('occurred_at')
+                ->orderByDesc('id'),
         ]);
 
         $lines = $statement->lines->filter(function (BankStatementLine $line) use ($filter): bool
@@ -173,6 +180,21 @@ class PaymentAccountController extends Controller
             'all' => $statement->lines->count(),
         ];
 
+        $invoiceCandidatesByLine = [];
+
+        foreach ($lines as $line)
+        {
+            if ($line->payment_id !== null || $line->isDismissed())
+            {
+                continue;
+            }
+
+            $invoiceCandidatesByLine[(int) $line->id] = $this->invoiceCandidateService->candidatesForLine(
+                $line,
+                (int) $paymentAccount->team_id,
+            );
+        }
+
         return view('payment-account.reconcile', [
             'account' => $paymentAccount,
             'statement' => $statement,
@@ -180,6 +202,7 @@ class PaymentAccountController extends Controller
             'filter' => $filter,
             'counts' => $counts,
             'transferAccounts' => $transferAccounts,
+            'invoiceCandidatesByLine' => $invoiceCandidatesByLine,
             'summary' => $statement->validation_summary ?? [],
         ]);
     }
@@ -250,7 +273,80 @@ class PaymentAccountController extends Controller
 
         return redirect()
             ->route('payment-account.statements.reconcile', [$paymentAccount, $statement, 'filter' => 'matched'])
-            ->with('success', __('Traspaso registrado y movimiento empatado.'));
+            ->with('success', __('Traspaso registrado y movimiento asociado.'));
+    }
+
+    public function linkStatementLineInvoice(
+        StoreBankStatementLinkInvoiceRequest $request,
+        PaymentAccount $paymentAccount,
+        BankStatement $statement,
+        BankStatementLine $line,
+    ): RedirectResponse {
+        $this->authorize('update', $paymentAccount);
+        $this->assertStatementBelongsToAccount($paymentAccount, $statement);
+        $this->assertLineBelongsToStatement($statement, $line);
+
+        $invoice = Invoice::query()
+            ->where('team_id', $paymentAccount->team_id)
+            ->findOrFail((int) $request->validated('invoice_id'));
+
+        try
+        {
+            $this->statementReconcileService->linkToInvoice(
+                $line,
+                $invoice,
+                $paymentAccount,
+                isset($request->validated()['type_id']) ? (int) $request->validated('type_id') : null,
+                $request->validated('remarks') ?? null,
+            );
+        } catch (RuntimeException $exception)
+        {
+            return redirect()
+                ->route('payment-account.statements.reconcile', [$paymentAccount, $statement, 'filter' => 'open'])
+                ->withErrors(['link_invoice' => $exception->getMessage()]);
+        }
+
+        return redirect()
+            ->route('payment-account.statements.reconcile', [$paymentAccount, $statement, 'filter' => 'matched'])
+            ->with('success', __('Pago asociado a la factura y movimiento asociado.'));
+    }
+
+    public function unlinkStatementLine(
+        PaymentAccount $paymentAccount,
+        BankStatement $statement,
+        BankStatementLine $line,
+    ): RedirectResponse {
+        $this->authorize('update', $paymentAccount);
+        $this->assertStatementBelongsToAccount($paymentAccount, $statement);
+        $this->assertLineBelongsToStatement($statement, $line);
+
+        try
+        {
+            $this->statementReconcileService->unlinkMatch($line, $paymentAccount);
+        } catch (RuntimeException $exception)
+        {
+            return redirect()
+                ->route('payment-account.statements.reconcile', [$paymentAccount, $statement, 'filter' => 'matched'])
+                ->withErrors(['unlink' => $exception->getMessage()]);
+        }
+
+        return redirect()
+            ->route('payment-account.statements.reconcile', [$paymentAccount, $statement, 'filter' => 'open'])
+            ->with('success', __('Asociación revertida. El movimiento volvió a pendientes.'));
+    }
+
+    public function destroyStatement(
+        PaymentAccount $paymentAccount,
+        BankStatement $statement,
+    ): RedirectResponse {
+        $this->authorize('update', $paymentAccount);
+        $this->assertStatementBelongsToAccount($paymentAccount, $statement);
+
+        $this->statementReconcileService->deleteStatement($statement);
+
+        return redirect()
+            ->route('payment-account.show', $paymentAccount)
+            ->with('success', __('Extracto eliminado.'));
     }
 
     public function create(): View
