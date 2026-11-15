@@ -890,6 +890,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('enterprises/roster', [\App\Http\Controllers\Api\EnterpriseController::class, 'roster']);
     Route::get('enterprises/{id}/subscriptions', [ApiSubscriptionController::class, 'forEnterprise'])->whereNumber('id');
     Route::get('enterprises/{id}/profile', [\App\Http\Controllers\Api\EnterpriseController::class, 'profile'])->whereNumber('id');
+    Route::get('enterprises/{id}/usage', [\App\Http\Controllers\Api\EnterpriseController::class, 'usage'])->whereNumber('id');
     Route::get('enterprises/{id}/billing', [\App\Http\Controllers\Api\EnterpriseBillingController::class, 'show'])->whereNumber('id');
     Route::post('enterprises/{id}/billing/setup', [\App\Http\Controllers\Api\EnterpriseBillingController::class, 'setup'])->whereNumber('id');
     Route::post('enterprises/{id}/billing/confirm', [\App\Http\Controllers\Api\EnterpriseBillingController::class, 'confirm'])->whereNumber('id');
@@ -1002,6 +1003,8 @@ Route::middleware('auth.api')->group(function ()
         ->name('api.payment-accounts.statements.lines.invoice-candidates');
     Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/link-invoice', [PaymentAccountStatementController::class, 'linkInvoice'])
         ->name('api.payment-accounts.statements.lines.link-invoice');
+    Route::post('payment-accounts/{paymentAccount}/statements/{statement}/lines/{line}/unlink', [PaymentAccountStatementController::class, 'unlinkLine'])
+        ->name('api.payment-accounts.statements.lines.unlink');
 
     // Invoices - for user-based authentication (Sanctum tokens)
     Route::get('invoices', [InvoiceController::class, 'index']);

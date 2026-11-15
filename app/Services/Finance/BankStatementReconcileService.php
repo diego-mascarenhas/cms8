@@ -200,6 +200,38 @@ class BankStatementReconcileService
             throw new RuntimeException('No hay formas de pago disponibles.');
         }
 
+        $account->loadMissing('currency:id,code');
+        $invoice->loadMissing('currency:id,code');
+
+        $accountCurrencyId = $account->currency_id !== null ? (int) $account->currency_id : null;
+        $invoiceCurrencyId = $invoice->currency_id !== null ? (int) $invoice->currency_id : null;
+        $sameCurrency = $accountCurrencyId === null
+            || $invoiceCurrencyId === null
+            || $accountCurrencyId === $invoiceCurrencyId;
+
+        $invoiceBalance = round((float) $invoice->balance, 2);
+
+        if ($invoiceBalance <= 0)
+        {
+            throw new RuntimeException('La factura no tiene saldo pendiente.');
+        }
+
+        // Same currency: bank amount reduces invoice balance 1:1.
+        // Cross-currency: bank amount is in account currency; settle the invoice
+        // remaining balance in document currency and store the implied rate
+        // (account units per 1 document unit), matching expense payment UX.
+        if ($sameCurrency)
+        {
+            $documentAmount = $amount;
+            $exchangeRate = 1.0;
+            $appliedToInvoice = $amount;
+        } else
+        {
+            $documentAmount = $invoiceBalance;
+            $exchangeRate = round($amount / $documentAmount, 6);
+            $appliedToInvoice = $documentAmount;
+        }
+
         $date = $line->occurred_at?->toDateString() ?? now()->toDateString();
         $concept = trim((string) ($line->reference ?: $line->description ?: ''));
         $note = $remarks !== null && trim($remarks) !== ''
@@ -211,6 +243,9 @@ class BankStatementReconcileService
             $invoice,
             $account,
             $amount,
+            $documentAmount,
+            $exchangeRate,
+            $appliedToInvoice,
             $isExpense,
             $typeId,
             $date,
@@ -225,13 +260,15 @@ class BankStatementReconcileService
                 'account_id' => (int) $account->id,
                 'type_id' => $typeId,
                 'amount' => $amount,
+                'document_amount' => $documentAmount,
+                'exchange_rate' => $exchangeRate,
                 'remarks' => $note,
                 'status' => 2,
                 'source_provider' => 'manual',
                 'source_reference_id' => 'statement-line:'.$line->id,
             ]);
 
-            $newBalance = round(max(0, (float) $invoice->balance - $amount), 2);
+            $newBalance = round(max(0, (float) $invoice->balance - $appliedToInvoice), 2);
             $invoice->forceFill(['balance' => $newBalance])->save();
 
             $line->forceFill([
@@ -253,6 +290,110 @@ class BankStatementReconcileService
                 'payment' => $payment,
                 'invoice' => $invoice->fresh() ?? $invoice,
                 'line' => $line->fresh(['payment']) ?? $line,
+            ];
+        });
+    }
+
+    /**
+     * Roll back a reconcile match created from the statement (invoice link or transfer).
+     *
+     * @return array{line: BankStatementLine, invoice: Invoice|null, deleted_payment_ids: list<int>}
+     */
+    public function unlinkMatch(BankStatementLine $line, PaymentAccount $account): array
+    {
+        if (! $line->payment_id)
+        {
+            throw new RuntimeException('Este movimiento no tiene un pago asociado.');
+        }
+
+        $payment = Payment::withoutGlobalScopes()
+            ->with('invoice')
+            ->find($line->payment_id);
+
+        if (! $payment instanceof Payment)
+        {
+            throw new RuntimeException('No se encontró el pago asociado al movimiento.');
+        }
+
+        $sourceReference = (string) ($payment->source_reference_id ?? '');
+        $isStatementInvoiceLink = $sourceReference === 'statement-line:'.$line->id;
+        $isTransferInflow = (string) ($payment->source_provider ?? '') === 'transfer'
+            && str_starts_with($sourceReference, 'transfer:')
+            && str_ends_with($sourceReference, ':in');
+
+        if (! $isStatementInvoiceLink && ! $isTransferInflow)
+        {
+            throw new RuntimeException('Solo se pueden desasociar pagos creados desde la conciliación.');
+        }
+
+        return DB::transaction(function () use ($line, $account, $payment, $isStatementInvoiceLink, $sourceReference): array
+        {
+            $deletedPaymentIds = [];
+            $invoice = null;
+
+            if ($isStatementInvoiceLink)
+            {
+                $invoice = $payment->invoice;
+
+                if ($invoice instanceof Invoice)
+                {
+                    $applied = $payment->document_amount !== null
+                        ? round((float) $payment->document_amount, 2)
+                        : round((float) $payment->amount, 2);
+
+                    $restoredBalance = round((float) $invoice->balance + $applied, 2);
+                    $invoiceCeiling = $invoice->total_amount !== null
+                        ? round((float) $invoice->total_amount, 2)
+                        : null;
+
+                    if ($invoiceCeiling !== null)
+                    {
+                        $restoredBalance = min($restoredBalance, $invoiceCeiling);
+                    }
+
+                    $invoice->forceFill(['balance' => $restoredBalance])->save();
+                }
+
+                $deletedPaymentIds[] = (int) $payment->id;
+                $payment->delete();
+            } else
+            {
+                $transferKey = Str::beforeLast(Str::after($sourceReference, 'transfer:'), ':');
+                $pairPayments = Payment::withoutGlobalScopes()
+                    ->where('source_provider', 'transfer')
+                    ->where(function ($query) use ($transferKey): void
+                    {
+                        $query->where('source_reference_id', 'transfer:'.$transferKey.':in')
+                            ->orWhere('source_reference_id', 'transfer:'.$transferKey.':out');
+                    })
+                    ->get();
+
+                foreach ($pairPayments as $pairPayment)
+                {
+                    $deletedPaymentIds[] = (int) $pairPayment->id;
+                    $pairPayment->delete();
+                }
+            }
+
+            $line->forceFill([
+                'payment_id' => null,
+                'match_status' => 'statement_only',
+                'reconcile_dismissed_at' => null,
+            ])->save();
+
+            $statement = $line->statement;
+            if ($statement instanceof BankStatement)
+            {
+                $validation = $this->statementUploadService->validateAgainstPayments($statement, $account);
+                $statement->forceFill([
+                    'validation_summary' => array_merge($statement->validation_summary ?? [], $validation),
+                ])->save();
+            }
+
+            return [
+                'line' => $line->fresh() ?? $line,
+                'invoice' => $invoice instanceof Invoice ? ($invoice->fresh() ?? $invoice) : null,
+                'deleted_payment_ids' => $deletedPaymentIds,
             ];
         });
     }

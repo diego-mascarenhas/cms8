@@ -452,4 +452,49 @@ class Enterprise extends Model
     {
         return $query->where('status_id', 2);
     }
+
+    /**
+     * Bank-statement concept aliases used to match extract lines without AI.
+     * Stored in data.bank_aliases as a list of strings (e.g. "tj-web*network solutions").
+     *
+     * @return list<string>
+     */
+    public function bankAliases(): array
+    {
+        $raw = data_get($this->data, 'bank_aliases', []);
+
+        if (is_string($raw))
+        {
+            $raw = preg_split('/[\n,;]+/', $raw) ?: [];
+        }
+
+        if (! is_array($raw) && ! $raw instanceof \Traversable)
+        {
+            return [];
+        }
+
+        $aliases = [];
+
+        foreach ($raw as $alias)
+        {
+            $value = trim((string) $alias);
+
+            if ($value !== '')
+            {
+                $aliases[] = $value;
+            }
+        }
+
+        return array_values(array_unique($aliases));
+    }
+
+    /**
+     * Preferred payment remarks when linking a bank statement line to this enterprise.
+     */
+    public function bankRemarks(): ?string
+    {
+        $value = trim((string) data_get($this->data, 'bank_remarks', ''));
+
+        return $value !== '' ? $value : null;
+    }
 }

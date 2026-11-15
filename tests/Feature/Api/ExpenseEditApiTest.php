@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Enums\TransactionType;
 use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -57,6 +58,51 @@ class ExpenseEditApiTest extends TestCase
             ->assertJsonPath('expense.payments.0.amount', 12.1)
             ->assertJsonPath('expense.has_document', false)
             ->assertJsonFragment(['name' => 'Proveedor de prueba']);
+    }
+
+    public function test_show_derives_missing_exchange_rate_for_cross_currency_payments(): void
+    {
+        [$user, $supplier, $account, $paymentType] = $this->makeContext();
+        $token = $user->createToken('expense-api')->plainTextToken;
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => (int) $user->current_team_id,
+            'enterprise_id' => $supplier->id,
+            'currency_id' => 840,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'FX-EDIT-1',
+            'date' => '2026-09-17',
+            'due_date' => '2026-09-17',
+            'gross_amount' => 1.14,
+            'discount' => 0,
+            'total_amount' => 1.14,
+            'balance' => 0.15,
+            'status' => 2,
+        ]);
+
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => (int) $user->current_team_id,
+            'enterprise_id' => $supplier->id,
+            'transaction_type' => TransactionType::EXPENSE,
+            'invoice_id' => $invoice->id,
+            'account_id' => $account->id,
+            'type_id' => $paymentType->id,
+            'date' => '2026-09-17',
+            'amount' => 0.99,
+            'document_amount' => null,
+            'exchange_rate' => null,
+            'status' => 2,
+            'source_provider' => 'manual',
+            'source_reference_id' => 'statement-line:1',
+        ]);
+
+        $this->withToken($token)
+            ->getJson('/api/expenses/'.$invoice->id)
+            ->assertOk()
+            ->assertJsonPath('expense.payments.0.amount', 0.99)
+            ->assertJsonPath('expense.payments.0.document_amount', 1.14)
+            ->assertJsonPath('expense.payments.0.exchange_rate', 0.868421);
     }
 
     public function test_show_rejects_invoices_from_other_teams_and_sales(): void

@@ -392,8 +392,168 @@ class PaymentAccountStatementApiTest extends TestCase
         $this->assertSame(TransactionType::INCOME, $payment->transaction_type);
         $this->assertSame((int) $invoice->id, (int) $payment->invoice_id);
         $this->assertSame(1847.62, (float) $payment->amount);
+        $this->assertSame(1847.62, (float) $payment->document_amount);
+        $this->assertSame(1.0, (float) $payment->exchange_rate);
         $this->assertSame('manual', $payment->source_provider);
         $this->assertSame('statement-line:'.$line->id, $payment->source_reference_id);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/reconcile?filter=matched')
+            ->assertOk()
+            ->assertJsonPath('lines.0.invoice_id', $invoice->id)
+            ->assertJsonPath('lines.0.invoice_number', 'F-CONC-001')
+            ->assertJsonPath('lines.0.payment_document_amount', 1847.62);
+    }
+
+    public function test_link_invoice_applies_document_amount_when_currencies_differ(): void
+    {
+        [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();
+        $teamId = (int) $user->current_team_id;
+
+        $line->forceFill([
+            'amount' => -0.99,
+            'currency' => 'EUR',
+            'occurred_at' => '2026-09-17',
+            'reference' => 'tj-interserver.net',
+            'description' => 'tj-interserver.net',
+        ])->save();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'InterServer, Inc.',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 840,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => '49494175',
+            'date' => '2026-09-17',
+            'due_date' => '2026-09-17',
+            'gross_amount' => 1.14,
+            'discount' => 0,
+            'total_amount' => 1.14,
+            'balance' => 1.14,
+            'status' => 2,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/link-invoice', [
+                'invoice_id' => $invoice->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('document_amount', 1.14)
+            ->assertJsonPath('exchange_rate', 0.868421)
+            ->assertJsonPath('invoice_balance', 0);
+
+        $invoice->refresh();
+        $line->refresh();
+        $payment = Payment::withoutGlobalScopes()->find($line->payment_id);
+
+        $this->assertSame(0.0, (float) $invoice->balance);
+        $this->assertNotNull($payment);
+        $this->assertSame(0.99, (float) $payment->amount);
+        $this->assertSame(1.14, (float) $payment->document_amount);
+        $this->assertSame(0.868421, (float) $payment->exchange_rate);
+        $this->assertSame(TransactionType::EXPENSE, $payment->transaction_type);
+
+        $paymentId = (int) $payment->id;
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/reconcile?filter=matched')
+            ->assertOk()
+            ->assertJsonPath('lines.0.can_unlink', true)
+            ->assertJsonPath('lines.0.invoice_id', $invoice->id);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/unlink')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('invoice_balance', 1.14)
+            ->assertJsonPath('deleted_payment_ids.0', $paymentId);
+
+        $line->refresh();
+        $invoice->refresh();
+
+        $this->assertNull($line->payment_id);
+        $this->assertSame('statement_only', $line->match_status);
+        $this->assertSame(1.14, (float) $invoice->balance);
+        $this->assertNull(Payment::withoutGlobalScopes()->find($paymentId));
+    }
+
+    public function test_invoice_candidates_rank_by_bank_alias_amount_and_date(): void
+    {
+        [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();
+        $teamId = (int) $user->current_team_id;
+
+        $line->forceFill([
+            'reference' => 'tj-web*network solutions',
+            'description' => 'tj-web*network solutions',
+            'amount' => 24.19,
+            'occurred_at' => '2026-09-25',
+        ])->save();
+
+        $matched = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'Network Solutions, LLC',
+            'type_id' => 1,
+            'status_id' => 1,
+            'data' => [
+                'bank_aliases' => ['tj-web*network solutions'],
+                'bank_remarks' => 'Cobro Network Solutions',
+            ],
+        ]);
+        $other = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'Otra Empresa',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $preferred = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $matched->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-NET-001',
+            'date' => '2026-09-20',
+            'due_date' => '2026-10-20',
+            'gross_amount' => 24.19,
+            'discount' => 0,
+            'total_amount' => 24.19,
+            'balance' => 24.19,
+            'status' => 2,
+        ]);
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $other->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-OTHER-001',
+            'date' => '2026-09-24',
+            'due_date' => '2026-10-24',
+            'gross_amount' => 24.19,
+            'discount' => 0,
+            'total_amount' => 24.19,
+            'balance' => 24.19,
+            'status' => 2,
+        ]);
+
+        $this->actingAs($user, 'sanctum')
+            ->getJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/invoice-candidates')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('suggested_invoice_id', $preferred->id)
+            ->assertJsonPath('suggested_remarks', 'Cobro Network Solutions')
+            ->assertJsonPath('invoices.0.id', $preferred->id)
+            ->assertJsonPath('invoices.0.matched_by_enterprise', true);
     }
 
     public function test_api_can_delete_uploaded_statement(): void

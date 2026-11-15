@@ -1074,6 +1074,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/payment-account/{paymentAccount}/statements/{statement}/lines/{line}/undismiss', [PaymentAccountController::class, 'undismissStatementLine'])->name('payment-account.statements.lines.undismiss');
     Route::post('/payment-account/{paymentAccount}/statements/{statement}/lines/{line}/transfer', [PaymentAccountController::class, 'transferStatementLine'])->name('payment-account.statements.lines.transfer');
     Route::post('/payment-account/{paymentAccount}/statements/{statement}/lines/{line}/link-invoice', [PaymentAccountController::class, 'linkStatementLineInvoice'])->name('payment-account.statements.lines.link-invoice');
+    Route::post('/payment-account/{paymentAccount}/statements/{statement}/lines/{line}/unlink', [PaymentAccountController::class, 'unlinkStatementLine'])->name('payment-account.statements.lines.unlink');
     Route::get('/payment-account/{paymentAccount}/edit', [PaymentAccountController::class, 'edit'])->name('payment-account.edit');
     Route::put('/payment-account/{paymentAccount}', [PaymentAccountController::class, 'update'])->name('payment-account.update');
 

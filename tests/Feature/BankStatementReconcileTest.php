@@ -157,6 +157,21 @@ class BankStatementReconcileTest extends TestCase
         $this->assertNotNull($line->payment_id);
         $this->assertSame('matched', $line->match_status);
         $this->assertSame(152.38, (float) $invoice->balance);
+
+        $paymentId = (int) $line->payment_id;
+
+        $this->actingAs($user)
+            ->post(route('payment-account.statements.lines.unlink', [$bank, $statement, $line]))
+            ->assertRedirect(route('payment-account.statements.reconcile', [$bank, $statement, 'filter' => 'open']))
+            ->assertSessionHas('success');
+
+        $line->refresh();
+        $invoice->refresh();
+
+        $this->assertNull($line->payment_id);
+        $this->assertSame('statement_only', $line->match_status);
+        $this->assertSame(2000.0, (float) $invoice->balance);
+        $this->assertDatabaseMissing('payments', ['id' => $paymentId]);
     }
 
     public function test_admin_can_delete_statement_from_account_show(): void

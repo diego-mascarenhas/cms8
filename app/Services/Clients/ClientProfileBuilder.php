@@ -8,7 +8,6 @@ use App\Models\Country;
 use App\Models\Enterprise;
 use App\Models\EnterpriseBillingAddress;
 use App\Models\Invoice;
-use App\Models\InvoiceSync;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\Service;
@@ -47,9 +46,6 @@ class ClientProfileBuilder
             ->filter(fn (Service $service): bool => $service->subscription_id === null)
             ->sortBy('id')
             ->values();
-        $consumptions = filled($client->code)
-            ? $client->usageInvoiceSyncs()->orderByDesc('invoice_created_at')->orderByDesc('id')->get()
-            : collect();
         $invoices = $client->invoices->sort(function (Invoice $left, Invoice $right): int
         {
             $byPriority = $left->listStatusSortPriority() <=> $right->listStatusSortPriority();
@@ -93,7 +89,6 @@ class ClientProfileBuilder
                 ];
             })->all(),
             'subscriptions' => $subscriptions->map(fn (ServiceSync $sync): array => $this->subscriptionRow($sync))->all(),
-            'consumptions' => $consumptions->map(fn (InvoiceSync $row): array => $this->consumptionRow($row))->all(),
             'services' => $services->map(fn (Service $service): array => $this->serviceRow($service))->all(),
             'invoices' => $invoices->map(fn (Invoice $invoice): array => $this->invoiceRow($invoice))->all(),
             'invoice_balance' => number_format((float) $client->invoices->sum('balance'), 2, ',', '.'),
@@ -260,26 +255,6 @@ class ClientProfileBuilder
             'frequency' => $sync->clientFrequencyLabel(),
             'next' => $next instanceof Carbon ? $next->timezone('Europe/Madrid')->format('d/m/Y') : '',
             'payment_method' => $sync->clientPaymentMethodLabel(),
-            'status' => $status['label'],
-            'status_tone' => $status['tone'],
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function consumptionRow(InvoiceSync $row): array
-    {
-        $status = $this->badgeParts($row->status_badge);
-        $date = $row->invoice_created_at;
-
-        return [
-            'date' => $date instanceof Carbon ? $date->format('d/m/Y') : '',
-            'summary' => $row->consumptionSummary(),
-            'lines' => $row->consumptionLines(),
-            'amount' => $row->total !== null
-                ? number_format((float) $row->total, 2, ',', '.').' '.strtoupper((string) $row->currency)
-                : '',
             'status' => $status['label'],
             'status_tone' => $status['tone'],
         ];

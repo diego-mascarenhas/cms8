@@ -236,6 +236,23 @@ class PaymentReportingCurrencyServiceTest extends TestCase
         $this->assertSame('190.00', number_format($allStatuses, 2, '.', ''));
     }
 
+    public function test_account_balances_only_include_active_accounts(): void
+    {
+        $active = $this->createAccount('EUR', 978);
+        $inactive = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $this->team->id,
+            'code' => 'eur-inactive',
+            'name' => 'Inactive EUR',
+            'currency_id' => 978,
+            'status' => 0,
+        ]);
+
+        $balances = $this->service->accountBalancesForDisplay();
+
+        $this->assertTrue($balances->contains(fn (array $row): bool => (int) $row['id'] === (int) $active->id));
+        $this->assertFalse($balances->contains(fn (array $row): bool => (int) $row['id'] === (int) $inactive->id));
+    }
+
     private function createAccount(string $code, int $currencyId): PaymentAccount
     {
         Currency::query()->updateOrCreate(

@@ -7,6 +7,8 @@ use App\Http\Requests\UpdateEnterpriseContactRoleRequest;
 use App\Models\Contact;
 use App\Models\ContactEnterprise;
 use App\Models\Enterprise;
+use App\Models\Team;
+use App\Services\AssistantWhatsAppUsageByLineService;
 use App\Services\Clients\ClientProfileBuilder;
 use App\Services\Clients\ClientRoster;
 use App\Support\SearchNormalizer;
@@ -168,6 +170,61 @@ class EnterpriseController extends Controller
             'success' => true,
             'data' => $profiles->build($enterprise),
             'roles' => ContactEnterprise::ROLES,
+        ]);
+    }
+
+    /**
+     * Live period usage for the SaaS team linked to this client's Stripe customer.
+     */
+    public function usage(Request $request, string $id, AssistantWhatsAppUsageByLineService $usage): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Usuario no autenticado o sin equipo'),
+            ], 401);
+        }
+
+        $enterprise = Enterprise::withTrashed()->whereKey($id)->first();
+
+        if (! $enterprise || ! $user->can('view', $enterprise))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Empresa no encontrada'),
+            ], 404);
+        }
+
+        $customerId = trim((string) ($enterprise->code ?? ''));
+
+        if ($customerId === '')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Este cliente no tiene cliente Stripe vinculado.'),
+                'linked' => false,
+            ], 404);
+        }
+
+        $customerTeam = Team::findByStripeCustomerId($customerId);
+
+        if (! $customerTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Este cliente no tiene equipo de plataforma vinculado.'),
+                'linked' => false,
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'linked' => true,
+            'team_id' => (int) $customerTeam->id,
+            'data' => $usage->forTeam($customerTeam),
         ]);
     }
 

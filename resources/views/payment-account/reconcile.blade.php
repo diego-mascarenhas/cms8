@@ -63,7 +63,7 @@
                 <div class="fw-semibold text-warning">{{ $counts['open'] }}</div>
             </div>
             <div class="col-6 col-md-3">
-                <div class="text-muted small">{{ __('Empatados') }}</div>
+                <div class="text-muted small">{{ __('Asociados') }}</div>
                 <div class="fw-semibold text-success">{{ $counts['matched'] }}</div>
             </div>
             <div class="col-6 col-md-3">
@@ -93,7 +93,7 @@
 <ul class="nav nav-pills mb-3 gap-1">
     @foreach ([
         'open' => __('Pendientes').' ('.$counts['open'].')',
-        'matched' => __('Empatados').' ('.$counts['matched'].')',
+        'matched' => __('Asociados').' ('.$counts['matched'].')',
         'dismissed' => __('Ignorados').' ('.$counts['dismissed'].')',
         'all' => __('Todos').' ('.$counts['all'].')',
     ] as $key => $label)
@@ -150,7 +150,7 @@
                                 @if ($line->isDismissed())
                                     <span class="badge bg-label-secondary">{{ __('Ignorado') }}</span>
                                 @elseif ($line->payment_id)
-                                    <span class="badge bg-label-success">{{ __('Empatado') }}</span>
+                                    <span class="badge bg-label-success">{{ __('Asociado') }}</span>
                                 @else
                                     <span class="badge bg-label-warning">{{ __('Pendiente') }}</span>
                                 @endif
@@ -163,7 +163,31 @@
                                                 @csrf
                                                 <button type="submit" class="btn btn-sm btn-label-secondary">{{ __('Restaurar') }}</button>
                                             </form>
-                                            @elseif (! $line->payment_id)
+                                        @elseif ($line->payment_id)
+                                            @php
+                                                $sourceReference = (string) ($line->payment?->source_reference_id ?? '');
+                                                $canUnlink = $sourceReference === 'statement-line:'.$line->id
+                                                    || (
+                                                        (string) ($line->payment?->source_provider ?? '') === 'transfer'
+                                                        && str_starts_with($sourceReference, 'transfer:')
+                                                        && str_ends_with($sourceReference, ':in')
+                                                    );
+                                            @endphp
+                                            @if ($line->payment?->invoice_id)
+                                                <a
+                                                    href="{{ route('invoice.show', $line->payment->invoice_id) }}"
+                                                    class="btn btn-sm btn-label-primary"
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                >{{ __('Ver factura') }}</a>
+                                            @endif
+                                            @if ($canUnlink)
+                                                <form method="POST" action="{{ route('payment-account.statements.lines.unlink', [$account, $statement, $line]) }}" onsubmit="return confirm(@json(__('¿Desasociar este movimiento y revertir el pago?')))">
+                                                    @csrf
+                                                    <button type="submit" class="btn btn-sm btn-label-warning">{{ __('Desasociar') }}</button>
+                                                </form>
+                                            @endif
+                                        @elseif (! $line->payment_id)
                                             @if ($isCredit)
                                                 <button
                                                     type="button"

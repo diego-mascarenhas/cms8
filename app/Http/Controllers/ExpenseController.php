@@ -868,7 +868,10 @@ class ExpenseController extends Controller
 
         $invoice->load([
             'items' => fn ($query) => $query->orderBy('id'),
-            'payments' => fn ($query) => $query->withoutGlobalScopes()->orderBy('id'),
+            'payments' => fn ($query) => $query
+                ->withoutGlobalScopes()
+                ->with('account:id,currency_id')
+                ->orderBy('id'),
         ]);
 
         $metadata = $manualInvoiceDocumentService->storedMetadata($invoice);
@@ -890,18 +893,39 @@ class ExpenseController extends Controller
             ];
         })->all();
 
-        $payments = $invoice->payments->map(function (Payment $payment): array
+        $invoiceCurrencyId = $invoice->currency_id ? (int) $invoice->currency_id : null;
+        $invoiceTotal = round((float) $invoice->total_amount, 2);
+
+        $payments = $invoice->payments->map(function (Payment $payment) use ($invoiceCurrencyId, $invoiceTotal): array
         {
+            $amount = round((float) $payment->amount, 2);
+            $documentAmount = $payment->document_amount !== null
+                ? round((float) $payment->document_amount, 2)
+                : null;
+            $exchangeRate = $payment->exchange_rate !== null
+                ? (float) $payment->exchange_rate
+                : null;
+
+            $accountCurrencyId = $payment->account?->currency_id !== null
+                ? (int) $payment->account->currency_id
+                : null;
+            $needsFx = $invoiceCurrencyId !== null
+                && $accountCurrencyId !== null
+                && $accountCurrencyId !== $invoiceCurrencyId;
+
+            // Older bank-statement links stored only the account amount; derive FX for the editor.
+            if ($needsFx && $documentAmount === null && $exchangeRate === null && $amount > 0 && $invoiceTotal > 0)
+            {
+                $documentAmount = $invoiceTotal;
+                $exchangeRate = round($amount / $documentAmount, 6);
+            }
+
             return [
                 'id' => (int) $payment->id,
                 'payment_date' => $payment->date?->format('Y-m-d'),
-                'amount' => round((float) $payment->amount, 2),
-                'document_amount' => $payment->document_amount !== null
-                    ? round((float) $payment->document_amount, 2)
-                    : null,
-                'exchange_rate' => $payment->exchange_rate !== null
-                    ? (float) $payment->exchange_rate
-                    : null,
+                'amount' => $amount,
+                'document_amount' => $documentAmount,
+                'exchange_rate' => $exchangeRate,
                 'type_id' => $payment->type_id ? (int) $payment->type_id : null,
                 'account_id' => $payment->account_id ? (int) $payment->account_id : null,
                 'status' => (int) $payment->status,

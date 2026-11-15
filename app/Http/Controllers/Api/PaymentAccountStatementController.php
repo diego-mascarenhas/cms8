@@ -10,10 +10,9 @@ use App\Models\BankStatement;
 use App\Models\BankStatementLine;
 use App\Models\Invoice;
 use App\Models\PaymentAccount;
+use App\Services\Finance\BankStatementInvoiceCandidateService;
 use App\Services\Finance\BankStatementReconcileService;
 use App\Services\Finance\PaymentAccountStatementUploadService;
-use App\Support\SearchNormalizer;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -24,6 +23,7 @@ class PaymentAccountStatementController extends Controller
     public function __construct(
         private readonly PaymentAccountStatementUploadService $statementUploadService,
         private readonly BankStatementReconcileService $statementReconcileService,
+        private readonly BankStatementInvoiceCandidateService $invoiceCandidateService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -110,7 +110,7 @@ class PaymentAccountStatementController extends Controller
             'balanced' => $balanced,
             'open' => $open,
             'statements' => $statements,
-            'message' => __(':count extracto(s) subido(s). Empatados: :balanced. Con diferencia: :open.', [
+            'message' => __(':count extracto(s) subido(s). Asociados: :balanced. Con diferencia: :open.', [
                 'count' => $uploaded,
                 'balanced' => $balanced,
                 'open' => $open,
@@ -184,7 +184,11 @@ class PaymentAccountStatementController extends Controller
 
         $paymentAccount->loadMissing('currency:id,code');
         $statement->load([
-            'lines' => fn ($query) => $query->with('payment:id,remarks,amount,account_id')->orderByDesc('occurred_at')->orderByDesc('id'),
+            'lines' => fn ($query) => $query->with([
+                'payment:id,remarks,amount,account_id,invoice_id,document_amount,exchange_rate,source_provider,source_reference_id',
+                'payment.invoice:id,number,currency_id,operation',
+                'payment.invoice.currency:id,code',
+            ])->orderByDesc('occurred_at')->orderByDesc('id'),
         ]);
 
         $allLines = $statement->lines;
@@ -236,6 +240,19 @@ class PaymentAccountStatementController extends Controller
             'transfer_accounts' => $transferAccounts,
             'lines' => $lines->map(function (BankStatementLine $line): array
             {
+                $payment = $line->payment;
+                $invoice = $payment?->invoice;
+                $invoiceId = $payment?->invoice_id ? (int) $payment->invoice_id : null;
+                $sourceReference = (string) ($payment?->source_reference_id ?? '');
+                $canUnlink = $payment !== null && (
+                    $sourceReference === 'statement-line:'.$line->id
+                    || (
+                        (string) ($payment->source_provider ?? '') === 'transfer'
+                        && str_starts_with($sourceReference, 'transfer:')
+                        && str_ends_with($sourceReference, ':in')
+                    )
+                );
+
                 return [
                     'id' => (int) $line->id,
                     'external_id' => $line->external_id,
@@ -247,7 +264,20 @@ class PaymentAccountStatementController extends Controller
                     'match_status' => $line->match_status,
                     'dismissed' => $line->isDismissed(),
                     'payment_id' => $line->payment_id ? (int) $line->payment_id : null,
-                    'payment_remarks' => $line->payment?->remarks,
+                    'payment_remarks' => $payment?->remarks,
+                    'payment_document_amount' => $payment?->document_amount !== null
+                        ? round((float) $payment->document_amount, 2)
+                        : null,
+                    'payment_exchange_rate' => $payment?->exchange_rate !== null
+                        ? round((float) $payment->exchange_rate, 6)
+                        : null,
+                    'invoice_id' => $invoiceId,
+                    'invoice_number' => $invoice?->number,
+                    'invoice_operation' => $invoice?->operation,
+                    'invoice_currency_code' => $invoice?->currency
+                        ? strtoupper((string) $invoice->currency->code)
+                        : null,
+                    'can_unlink' => $canUnlink,
                 ];
             })->values(),
         ]);
@@ -322,7 +352,7 @@ class PaymentAccountStatementController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => __('Traspaso registrado y movimiento empatado.'),
+            'message' => __('Traspaso registrado y movimiento asociado.'),
             'inflow_payment_id' => (int) $result['inflow']->id,
             'outflow_payment_id' => (int) $result['outflow']->id,
             'line_id' => (int) $result['line']->id,
@@ -339,55 +369,15 @@ class PaymentAccountStatementController extends Controller
         $this->assertStatementBelongsToAccount($paymentAccount, $statement);
         $this->assertLineBelongsToStatement($statement, $line);
 
-        $isExpense = (float) $line->amount < 0;
-        $operation = $isExpense ? 'buy' : 'sell';
-        $search = trim((string) $request->query('search', ''));
-
-        $query = Invoice::query()
-            ->with(['enterprise:id,name', 'currency:id,code'])
-            ->where('team_id', $paymentAccount->team_id)
-            ->where('operation', $operation)
-            ->where('balance', '>', 0)
-            ->orderByDesc('date')
-            ->orderByDesc('id');
-
-        if ($search !== '')
-        {
-            $query->where(function ($builder) use ($search): void
-            {
-                SearchNormalizer::applyColumnsNavbarConditions($builder, ['number'], $search);
-                $builder->orWhereHas('enterprise', function ($enterpriseQuery) use ($search): void
-                {
-                    SearchNormalizer::applyColumnsNavbarConditions($enterpriseQuery, ['name'], $search);
-                });
-            });
-        }
-
-        $invoices = $query
-            ->limit(20)
-            ->get(['id', 'number', 'date', 'total_amount', 'balance', 'currency_id', 'enterprise_id', 'operation'])
-            ->map(function (Invoice $invoice): array
-            {
-                $date = $invoice->date;
-
-                return [
-                    'id' => (int) $invoice->id,
-                    'number' => (string) $invoice->number,
-                    'date' => filled($date) ? Carbon::parse($date)->format('Y-m-d') : null,
-                    'enterprise_name' => (string) ($invoice->enterprise?->name ?? ''),
-                    'total_amount' => round((float) $invoice->total_amount, 2),
-                    'balance' => round((float) $invoice->balance, 2),
-                    'currency_code' => strtoupper((string) ($invoice->currency?->code ?? '')),
-                    'operation' => (string) $invoice->operation,
-                ];
-            })
-            ->values();
+        $payload = $this->invoiceCandidateService->candidatesForLine(
+            $line,
+            (int) $paymentAccount->team_id,
+            trim((string) $request->query('search', '')),
+        );
 
         return response()->json([
             'success' => true,
-            'operation' => $operation,
-            'amount' => abs(round((float) $line->amount, 2)),
-            'invoices' => $invoices,
+            ...$payload,
         ]);
     }
 
@@ -422,13 +412,54 @@ class PaymentAccountStatementController extends Controller
             ], 422);
         }
 
+        $payment = $result['payment'];
+
         return response()->json([
             'success' => true,
-            'message' => __('Pago asociado a la factura y movimiento empatado.'),
-            'payment_id' => (int) $result['payment']->id,
+            'message' => __('Pago asociado a la factura y movimiento asociado.'),
+            'payment_id' => (int) $payment->id,
             'invoice_id' => (int) $result['invoice']->id,
             'line_id' => (int) $result['line']->id,
             'invoice_balance' => round((float) $result['invoice']->balance, 2),
+            'document_amount' => $payment->document_amount !== null
+                ? round((float) $payment->document_amount, 2)
+                : null,
+            'exchange_rate' => $payment->exchange_rate !== null
+                ? round((float) $payment->exchange_rate, 6)
+                : null,
+            'invoice_operation' => (string) $result['invoice']->operation,
+        ]);
+    }
+
+    public function unlinkLine(
+        PaymentAccount $paymentAccount,
+        BankStatement $statement,
+        BankStatementLine $line,
+    ): JsonResponse {
+        $this->authorize('update', $paymentAccount);
+        $this->assertStatementBelongsToAccount($paymentAccount, $statement);
+        $this->assertLineBelongsToStatement($statement, $line);
+
+        try
+        {
+            $result = $this->statementReconcileService->unlinkMatch($line, $paymentAccount);
+        } catch (RuntimeException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Asociación revertida. El movimiento volvió a pendientes.'),
+            'line_id' => (int) $result['line']->id,
+            'invoice_id' => $result['invoice']?->id ? (int) $result['invoice']->id : null,
+            'invoice_balance' => $result['invoice']
+                ? round((float) $result['invoice']->balance, 2)
+                : null,
+            'deleted_payment_ids' => $result['deleted_payment_ids'],
         ]);
     }
 
