@@ -57,7 +57,84 @@ class ExpenseEditApiTest extends TestCase
             ->assertJsonPath('expense.lines.0.vat_percent', 21)
             ->assertJsonPath('expense.payments.0.amount', 12.1)
             ->assertJsonPath('expense.has_document', false)
+            ->assertJsonPath('expense.statement_siblings', [])
             ->assertJsonFragment(['name' => 'Proveedor de prueba']);
+    }
+
+    public function test_show_includes_statement_siblings_from_shared_bank_line(): void
+    {
+        [$user, $supplier, $account, $paymentType] = $this->makeContext();
+        $token = $user->createToken('expense-api')->plainTextToken;
+        $teamId = (int) $user->current_team_id;
+
+        $main = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $supplier->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'ES4114126',
+            'date' => '2026-01-01',
+            'due_date' => '2026-01-01',
+            'gross_amount' => 845.87,
+            'discount' => 0,
+            'total_amount' => 845.87,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'manual',
+        ]);
+
+        $small = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $supplier->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'ES4128674',
+            'date' => '2026-01-01',
+            'due_date' => '2026-01-01',
+            'gross_amount' => 13.33,
+            'discount' => 0,
+            'total_amount' => 13.33,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'manual',
+        ]);
+
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $supplier->id,
+            'transaction_type' => TransactionType::EXPENSE,
+            'date' => '2026-01-02',
+            'invoice_id' => $main->id,
+            'account_id' => $account->id,
+            'type_id' => $paymentType->id,
+            'amount' => 845.87,
+            'status' => 2,
+            'source_provider' => 'manual',
+            'source_reference_id' => 'statement-line:738',
+        ]);
+
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $supplier->id,
+            'transaction_type' => TransactionType::EXPENSE,
+            'date' => '2026-01-02',
+            'invoice_id' => $small->id,
+            'account_id' => $account->id,
+            'type_id' => $paymentType->id,
+            'amount' => 13.33,
+            'status' => 2,
+            'source_provider' => 'manual',
+            'source_reference_id' => 'statement-line:738:2',
+        ]);
+
+        $this->withToken($token)
+            ->getJson('/api/expenses/'.$main->id)
+            ->assertOk()
+            ->assertJsonPath('expense.statement_siblings.0.id', $small->id)
+            ->assertJsonPath('expense.statement_siblings.0.number', 'ES4128674')
+            ->assertJsonPath('expense.statement_siblings.0.amount', 13.33);
     }
 
     public function test_show_derives_missing_exchange_rate_for_cross_currency_payments(): void
