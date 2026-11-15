@@ -2,6 +2,14 @@
 
 @section('title', __('Conciliación').' · '.$account->name)
 
+@section('vendor-style')
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+@endsection
+
+@section('vendor-script')
+<script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
+@endsection
+
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
@@ -294,8 +302,18 @@
 
         @if (! $line->payment_id && ! $line->isDismissed())
             @php
-                $lineOperation = (float) $line->amount < 0 ? 'buy' : 'sell';
-                $lineInvoiceOptions = collect($linkableInvoices ?? [])->where('operation', $lineOperation);
+                $candidates = $invoiceCandidatesByLine[(int) $line->id] ?? [
+                    'invoices' => [],
+                    'suggested_invoice_id' => null,
+                    'suggested_remarks' => $line->reference ?: $line->description,
+                    'amount' => abs((float) $line->amount),
+                ];
+                $lineInvoiceOptions = collect($candidates['invoices'] ?? []);
+                $suggestedInvoiceId = $candidates['suggested_invoice_id'] ?? null;
+                $suggestedRemarks = $candidates['suggested_remarks']
+                    ?? ($line->reference ?: $line->description);
+                $lineCurrency = strtoupper((string) ($line->currency ?: $account->currency?->code ?: ''));
+                $bankAmount = abs((float) $line->amount);
             @endphp
             <div class="modal fade" id="linkInvoiceModal{{ $line->id }}" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog">
@@ -306,27 +324,66 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                            <p class="mb-3">
-                                {{ __('Se registrará un pago de') }}
-                                <strong>{{ number_format(abs((float) $line->amount), 2, ',', '.') }}</strong>
-                                {{ __('en la factura elegida y se empatará este movimiento del extracto.') }}
+                            <p class="mb-2">
+                                {{ __('Se creará un pago por el importe del movimiento. Si la factura está en otra divisa, se salda el saldo completo de la factura y se guarda el tipo de cambio implícito.') }}
+                            </p>
+                            <p class="mb-3 text-muted small">
+                                {{ $line->occurred_at?->format('d/m/Y') ?? '—' }}
+                                · {{ number_format($bankAmount, 2, ',', '.') }} {{ $lineCurrency }}
+                                · {{ $line->reference ?: $line->description ?: '—' }}
                             </p>
                             <div class="mb-3">
                                 <label class="form-label" for="invoice_id_{{ $line->id }}">{{ __('Factura') }} (*)</label>
-                                <select name="invoice_id" id="invoice_id_{{ $line->id }}" class="form-select" required>
+                                <select
+                                    name="invoice_id"
+                                    id="invoice_id_{{ $line->id }}"
+                                    class="form-select js-link-invoice-select"
+                                    required
+                                    data-line-currency="{{ $lineCurrency }}"
+                                    data-bank-amount="{{ $bankAmount }}"
+                                    data-fx-target="link_fx_{{ $line->id }}"
+                                    data-placeholder="{{ __('Buscar número o empresa…') }}"
+                                >
                                     <option value="">{{ __('Elegir…') }}</option>
                                     @forelse ($lineInvoiceOptions as $invoiceOption)
-                                        <option value="{{ $invoiceOption->id }}">
-                                            {{ $invoiceOption->number }}
-                                            · {{ $invoiceOption->enterprise?->name ?? '—' }}
-                                            · {{ __('Saldo') }} {{ number_format((float) $invoiceOption->balance, 2, ',', '.') }}
-                                            {{ strtoupper((string) ($invoiceOption->currency?->code ?? '')) }}
+                                        @php
+                                            $optionCurrency = strtoupper((string) ($invoiceOption['currency_code'] ?? ''));
+                                            $optionBalance = (float) ($invoiceOption['balance'] ?? 0);
+                                            $optionDate = filled($invoiceOption['date'] ?? null)
+                                                ? \Carbon\Carbon::parse($invoiceOption['date'])->format('d/m/Y')
+                                                : '';
+                                            $optionEnterprise = $invoiceOption['enterprise_name'] !== ''
+                                                ? $invoiceOption['enterprise_name']
+                                                : __('Sin empresa');
+                                            $matchedByEnterprise = ! empty($invoiceOption['matched_by_enterprise']);
+                                        @endphp
+                                        <option
+                                            value="{{ $invoiceOption['id'] }}"
+                                            @selected((int) ($suggestedInvoiceId ?? 0) === (int) $invoiceOption['id'])
+                                            data-number="{{ $invoiceOption['number'] }}"
+                                            data-date="{{ $optionDate }}"
+                                            data-enterprise="{{ $optionEnterprise }}"
+                                            data-matched="{{ $matchedByEnterprise ? '1' : '0' }}"
+                                            data-currency="{{ $optionCurrency }}"
+                                            data-balance="{{ $optionBalance }}"
+                                        >
+                                            {{ $invoiceOption['number'] }}
+                                            @if ($optionDate !== '')
+                                                · {{ $optionDate }}
+                                            @endif
+                                            @if ($matchedByEnterprise)
+                                                · {{ __('empresa') }}
+                                            @endif
+                                            · {{ $optionEnterprise }}
+                                            · {{ __('saldo') }} {{ number_format($optionBalance, 2, ',', '.') }}
+                                            {{ $optionCurrency }}
                                         </option>
                                     @empty
                                         <option value="" disabled>{{ __('No hay facturas con saldo pendiente') }}</option>
                                     @endforelse
                                 </select>
                             </div>
+                            <div id="link_fx_{{ $line->id }}" class="alert alert-info d-none mb-3" role="alert"></div>
                             <div class="mb-0">
                                 <label class="form-label" for="link_remarks_{{ $line->id }}">{{ __('Nota') }}</label>
                                 <input
@@ -334,7 +391,7 @@
                                     name="remarks"
                                     id="link_remarks_{{ $line->id }}"
                                     class="form-control"
-                                    value="{{ old('remarks', $line->reference ?: $line->description) }}"
+                                    value="{{ old('remarks', $suggestedRemarks) }}"
                                     maxlength="1000"
                                 >
                             </div>
@@ -361,4 +418,126 @@
         'defaultPeriod' => $reconcileDefaultPeriod,
     ])
 @endcan
+@endsection
+
+@section('page-script')
+<script>
+$(function () {
+    function formatMoney(amount, currency) {
+        try {
+            return new Intl.NumberFormat('es-ES', {
+                style: 'currency',
+                currency: currency || 'EUR',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(amount);
+        } catch (error) {
+            return Number(amount).toFixed(2) + ' ' + (currency || '');
+        }
+    }
+
+    function optionMeta($option) {
+        return {
+            number: String($option.data('number') || $option.text() || ''),
+            date: String($option.data('date') || ''),
+            enterprise: String($option.data('enterprise') || ''),
+            matched: String($option.data('matched') || '') === '1',
+            currency: String($option.data('currency') || '').toUpperCase(),
+            balance: Number($option.data('balance') || 0)
+        };
+    }
+
+    function formatInvoiceOption(data, compact) {
+        if (! data.id) {
+            return data.text;
+        }
+
+        var meta = optionMeta($(data.element));
+        var titleParts = [meta.number];
+
+        if (meta.date) {
+            titleParts.push(meta.date);
+        }
+
+        if (meta.matched) {
+            titleParts.push(@json(__('empresa')));
+        }
+
+        var subtitle = [meta.enterprise || @json(__('Sin empresa'))]
+            .concat([@json(__('saldo')) + ' ' + formatMoney(meta.balance, meta.currency || 'EUR')])
+            .join(' · ');
+
+        if (compact) {
+            return $('<span class="text-truncate d-inline-block w-100"></span>').text(
+                titleParts.concat([meta.enterprise, @json(__('saldo')) + ' ' + formatMoney(meta.balance, meta.currency || 'EUR')]).join(' · ')
+            );
+        }
+
+        return $(
+            '<div class="py-1">' +
+                '<div class="fw-semibold text-truncate"></div>' +
+                '<div class="small text-muted text-truncate"></div>' +
+            '</div>'
+        )
+            .find('.fw-semibold').text(titleParts.join(' · ')).end()
+            .find('.small').text(subtitle).end();
+    }
+
+    function updateFxHelper($select) {
+        var targetId = $select.data('fx-target');
+        var $box = targetId ? $('#' + targetId) : $();
+        if (! $box.length) {
+            return;
+        }
+
+        var $option = $select.find('option:selected');
+        var lineCurrency = String($select.data('line-currency') || '').toUpperCase();
+        var bankAmount = Number($select.data('bank-amount') || 0);
+        var meta = optionMeta($option);
+
+        if (! $option.val() || ! meta.currency || ! lineCurrency || meta.currency === lineCurrency || meta.balance <= 0) {
+            $box.addClass('d-none').text('');
+            return;
+        }
+
+        var rate = bankAmount / meta.balance;
+        $box
+            .removeClass('d-none')
+            .text(
+                'Divisas distintas: pago ' + formatMoney(bankAmount, lineCurrency)
+                + ' → se aplica ' + formatMoney(meta.balance, meta.currency)
+                + ' a la factura (TC ≈ ' + rate.toFixed(6) + ' ' + lineCurrency + '/' + meta.currency + ').'
+            );
+    }
+
+    $('.js-link-invoice-select').each(function () {
+        var $select = $(this);
+        var $modal = $select.closest('.modal');
+
+        if ($select.hasClass('select2-hidden-accessible')) {
+            $select.select2('destroy');
+        }
+
+        $select.wrap('<div class="position-relative"></div>');
+        $select.select2({
+            dropdownParent: $modal.length ? $modal : $select.parent(),
+            width: '100%',
+            placeholder: $select.data('placeholder') || @json(__('Elegir…')),
+            allowClear: true,
+            minimumResultsForSearch: 0,
+            templateResult: function (data) {
+                return formatInvoiceOption(data, false);
+            },
+            templateSelection: function (data) {
+                return formatInvoiceOption(data, true);
+            }
+        });
+
+        updateFxHelper($select);
+        $select.on('change', function () {
+            updateFxHelper($select);
+        });
+    });
+});
+</script>
 @endsection

@@ -367,6 +367,9 @@ class ExpenseController extends Controller
             ];
         })->values();
 
+        $team = $request->user()->currentTeam;
+        $haciendaShareUrl = $team?->haciendaShareUrl($year, $period);
+
         return response()->json([
             'success' => true,
             'year' => $year,
@@ -378,6 +381,7 @@ class ExpenseController extends Controller
             'category_id' => $uncategorized ? 0 : $categoryId,
             'categories' => $categories,
             'reporting_currency' => $reportingCurrency,
+            'hacienda_share_url' => $haciendaShareUrl,
             'data' => [
                 'data' => $rows,
                 'current_page' => $paginator->currentPage(),

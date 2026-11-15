@@ -15,6 +15,7 @@ use App\Models\Currency;
 use App\Models\Invoice;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
+use App\Services\Finance\BankStatementInvoiceCandidateService;
 use App\Services\Finance\BankStatementReconcileService;
 use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Services\Finance\PaymentAccountStatementUploadService;
@@ -31,6 +32,7 @@ class PaymentAccountController extends Controller
         private readonly PaymentAccountCompatibilityService $paymentAccountCompatibilityService,
         private readonly PaymentAccountStatementUploadService $statementUploadService,
         private readonly BankStatementReconcileService $statementReconcileService,
+        private readonly BankStatementInvoiceCandidateService $invoiceCandidateService,
     ) {}
 
     public function index(PaymentAccountDataTable $dataTable)
@@ -178,15 +180,20 @@ class PaymentAccountController extends Controller
             'all' => $statement->lines->count(),
         ];
 
-        $linkableInvoices = Invoice::query()
-            ->with(['enterprise:id,name', 'currency:id,code'])
-            ->where('team_id', $paymentAccount->team_id)
-            ->where('balance', '>', 0)
-            ->whereIn('operation', ['buy', 'sell'])
-            ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->limit(80)
-            ->get(['id', 'number', 'date', 'total_amount', 'balance', 'currency_id', 'enterprise_id', 'operation']);
+        $invoiceCandidatesByLine = [];
+
+        foreach ($lines as $line)
+        {
+            if ($line->payment_id !== null || $line->isDismissed())
+            {
+                continue;
+            }
+
+            $invoiceCandidatesByLine[(int) $line->id] = $this->invoiceCandidateService->candidatesForLine(
+                $line,
+                (int) $paymentAccount->team_id,
+            );
+        }
 
         return view('payment-account.reconcile', [
             'account' => $paymentAccount,
@@ -195,7 +202,7 @@ class PaymentAccountController extends Controller
             'filter' => $filter,
             'counts' => $counts,
             'transferAccounts' => $transferAccounts,
-            'linkableInvoices' => $linkableInvoices,
+            'invoiceCandidatesByLine' => $invoiceCandidatesByLine,
             'summary' => $statement->validation_summary ?? [],
         ]);
     }

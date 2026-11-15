@@ -109,6 +109,84 @@ class BankStatementReconcileTest extends TestCase
         $this->assertSame('statement_only', $line->match_status);
     }
 
+    public function test_link_invoice_modal_suggests_ranked_invoice_like_axis(): void
+    {
+        [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();
+        $teamId = (int) $user->current_team_id;
+
+        $line->forceFill([
+            'reference' => 'tj-web*network solutions',
+            'description' => 'tj-web*network solutions',
+            'amount' => 24.19,
+            'occurred_at' => '2026-09-25',
+        ])->save();
+
+        $matched = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'Network Solutions, LLC',
+            'type_id' => 1,
+            'status_id' => 1,
+            'data' => [
+                'bank_aliases' => ['tj-web*network solutions'],
+                'bank_remarks' => 'Cobro Network Solutions',
+            ],
+        ]);
+        $other = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'name' => 'InterServer, Inc.',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $preferred = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $matched->id,
+            'currency_id' => 840,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '138619415',
+            'date' => '2026-09-20',
+            'due_date' => '2026-10-20',
+            'gross_amount' => 24.19,
+            'discount' => 0,
+            'total_amount' => 24.19,
+            'balance' => 24.19,
+            'status' => 2,
+        ]);
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $other->id,
+            'currency_id' => 840,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '49831016',
+            'date' => '2026-09-24',
+            'due_date' => '2026-10-24',
+            'gross_amount' => 2.99,
+            'discount' => 0,
+            'total_amount' => 2.99,
+            'balance' => 2.99,
+            'status' => 2,
+        ]);
+
+        $html = $this->actingAs($user)
+            ->get(route('payment-account.statements.reconcile', [$bank, $statement]))
+            ->assertOk()
+            ->assertSee('Cobro Network Solutions', false)
+            ->assertSee('· empresa', false)
+            ->assertSee('selected', false)
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/<option[^>]*value="'.$preferred->id.'"[^>]*selected[^>]*>/',
+            $html,
+        );
+        $this->assertTrue(
+            strpos($html, '138619415') < strpos($html, '49831016'),
+            'Suggested invoice should appear before other candidates',
+        );
+    }
+
     public function test_admin_can_link_open_line_to_existing_invoice(): void
     {
         [$user, $bank, $statement, $line] = $this->seedStatementWithCreditLine();

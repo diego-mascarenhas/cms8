@@ -27,11 +27,11 @@ class BankStatementInvoiceCandidateService
         $isExpense = (float) $line->amount < 0;
         $operation = $isExpense ? 'buy' : 'sell';
         $amount = abs(round((float) $line->amount, 2));
-        $lineText = trim(implode(' ', array_filter([
-            (string) ($line->reference ?? ''),
-            (string) ($line->description ?? ''),
-            (string) ($line->payer_name ?? ''),
-        ])));
+        $lineText = trim(implode(' ', array_values(array_unique(array_filter([
+            trim((string) ($line->reference ?? '')),
+            trim((string) ($line->description ?? '')),
+            trim((string) ($line->payer_name ?? '')),
+        ], static fn (string $part): bool => $part !== '')))));
         $lineHaystack = SearchNormalizer::normalize($lineText);
         $lineDate = $line->occurred_at ? Carbon::parse($line->occurred_at)->startOfDay() : null;
 
