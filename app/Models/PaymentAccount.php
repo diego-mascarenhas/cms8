@@ -63,15 +63,16 @@ class PaymentAccount extends Model
     {
         $field = $field ?? $this->getRouteKeyName();
         $user = auth()->user();
+        $teamId = $user?->currentTeam?->id ?? $user?->current_team_id;
 
-        if (! $user?->currentTeam)
+        if (! $user || ! $teamId)
         {
-            abort(404);
+            abort(404, 'No se pudo resolver la cuenta de pago para el equipo actual.');
         }
 
         return static::query()
             ->withoutGlobalScope('activeStatus')
-            ->where('team_id', $user->currentTeam->id)
+            ->where('team_id', (int) $teamId)
             ->where($field, $value)
             ->firstOrFail();
     }

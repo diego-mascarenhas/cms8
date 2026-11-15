@@ -240,6 +240,27 @@ class PaymentAccountStatementApiTest extends TestCase
         @unlink($path);
     }
 
+    public function test_bearer_token_can_resolve_payment_account_route_binding(): void
+    {
+        $user = $this->makeAdminUser();
+        $teamId = (int) $user->current_team_id;
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'code' => 'BIND',
+            'name' => 'Binding account',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
+        $token = $user->createToken('statement-binding')->plainTextToken;
+
+        // withToken (not actingAs) exercises auth.api before SubstituteBindings.
+        $this->withToken($token)
+            ->getJson('/api/payment-accounts/'.$account->id.'/statements')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('account.id', $account->id);
+    }
+
     public function test_lists_statements_and_reconcile_lines_for_account(): void
     {
         [$user, $bank, $statement, $line, $stripe] = $this->seedStatementWithCreditLine();
