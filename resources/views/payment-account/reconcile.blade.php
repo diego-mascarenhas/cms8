@@ -349,68 +349,16 @@
         @endif
     @endforeach
 
-    <div class="modal fade" id="uploadStatementModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <form class="modal-content" method="POST" action="{{ route('payment-account.statements.store', $account) }}" enctype="multipart/form-data">
-                @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title">{{ __('Subir extractos bancarios') }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted small">
-                        {{ __('Subí PDF, CSV u otro documento del mes o trimestre. Si el archivo no trae importes, indicá el saldo del extracto para conciliarlo.') }}
-                    </p>
-                    <div class="mb-3">
-                        <label for="statement-files" class="form-label">{{ __('Archivos') }} <span class="text-danger">*</span></label>
-                        <input type="file" name="files[]" id="statement-files" class="form-control" multiple required>
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="period_year" class="form-label">{{ __('Año') }}</label>
-                            <input type="number" name="period_year" id="period_year" class="form-control" min="2000" max="2100" value="{{ old('period_year', $statement->period_year ?? now()->year) }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="period" class="form-label">{{ __('Periodo') }}</label>
-                            @php
-                                $defaultPeriod = old('period');
-                                if ($defaultPeriod === null) {
-                                    $summary = $statement->validation_summary ?? [];
-                                    $defaultPeriod = ($summary['period_kind'] ?? '') === 'quarter'
-                                        ? 'q:'.(int) ($summary['period_quarter'] ?? 1)
-                                        : 'm:'.(int) ($statement->period_month ?? now()->month);
-                                }
-                            @endphp
-                            <select name="period" id="period" class="form-select">
-                                <option value="">{{ __('Automático') }}</option>
-                                <optgroup label="{{ __('Mes') }}">
-                                    @for ($month = 1; $month <= 12; $month++)
-                                        <option value="m:{{ $month }}" @selected($defaultPeriod === 'm:'.$month)>
-                                            {{ \Carbon\Carbon::create(null, $month, 1)->translatedFormat('F') }}
-                                        </option>
-                                    @endfor
-                                </optgroup>
-                                <optgroup label="{{ __('Trimestre') }}">
-                                    @for ($quarter = 1; $quarter <= 4; $quarter++)
-                                        <option value="q:{{ $quarter }}" @selected($defaultPeriod === 'q:'.$quarter)>Q{{ $quarter }}</option>
-                                    @endfor
-                                </optgroup>
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <label for="statement_balance" class="form-label">{{ __('Saldo del extracto') }}</label>
-                            <input type="number" step="0.01" name="statement_balance" id="statement_balance" class="form-control" value="{{ old('statement_balance') }}" placeholder="0.00">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="ti ti-upload me-1"></i>{{ __('Subir') }}
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
+    @php
+        $reconcileSummary = $statement->validation_summary ?? [];
+        $reconcileDefaultPeriod = ($reconcileSummary['period_kind'] ?? '') === 'quarter'
+            ? 'q:'.(int) ($reconcileSummary['period_quarter'] ?? 1)
+            : 'm:'.(int) ($statement->period_month ?? now()->month);
+    @endphp
+    @include('payment-account.partials.upload-statement-modal', [
+        'account' => $account,
+        'defaultYear' => (int) ($statement->period_year ?? now()->year),
+        'defaultPeriod' => $reconcileDefaultPeriod,
+    ])
 @endcan
 @endsection
