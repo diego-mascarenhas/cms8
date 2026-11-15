@@ -46,11 +46,18 @@ class PaymentAccountStatementApiTest extends TestCase
         $user = $this->makeAdminUser();
         $teamId = (int) $user->current_team_id;
 
-        PaymentAccount::withoutGlobalScopes()->create([
+        $eur = PaymentAccount::withoutGlobalScopes()->create([
             'team_id' => $teamId,
             'code' => 'EUR',
-            'name' => 'Cuenta EUR',
+            'name' => 'Caja Rural',
             'currency_id' => 978,
+            'status' => 1,
+        ]);
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'code' => 'ARS',
+            'name' => 'Banco Galicia',
+            'currency_id' => 32,
             'status' => 1,
         ]);
         PaymentAccount::withoutGlobalScopes()->create([
@@ -67,9 +74,12 @@ class PaymentAccountStatementApiTest extends TestCase
             ->getJson('/api/payment-accounts')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.name', 'Cuenta EUR')
-            ->assertJsonPath('data.0.currency_code', 'EUR');
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('reporting_currency', 'EUR')
+            ->assertJsonPath('default_account_id', $eur->id)
+            ->assertJsonPath('data.0.name', 'Caja Rural')
+            ->assertJsonPath('data.0.currency_code', 'EUR')
+            ->assertJsonPath('data.1.name', 'Banco Galicia');
     }
 
     public function test_uploads_csv_statement_and_returns_match_summary(): void
