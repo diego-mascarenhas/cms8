@@ -226,7 +226,7 @@ class BankStatementReconcileTest extends TestCase
                 'invoice_id' => $invoice->id,
                 'remarks' => 'Cobro desde extracto',
             ])
-            ->assertRedirect()
+            ->assertRedirect(route('invoice.show', $invoice->id))
             ->assertSessionHas('success');
 
         $line->refresh();

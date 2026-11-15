@@ -213,11 +213,43 @@ class BankStatementReconcileService
     /**
      * Create a payment on an existing invoice and match the bank statement line to it.
      *
-     * @return array{payment: Payment, invoice: Invoice, line: BankStatementLine}
+     * @return array{
+     *     payment: Payment,
+     *     payments: list<Payment>,
+     *     invoice: Invoice,
+     *     invoices: list<Invoice>,
+     *     line: BankStatementLine
+     * }
      */
     public function linkToInvoice(
         BankStatementLine $line,
         Invoice $invoice,
+        PaymentAccount $account,
+        ?int $paymentTypeId = null,
+        ?string $remarks = null,
+    ): array {
+        return $this->linkToInvoices($line, [$invoice], $account, $paymentTypeId, $remarks);
+    }
+
+    /**
+     * Create payments on one or more invoices that together cover the bank line amount.
+     *
+     * Single invoice keeps FX behaviour (full bank amount / implied rate).
+     * Multiple invoices require the same currency and allocate each invoice balance
+     * until the bank amount is covered.
+     *
+     * @param  list<Invoice>  $invoices
+     * @return array{
+     *     payment: Payment,
+     *     payments: list<Payment>,
+     *     invoice: Invoice,
+     *     invoices: list<Invoice>,
+     *     line: BankStatementLine
+     * }
+     */
+    public function linkToInvoices(
+        BankStatementLine $line,
+        array $invoices,
         PaymentAccount $account,
         ?int $paymentTypeId = null,
         ?string $remarks = null,
@@ -232,12 +264,24 @@ class BankStatementReconcileService
             throw new RuntimeException('Restaurá el movimiento antes de asociarlo a una factura.');
         }
 
-        if ((int) $invoice->team_id !== (int) $account->team_id)
+        $invoices = array_values(array_filter(
+            $invoices,
+            fn ($invoice): bool => $invoice instanceof Invoice,
+        ));
+
+        if ($invoices === [])
         {
-            throw new RuntimeException('La factura no pertenece al mismo equipo.');
+            throw new RuntimeException('Elegí al menos una factura.');
         }
 
-        $amount = abs((float) $line->amount);
+        $uniqueInvoices = [];
+        foreach ($invoices as $invoice)
+        {
+            $uniqueInvoices[(int) $invoice->id] = $invoice;
+        }
+        $invoices = array_values($uniqueInvoices);
+
+        $amount = abs(round((float) $line->amount, 2));
 
         if ($amount <= 0)
         {
@@ -246,14 +290,6 @@ class BankStatementReconcileService
 
         $isExpense = (float) $line->amount < 0;
         $expectedOperation = $isExpense ? 'buy' : 'sell';
-
-        if ((string) $invoice->operation !== $expectedOperation)
-        {
-            throw new RuntimeException($isExpense
-                ? 'Para un egreso del extracto elegí un gasto (factura de compra).'
-                : 'Para un ingreso del extracto elegí una factura de venta.');
-        }
-
         $typeId = $paymentTypeId ?: $this->defaultPaymentTypeId();
 
         if (! $typeId)
@@ -262,36 +298,29 @@ class BankStatementReconcileService
         }
 
         $account->loadMissing('currency:id,code');
-        $invoice->loadMissing('currency:id,code');
-
         $accountCurrencyId = $account->currency_id !== null ? (int) $account->currency_id : null;
-        $invoiceCurrencyId = $invoice->currency_id !== null ? (int) $invoice->currency_id : null;
-        $sameCurrency = $accountCurrencyId === null
-            || $invoiceCurrencyId === null
-            || $accountCurrencyId === $invoiceCurrencyId;
 
-        $invoiceBalance = round((float) $invoice->balance, 2);
-
-        if ($invoiceBalance <= 0)
+        foreach ($invoices as $invoice)
         {
-            throw new RuntimeException('La factura no tiene saldo pendiente.');
+            if ((int) $invoice->team_id !== (int) $account->team_id)
+            {
+                throw new RuntimeException('La factura no pertenece al mismo equipo.');
+            }
+
+            if ((string) $invoice->operation !== $expectedOperation)
+            {
+                throw new RuntimeException($isExpense
+                    ? 'Para un egreso del extracto elegí gastos (facturas de compra).'
+                    : 'Para un ingreso del extracto elegí facturas de venta.');
+            }
+
+            if (round((float) $invoice->balance, 2) <= 0)
+            {
+                throw new RuntimeException('La factura '.$invoice->number.' no tiene saldo pendiente.');
+            }
         }
 
-        // Same currency: bank amount reduces invoice balance 1:1.
-        // Cross-currency: bank amount is in account currency; settle the invoice
-        // remaining balance in document currency and store the implied rate
-        // (account units per 1 document unit), matching expense payment UX.
-        if ($sameCurrency)
-        {
-            $documentAmount = $amount;
-            $exchangeRate = 1.0;
-            $appliedToInvoice = $amount;
-        } else
-        {
-            $documentAmount = $invoiceBalance;
-            $exchangeRate = round($amount / $documentAmount, 6);
-            $appliedToInvoice = $documentAmount;
-        }
+        $allocations = $this->allocateInvoicePayments($invoices, $accountCurrencyId, $amount);
 
         $date = $line->occurred_at?->toDateString() ?? now()->toDateString();
         $concept = trim((string) ($line->reference ?: $line->description ?: ''));
@@ -301,39 +330,52 @@ class BankStatementReconcileService
 
         return DB::transaction(function () use (
             $line,
-            $invoice,
             $account,
-            $amount,
-            $documentAmount,
-            $exchangeRate,
-            $appliedToInvoice,
+            $allocations,
             $isExpense,
             $typeId,
             $date,
             $note,
         ): array {
-            $payment = Payment::withoutGlobalScopes()->create([
-                'team_id' => (int) $account->team_id,
-                'enterprise_id' => $invoice->enterprise_id,
-                'transaction_type' => $isExpense ? TransactionType::EXPENSE : TransactionType::INCOME,
-                'date' => $date,
-                'invoice_id' => (int) $invoice->id,
-                'account_id' => (int) $account->id,
-                'type_id' => $typeId,
-                'amount' => $amount,
-                'document_amount' => $documentAmount,
-                'exchange_rate' => $exchangeRate,
-                'remarks' => $note,
-                'status' => 2,
-                'source_provider' => 'manual',
-                'source_reference_id' => 'statement-line:'.$line->id,
-            ]);
+            $payments = [];
+            $freshInvoices = [];
 
-            $newBalance = round(max(0, (float) $invoice->balance - $appliedToInvoice), 2);
-            $invoice->forceFill(['balance' => $newBalance])->save();
+            foreach ($allocations as $index => $allocation)
+            {
+                /** @var Invoice $invoice */
+                $invoice = $allocation['invoice'];
+                $sourceReference = $index === 0
+                    ? 'statement-line:'.$line->id
+                    : 'statement-line:'.$line->id.':'.($index + 1);
+
+                $payment = Payment::withoutGlobalScopes()->create([
+                    'team_id' => (int) $account->team_id,
+                    'enterprise_id' => $invoice->enterprise_id,
+                    'transaction_type' => $isExpense ? TransactionType::EXPENSE : TransactionType::INCOME,
+                    'date' => $date,
+                    'invoice_id' => (int) $invoice->id,
+                    'account_id' => (int) $account->id,
+                    'type_id' => $typeId,
+                    'amount' => $allocation['amount'],
+                    'document_amount' => $allocation['document_amount'],
+                    'exchange_rate' => $allocation['exchange_rate'],
+                    'remarks' => $note,
+                    'status' => 2,
+                    'source_provider' => 'manual',
+                    'source_reference_id' => $sourceReference,
+                ]);
+
+                $newBalance = round(max(0, (float) $invoice->balance - $allocation['applied_to_invoice']), 2);
+                $invoice->forceFill(['balance' => $newBalance])->save();
+
+                $payments[] = $payment;
+                $freshInvoices[] = $invoice->fresh() ?? $invoice;
+            }
+
+            $primaryPayment = $payments[0];
 
             $line->forceFill([
-                'payment_id' => $payment->id,
+                'payment_id' => $primaryPayment->id,
                 'match_status' => 'matched',
                 'reconcile_dismissed_at' => null,
             ])->save();
@@ -348,11 +390,120 @@ class BankStatementReconcileService
             }
 
             return [
-                'payment' => $payment,
-                'invoice' => $invoice->fresh() ?? $invoice,
+                'payment' => $primaryPayment,
+                'payments' => $payments,
+                'invoice' => $freshInvoices[0],
+                'invoices' => $freshInvoices,
                 'line' => $line->fresh(['payment']) ?? $line,
             ];
         });
+    }
+
+    /**
+     * @param  list<Invoice>  $invoices
+     * @return list<array{
+     *     invoice: Invoice,
+     *     amount: float,
+     *     document_amount: float,
+     *     exchange_rate: float,
+     *     applied_to_invoice: float
+     * }>
+     */
+    private function allocateInvoicePayments(
+        array $invoices,
+        ?int $accountCurrencyId,
+        float $bankAmount,
+    ): array {
+        foreach ($invoices as $invoice)
+        {
+            $invoice->loadMissing('currency:id,code');
+        }
+
+        if (count($invoices) === 1)
+        {
+            $invoice = $invoices[0];
+            $invoiceCurrencyId = $invoice->currency_id !== null ? (int) $invoice->currency_id : null;
+            $sameCurrency = $accountCurrencyId === null
+                || $invoiceCurrencyId === null
+                || $accountCurrencyId === $invoiceCurrencyId;
+            $invoiceBalance = round((float) $invoice->balance, 2);
+
+            // Same currency: bank amount reduces invoice balance 1:1.
+            // Cross-currency: settle the remaining document balance and store the implied rate.
+            if ($sameCurrency)
+            {
+                return [[
+                    'invoice' => $invoice,
+                    'amount' => $bankAmount,
+                    'document_amount' => $bankAmount,
+                    'exchange_rate' => 1.0,
+                    'applied_to_invoice' => $bankAmount,
+                ]];
+            }
+
+            return [[
+                'invoice' => $invoice,
+                'amount' => $bankAmount,
+                'document_amount' => $invoiceBalance,
+                'exchange_rate' => round($bankAmount / $invoiceBalance, 6),
+                'applied_to_invoice' => $invoiceBalance,
+            ]];
+        }
+
+        $allocations = [];
+        $remaining = $bankAmount;
+
+        foreach ($invoices as $invoice)
+        {
+            $invoiceCurrencyId = $invoice->currency_id !== null ? (int) $invoice->currency_id : null;
+            $sameCurrency = $accountCurrencyId === null
+                || $invoiceCurrencyId === null
+                || $accountCurrencyId === $invoiceCurrencyId;
+
+            if (! $sameCurrency)
+            {
+                throw new RuntimeException(
+                    'Para asociar varias facturas todas deben estar en la misma divisa que la cuenta.',
+                );
+            }
+
+            if ($remaining <= 0.05)
+            {
+                break;
+            }
+
+            $invoiceBalance = round((float) $invoice->balance, 2);
+            $allocated = round(min($remaining, $invoiceBalance), 2);
+
+            if ($allocated <= 0)
+            {
+                continue;
+            }
+
+            $allocations[] = [
+                'invoice' => $invoice,
+                'amount' => $allocated,
+                'document_amount' => $allocated,
+                'exchange_rate' => 1.0,
+                'applied_to_invoice' => $allocated,
+            ];
+            $remaining = round($remaining - $allocated, 2);
+        }
+
+        if ($allocations === [])
+        {
+            throw new RuntimeException('No se pudo repartir el importe entre las facturas seleccionadas.');
+        }
+
+        if ($remaining > 0.05)
+        {
+            throw new RuntimeException(
+                'Las facturas seleccionadas no cubren el importe del movimiento (faltan '
+                .number_format($remaining, 2, ',', '.').').',
+            );
+        }
+
+        return $allocations;
     }
 
     /**
@@ -377,7 +528,9 @@ class BankStatementReconcileService
         }
 
         $sourceReference = (string) ($payment->source_reference_id ?? '');
-        $isStatementInvoiceLink = $sourceReference === 'statement-line:'.$line->id;
+        $statementLinePrefix = 'statement-line:'.$line->id;
+        $isStatementInvoiceLink = $sourceReference === $statementLinePrefix
+            || str_starts_with($sourceReference, $statementLinePrefix.':');
         $isTransferInflow = (string) ($payment->source_provider ?? '') === 'transfer'
             && str_starts_with($sourceReference, 'transfer:')
             && str_ends_with($sourceReference, ':in');
@@ -387,36 +540,65 @@ class BankStatementReconcileService
             throw new RuntimeException('Solo se pueden desasociar pagos creados desde la conciliación.');
         }
 
-        return DB::transaction(function () use ($line, $account, $payment, $isStatementInvoiceLink, $sourceReference): array
-        {
+        return DB::transaction(function () use (
+            $line,
+            $account,
+            $payment,
+            $isStatementInvoiceLink,
+            $sourceReference,
+            $statementLinePrefix,
+        ): array {
             $deletedPaymentIds = [];
             $invoice = null;
 
             if ($isStatementInvoiceLink)
             {
-                $invoice = $payment->invoice;
-
-                if ($invoice instanceof Invoice)
-                {
-                    $applied = $payment->document_amount !== null
-                        ? round((float) $payment->document_amount, 2)
-                        : round((float) $payment->amount, 2);
-
-                    $restoredBalance = round((float) $invoice->balance + $applied, 2);
-                    $invoiceCeiling = $invoice->total_amount !== null
-                        ? round((float) $invoice->total_amount, 2)
-                        : null;
-
-                    if ($invoiceCeiling !== null)
+                $linkedPayments = Payment::withoutGlobalScopes()
+                    ->with('invoice')
+                    ->where(function ($query) use ($statementLinePrefix): void
                     {
-                        $restoredBalance = min($restoredBalance, $invoiceCeiling);
-                    }
+                        $query->where('source_reference_id', $statementLinePrefix)
+                            ->orWhere('source_reference_id', 'like', $statementLinePrefix.':%');
+                    })
+                    ->orderBy('id')
+                    ->get();
 
-                    $invoice->forceFill(['balance' => $restoredBalance])->save();
+                if ($linkedPayments->isEmpty())
+                {
+                    $linkedPayments = collect([$payment]);
                 }
 
-                $deletedPaymentIds[] = (int) $payment->id;
-                $payment->delete();
+                foreach ($linkedPayments as $linkedPayment)
+                {
+                    $linkedInvoice = $linkedPayment->invoice;
+
+                    if ($linkedInvoice instanceof Invoice)
+                    {
+                        if ($invoice === null)
+                        {
+                            $invoice = $linkedInvoice;
+                        }
+
+                        $applied = $linkedPayment->document_amount !== null
+                            ? round((float) $linkedPayment->document_amount, 2)
+                            : round((float) $linkedPayment->amount, 2);
+
+                        $restoredBalance = round((float) $linkedInvoice->balance + $applied, 2);
+                        $invoiceCeiling = $linkedInvoice->total_amount !== null
+                            ? round((float) $linkedInvoice->total_amount, 2)
+                            : null;
+
+                        if ($invoiceCeiling !== null)
+                        {
+                            $restoredBalance = min($restoredBalance, $invoiceCeiling);
+                        }
+
+                        $linkedInvoice->forceFill(['balance' => $restoredBalance])->save();
+                    }
+
+                    $deletedPaymentIds[] = (int) $linkedPayment->id;
+                    $linkedPayment->delete();
+                }
             } else
             {
                 $transferKey = Str::beforeLast(Str::after($sourceReference, 'transfer:'), ':');

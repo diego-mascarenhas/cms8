@@ -286,15 +286,26 @@ class PaymentAccountController extends Controller
         $this->assertStatementBelongsToAccount($paymentAccount, $statement);
         $this->assertLineBelongsToStatement($statement, $line);
 
-        $invoice = Invoice::query()
+        $invoices = Invoice::query()
             ->where('team_id', $paymentAccount->team_id)
-            ->findOrFail((int) $request->validated('invoice_id'));
+            ->whereIn('id', $request->invoiceIds())
+            ->get()
+            ->sortBy(fn (Invoice $invoice): int => array_search((int) $invoice->id, $request->invoiceIds(), true))
+            ->values()
+            ->all();
+
+        if (count($invoices) !== count($request->invoiceIds()))
+        {
+            return redirect()
+                ->route('payment-account.statements.reconcile', [$paymentAccount, $statement, 'filter' => 'open'])
+                ->withErrors(['link_invoice' => __('Alguna de las facturas no existe o no pertenece al equipo.')]);
+        }
 
         try
         {
-            $this->statementReconcileService->linkToInvoice(
+            $result = $this->statementReconcileService->linkToInvoices(
                 $line,
-                $invoice,
+                $invoices,
                 $paymentAccount,
                 isset($request->validated()['type_id']) ? (int) $request->validated('type_id') : null,
                 $request->validated('remarks') ?? null,
@@ -306,9 +317,14 @@ class PaymentAccountController extends Controller
                 ->withErrors(['link_invoice' => $exception->getMessage()]);
         }
 
+        $invoiceCount = count($result['invoices']);
+        $message = $invoiceCount > 1
+            ? __('Pagos asociados a :count facturas y movimiento asociado.', ['count' => $invoiceCount])
+            : __('Pago asociado a la factura y movimiento asociado.');
+
         return redirect()
-            ->route('payment-account.statements.reconcile', [$paymentAccount, $statement, 'filter' => 'matched'])
-            ->with('success', __('Pago asociado a la factura y movimiento asociado.'));
+            ->route('invoice.show', $result['invoice']->id)
+            ->with('success', $message);
     }
 
     public function unlinkStatementLine(

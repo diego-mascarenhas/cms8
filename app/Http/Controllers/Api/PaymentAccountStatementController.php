@@ -410,15 +410,27 @@ class PaymentAccountStatementController extends Controller
         $this->assertStatementBelongsToAccount($paymentAccount, $statement);
         $this->assertLineBelongsToStatement($statement, $line);
 
-        $invoice = Invoice::query()
+        $invoices = Invoice::query()
             ->where('team_id', $paymentAccount->team_id)
-            ->findOrFail((int) $request->validated('invoice_id'));
+            ->whereIn('id', $request->invoiceIds())
+            ->get()
+            ->sortBy(fn (Invoice $invoice): int => array_search((int) $invoice->id, $request->invoiceIds(), true))
+            ->values()
+            ->all();
+
+        if (count($invoices) !== count($request->invoiceIds()))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Alguna de las facturas no existe o no pertenece al equipo.'),
+            ], 422);
+        }
 
         try
         {
-            $result = $this->statementReconcileService->linkToInvoice(
+            $result = $this->statementReconcileService->linkToInvoices(
                 $line,
-                $invoice,
+                $invoices,
                 $paymentAccount,
                 isset($request->validated()['type_id']) ? (int) $request->validated('type_id') : null,
                 $request->validated('remarks') ?? null,
@@ -432,12 +444,23 @@ class PaymentAccountStatementController extends Controller
         }
 
         $payment = $result['payment'];
+        $invoiceCount = count($result['invoices']);
 
         return response()->json([
             'success' => true,
-            'message' => __('Pago asociado a la factura y movimiento asociado.'),
+            'message' => $invoiceCount > 1
+                ? __('Pagos asociados a :count facturas y movimiento asociado.', ['count' => $invoiceCount])
+                : __('Pago asociado a la factura y movimiento asociado.'),
             'payment_id' => (int) $payment->id,
+            'payment_ids' => array_map(
+                fn ($linkedPayment): int => (int) $linkedPayment->id,
+                $result['payments'],
+            ),
             'invoice_id' => (int) $result['invoice']->id,
+            'invoice_ids' => array_map(
+                fn (Invoice $invoice): int => (int) $invoice->id,
+                $result['invoices'],
+            ),
             'line_id' => (int) $result['line']->id,
             'invoice_balance' => round((float) $result['invoice']->balance, 2),
             'document_amount' => $payment->document_amount !== null
@@ -447,6 +470,9 @@ class PaymentAccountStatementController extends Controller
                 ? round((float) $payment->exchange_rate, 6)
                 : null,
             'invoice_operation' => (string) $result['invoice']->operation,
+            'redirect_url' => (string) $result['invoice']->operation === 'buy'
+                ? '/expense/edit/'.$result['invoice']->id
+                : null,
         ]);
     }
 
