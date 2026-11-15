@@ -9,6 +9,7 @@ use App\Http\Requests\StorePaymentAccountStatementRequest;
 use App\Models\BankStatement;
 use App\Models\BankStatementLine;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Services\Finance\BankStatementInvoiceCandidateService;
 use App\Services\Finance\BankStatementReconcileService;
@@ -263,14 +264,52 @@ class PaymentAccountStatementController extends Controller
                 $invoice = $payment?->invoice;
                 $invoiceId = $payment?->invoice_id ? (int) $payment->invoice_id : null;
                 $sourceReference = (string) ($payment?->source_reference_id ?? '');
+                $statementLinePrefix = 'statement-line:'.$line->id;
                 $canUnlink = $payment !== null && (
-                    $sourceReference === 'statement-line:'.$line->id
+                    $sourceReference === $statementLinePrefix
+                    || str_starts_with($sourceReference, $statementLinePrefix.':')
                     || (
                         (string) ($payment->source_provider ?? '') === 'transfer'
                         && str_starts_with($sourceReference, 'transfer:')
                         && str_ends_with($sourceReference, ':in')
                     )
                 );
+
+                $linkedInvoices = [];
+
+                if ($payment !== null
+                    && ($sourceReference === $statementLinePrefix
+                        || str_starts_with($sourceReference, $statementLinePrefix.':')))
+                {
+                    $linkedPayments = Payment::withoutGlobalScopes()
+                        ->with(['invoice:id,number,operation,currency_id', 'invoice.currency:id,code'])
+                        ->where(function ($query) use ($statementLinePrefix): void
+                        {
+                            $query->where('source_reference_id', $statementLinePrefix)
+                                ->orWhere('source_reference_id', 'like', $statementLinePrefix.':%');
+                        })
+                        ->orderBy('id')
+                        ->get();
+
+                    $linkedInvoices = $linkedPayments->map(function (Payment $linkedPayment): array
+                    {
+                        $linkedInvoice = $linkedPayment->invoice;
+
+                        return [
+                            'payment_id' => (int) $linkedPayment->id,
+                            'invoice_id' => $linkedInvoice?->id ? (int) $linkedInvoice->id : null,
+                            'invoice_number' => $linkedInvoice?->number,
+                            'invoice_operation' => $linkedInvoice?->operation,
+                            'amount' => round((float) $linkedPayment->amount, 2),
+                            'document_amount' => $linkedPayment->document_amount !== null
+                                ? round((float) $linkedPayment->document_amount, 2)
+                                : null,
+                            'currency_code' => $linkedInvoice?->currency
+                                ? strtoupper((string) $linkedInvoice->currency->code)
+                                : null,
+                        ];
+                    })->values()->all();
+                }
 
                 return [
                     'id' => (int) $line->id,
@@ -296,6 +335,7 @@ class PaymentAccountStatementController extends Controller
                     'invoice_currency_code' => $invoice?->currency
                         ? strtoupper((string) $invoice->currency->code)
                         : null,
+                    'linked_invoices' => $linkedInvoices,
                     'can_unlink' => $canUnlink,
                 ];
             })->values(),

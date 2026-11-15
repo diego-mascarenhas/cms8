@@ -590,6 +590,15 @@ class PaymentAccountStatementApiTest extends TestCase
         $this->assertSame((int) $payments[0]->id, (int) $line->payment_id);
 
         $this->actingAs($user, 'sanctum')
+            ->getJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/reconcile?filter=matched')
+            ->assertOk()
+            ->assertJsonPath('lines.0.linked_invoices.0.invoice_id', $mainInvoice->id)
+            ->assertJsonPath('lines.0.linked_invoices.0.amount', 845.87)
+            ->assertJsonPath('lines.0.linked_invoices.1.invoice_id', $smallInvoice->id)
+            ->assertJsonPath('lines.0.linked_invoices.1.amount', 13.33)
+            ->assertJsonPath('lines.0.can_unlink', true);
+
+        $this->actingAs($user, 'sanctum')
             ->postJson('/api/payment-accounts/'.$bank->id.'/statements/'.$statement->id.'/lines/'.$line->id.'/unlink')
             ->assertOk()
             ->assertJsonPath('success', true);

@@ -1120,8 +1120,75 @@ class ExpenseController extends Controller
                 'payments' => $payments,
                 'has_document' => $storedDocument !== null,
                 'document_name' => $storedDocument !== null ? basename($storedDocument) : null,
+                'statement_siblings' => $this->statementSiblingInvoices($invoice),
             ],
         ]));
+    }
+
+    /**
+     * Other invoices paid by the same bank statement line (multi-factura reconcile).
+     *
+     * @return list<array{id: int, number: string|null, amount: float}>
+     */
+    private function statementSiblingInvoices(Invoice $invoice): array
+    {
+        $prefixes = [];
+
+        foreach ($invoice->payments as $payment)
+        {
+            $source = (string) ($payment->source_reference_id ?? '');
+
+            if (! str_starts_with($source, 'statement-line:'))
+            {
+                continue;
+            }
+
+            $rest = substr($source, strlen('statement-line:'));
+            $lineId = (int) strtok($rest, ':');
+
+            if ($lineId > 0)
+            {
+                $prefixes[$lineId] = 'statement-line:'.$lineId;
+            }
+        }
+
+        if ($prefixes === [])
+        {
+            return [];
+        }
+
+        $siblings = [];
+
+        foreach ($prefixes as $prefix)
+        {
+            $linkedPayments = Payment::withoutGlobalScopes()
+                ->with('invoice:id,number')
+                ->where(function ($query) use ($prefix): void
+                {
+                    $query->where('source_reference_id', $prefix)
+                        ->orWhere('source_reference_id', 'like', $prefix.':%');
+                })
+                ->orderBy('id')
+                ->get();
+
+            foreach ($linkedPayments as $linkedPayment)
+            {
+                $linkedInvoice = $linkedPayment->invoice;
+
+                if (! $linkedInvoice instanceof Invoice || (int) $linkedInvoice->id === (int) $invoice->id)
+                {
+                    continue;
+                }
+
+                $siblings[(int) $linkedInvoice->id] = [
+                    'id' => (int) $linkedInvoice->id,
+                    'number' => $linkedInvoice->number,
+                    'amount' => round((float) $linkedPayment->amount, 2),
+                ];
+            }
+        }
+
+        return array_values($siblings);
     }
 
     public function update(

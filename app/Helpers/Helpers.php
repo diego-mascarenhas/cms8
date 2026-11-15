@@ -254,7 +254,7 @@ class Helpers
     }
 
     /**
-     * Parse user-entered decimal amounts (Spanish locale) into a normalized dot-decimal string.
+     * Parse user-entered decimal amounts (Spanish or English) into a normalized dot-decimal string.
      */
     public static function parseDecimalInput(mixed $value): ?string
     {
@@ -263,14 +263,29 @@ class Helpers
             return null;
         }
 
-        $normalized = trim((string) $value);
+        $normalized = preg_replace('/\s+/u', '', trim((string) $value)) ?? '';
 
         if ($normalized === '')
         {
             return null;
         }
 
-        if (str_contains($normalized, ','))
+        $hasComma = str_contains($normalized, ',');
+        $hasDot = str_contains($normalized, '.');
+
+        if ($hasComma && $hasDot)
+        {
+            if (strrpos($normalized, ',') > strrpos($normalized, '.'))
+            {
+                $normalized = str_replace('.', '', $normalized);
+                $normalized = str_replace(',', '.', $normalized);
+            }
+            else
+            {
+                $normalized = str_replace(',', '', $normalized);
+            }
+        }
+        elseif ($hasComma)
         {
             $normalized = str_replace('.', '', $normalized);
             $normalized = str_replace(',', '.', $normalized);
