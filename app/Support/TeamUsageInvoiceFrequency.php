@@ -66,6 +66,29 @@ class TeamUsageInvoiceFrequency
     }
 
     /**
+     * First close strictly after $from on the anchor day (same month when still ahead).
+     */
+    public static function firstCloseAfter(Carbon $from, int $anchorDay): Carbon
+    {
+        $anchorDay = min(31, max(1, $anchorDay));
+        $sameMonthDay = min($anchorDay, $from->daysInMonth);
+        $sameMonth = $from->copy()->day($sameMonthDay);
+
+        if ($sameMonth->gt($from))
+        {
+            return $sameMonth;
+        }
+
+        return self::nextMonthlyAnniversary($from, $anchorDay);
+    }
+
+    /**
+     * Open usage window for the team.
+     *
+     * Once {@see PERIOD_STARTS_AT_KEY} is seeded, that stored cycle is always
+     * authoritative — live Stripe periods must not move the day (e.g. Hosting
+     * on the 4th must not override an Assistant seed on the 24th).
+     *
      * @return array{0: Carbon, 1: Carbon}
      */
     public static function window(Team $team, ?TeamBillingFrequency $frequency = null, ?Carbon $now = null): array
@@ -84,16 +107,18 @@ class TeamUsageInvoiceFrequency
             return self::calendarWindow($frequency, $now);
         }
 
-        $subscription = self::subscriptionPeriod($team);
-        if ($subscription !== null)
-        {
-            return AssistantSubscriptionService::openMonthlyPeriod($subscription[0], $subscription[1], $now);
-        }
+        self::ensureCycleSeeded($team);
 
         $cycleStart = self::periodStartsAt($team);
         if ($cycleStart !== null)
         {
             return self::monthlyWindow($cycleStart, self::anchorDay($team) ?? $cycleStart->day, $now);
+        }
+
+        $subscription = self::subscriptionPeriod($team);
+        if ($subscription !== null)
+        {
+            return AssistantSubscriptionService::openMonthlyPeriod($subscription[0], $subscription[1], $now);
         }
 
         return self::calendarWindow($frequency, $now);
@@ -184,7 +209,7 @@ class TeamUsageInvoiceFrequency
     public static function monthlyWindow(Carbon $cycleStart, int $anchorDay, Carbon $now): array
     {
         $from = $cycleStart->copy();
-        $closesOn = self::nextMonthlyAnniversary($from, $anchorDay);
+        $closesOn = self::firstCloseAfter($from, $anchorDay);
         $guard = 0;
 
         while ($closesOn->lte($now) && $guard < 36)
