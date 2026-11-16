@@ -128,9 +128,11 @@ class ExpenseMovementsApiTest extends TestCase
             ->assertJsonPath('data.data.0.description', 'Desarrollo web')
             ->assertJsonPath('data.data.0.category_name', 'Servicios')
             ->assertJsonPath('data.data.0.enterprise_name', 'Cliente Beta')
+            ->assertJsonPath('data.data.0.enterprise_id', $client->id)
             ->assertJsonPath('data.data.0.invoice_url', 'https://invoice.stripe.com/i/acct_test/movements')
             ->assertJsonPath('data.data.1.operation', 'buy')
             ->assertJsonPath('data.data.1.category_name', 'Hosting')
+            ->assertJsonPath('data.data.1.enterprise_id', $supplier->id)
             ->assertJsonPath('data.data.1.signed_amount', -121)
             ->assertJsonPath('data.data.1.invoice_url', null)
             ->assertJsonPath('data.data.1.invoice_id', $expenseInvoice->id);
