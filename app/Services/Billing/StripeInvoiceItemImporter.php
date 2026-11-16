@@ -14,6 +14,7 @@ class StripeInvoiceItemImporter
     public function __construct(
         private readonly ServiceSyncImporter $serviceSyncImporter,
         private readonly SubscriptionInvoiceCategoryResolver $categoryResolver,
+        private readonly ServiceCategoryAssignmentService $categoryAssignment,
     ) {}
 
     public function syncForInvoice(Invoice $invoice, InvoiceSync $row): void
@@ -40,6 +41,20 @@ class StripeInvoiceItemImporter
         $serviceCategoryIsSpecific = $serviceCategoryId !== null
             && ! $this->categoryResolver->isGenericParent($serviceCategoryId);
 
+        $previousByDescription = $invoice->items()
+            ->whereNotNull('category_id')
+            ->get(['description', 'category_id'])
+            ->mapWithKeys(function (InvoiceItem $item): array
+            {
+                $key = mb_strtolower(trim((string) $item->description));
+
+                return $key !== '' ? [$key => (int) $item->category_id] : [];
+            });
+
+        $usageCategoryId = $this->categoryAssignment->payloadIsUsage($payload)
+            ? $this->categoryAssignment->usageCategoryIdForTeam((int) $invoice->team_id)
+            : null;
+
         $invoice->items()->delete();
 
         foreach ($lines as $line)
@@ -55,13 +70,21 @@ class StripeInvoiceItemImporter
                 continue;
             }
 
+            $descriptionKey = mb_strtolower(trim((string) $attributes['description']));
+            $preservedCategoryId = $descriptionKey !== ''
+                ? ($previousByDescription[$descriptionKey] ?? null)
+                : null;
+
             $categoryId = $serviceCategoryIsSpecific
                 ? $serviceCategoryId
-                : ($this->categoryResolver->matchCategoryId(
-                    (int) $invoice->team_id,
-                    $subscription,
-                    (string) $attributes['description'],
-                ) ?? $serviceCategoryId);
+                : ($preservedCategoryId
+                    ?? $this->categoryResolver->matchCategoryId(
+                        (int) $invoice->team_id,
+                        $subscription,
+                        (string) $attributes['description'],
+                    )
+                    ?? $serviceCategoryId
+                    ?? $usageCategoryId);
 
             InvoiceItem::query()->create(array_merge($attributes, [
                 'invoice_id' => $invoice->id,

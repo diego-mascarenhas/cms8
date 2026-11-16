@@ -8,9 +8,14 @@ use App\Models\InvoiceItem;
 use App\Models\InvoiceSync;
 use App\Models\Service;
 use App\Models\ServiceSync;
+use App\Models\Team;
+use App\Models\TeamUsageInvoice;
+use Illuminate\Support\Arr;
 
 class ServiceCategoryAssignmentService
 {
+    public const USAGE_CATEGORY_SETTING = 'finance_usage_category_id';
+
     public function __construct(
         private readonly ServiceSyncImporter $serviceSyncImporter,
         private readonly StripeCategoryMetadataWriter $stripeCategoryMetadataWriter,
@@ -35,25 +40,161 @@ class ServiceCategoryAssignmentService
     {
         $service = $this->linkedService($invoice);
 
-        return $service?->category_id ? (int) $service->category_id : null;
+        if ($service?->category_id)
+        {
+            return (int) $service->category_id;
+        }
+
+        if ($this->isUsageInvoice($invoice))
+        {
+            return $this->usageCategoryIdForTeam((int) $invoice->team_id);
+        }
+
+        return null;
     }
 
     public function pushInvoiceCategory(Invoice $invoice, ?int $categoryId): void
     {
-        $sync = $this->subscriptionSyncForInvoice($invoice);
-        if (! $sync)
-        {
-            return;
-        }
-
         $name = null;
+
         if ($categoryId)
         {
             $name = Category::query()->whereKey($categoryId)->value('name');
             $name = filled($name) ? (string) $name : null;
         }
 
-        $this->stripeCategoryMetadataWriter->write($sync, $name);
+        $service = $this->linkedService($invoice);
+
+        if ($service)
+        {
+            $service->forceFill(['category_id' => $categoryId])->save();
+            $this->applyToInvoiceItems($service);
+            $sync = $this->syncForService($service);
+
+            if ($sync)
+            {
+                $this->stripeCategoryMetadataWriter->write($sync, $name);
+            }
+        }
+
+        if ($this->isUsageInvoice($invoice))
+        {
+            $this->rememberUsageCategory((int) $invoice->team_id, $categoryId);
+            $this->applyUsageCategoryToTeamInvoices((int) $invoice->team_id, $categoryId);
+        }
+    }
+
+    public function usageCategoryIdForTeam(int $teamId): ?int
+    {
+        $team = Team::query()->find($teamId);
+
+        if (! $team)
+        {
+            return null;
+        }
+
+        $raw = $team->getSetting(self::USAGE_CATEGORY_SETTING);
+
+        if ($raw === null || $raw === '' || ! is_numeric($raw))
+        {
+            return null;
+        }
+
+        $categoryId = (int) $raw;
+
+        return $categoryId > 0 ? $categoryId : null;
+    }
+
+    public function rememberUsageCategory(int $teamId, ?int $categoryId): void
+    {
+        $team = Team::query()->find($teamId);
+
+        if (! $team)
+        {
+            return;
+        }
+
+        $team->setSetting(self::USAGE_CATEGORY_SETTING, $categoryId, [
+            'type' => 'integer',
+            'group' => 'finance',
+        ]);
+    }
+
+    public function applyUsageCategoryToTeamInvoices(int $teamId, ?int $categoryId): void
+    {
+        $externalIds = TeamUsageInvoice::query()
+            ->where('team_id', $teamId)
+            ->whereNotNull('stripe_invoice_id')
+            ->pluck('stripe_invoice_id')
+            ->filter()
+            ->values();
+
+        $usageSyncIds = InvoiceSync::query()
+            ->where('team_id', $teamId)
+            ->where('provider', 'stripe')
+            ->get(['id', 'external_id', 'raw_payload'])
+            ->filter(fn (InvoiceSync $sync): bool => $this->payloadIsUsage(is_array($sync->raw_payload) ? $sync->raw_payload : []))
+            ->pluck('external_id')
+            ->filter();
+
+        $allExternalIds = $externalIds->merge($usageSyncIds)->unique()->values();
+
+        if ($allExternalIds->isEmpty())
+        {
+            return;
+        }
+
+        $invoiceIds = Invoice::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('source_provider', 'stripe')
+            ->whereIn('source_reference_id', $allExternalIds->all())
+            ->pluck('id');
+
+        if ($invoiceIds->isEmpty())
+        {
+            return;
+        }
+
+        InvoiceItem::query()
+            ->whereIn('invoice_id', $invoiceIds)
+            ->update([
+                'category_id' => $categoryId,
+            ]);
+    }
+
+    public function isUsageInvoice(Invoice $invoice): bool
+    {
+        if (! filled($invoice->source_reference_id) || (string) $invoice->source_provider !== 'stripe')
+        {
+            return false;
+        }
+
+        $externalId = (string) $invoice->source_reference_id;
+
+        if (TeamUsageInvoice::query()
+            ->where('team_id', $invoice->team_id)
+            ->where('stripe_invoice_id', $externalId)
+            ->exists())
+        {
+            return true;
+        }
+
+        $sync = InvoiceSync::query()
+            ->where('team_id', $invoice->team_id)
+            ->where('provider', 'stripe')
+            ->where('external_id', $externalId)
+            ->first();
+
+        return $sync instanceof InvoiceSync
+            && $this->payloadIsUsage(is_array($sync->raw_payload) ? $sync->raw_payload : []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    public function payloadIsUsage(array $payload): bool
+    {
+        return (string) Arr::get($payload, 'metadata.humano_usage') === '1';
     }
 
     public function applyToInvoiceItems(Service $service): void
