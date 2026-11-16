@@ -118,8 +118,8 @@ return [
     'whatsapp_message_billing' => [
         'currency' => env('HUMANO_WHATSAPP_BILLING_CURRENCY', 'USD'),
         // 'currency' => env('HUMANO_WHATSAPP_BILLING_CURRENCY', 'EUR'), // en €
-        'our_amount' => (float) env('HUMANO_WHATSAPP_OUR_AMOUNT', 0.016),
-        // 'our_amount' => (float) env('HUMANO_WHATSAPP_OUR_AMOUNT', 0.003), // en €
+        'our_amount' => (float) env('HUMANO_WHATSAPP_OUR_AMOUNT', 0.008),
+        // 'our_amount' => (float) env('HUMANO_WHATSAPP_OUR_AMOUNT', 0.007), // en €
         'reference_amount' => (float) env('HUMANO_WHATSAPP_REFERENCE_AMOUNT', 0.005),
         'our_amount_by_team' => [
             // 1 => 0.002,
