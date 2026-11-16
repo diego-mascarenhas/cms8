@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\AccountDataTable;
-use App\DataTables\AccountRatesUsageDataTable;
 use App\Enums\TeamBillingProduct;
 use App\Helpers\TokenHelper;
 use App\Http\Requests\UpdateAccountRatesRequest;
@@ -125,19 +124,19 @@ class AccountController extends Controller
         ));
     }
 
-    public function editRates(string $id, AccountRatesUsageDataTable $dataTable, TeamBillingUsageSummaryService $usage)
+    public function editRates(string $id, TeamBillingUsageSummaryService $usage)
     {
         $team = Team::findOrFail($id);
         $billingRates = $this->billingRatesForForm($team);
         $billingRateHistory = TeamBillingRate::query()
             ->where('team_id', $team->id)
             ->orderByDesc('effective_from')
-            ->limit(12)
+            ->limit(50)
             ->get();
         $invoiceFrequency = TeamUsageInvoiceFrequency::for($team);
         $invoicePreview = $usage->invoicePreview($team, $invoiceFrequency);
 
-        return $dataTable->render('account.rates', compact(
+        return view('account.rates', compact(
             'team',
             'billingRates',
             'billingRateHistory',

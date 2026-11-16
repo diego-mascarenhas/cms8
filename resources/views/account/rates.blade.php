@@ -3,15 +3,10 @@
 @section('title', 'Tarifas')
 
 @section('vendor-style')
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}">
 @endsection
 
 @section('vendor-script')
-    <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
@@ -241,31 +236,6 @@
                 </div>
             </div>
 
-            @if(isset($billingRateHistory) && $billingRateHistory->isNotEmpty())
-                <div class="table-responsive mt-4">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Tarifa</th>
-                                <th class="text-center">Importe</th>
-                                <th>Desde</th>
-                                <th>Hasta</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($billingRateHistory as $rate)
-                                <tr>
-                                    <td>{{ $rate->product->label() }}</td>
-                                    <td class="text-center">{{ $rate->formattedAmount() }}@if($rate->currency) {{ $rate->currency }}@endif</td>
-                                    <td>{{ $rate->effective_from?->format('d/m/Y H:i') }}</td>
-                                    <td>{{ $rate->effective_to?->format('d/m/Y H:i') ?? 'Actual' }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-
             <div class="pt-4">
                 <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
                 <a href="{{ route('account-management') }}" class="btn btn-label-secondary">Cancelar</a>
@@ -276,19 +246,38 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-            <div>
-                <h5 class="mb-0">Meses anteriores</h5>
-                <p class="text-muted mb-0 small">Tokens: reales / facturados (× multiplicador). WhatsApp y totales se recalculan con el historial de tarifas.</p>
+        <h5 class="mb-3">Historial de tarifas</h5>
+        @if(isset($billingRateHistory) && $billingRateHistory->isNotEmpty())
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Tarifa</th>
+                            <th class="text-center">Importe</th>
+                            <th>Desde</th>
+                            <th>Hasta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($billingRateHistory as $rate)
+                            <tr>
+                                <td>{{ $rate->product->label() }}</td>
+                                <td class="text-center">{{ $rate->formattedAmount() }}@if($rate->currency) {{ $rate->currency }}@endif</td>
+                                <td>{{ $rate->effective_from?->format('d/m/Y H:i') }}</td>
+                                <td>{{ $rate->effective_to?->format('d/m/Y H:i') ?? 'Actual' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
             </div>
-        </div>
-        {{ $dataTable->table(['class' => 'table table-hover dt-responsive nowrap w-100']) }}
+        @else
+            <p class="text-muted mb-0">Todavía no hay cambios de tarifa para esta cuenta.</p>
+        @endif
     </div>
 </div>
 @endsection
 
 @push('scripts')
-    {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
     <script>
         document.getElementById('apply-current-period-btn')?.addEventListener('click', function () {
             const form = document.getElementById('apply-current-period-form');
