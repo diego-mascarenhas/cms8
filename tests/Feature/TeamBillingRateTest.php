@@ -73,8 +73,61 @@ class TeamBillingRateTest extends TestCase
         $stats = TeamWhatsAppUsageStatsService::forTeam($team, now()->subDays(2), now());
 
         $this->assertSame(2, $stats['messages_sent']);
-        $this->assertSame(6, $stats['our_amount_cents']);
+        $this->assertSame(2, $stats['our_amount_cents']);
         $this->assertEqualsWithDelta(0.01, $stats['our_rate'], 0.000001);
+    }
+
+    public function test_apply_current_amount_from_reprices_the_open_period(): void
+    {
+        $team = $this->team();
+        $team->setSetting('whatsapp_from', '34999000111');
+        $periodStart = now()->subDays(10);
+        $midPeriod = now()->subDays(2);
+
+        $early = Conversation::query()->create([
+            'message_sid' => 'SM_apply_early',
+            'channel' => 'whatsapp',
+            'from' => '34999000111',
+            'to' => '34600111222',
+            'body' => 'Antes',
+            'status' => 'sent',
+            'direction' => 'outbound',
+        ]);
+        $early->forceFill(['created_at' => $periodStart->copy()->addDay()])->save();
+
+        $late = Conversation::query()->create([
+            'message_sid' => 'SM_apply_late',
+            'channel' => 'whatsapp',
+            'from' => '34999000111',
+            'to' => '34600111222',
+            'body' => 'Después',
+            'status' => 'sent',
+            'direction' => 'outbound',
+        ]);
+        $late->forceFill(['created_at' => $midPeriod->copy()->addHour()])->save();
+
+        TeamBillingRate::setAmount((int) $team->id, TeamBillingProduct::WhatsappSend, 0.05, $periodStart);
+        TeamBillingRate::setAmount((int) $team->id, TeamBillingProduct::WhatsappSend, 0.005, $midPeriod);
+
+        $before = TeamWhatsAppUsageStatsService::forTeam($team, $periodStart, now());
+        $this->assertSame(2, $before['messages_sent']);
+        $this->assertGreaterThan(1, $before['our_amount_cents']);
+
+        TeamBillingRate::applyCurrentAmountFrom(
+            (int) $team->id,
+            TeamBillingProduct::WhatsappSend,
+            $periodStart,
+        );
+
+        $after = TeamWhatsAppUsageStatsService::forTeam($team, $periodStart, now());
+        $this->assertSame(2, $after['messages_sent']);
+        $this->assertSame(1, $after['our_amount_cents']);
+        $this->assertEqualsWithDelta(0.005, $after['our_rate'], 0.000001);
+        $this->assertEqualsWithDelta(
+            0.005,
+            TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, $periodStart->copy()->addMinute()),
+            0.000001,
+        );
     }
 
     public function test_format_amount_is_the_shared_display_string(): void

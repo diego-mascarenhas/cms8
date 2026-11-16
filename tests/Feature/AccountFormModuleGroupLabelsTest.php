@@ -137,6 +137,8 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->get(route('account.rates.edit', $team->id))
             ->assertOk()
             ->assertSee('Tarifas', false)
+            ->assertSee('Aplicar al período en curso', false)
+            ->assertSee(route('account.rates.apply-current-period', $team->id, false), false)
             ->assertSee('Preview de factura', false)
             ->assertSee(route('help.team-billing', [], false), false)
             ->assertSee('A facturar', false)
@@ -165,6 +167,36 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->assertSee('class="text-center">Importe', false)
             ->assertSee('class="text-center">10', false)
             ->assertSee('Multiplicador de tokens', false);
+    }
+
+    public function test_account_rates_can_apply_current_rates_to_open_period(): void
+    {
+        $this->seed(ModuleSeeder::class);
+
+        $role = Role::firstOrCreate(
+            ['name' => 'root', 'guard_name' => 'web'],
+        );
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole($role);
+
+        [$periodStart] = app(\App\Services\Billing\AssistantSubscriptionService::class)->usagePeriod($team);
+        TeamBillingRate::setAmount((int) $team->id, TeamBillingProduct::WhatsappSend, 0.05, $periodStart);
+        TeamBillingRate::setAmount((int) $team->id, TeamBillingProduct::WhatsappSend, 0.005, now()->subHour());
+
+        $this->actingAs($user)
+            ->post(route('account.rates.apply-current-period', $team->id))
+            ->assertRedirect(route('account.rates.edit', $team->id))
+            ->assertSessionHas('success');
+
+        $this->assertEqualsWithDelta(
+            0.005,
+            TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, $periodStart->copy()->addMinute()),
+            0.000001,
+        );
     }
 
     public function test_account_rates_page_shows_current_month_consumption_and_markup(): void
@@ -318,7 +350,7 @@ class AccountFormModuleGroupLabelsTest extends TestCase
         $this->assertSame(8.0, TokenBillingRateService::clientTokenMultiplier($team));
         $this->assertSame(10.0, TokenBillingRateService::clientTokenMultiplier($team, now()->subMinute()));
         $this->assertSame(0.002, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend));
-        $this->assertSame(0.05, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, now()->subMinute()));
+        $this->assertSame(0.005, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, now()->subMinute()));
         $this->assertSame('0.008', MailerPaygPricing::pricePerEmail($team));
         $this->assertSame('0.003', MailerPaygPricing::pricePerEmail($team, now()->subMinute()));
         $this->assertSame(0.2, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::ProspectCredit));

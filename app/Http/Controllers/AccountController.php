@@ -12,6 +12,7 @@ use App\Models\Module;
 use App\Models\Subscription;
 use App\Models\Team;
 use App\Models\TeamBillingRate;
+use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\TeamBillingUsageSummaryService;
 use App\Support\TeamUsageInvoiceFrequency;
 use App\Traits\ConfiguresTeamMail;
@@ -211,6 +212,17 @@ class AccountController extends Controller
         return redirect()
             ->route('account.rates.edit', $team->id)
             ->with('success', 'Tarifas actualizadas');
+    }
+
+    public function applyRatesToCurrentPeriod(string $id, AssistantSubscriptionService $subscriptions)
+    {
+        $team = Team::findOrFail($id);
+        [$from] = $subscriptions->usagePeriod($team);
+        TeamBillingRate::applyAllCurrentAmountsFrom((int) $team->id, $from);
+
+        return redirect()
+            ->route('account.rates.edit', $team->id)
+            ->with('success', 'Tarifas aplicadas al período en curso desde '.$from->format('d/m/Y H:i'));
     }
 
     public function updateOwnerPassword(Request $request, string $id)

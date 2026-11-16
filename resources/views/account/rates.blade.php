@@ -152,8 +152,15 @@
 </div>
 
 <div class="card mb-4">
-    <div class="card-header">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h5 class="card-title mb-0">Tarifas</h5>
+        <form action="{{ route('account.rates.apply-current-period', $team->id) }}" method="POST"
+            onsubmit="return confirm('¿Aplicar las tarifas actuales a todo el período en curso ({{ $invoicePreview['period_label'] ?? 'ciclo abierto' }})? El consumo ya facturado no cambia.');">
+            @csrf
+            <button type="submit" class="btn btn-sm btn-label-primary waves-effect waves-light">
+                <i class="ti ti-refresh me-1"></i>Aplicar al período en curso
+            </button>
+        </form>
     </div>
     <div class="card-body">
         @if(session('success'))
@@ -162,7 +169,7 @@
         @php
             $usageCurrency = \App\Services\TokenBillingRateService::displayCurrency();
         @endphp
-        <p class="text-muted">Al cambiar una tarifa, la anterior se conserva para el consumo ya facturado. El consumo se factura aparte, no en la cuota del plan. Los importes de esta página están en {{ $usageCurrency }}.</p>
+        <p class="text-muted">Al cambiar una tarifa, la anterior se conserva para el consumo ya facturado. Usa «Aplicar al período en curso» para recalcular el ciclo abierto con las tarifas actuales. El consumo se factura aparte, no en la cuota del plan. Los importes de esta página están en {{ $usageCurrency }}.</p>
         <form id="account-rates-form" action="{{ route('account.rates.update', $team->id) }}" method="POST">
             @csrf
             @method('PUT')
@@ -177,7 +184,7 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" for="whatsapp_send">Envío WhatsApp ({{ $usageCurrency }})</label>
-                    <input type="number" step="any" min="0" class="form-control @error('whatsapp_send') is-invalid @enderror" id="whatsapp_send" name="whatsapp_send" value="{{ old('whatsapp_send', $billingRates['whatsapp_send'] ?? '0.05') }}" {{-- en €: 0.003 --}}>
+                    <input type="number" step="any" min="0" class="form-control @error('whatsapp_send') is-invalid @enderror" id="whatsapp_send" name="whatsapp_send" value="{{ old('whatsapp_send', $billingRates['whatsapp_send'] ?? '0.005') }}" {{-- en €: 0.003 --}}>
                     @error('whatsapp_send')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror

@@ -241,6 +241,70 @@ class TeamBillingRate extends Model
         ]);
     }
 
+    /**
+     * Reprice the open usage window: current amounts apply from $from for every product.
+     * History before $from is kept; rate changes inside the open period are replaced.
+     */
+    public static function applyAllCurrentAmountsFrom(?int $teamId, DateTimeInterface|string $from): void
+    {
+        foreach (TeamBillingProduct::cases() as $product)
+        {
+            self::applyCurrentAmountFrom($teamId, $product, $from);
+        }
+    }
+
+    public static function applyCurrentAmountFrom(
+        ?int $teamId,
+        TeamBillingProduct $product,
+        DateTimeInterface|string $from,
+    ): self {
+        self::flushAmountCache();
+        $start = self::resolveDate($from);
+        $amount = self::normalizeAmount($product, self::amountOn($teamId, $product));
+        $open = self::query()
+            ->where('team_id', $teamId)
+            ->where('product', $product->value)
+            ->whereNull('effective_to')
+            ->orderByDesc('effective_from')
+            ->first();
+        $currency = $open?->currency ?: self::defaultCurrency($product);
+
+        $rows = self::query()
+            ->where('team_id', $teamId)
+            ->where('product', $product->value)
+            ->orderBy('effective_from')
+            ->get();
+
+        foreach ($rows as $row)
+        {
+            $rowFrom = Carbon::parse($row->effective_from);
+            $rowTo = $row->effective_to ? Carbon::parse($row->effective_to) : null;
+
+            if ($rowTo && $rowTo->lte($start))
+            {
+                continue;
+            }
+
+            if ($rowFrom->gte($start))
+            {
+                $row->delete();
+
+                continue;
+            }
+
+            $row->forceFill(['effective_to' => $start])->save();
+        }
+
+        return self::query()->create([
+            'team_id' => $teamId,
+            'product' => $product,
+            'amount' => $amount,
+            'currency' => $currency,
+            'effective_from' => $start,
+            'effective_to' => null,
+        ]);
+    }
+
     public static function configAmount(?int $teamId, TeamBillingProduct $product): float
     {
         $overrides = self::configOverrides($product);
@@ -259,7 +323,7 @@ class TeamBillingRate extends Model
         return match ($product)
         {
             TeamBillingProduct::TokensMultiplier => max(1, (float) config('humano_pricing.token_billing.client_token_multiplier', 10)),
-            TeamBillingProduct::WhatsappSend => max(0, (float) config('humano_pricing.whatsapp_message_billing.our_amount', 0.05)), // en €: 0.003
+            TeamBillingProduct::WhatsappSend => max(0, (float) config('humano_pricing.whatsapp_message_billing.our_amount', 0.005)), // en €: 0.003
             TeamBillingProduct::MailerSend => max(0, (float) config('emailer.payg.price_per_email', 0.003)), // en €: 0.002
             TeamBillingProduct::ProspectCredit => max(0, (float) config('humano_pricing.prospect_billing.our_amount', 0.15)),
             TeamBillingProduct::StorageMegabyte => max(0, (float) config('humano_pricing.storage_billing.our_amount', 0.02)),

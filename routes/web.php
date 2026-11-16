@@ -520,6 +520,7 @@ Route::middleware(['auth'])->group(function ()
         Route::get('/account-management/{id}/edit', [AccountController::class, 'edit'])->name('account.edit');
         Route::get('/account-management/{id}/rates', [AccountController::class, 'editRates'])->name('account.rates.edit');
         Route::put('/account-management/{id}/rates', [AccountController::class, 'updateRates'])->name('account.rates.update');
+        Route::post('/account-management/{id}/rates/apply-current-period', [AccountController::class, 'applyRatesToCurrentPeriod'])->name('account.rates.apply-current-period');
         Route::put('/account-management/{id}', [AccountController::class, 'update'])->name('account.update');
         Route::post('/account-management', [AccountController::class, 'store'])->name('account.store');
         Route::get('/account-management/{id}/subscriptions', [AccountController::class, 'showSubscriptions'])->name('account.subscriptions');
