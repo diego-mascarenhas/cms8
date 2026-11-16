@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\AgentConversation;
+use App\Models\AgentConversationMessage;
 use App\Models\Conversation;
 use App\Models\Enterprise;
 use App\Models\MailerUsageLog;
@@ -20,6 +22,7 @@ use Database\Seeders\LanguageSeeder;
 use Database\Seeders\ProjectStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Laravel\Jetstream\Features;
 use ReflectionMethod;
 use Spatie\Permission\Models\Role;
@@ -92,7 +95,7 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.whatsapp_usage.our_amount_cents', 0);
         $response->assertJsonPath('data.whatsapp_usage.amount_due_cents', 0);
         $response->assertJsonPath('data.whatsapp_usage.currency', 'USD');
-        $this->assertSame(0.005, $response->json('data.whatsapp_usage.our_rate'));
+        $this->assertSame(0.016, $response->json('data.whatsapp_usage.our_rate'));
         $this->assertSame(0.005, $response->json('data.whatsapp_usage.reference_rate'));
         $response->assertJsonPath('data.prospect_usage.credits_used', 0);
         $response->assertJsonPath('data.prospect_usage.amount_due_cents', 0);
@@ -497,12 +500,12 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.token_usage.total_tokens_used', 20_000_000);
         $response->assertJsonPath('data.token_usage.total_calls', 2);
         $response->assertJsonPath('data.token_usage.amount_due_cents', 2000);
-        $response->assertJsonPath('data.token_usage.currency', 'EUR');
+        $response->assertJsonPath('data.token_usage.currency', 'USD');
     }
 
     public function test_subscription_token_usage_bills_catalog_priced_whatsapp_models(): void
     {
-        [, $team, $token] = $this->assistantUserWithToken();
+        [$user, $team, $token] = $this->assistantUserWithToken();
         $teamNumber = '34999000111';
         $team->setSetting('whatsapp_from', $teamNumber);
 
@@ -522,6 +525,35 @@ class ApiAssistantSubscriptionTest extends TestCase
                     'model' => 'claude-haiku-4-5',
                 ],
             ],
+        ]);
+
+        $client = User::factory()->create([
+            'phone' => '34600111222',
+            'name' => 'Cliente sub usage',
+        ]);
+        $conversationId = (string) Str::uuid();
+        AgentConversation::query()->create([
+            'id' => $conversationId,
+            'user_id' => $client->id,
+            'team_id' => $team->id,
+            'title' => 'Subscription usage',
+        ]);
+        AgentConversationMessage::query()->create([
+            'id' => (string) Str::uuid(),
+            'conversation_id' => $conversationId,
+            'user_id' => $user->id,
+            'agent' => 'chat_assistant',
+            'role' => 'assistant',
+            'content' => 'Respuesta facturable',
+            'attachments' => [],
+            'tool_calls' => [],
+            'tool_results' => [],
+            'usage' => [
+                'prompt_tokens' => 1_000_000,
+                'completion_tokens' => 0,
+                'total_tokens' => 1_000_000,
+            ],
+            'meta' => ['model' => 'claude-haiku-4-5'],
         ]);
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
