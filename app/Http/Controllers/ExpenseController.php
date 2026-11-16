@@ -355,6 +355,7 @@ class ExpenseController extends Controller
                     : null,
                 'operation' => $operationValue,
                 'operation_label' => $isIncome ? 'Ingreso' : 'Gasto',
+                'enterprise_id' => $invoice?->enterprise_id ? (int) $invoice->enterprise_id : null,
                 'enterprise_name' => $invoice?->enterprise?->name,
                 'invoice_id' => $invoice?->id,
                 'invoice_number' => $invoice?->number,

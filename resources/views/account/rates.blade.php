@@ -3,14 +3,11 @@
 @section('title', 'Tarifas')
 
 @section('vendor-style')
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
-    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}">
 @endsection
 
 @section('vendor-script')
-    <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
-    <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
 @section('content')
@@ -152,8 +149,14 @@
 </div>
 
 <div class="card mb-4">
-    <div class="card-header">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h5 class="card-title mb-0">Tarifas</h5>
+        <form id="apply-current-period-form" action="{{ route('account.rates.apply-current-period', $team->id) }}" method="POST">
+            @csrf
+            <button type="button" id="apply-current-period-btn" class="btn btn-sm btn-label-primary waves-effect waves-light">
+                <i class="ti ti-refresh me-1"></i>Aplicar al período en curso
+            </button>
+        </form>
     </div>
     <div class="card-body">
         @if(session('success'))
@@ -162,7 +165,7 @@
         @php
             $usageCurrency = \App\Services\TokenBillingRateService::displayCurrency();
         @endphp
-        <p class="text-muted">Al cambiar una tarifa, la anterior se conserva para el consumo ya facturado. El consumo se factura aparte, no en la cuota del plan. Los importes de esta página están en {{ $usageCurrency }}.</p>
+        <p class="text-muted">Al cambiar una tarifa, la anterior se conserva para el consumo ya facturado. Usa «Aplicar al período en curso» para recalcular el ciclo abierto con las tarifas actuales. El consumo se factura aparte, no en la cuota del plan. Los importes de esta página están en {{ $usageCurrency }}.</p>
         <form id="account-rates-form" action="{{ route('account.rates.update', $team->id) }}" method="POST">
             @csrf
             @method('PUT')
@@ -177,7 +180,7 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" for="whatsapp_send">Envío WhatsApp ({{ $usageCurrency }})</label>
-                    <input type="number" step="any" min="0" class="form-control @error('whatsapp_send') is-invalid @enderror" id="whatsapp_send" name="whatsapp_send" value="{{ old('whatsapp_send', $billingRates['whatsapp_send'] ?? '0.05') }}" {{-- en €: 0.003 --}}>
+                    <input type="number" step="any" min="0" class="form-control @error('whatsapp_send') is-invalid @enderror" id="whatsapp_send" name="whatsapp_send" value="{{ old('whatsapp_send', $billingRates['whatsapp_send'] ?? '0.005') }}" {{-- en €: 0.003 --}}>
                     @error('whatsapp_send')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -233,31 +236,6 @@
                 </div>
             </div>
 
-            @if(isset($billingRateHistory) && $billingRateHistory->isNotEmpty())
-                <div class="table-responsive mt-4">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Tarifa</th>
-                                <th class="text-center">Importe</th>
-                                <th>Desde</th>
-                                <th>Hasta</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($billingRateHistory as $rate)
-                                <tr>
-                                    <td>{{ $rate->product->label() }}</td>
-                                    <td class="text-center">{{ $rate->formattedAmount() }}@if($rate->currency) {{ $rate->currency }}@endif</td>
-                                    <td>{{ $rate->effective_from?->format('d/m/Y H:i') }}</td>
-                                    <td>{{ $rate->effective_to?->format('d/m/Y H:i') ?? 'Actual' }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
-
             <div class="pt-4">
                 <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
                 <a href="{{ route('account-management') }}" class="btn btn-label-secondary">Cancelar</a>
@@ -268,14 +246,63 @@
 
 <div class="card">
     <div class="card-body">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-            <h5 class="mb-0">Meses anteriores</h5>
-        </div>
-        {{ $dataTable->table(['class' => 'table table-hover dt-responsive nowrap w-100']) }}
+        <h5 class="mb-3">Historial de tarifas</h5>
+        @if(isset($billingRateHistory) && $billingRateHistory->isNotEmpty())
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Tarifa</th>
+                            <th class="text-center">Importe</th>
+                            <th>Desde</th>
+                            <th>Hasta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($billingRateHistory as $rate)
+                            <tr>
+                                <td>{{ $rate->product->label() }}</td>
+                                <td class="text-center">{{ $rate->formattedAmount() }}@if($rate->currency) {{ $rate->currency }}@endif</td>
+                                <td>{{ $rate->effective_from?->format('d/m/Y H:i') }}</td>
+                                <td>{{ $rate->effective_to?->format('d/m/Y H:i') ?? 'Actual' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @else
+            <p class="text-muted mb-0">Todavía no hay cambios de tarifa para esta cuenta.</p>
+        @endif
     </div>
 </div>
 @endsection
 
 @push('scripts')
-    {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
+    <script>
+        document.getElementById('apply-current-period-btn')?.addEventListener('click', function () {
+            const form = document.getElementById('apply-current-period-form');
+            if (!form || typeof Swal === 'undefined') {
+                form?.submit();
+                return;
+            }
+
+            Swal.fire({
+                title: '¿Aplicar tarifas al período?',
+                html: 'Se recalculará el consumo del período en curso<br><strong>{{ $invoicePreview['period_label'] ?? 'ciclo abierto' }}</strong><br>con las tarifas actuales.<br><span class="text-muted">El consumo ya facturado no cambia.</span>',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, aplicar',
+                cancelButtonText: 'Cancelar',
+                customClass: {
+                    confirmButton: 'btn btn-primary me-3',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                buttonsStyling: false
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    </script>
 @endpush

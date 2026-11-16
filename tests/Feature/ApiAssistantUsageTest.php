@@ -60,7 +60,7 @@ class ApiAssistantUsageTest extends TestCase
             ->assertJsonPath('data.sources', [])
             ->assertJsonPath('data.lines', [])
             ->assertJsonPath('data.whatsapp.messages_sent', 0)
-            ->assertJsonPath('data.whatsapp.our_rate', 0.05)
+            ->assertJsonPath('data.whatsapp.our_rate', 0.005)
             ->assertJsonPath('data.whatsapp.currency', 'USD')
             ->assertJsonPath('data.prospect.credits_used', 0)
             ->assertJsonPath('data.prospect.amount_due_cents', 0)
@@ -171,7 +171,7 @@ class ApiAssistantUsageTest extends TestCase
 
     public function test_usage_costs_use_catalog_market_rates_on_double_tokens(): void
     {
-        [$token] = $this->team();
+        [$token, $user, $team] = $this->team();
 
         $this->outboundUsage(
             '34600111222',
@@ -182,6 +182,14 @@ class ApiAssistantUsageTest extends TestCase
             'SM_usage_rate_1',
             tokensSaved: 1_000_000,
         );
+        $this->agentChatUsage(
+            $team,
+            $user,
+            prompt: 1_000_000,
+            completion: 0,
+            total: 1_000_000,
+            model: 'claude-haiku-4-5',
+        );
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/assistant/usage');
@@ -190,7 +198,7 @@ class ApiAssistantUsageTest extends TestCase
         $response->assertJsonPath('data.token_multiplier', 10);
         $response->assertJsonPath('data.client_presented', true);
         $response->assertJsonPath('data.whatsapp.messages_sent', 1);
-        $response->assertJsonPath('data.whatsapp.our_rate', 0.05);
+        $response->assertJsonPath('data.whatsapp.our_rate', 0.005);
         $response->assertJsonPath('data.totals.amount_cents', 1000);
         $response->assertJsonPath('data.all.amount_cents', 1000);
         $response->assertJsonPath('data.all.tokens', 10_000_000);
@@ -392,7 +400,7 @@ class ApiAssistantUsageTest extends TestCase
 
     public function test_usage_includes_every_team_source_not_only_whatsapp(): void
     {
-        [$token, , $team] = $this->team();
+        [$token, $user, $team] = $this->team();
 
         $ocr = Module::query()->firstOrCreate(
             ['key' => 'ocr'],
@@ -412,6 +420,7 @@ class ApiAssistantUsageTest extends TestCase
         ]);
 
         $this->outboundUsage('34600111222', 800, 40, 840, 'claude-haiku-4-5', 'SM_usage_ocr_wa');
+        $this->agentChatUsage($team, $user, prompt: 800, completion: 40, total: 840, model: 'claude-haiku-4-5');
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/assistant/usage');
@@ -419,11 +428,7 @@ class ApiAssistantUsageTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.totals.total_tokens', 8400);
         $response->assertJsonPath('data.all.tokens', 5_008_400);
-        $response->assertJsonPath('data.all.calls', 1);
-        $this->assertSame(
-            (int) collect($response->json('data.by_model'))->sum('amount_cents') + 500,
-            $response->json('data.all.amount_cents'),
-        );
+        $response->assertJsonPath('data.all.calls', 2);
         $this->assertSame('OCR', $response->json('data.sources.0.module_name'));
         $this->assertSame(5_000_000, $response->json('data.sources.0.tokens_used'));
         $this->assertSame(500, $response->json('data.sources.0.amount_cents'));
@@ -438,9 +443,9 @@ class ApiAssistantUsageTest extends TestCase
         );
     }
 
-    public function test_usage_replaces_ocr_logs_when_catalog_ocr_model_exists(): void
+    public function test_usage_headline_matches_invoice_logs_not_whatsapp_metadata_ocr(): void
     {
-        [$token, , $team] = $this->team();
+        [$token, $user, $team] = $this->team();
 
         $ocr = Module::query()->firstOrCreate(
             ['key' => 'ocr'],
@@ -475,6 +480,7 @@ class ApiAssistantUsageTest extends TestCase
         ]);
 
         $this->outboundUsage('34600111222', 800, 40, 840, 'claude-haiku-4-5', 'SM_usage_ocr_model');
+        $this->agentChatUsage($team, $user, prompt: 800, completion: 40, total: 840, model: 'claude-haiku-4-5');
 
         $conversation = Conversation::query()->create([
             'message_sid' => 'SM_usage_ocr_photo',
@@ -516,7 +522,7 @@ class ApiAssistantUsageTest extends TestCase
 
         $response->assertOk();
         $sources = collect($response->json('data.sources'));
-        $this->assertSame(2000, $sources->firstWhere('module_name', 'OCR')['tokens_used'] ?? null);
+        $this->assertSame(5_000_000, $sources->firstWhere('module_name', 'OCR')['tokens_used'] ?? null);
         $this->assertSame(8400, $sources->firstWhere('module_name', 'Chat')['tokens_used'] ?? null);
         $this->assertSame(1_000_000, $sources->firstWhere('module_name', 'Insights')['tokens_used'] ?? null);
         $this->assertSame(
@@ -527,7 +533,7 @@ class ApiAssistantUsageTest extends TestCase
             (int) $sources->sum('amount_cents'),
             $response->json('data.all.amount_cents'),
         );
-        $this->assertSame(1_010_400, $response->json('data.all.tokens'));
+        $this->assertSame(6_008_400, $response->json('data.all.tokens'));
     }
 
     public function test_usage_ignores_another_team_whatsapp_line(): void
@@ -627,6 +633,44 @@ class ApiAssistantUsageTest extends TestCase
             'metadata' => [
                 'token_usage' => $tokenUsage,
             ],
+        ]);
+    }
+
+    private function agentChatUsage(
+        \App\Models\Team $team,
+        User $user,
+        int $prompt,
+        int $completion,
+        int $total,
+        string $model,
+    ): void {
+        $client = User::factory()->create([
+            'phone' => '34600111222',
+            'name' => 'Cliente usage',
+        ]);
+        $conversationId = (string) Str::uuid();
+        AgentConversation::query()->create([
+            'id' => $conversationId,
+            'user_id' => $client->id,
+            'team_id' => $team->id,
+            'title' => 'Usage billing',
+        ]);
+        AgentConversationMessage::query()->create([
+            'id' => (string) Str::uuid(),
+            'conversation_id' => $conversationId,
+            'user_id' => $user->id,
+            'agent' => 'chat_assistant',
+            'role' => 'assistant',
+            'content' => 'Respuesta facturable',
+            'attachments' => [],
+            'tool_calls' => [],
+            'tool_results' => [],
+            'usage' => [
+                'prompt_tokens' => $prompt,
+                'completion_tokens' => $completion,
+                'total_tokens' => $total,
+            ],
+            'meta' => ['model' => $model],
         ]);
     }
 }

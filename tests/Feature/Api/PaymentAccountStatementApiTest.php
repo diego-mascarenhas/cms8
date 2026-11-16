@@ -246,14 +246,19 @@ class PaymentAccountStatementApiTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('uploaded', 1)
             ->assertJsonPath('statements.0.matched_lines', 1)
-            ->assertJsonPath('statements.0.statement_only_lines', 2)
+            ->assertJsonPath('statements.0.statement_only_lines', 1)
             ->assertJsonPath('statements.0.filename', 'movimientos.xlsx');
 
         $statement = BankStatement::query()->where('payment_account_id', $account->id)->first();
         $this->assertNotNull($statement);
         $this->assertSame(3, $statement->lines()->count());
         $this->assertSame(5894.56, (float) data_get($statement->validation_summary, 'stated_balance'));
+        $this->assertSame(1, (int) data_get($statement->validation_summary, 'dismissed'));
         $this->assertTrue($statement->lines()->where('external_id', '1197')->where('match_status', 'matched')->exists());
+        $fxFee = $statement->lines()->where('external_id', '1196')->first();
+        $this->assertNotNull($fxFee);
+        $this->assertSame('dismissed', $fxFee->match_status);
+        $this->assertTrue($fxFee->isDismissed());
 
         @unlink($path);
     }

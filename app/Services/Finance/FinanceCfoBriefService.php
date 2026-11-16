@@ -407,7 +407,7 @@ TXT;
      *     months_with_data: int,
      *     contracted_income: float,
      *     contracted_expense: float,
-     *     points: list<array{label: string, income: float, expense: float, projected: bool, expense_projected: bool}>,
+     *     points: list<array{month: string, label: string, income: float, expense: float, projected: bool, expense_projected: bool}>,
      *     generated_at: string|null
      * }
      */
@@ -434,6 +434,190 @@ TXT;
         }
 
         return $stored;
+    }
+
+    /**
+     * Line items that compose a projected month (contracted plans, finishes, renewals).
+     *
+     * @return array{
+     *     month: string,
+     *     label: string,
+     *     currency: string,
+     *     income_total: float,
+     *     expense_total: float,
+     *     items: list<array{
+     *         source: string,
+     *         source_label: string,
+     *         label: string,
+     *         amount: float,
+     *         kind: 'income'|'expense',
+     *         due_date: string|null,
+     *         project_id: int|null
+     *     }>
+     * }
+     */
+    public function projectionMonthBreakdown(Team $team, string $monthKey): array
+    {
+        if (! preg_match('/^\d{4}-\d{2}$/', $monthKey))
+        {
+            throw new \InvalidArgumentException('Invalid month key.');
+        }
+
+        $monthStart = Carbon::createFromFormat('Y-m', $monthKey)->startOfMonth();
+        $monthEnd = $monthStart->copy()->endOfMonth();
+        $currency = $this->reportingCurrency($team);
+        $items = [];
+
+        $projects = Project::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->whereIn('status_id', $this->pipelineStatusIds())
+            ->get();
+
+        $installmentRows = [];
+
+        foreach ($projects as $project)
+        {
+            $projectName = trim((string) ($project->name ?: $project->real_name ?: ('Proyecto #'.$project->id)));
+
+            foreach ($this->paymentPlan($project) as $installment)
+            {
+                if (($installment['charged'] ?? false) === true || empty($installment['due_date']))
+                {
+                    continue;
+                }
+
+                $due = Carbon::parse($installment['due_date']);
+
+                if ($due->lt($monthStart) || $due->gt($monthEnd))
+                {
+                    continue;
+                }
+
+                $installmentRows[] = [
+                    'project_id' => (int) $project->id,
+                    'project_name' => $projectName,
+                    'due_date' => $due->toDateString(),
+                    'amount' => (float) $installment['amount'],
+                    'invoice_id' => $installment['invoice_id'] ?? null,
+                ];
+            }
+
+            $plan = $this->paymentPlan($project);
+            $planned = array_sum(array_column($plan, 'amount'));
+            $deposit = is_array(data_get($project->data, 'deposit_invoice'))
+                && isset(data_get($project->data, 'deposit_invoice')['invoice_id'])
+                ? (float) data_get($project->data, 'deposit_invoice.deposit_base', 0)
+                : 0.0;
+            $remaining = round(max(0, $this->quotedAmount($project) - $deposit - $planned), 2);
+
+            if ($remaining > 0 && $project->date_end !== null)
+            {
+                $finish = $project->date_end->copy();
+
+                if ($finish->gte($monthStart) && $finish->lte($monthEnd))
+                {
+                    $items[] = [
+                        'source' => 'finish',
+                        'source_label' => 'Cierre de proyecto (saldo)',
+                        'label' => $projectName,
+                        'amount' => $remaining,
+                        'kind' => 'income',
+                        'due_date' => $finish->toDateString(),
+                        'project_id' => (int) $project->id,
+                    ];
+                }
+            }
+        }
+
+        $invoiceIds = array_values(array_filter(array_map(
+            fn (array $row): ?int => isset($row['invoice_id']) ? (int) $row['invoice_id'] : null,
+            $installmentRows,
+        )));
+        $currencyIds = $invoiceIds === []
+            ? collect()
+            : Invoice::withoutGlobalScopes()->whereIn('id', $invoiceIds)->pluck('currency_id', 'id');
+
+        foreach ($installmentRows as $row)
+        {
+            $due = Carbon::parse($row['due_date']);
+            $currencyId = isset($row['invoice_id']) ? $currencyIds->get($row['invoice_id']) : null;
+            $amount = $this->toReportingCurrency(
+                (float) $row['amount'],
+                $this->currencyCode($currencyId !== null ? (int) $currencyId : null, $currency),
+                $currency,
+                $due,
+            );
+
+            if ($amount === null || $amount <= 0)
+            {
+                continue;
+            }
+
+            $items[] = [
+                'source' => 'installment',
+                'source_label' => 'Cuota de proyecto',
+                'label' => (string) $row['project_name'],
+                'amount' => round($amount, 2),
+                'kind' => 'income',
+                'due_date' => $due->toDateString(),
+                'project_id' => (int) $row['project_id'],
+            ];
+        }
+
+        foreach ($this->annualSubscriptionRows($team) as $service)
+        {
+            $when = $service['next_billing']->copy();
+            $guard = 0;
+
+            while ($when->lt($monthStart) && $guard < 40)
+            {
+                $when->addMonthsNoOverflow(12);
+                $guard++;
+            }
+
+            if ($when->gte($monthStart) && $when->lte($monthEnd))
+            {
+                $items[] = [
+                    'source' => $service['expense'] ? 'renewal_expense' : 'renewal_income',
+                    'source_label' => $service['expense'] ? 'Renovación anual (gasto)' : 'Renovación anual',
+                    'label' => (string) $service['name'],
+                    'amount' => round((float) $service['amount'], 2),
+                    'kind' => $service['expense'] ? 'expense' : 'income',
+                    'due_date' => $when->toDateString(),
+                    'project_id' => null,
+                ];
+            }
+        }
+
+        usort($items, function (array $left, array $right): int
+        {
+            $kind = ($left['kind'] === 'income' ? 0 : 1) <=> ($right['kind'] === 'income' ? 0 : 1);
+
+            if ($kind !== 0)
+            {
+                return $kind;
+            }
+
+            return ((float) $right['amount']) <=> ((float) $left['amount']);
+        });
+
+        $incomeTotal = array_sum(array_map(
+            fn (array $item): float => $item['kind'] === 'income' ? (float) $item['amount'] : 0.0,
+            $items,
+        ));
+        $expenseTotal = array_sum(array_map(
+            fn (array $item): float => $item['kind'] === 'expense' ? (float) $item['amount'] : 0.0,
+            $items,
+        ));
+
+        return [
+            'month' => $monthKey,
+            'label' => $monthStart->translatedFormat('M Y'),
+            'currency' => $currency,
+            'income_total' => round($incomeTotal, 2),
+            'expense_total' => round($expenseTotal, 2),
+            'items' => $items,
+        ];
     }
 
     /**
@@ -869,6 +1053,7 @@ TXT;
             }
 
             $points[] = [
+                'month' => $key,
                 'label' => $date->translatedFormat('M Y'),
                 'income' => round($income, 2),
                 'expense' => round($expense, 2),

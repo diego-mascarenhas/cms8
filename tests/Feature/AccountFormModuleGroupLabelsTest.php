@@ -137,6 +137,8 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->get(route('account.rates.edit', $team->id))
             ->assertOk()
             ->assertSee('Tarifas', false)
+            ->assertSee('Aplicar al período en curso', false)
+            ->assertSee(route('account.rates.apply-current-period', $team->id, false), false)
             ->assertSee('Preview de factura', false)
             ->assertSee(route('help.team-billing', [], false), false)
             ->assertSee('A facturar', false)
@@ -147,8 +149,9 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->assertSee('Almacenamiento', false)
             ->assertDontSee('name="invoice_frequency"', false)
             ->assertDontSee('Frecuencia de facturación', false)
-            ->assertSee('Meses anteriores', false)
-            ->assertSee('id="account-rates-usage-table"', false)
+            ->assertSee('Historial de tarifas', false)
+            ->assertDontSee('Meses anteriores', false)
+            ->assertDontSee('id="account-rates-usage-table"', false)
             ->assertSee('name="tokens_multiplier"', false)
             ->assertSee('name="whatsapp_send"', false)
             ->assertSee('name="mailer_send"', false)
@@ -165,6 +168,36 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->assertSee('class="text-center">Importe', false)
             ->assertSee('class="text-center">10', false)
             ->assertSee('Multiplicador de tokens', false);
+    }
+
+    public function test_account_rates_can_apply_current_rates_to_open_period(): void
+    {
+        $this->seed(ModuleSeeder::class);
+
+        $role = Role::firstOrCreate(
+            ['name' => 'root', 'guard_name' => 'web'],
+        );
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole($role);
+
+        [$periodStart] = app(\App\Services\Billing\AssistantSubscriptionService::class)->usagePeriod($team);
+        TeamBillingRate::setAmount((int) $team->id, TeamBillingProduct::WhatsappSend, 0.05, $periodStart);
+        TeamBillingRate::setAmount((int) $team->id, TeamBillingProduct::WhatsappSend, 0.005, now()->subHour());
+
+        $this->actingAs($user)
+            ->post(route('account.rates.apply-current-period', $team->id))
+            ->assertRedirect(route('account.rates.edit', $team->id))
+            ->assertSessionHas('success');
+
+        $this->assertEqualsWithDelta(
+            0.005,
+            TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, $periodStart->copy()->addMinute()),
+            0.000001,
+        );
     }
 
     public function test_account_rates_page_shows_current_month_consumption_and_markup(): void
@@ -226,7 +259,7 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->assertSee('class="text-end text-nowrap">Importe', false);
     }
 
-    public function test_account_rates_usage_datatable_lists_past_months(): void
+    public function test_account_rates_page_lists_rate_history_in_its_own_card(): void
     {
         $this->seed(ModuleSeeder::class);
         $this->fakeTokenCatalog();
@@ -241,52 +274,15 @@ class AccountFormModuleGroupLabelsTest extends TestCase
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole($role);
 
-        $previous = TokenUsageLog::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'module_id' => null,
-            'service' => 'ContactSentimentAnalysisService',
-            'json_size' => 10,
-            'toon_size' => 0,
-            'json_tokens' => 2_000_000,
-            'toon_tokens' => 0,
-            'savings_percentage' => 0,
-            'used_toon' => false,
-        ]);
-        $previous->forceFill(['created_at' => now()->subMonth(), 'updated_at' => now()->subMonth()])->save();
+        TeamBillingRate::setAmount((int) $team->id, TeamBillingProduct::WhatsappSend, 0.005);
 
-        $columns = [];
-        foreach (['month', 'month_label', 'tokens', 'whatsapp', 'mailer', 'cost', 'billed', 'markup'] as $data)
-        {
-            $columns[] = [
-                'data' => $data,
-                'name' => $data,
-                'searchable' => 'true',
-                'orderable' => 'true',
-                'search' => ['value' => '', 'regex' => 'false'],
-            ];
-        }
-
-        $response = $this->actingAs($user)->withHeaders([
-            'X-Requested-With' => 'XMLHttpRequest',
-            'Accept' => 'application/json',
-        ])->get(route('account.rates.edit', $team->id), [
-            'draw' => 1,
-            'start' => 0,
-            'length' => 12,
-            'search' => ['value' => '', 'regex' => 'false'],
-            'order' => [['column' => 0, 'dir' => 'desc']],
-            'columns' => $columns,
-        ]);
-
-        $response->assertOk();
-        $payload = $response->json();
-        $this->assertArrayNotHasKey('error', $payload);
-        $this->assertSame(1, (int) $payload['recordsTotal']);
-        $this->assertSame(now()->subMonth()->format('Y-m'), $payload['data'][0]['month']);
-        $this->assertSame('20.000.000', $payload['data'][0]['tokens']);
-        $this->assertSame('2,00 EUR', $payload['data'][0]['cost']);
-        $this->assertSame('20,00 EUR', $payload['data'][0]['billed']);
-        $this->assertSame('18,00 EUR', $payload['data'][0]['markup']);
+        $this->actingAs($user)
+            ->get(route('account.rates.edit', $team->id))
+            ->assertOk()
+            ->assertSee('Historial de tarifas', false)
+            ->assertSee('Envío WhatsApp', false)
+            ->assertSee('0.005', false)
+            ->assertDontSee('Meses anteriores', false);
     }
 
     public function test_account_update_stores_team_billing_rates_without_repricing_the_past(): void
@@ -318,7 +314,7 @@ class AccountFormModuleGroupLabelsTest extends TestCase
         $this->assertSame(8.0, TokenBillingRateService::clientTokenMultiplier($team));
         $this->assertSame(10.0, TokenBillingRateService::clientTokenMultiplier($team, now()->subMinute()));
         $this->assertSame(0.002, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend));
-        $this->assertSame(0.05, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, now()->subMinute()));
+        $this->assertSame(0.005, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, now()->subMinute()));
         $this->assertSame('0.008', MailerPaygPricing::pricePerEmail($team));
         $this->assertSame('0.003', MailerPaygPricing::pricePerEmail($team, now()->subMinute()));
         $this->assertSame(0.2, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::ProspectCredit));

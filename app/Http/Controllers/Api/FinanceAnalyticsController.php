@@ -119,6 +119,48 @@ class FinanceAnalyticsController extends Controller
         ]);
     }
 
+    public function flowProjectionMonth(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $user = $request->user();
+        $team = $user?->currentTeam;
+
+        if ($team === null)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No hay equipo actual.'),
+            ], 422);
+        }
+
+        $month = (string) $request->query('month', '');
+
+        if (! preg_match('/^\d{4}-\d{2}$/', $month))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Indicá el mes con formato AAAA-MM.'),
+            ], 422);
+        }
+
+        try
+        {
+            $breakdown = $this->financeCfoBriefService->projectionMonthBreakdown($team, $month);
+        } catch (\InvalidArgumentException)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Mes inválido.'),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            ...$breakdown,
+        ]);
+    }
+
     public function storeCfoBrief(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Payment::class);

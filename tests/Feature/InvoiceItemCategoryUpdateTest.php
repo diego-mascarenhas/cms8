@@ -10,7 +10,10 @@ use App\Models\InvoiceSync;
 use App\Models\Module;
 use App\Models\Service;
 use App\Models\StripeSubscription;
+use App\Models\TeamUsageInvoice;
 use App\Models\User;
+use App\Services\Billing\ServiceCategoryAssignmentService;
+use App\Services\Billing\StripeInvoiceItemImporter;
 use Carbon\Carbon;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
@@ -159,7 +162,7 @@ class InvoiceItemCategoryUpdateTest extends TestCase
             ->assertSee('Sin categoría');
     }
 
-    public function test_invoice_item_uses_the_category_already_on_the_service(): void
+    public function test_invoice_item_category_updates_linked_service_bidirectionally(): void
     {
         [$user, $team, $item, $category] = $this->createTeamWithUncategorizedItem();
 
@@ -185,7 +188,7 @@ class InvoiceItemCategoryUpdateTest extends TestCase
             'plan_name' => 'Hosting',
         ]);
 
-        Service::withoutGlobalScopes()->create([
+        $service = Service::withoutGlobalScopes()->create([
             'enterprise_id' => $invoice->enterprise_id,
             'subscription_id' => $sync->id,
             'category_id' => $category->id,
@@ -217,13 +220,138 @@ class InvoiceItemCategoryUpdateTest extends TestCase
             ->assertOk()
             ->assertJson([
                 'success' => true,
-                'category_id' => $category->id,
-                'category_name' => 'Hosting',
+                'category_id' => $otherCategory->id,
+                'category_name' => 'Consulting',
             ]);
 
         $this->assertDatabaseHas('invoice_items', [
             'id' => $item->id,
-            'category_id' => $category->id,
+            'category_id' => $otherCategory->id,
+        ]);
+        $this->assertSame($otherCategory->id, (int) $service->fresh()->category_id);
+    }
+
+    public function test_usage_invoice_category_applies_to_team_usage_drafts_and_survives_resync(): void
+    {
+        [$user, $team, $item, $category] = $this->createTeamWithUncategorizedItem();
+
+        $consumo = Category::factory()->create([
+            'team_id' => $team->id,
+            'module_id' => $category->module_id,
+            'name' => 'Consumo IA y Mensajería',
+        ]);
+
+        $invoice = $item->invoice()->withoutGlobalScopes()->first();
+        $invoice->forceFill([
+            'operation' => 'sell',
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_usage_1',
+            'status' => 9,
+        ])->save();
+
+        InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_usage_1',
+            'status' => 'draft',
+            'currency' => 'eur',
+            'total' => 250,
+            'paid' => false,
+            'raw_payload' => [
+                'metadata' => ['humano_usage' => '1'],
+                'lines' => [
+                    'data' => [[
+                        'description' => 'Uncategorized expense',
+                        'quantity' => 1,
+                        'amount_excluding_tax' => 25000,
+                        'tax_rates' => [],
+                    ]],
+                ],
+            ],
+        ]);
+
+        TeamUsageInvoice::factory()->create([
+            'team_id' => $team->id,
+            'stripe_invoice_id' => 'in_usage_1',
+            'status' => TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 25000,
+            'period_from' => Carbon::create(2026, 3, 1)->startOfDay(),
+            'period_to' => Carbon::create(2026, 4, 1)->startOfDay(),
+        ]);
+
+        $siblingInvoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $invoice->enterprise_id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'USAGE-2',
+            'date' => Carbon::create(2026, 4, 10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 9,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_usage_2',
+        ]);
+
+        $siblingItem = InvoiceItem::query()->create([
+            'invoice_id' => $siblingInvoice->id,
+            'category_id' => null,
+            'description' => 'Otro consumo',
+            'quantity' => 1,
+            'unit_price' => 100,
+            'discount' => 0,
+        ]);
+
+        InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_usage_2',
+            'status' => 'draft',
+            'currency' => 'eur',
+            'raw_payload' => [
+                'metadata' => ['humano_usage' => '1'],
+                'lines' => [
+                    'data' => [[
+                        'description' => 'Otro consumo',
+                        'quantity' => 1,
+                        'amount_excluding_tax' => 10000,
+                        'tax_rates' => [],
+                    ]],
+                ],
+            ],
+        ]);
+
+        TeamUsageInvoice::factory()->create([
+            'team_id' => $team->id,
+            'stripe_invoice_id' => 'in_usage_2',
+            'status' => TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 10000,
+            'period_from' => Carbon::create(2026, 4, 1)->startOfDay(),
+            'period_to' => Carbon::create(2026, 5, 1)->startOfDay(),
+        ]);
+
+        $this->actingAs($user)
+            ->patchJson(route('invoice-items.category.update', $item), [
+                'category_id' => $consumo->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('category_id', $consumo->id);
+
+        $this->assertSame($consumo->id, (int) $siblingItem->fresh()->category_id);
+        $this->assertSame(
+            $consumo->id,
+            app(ServiceCategoryAssignmentService::class)->usageCategoryIdForTeam((int) $team->id),
+        );
+
+        $sync = InvoiceSync::query()->where('external_id', 'in_usage_1')->first();
+        app(StripeInvoiceItemImporter::class)->syncForInvoice($invoice->fresh(), $sync);
+
+        $this->assertDatabaseHas('invoice_items', [
+            'invoice_id' => $invoice->id,
+            'description' => 'Uncategorized expense',
+            'category_id' => $consumo->id,
         ]);
     }
 
