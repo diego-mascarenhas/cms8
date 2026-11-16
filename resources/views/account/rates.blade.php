@@ -6,11 +6,13 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}">
 @endsection
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
 @section('content')
@@ -154,10 +156,9 @@
 <div class="card mb-4">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <h5 class="card-title mb-0">Tarifas</h5>
-        <form action="{{ route('account.rates.apply-current-period', $team->id) }}" method="POST"
-            onsubmit="return confirm('¿Aplicar las tarifas actuales a todo el período en curso ({{ $invoicePreview['period_label'] ?? 'ciclo abierto' }})? El consumo ya facturado no cambia.');">
+        <form id="apply-current-period-form" action="{{ route('account.rates.apply-current-period', $team->id) }}" method="POST">
             @csrf
-            <button type="submit" class="btn btn-sm btn-label-primary waves-effect waves-light">
+            <button type="button" id="apply-current-period-btn" class="btn btn-sm btn-label-primary waves-effect waves-light">
                 <i class="ti ti-refresh me-1"></i>Aplicar al período en curso
             </button>
         </form>
@@ -285,4 +286,31 @@
 
 @push('scripts')
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
+    <script>
+        document.getElementById('apply-current-period-btn')?.addEventListener('click', function () {
+            const form = document.getElementById('apply-current-period-form');
+            if (!form || typeof Swal === 'undefined') {
+                form?.submit();
+                return;
+            }
+
+            Swal.fire({
+                title: '¿Aplicar tarifas al período?',
+                html: 'Se recalculará el consumo del período en curso<br><strong>{{ $invoicePreview['period_label'] ?? 'ciclo abierto' }}</strong><br>con las tarifas actuales.<br><span class="text-muted">El consumo ya facturado no cambia.</span>',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, aplicar',
+                cancelButtonText: 'Cancelar',
+                customClass: {
+                    confirmButton: 'btn btn-primary me-3',
+                    cancelButton: 'btn btn-label-secondary'
+                },
+                buttonsStyling: false
+            }).then(function (result) {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    </script>
 @endpush
