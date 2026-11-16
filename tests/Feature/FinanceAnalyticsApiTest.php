@@ -183,7 +183,26 @@ class FinanceAnalyticsApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('year', $year)
-            ->assertJsonCount(15, 'points');
+            ->assertJsonCount(15, 'points')
+            ->assertJsonPath('points.0.month', now()->startOfMonth()->subMonths(3)->format('Y-m'));
+    }
+
+    public function test_flow_projection_month_returns_contracted_breakdown(): void
+    {
+        $user = $this->makeAdminUser();
+        $token = $user->createToken('finance-api')->plainTextToken;
+        $month = now()->startOfMonth()->addMonths(2)->format('Y-m');
+
+        $this->withToken($token)
+            ->getJson('/api/finance/flow-projection/month?month='.$month)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('month', $month)
+            ->assertJsonStructure([
+                'income_total',
+                'expense_total',
+                'items',
+            ]);
     }
 
     public function test_cfo_brief_starts_in_background_and_status_returns_analysis(): void
