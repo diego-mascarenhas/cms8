@@ -20,8 +20,8 @@ return [
     'rates_heading' => 'Tarifas',
     'rates_intro' => 'Hay ocho productos. Si el equipo no tiene tarifa propia, se usa la de plataforma y, si tampoco existe, la de configuración. El ciclo de consumo es mensual.',
     'rates_tokens' => 'Multiplicador de tokens: el cliente ve N × tokens reales a tarifa OpenRouter, sin recargo extra. Incluye los tokens de las reuniones. Por defecto ×10.',
-    'rates_whatsapp' => 'Envío WhatsApp: USD por mensaje saliente. Por defecto 0,016 USD.',
-    // 'rates_whatsapp' => 'Envío WhatsApp: EUR por mensaje saliente. Por defecto 0,003 EUR.', // en €
+    'rates_whatsapp' => 'Envío WhatsApp: USD por mensaje saliente. Por defecto 0,008 USD.',
+    // 'rates_whatsapp' => 'Envío WhatsApp: EUR por mensaje saliente. Por defecto 0,007 EUR.', // en €
     'rates_mailer' => 'Envío mail: USD por cada email enviado, desde el primero. El plan cubre el uso de la plataforma y el límite de suscriptores, no los envíos. Por defecto 0,003 USD.',
     // 'rates_mailer' => 'Envío mail: EUR por cada email enviado, desde el primero. El plan cubre el uso de la plataforma y el límite de suscriptores, no los envíos. Por defecto 0,002 EUR.', // en €
     'rates_prospect' => 'Prospección: USD por crédito consumido al importar un prospecto. Por defecto 0,15 USD.',

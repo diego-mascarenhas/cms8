@@ -95,7 +95,7 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.whatsapp_usage.our_amount_cents', 0);
         $response->assertJsonPath('data.whatsapp_usage.amount_due_cents', 0);
         $response->assertJsonPath('data.whatsapp_usage.currency', 'USD');
-        $this->assertSame(0.016, $response->json('data.whatsapp_usage.our_rate'));
+        $this->assertSame(0.008, $response->json('data.whatsapp_usage.our_rate'));
         $this->assertSame(0.005, $response->json('data.whatsapp_usage.reference_rate'));
         $response->assertJsonPath('data.prospect_usage.credits_used', 0);
         $response->assertJsonPath('data.prospect_usage.amount_due_cents', 0);
