@@ -180,7 +180,7 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" for="whatsapp_send">Envío WhatsApp ({{ $usageCurrency }})</label>
-                    <input type="number" step="any" min="0" class="form-control @error('whatsapp_send') is-invalid @enderror" id="whatsapp_send" name="whatsapp_send" value="{{ old('whatsapp_send', $billingRates['whatsapp_send'] ?? '0.005') }}" {{-- en €: 0.003 --}}>
+                    <input type="number" step="any" min="0" class="form-control @error('whatsapp_send') is-invalid @enderror" id="whatsapp_send" name="whatsapp_send" value="{{ old('whatsapp_send', $billingRates['whatsapp_send'] ?? '0.016') }}" {{-- en €: 0.003 --}}>
                     @error('whatsapp_send')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror

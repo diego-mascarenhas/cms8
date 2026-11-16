@@ -68,6 +68,7 @@ class TeamBillingRateTest extends TestCase
         ]);
         $new->forceFill(['created_at' => $changedAt->copy()->addHour()])->save();
 
+        TeamBillingRate::setAmount((int) $team->id, TeamBillingProduct::WhatsappSend, 0.005, $changedAt->copy()->subDays(2));
         TeamBillingRate::setAmount((int) $team->id, TeamBillingProduct::WhatsappSend, 0.01, $changedAt);
 
         $stats = TeamWhatsAppUsageStatsService::forTeam($team, now()->subDays(2), now());

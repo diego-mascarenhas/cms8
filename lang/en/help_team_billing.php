@@ -20,7 +20,7 @@ return [
     'rates_heading' => 'Rates',
     'rates_intro' => 'There are eight products. If the team has no row, the platform default is used, then config. Usage is billed monthly.',
     'rates_tokens' => 'Token multiplier: the client sees N × real tokens at OpenRouter rates, with no extra markup. Meeting tokens are included. Default ×10.',
-    'rates_whatsapp' => 'WhatsApp send: USD per outbound message. Default 0.005 USD.',
+    'rates_whatsapp' => 'WhatsApp send: USD per outbound message. Default 0.016 USD.',
     // 'rates_whatsapp' => 'WhatsApp send: EUR per outbound message. Default 0.003 EUR.', // en €
     'rates_mailer' => 'Mail send: USD per overage email (above the plan monthly cap). Default 0.003 USD.',
     // 'rates_mailer' => 'Mail send: EUR per overage email (above the plan monthly cap). Default 0.002 EUR.', // en €
