@@ -362,7 +362,7 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
         ]);
     }
 
-    public function test_due_jobs_use_assistant_day_when_first_plan_anchor_differs(): void
+    public function test_due_jobs_keep_the_seeded_anchor_when_live_stripe_differs(): void
     {
         $team = $this->teamWithStripe();
         TeamUsageInvoiceFrequency::rememberCycleFromFirstSubscription(
@@ -384,8 +384,8 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
         );
 
         $this->assertCount(1, $jobs);
-        $this->assertSame('2026-07-24', $jobs[0]['from']->toDateString());
-        $this->assertSame('2026-08-24', $jobs[0]['closes_on']->toDateString());
+        $this->assertSame('2026-08-04', $jobs[0]['from']->toDateString());
+        $this->assertSame('2026-09-04', $jobs[0]['closes_on']->toDateString());
     }
 
     private function teamWithStripe(): \App\Models\Team

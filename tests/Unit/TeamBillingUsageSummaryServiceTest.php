@@ -150,7 +150,7 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_closed_windows_walk_back_from_the_live_cycle_day_not_the_first_plan_anchor(): void
+    public function test_closed_windows_keep_the_seeded_anchor_when_live_stripe_differs(): void
     {
         if (! Features::hasTeamFeatures())
         {
@@ -177,14 +177,19 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
             ]);
         });
 
+        [$from, $closesOn] = TeamUsageInvoiceFrequency::window($team);
+        $this->assertSame('2026-09-04', $from->toDateString());
+        $this->assertSame('2026-10-04', $closesOn->toDateString());
+
         $openWindows = TeamUsageInvoiceFrequency::closedWindows(
             $team,
             Carbon::parse('2026-09-24 12:10:22'),
-            Carbon::parse('2026-07-24 00:00:00'),
+            Carbon::parse('2026-07-04 00:00:00'),
         );
         $this->assertSame(
             [
-                ['2026-07-24', '2026-08-24'],
+                ['2026-07-04', '2026-08-04'],
+                ['2026-08-04', '2026-09-04'],
             ],
             array_map(fn (array $window): array => [
                 $window['from']->toDateString(),
@@ -194,13 +199,14 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
 
         $closedWindows = TeamUsageInvoiceFrequency::closedWindows(
             $team,
-            Carbon::parse('2026-09-24 19:33:08'),
-            Carbon::parse('2026-07-24 00:00:00'),
+            Carbon::parse('2026-10-04 15:55:19'),
+            Carbon::parse('2026-07-04 00:00:00'),
         );
         $this->assertSame(
             [
-                ['2026-07-24', '2026-08-24'],
-                ['2026-08-24', '2026-09-24'],
+                ['2026-07-04', '2026-08-04'],
+                ['2026-08-04', '2026-09-04'],
+                ['2026-09-04', '2026-10-04'],
             ],
             array_map(fn (array $window): array => [
                 $window['from']->toDateString(),
@@ -287,8 +293,8 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
         $this->assertSame('10,00 EUR', $preview['invoice_lines'][0]['formatted_amount']);
         $this->assertSame('storage', $preview['invoice_lines'][4]['kind']);
         $this->assertSame('transcription', $preview['invoice_lines'][5]['kind']);
-        $this->assertSame('Tokens IA · Semana del 23 al 30 de septiembre 2026', $preview['invoice_lines'][6]['description']);
-        $this->assertSame('5,00 EUR', $preview['invoice_lines'][6]['formatted_amount']);
+        $this->assertSame('Tokens IA · Semana del 23 al 30 de septiembre 2026', $preview['invoice_lines'][8]['description']);
+        $this->assertSame('5,00 EUR', $preview['invoice_lines'][8]['formatted_amount']);
         $this->assertSame('prospect', $preview['invoice_lines'][3]['kind']);
         $this->assertSame('15.000.000', $preview['formatted']['total_tokens']);
 
@@ -328,7 +334,7 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
         $this->assertSame(15, TeamUsageInvoiceFrequency::anchorDay($team));
         $this->assertSame('storage', $preview['invoice_lines'][4]['kind']);
         $this->assertSame('transcription', $preview['invoice_lines'][5]['kind']);
-        $this->assertSame('Tokens IA · 15 de septiembre al 15 de octubre 2026', $preview['invoice_lines'][6]['description']);
+        $this->assertSame('Tokens IA · 15 de septiembre al 15 de octubre 2026', $preview['invoice_lines'][8]['description']);
         $this->assertSame('prospect', $preview['invoice_lines'][3]['kind']);
 
         Carbon::setTestNow();

@@ -739,18 +739,15 @@ class AssistantSubscriptionService
     /**
      * Team-wide usage window for tokens, WhatsApp, and email.
      *
+     * Seeds {@see TeamUsageInvoiceFrequency} from the first paid plan when
+     * missing, then always reads that stored cycle — never a later Stripe
+     * subscription anniversary.
+     *
      * @return array{0: Carbon, 1: Carbon}
      */
     public function usagePeriod(Team $team): array
     {
         $subscribed = $this->subscribedUsagePeriod($team);
-        $frequency = TeamUsageInvoiceFrequency::for($team);
-
-        if ($subscribed !== null && $frequency === TeamBillingFrequency::Monthly)
-        {
-            return self::openMonthlyPeriod($subscribed[0], $subscribed[1], now());
-        }
-
         if ($subscribed !== null)
         {
             TeamUsageInvoiceFrequency::rememberCycleFromFirstSubscription($team, $subscribed[0]);
@@ -759,6 +756,11 @@ class AssistantSubscriptionService
         if (TeamUsageInvoiceFrequency::periodStartsAt($team) !== null)
         {
             return TeamUsageInvoiceFrequency::window($team);
+        }
+
+        if ($subscribed !== null && TeamUsageInvoiceFrequency::for($team) === TeamBillingFrequency::Monthly)
+        {
+            return self::openMonthlyPeriod($subscribed[0], $subscribed[1], now());
         }
 
         return [$this->assistantUsageStartedAt($team), now()];

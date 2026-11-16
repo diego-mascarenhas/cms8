@@ -92,6 +92,18 @@ class TeamUsageInvoiceFrequencyTest extends TestCase
         $this->assertSame('2026-11-15', $closesOn->toDateString());
     }
 
+    public function test_first_close_after_keeps_the_same_month_when_the_day_is_still_ahead(): void
+    {
+        $this->assertSame(
+            '2026-11-24',
+            TeamUsageInvoiceFrequency::firstCloseAfter(Carbon::parse('2026-11-16 10:00:00'), 24)->toDateString(),
+        );
+        $this->assertSame(
+            '2026-12-24',
+            TeamUsageInvoiceFrequency::firstCloseAfter(Carbon::parse('2026-11-24 00:00:00'), 24)->toDateString(),
+        );
+    }
+
     public function test_previous_monthly_anniversary_restores_the_anchor_after_short_months(): void
     {
         $this->assertSame(
