@@ -277,7 +277,10 @@
 <div class="card">
     <div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-            <h5 class="mb-0">Meses anteriores</h5>
+            <div>
+                <h5 class="mb-0">Meses anteriores</h5>
+                <p class="text-muted mb-0 small">Tokens: reales / facturados (× multiplicador). WhatsApp y totales se recalculan con el historial de tarifas.</p>
+            </div>
         </div>
         {{ $dataTable->table(['class' => 'table table-hover dt-responsive nowrap w-100']) }}
     </div>

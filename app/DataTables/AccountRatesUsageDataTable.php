@@ -24,7 +24,7 @@ class AccountRatesUsageDataTable extends DataTable
         return $summary->pastMonths($team)->map(fn (array $row): array => [
             'month' => $row['month'],
             'month_label' => $row['month_label'],
-            'tokens' => $row['formatted']['tokens'],
+            'tokens' => ($row['formatted']['tokens_real'] ?? '').' / '.($row['formatted']['tokens_billed'] ?? $row['formatted']['tokens']),
             'whatsapp' => $row['formatted']['whatsapp'],
             'mailer' => $row['formatted']['mailer'],
             'prospect' => $row['formatted']['prospect'],
@@ -67,7 +67,7 @@ class AccountRatesUsageDataTable extends DataTable
                 ->data('month_label')
                 ->addClass('all'),
             Column::make('tokens')
-                ->title('Tokens')
+                ->title('Tokens (reales / facturados)')
                 ->name('tokens')
                 ->data('tokens')
                 ->className('text-end')

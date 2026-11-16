@@ -315,7 +315,7 @@ class AccountFormModuleGroupLabelsTest extends TestCase
         $this->assertArrayNotHasKey('error', $payload);
         $this->assertSame(1, (int) $payload['recordsTotal']);
         $this->assertSame(now()->subMonth()->format('Y-m'), $payload['data'][0]['month']);
-        $this->assertSame('20.000.000', $payload['data'][0]['tokens']);
+        $this->assertSame('2.000.000 / 20.000.000', $payload['data'][0]['tokens']);
         $this->assertSame('2,00 EUR', $payload['data'][0]['cost']);
         $this->assertSame('20,00 EUR', $payload['data'][0]['billed']);
         $this->assertSame('18,00 EUR', $payload['data'][0]['markup']);
