@@ -659,7 +659,7 @@ class AffiliateProgramService
         {
             $subscription->forceFill([
                 'referred_by' => $referrerCode,
-                'affiliate_commission_percent' => AffiliateCommission::percent(),
+                'affiliate_commission_percent' => AffiliateCommission::percentForSubscription($subscription),
             ])->save();
         }
 
@@ -1320,6 +1320,7 @@ class AffiliateProgramService
         {
             'assistant' => 'Assistant',
             'hosting' => 'Hosting',
+            'vps' => 'VPS',
             'hunter' => 'Hunter',
             'business' => 'Business',
             'mailer' => 'Mailer',

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\AffiliateCommissionReceiptMail;
 use App\Mail\AffiliatePurchaseInvitationMail;
 use App\Models\AffiliateInvitation;
 use App\Models\BillingAffiliateCommission;
@@ -29,7 +30,9 @@ class BillingAffiliateTeamTest extends TestCase
 
     public function test_commission_recorded_when_paying_team_has_referrer_stripe_id(): void
     {
-        $referrerOwner = User::factory()->create();
+        Mail::fake();
+
+        $referrerOwner = User::factory()->create(['email' => 'referrer@example.com']);
         $referrerTeam = Team::factory()->create([
             'user_id' => $referrerOwner->id,
             'stripe_id' => 'cus_referrer_abc',
@@ -69,6 +72,68 @@ class BillingAffiliateTeamTest extends TestCase
             'referrer_team_id' => $referrerTeam->id,
             'commission_amount_cents' => 3000,
         ]);
+
+        Mail::assertSent(AffiliateCommissionReceiptMail::class, function (AffiliateCommissionReceiptMail $mail) use ($referrerTeam): bool
+        {
+            return $mail->hasTo('referrer@example.com')
+                && $mail->referrerTeam->is($referrerTeam)
+                && str_starts_with($mail->receiptNumber, 'AFF-');
+        });
+    }
+
+    public function test_attribution_uses_catalog_commission_percent(): void
+    {
+        config([
+            'humano_pricing.affiliate_commission_percent' => 30,
+            'humano_pricing.affiliate_commission_percent_by_catalog' => [
+                'mailer' => 15,
+            ],
+            'humano_pricing.plans' => [
+                [
+                    'id' => 'mailer_foundation',
+                    'catalog' => 'mailer',
+                    'subscription_type' => 'mailer',
+                    'public' => false,
+                    'checkout_available' => true,
+                    'stripe_price_monthly_id' => 'price_mailer_catalog',
+                ],
+            ],
+        ]);
+
+        $referrerOwner = User::factory()->create();
+        Team::factory()->create([
+            'user_id' => $referrerOwner->id,
+            'stripe_id' => 'cus_catalog_ref',
+        ]);
+
+        $payingOwner = User::factory()->create();
+        $payingTeam = Team::factory()->create([
+            'user_id' => $payingOwner->id,
+            'stripe_id' => 'cus_catalog_pay',
+        ]);
+
+        $payingTeam->subscriptions()->create([
+            'user_id' => $payingOwner->id,
+            'type' => 'mailer',
+            'stripe_id' => 'sub_catalog_mailer',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_mailer_catalog',
+            'quantity' => 1,
+        ]);
+
+        $session = \Stripe\Checkout\Session::constructFrom([
+            'id' => 'cs_catalog_pct',
+            'object' => 'checkout.session',
+            'subscription' => 'sub_catalog_mailer',
+            'client_reference_id' => 'cus_catalog_ref',
+        ]);
+
+        app(PaymentLinkAffiliateTeamAttributionService::class)
+            ->syncTeamReferrerFromSession($payingTeam, $session);
+
+        $subscription = $payingTeam->subscriptions()->where('stripe_id', 'sub_catalog_mailer')->first();
+
+        $this->assertSame(15.0, (float) $subscription?->affiliate_commission_percent);
     }
 
     public function test_no_commission_when_referrer_is_same_team(): void
@@ -125,6 +190,8 @@ class BillingAffiliateTeamTest extends TestCase
 
     public function test_no_commission_on_unreferred_product_subscription(): void
     {
+        Mail::fake();
+
         $referrerOwner = User::factory()->create();
         $referrerTeam = Team::factory()->create([
             'user_id' => $referrerOwner->id,

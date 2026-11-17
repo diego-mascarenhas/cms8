@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Log;
 
 class AffiliateCommissionRecorder
 {
+    public function __construct(
+        private readonly AffiliateCommissionReceiptSender $receiptSender,
+    ) {}
+
     /**
      * When a Stripe invoice is paid, commission only the subscription that was referred
      * ({@see Subscription::$referred_by}), not the paying team's full account.
@@ -79,7 +83,7 @@ class AffiliateCommissionRecorder
 
         try
         {
-            BillingAffiliateCommission::query()->create([
+            $commission = BillingAffiliateCommission::query()->create([
                 'paying_team_id' => $payingTeam->id,
                 'referrer_team_id' => $referrerTeam->id,
                 'paying_enterprise_id' => null,
@@ -98,7 +102,11 @@ class AffiliateCommissionRecorder
                 'stripe_subscription_id' => $stripeSubscriptionId,
                 'exception' => $e->getMessage(),
             ]);
+
+            return;
         }
+
+        $this->receiptSender->send($commission, $referrerTeam, $payingTeam, $subscription);
     }
 
     /**
@@ -130,6 +138,6 @@ class AffiliateCommissionRecorder
             return max(0.0, min(100.0, (float) $stored));
         }
 
-        return AffiliateCommission::percent();
+        return AffiliateCommission::percentForSubscription($subscription);
     }
 }
