@@ -48,6 +48,34 @@ class DomainRegistrationApiTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_check_accepts_the_team_api_token(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'editor']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $plain = $team->createApiToken('Revision Alpha')['plain'];
+        config([
+            'services.porkbun.key' => 'pk_test',
+            'services.porkbun.secret' => 'sk_test',
+            'humano_hosting.domain_markup_percent' => 30,
+        ]);
+        Http::fake([
+            'https://api.porkbun.com/api/json/v3/domain/checkDomain/libre.com' => Http::response([
+                'status' => 'SUCCESS',
+                'avail' => 'yes',
+                'price' => 10,
+            ]),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$plain)
+            ->postJson('/api/domains/check', ['domain' => 'libre.com'])
+            ->assertOk()
+            ->assertJsonPath('data.domain', 'libre.com')
+            ->assertJsonPath('data.available', true)
+            ->assertJsonPath('data.price', 13);
+    }
+
     public function test_check_suggests_free_alternatives_when_the_domain_is_taken(): void
     {
         $user = $this->admin();

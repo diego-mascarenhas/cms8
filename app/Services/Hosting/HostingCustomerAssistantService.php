@@ -618,7 +618,7 @@ class HostingCustomerAssistantService
             ['label' => 'Hosting para agencias', 'keys' => ['hosting para agencias', 'agencia'], 'pages' => [['Página', $origin.'/hosting-agency']]],
             ['label' => 'Emailer', 'keys' => ['emailer', 'email marketing'], 'pages' => [['Página', $origin.'/emailer'], ['Stack', $origin.'/emailer/stack']]],
             ['label' => 'Mi socio digital', 'keys' => ['mi socio digital', 'socio digital'], 'pages' => [['Página', $origin.'/mi-socio-digital']]],
-            ['label' => 'Auditoría, consultoría y desarrollo', 'keys' => ['auditoría', 'auditoria', 'consultoría', 'consultoria', 'desarrollo a medida'], 'pages' => [['Página', $origin.'/auditoria-consultoria-desarrollo']]],
+            ['label' => 'Auditoría, consultoría y despliegue', 'keys' => ['auditoría', 'auditoria', 'consultoría', 'consultoria', 'despliegue', 'desarrollo a medida'], 'pages' => [['Página', $origin.'/auditoria-consultoria-despliegue']]],
             ['label' => 'Telefonía digital', 'keys' => ['telefonía', 'telefonia', 'click to call'], 'pages' => [['Página', $origin.'/simple-click-to-call']]],
             ['label' => 'Niveles de soporte', 'keys' => ['soporte'], 'pages' => [['Página', $origin.'/niveles-de-soporte']]],
             ['label' => 'Contacto', 'keys' => ['contacto', 'reunión', 'reunion'], 'pages' => [['Página', $origin.'/contactenos']]],

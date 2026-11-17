@@ -81,5 +81,10 @@ class SyncPaidAdMetricsTest extends TestCase
         $this->assertSame(25, $totals['clicks']);
         $this->assertSame(75.0, $totals['spend']);
         $this->assertSame(5, $totals['conversions']);
+
+        $byCampaign = app(PaidAdMetricsAggregator::class)->forCampaignIds([$campaign->id, $campaign->id + 999]);
+
+        $this->assertSame(500, $byCampaign[$campaign->id]['impressions']);
+        $this->assertSame(0, $byCampaign[$campaign->id + 999]['impressions']);
     }
 }
