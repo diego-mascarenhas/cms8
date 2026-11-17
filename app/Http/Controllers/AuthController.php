@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateUserProfilePhotoRequest;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\Billing\AssistantSubscriptionService;
+use App\Services\Billing\TeamDefaultPaymentMethodStatus;
 use App\Services\TeamClientContextActivator;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use App\Services\TeamSiteAssistantPromptService;
@@ -641,6 +642,9 @@ class AuthController extends Controller
                 'is_owner' => $user->ownsTeam($team),
                 'can_manage' => $user->canManageTeam($team),
                 'apps' => app(AssistantSubscriptionService::class)->appsPayload($team),
+                'billing' => [
+                    'default_payment_method' => app(TeamDefaultPaymentMethodStatus::class)->forTeam($team),
+                ],
             ] : null,
             'provider_team' => $this->providerTeamPayload($user),
         ];
