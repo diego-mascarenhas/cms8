@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Team;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Cashier;
+use Throwable;
 
 class TeamStripeCustomerService
 {
@@ -42,10 +43,64 @@ class TeamStripeCustomerService
 
     /**
      * Return the team's Stripe customer ID without creating one.
+     * When teams.stripe_id is empty, recover it from an existing Cashier subscription.
      */
     public function getStripeCustomerIdForCategory(Team $team, string $category): ?string
     {
-        return $team->stripe_id;
+        $existing = trim((string) ($team->stripe_id ?? ''));
+        if ($existing !== '' && str_starts_with($existing, 'cus_'))
+        {
+            return $existing;
+        }
+
+        return $this->recoverStripeCustomerIdFromSubscriptions($team);
+    }
+
+    /**
+     * Re-attach teams.stripe_id from a Cashier subscription's Stripe customer.
+     */
+    public function recoverStripeCustomerIdFromSubscriptions(Team $team): ?string
+    {
+        $subscriptionId = $team->subscriptions()
+            ->whereNotNull('stripe_id')
+            ->orderByDesc('created_at')
+            ->value('stripe_id');
+
+        $subscriptionId = is_string($subscriptionId) ? trim($subscriptionId) : '';
+        if ($subscriptionId === '' || ! str_starts_with($subscriptionId, 'sub_'))
+        {
+            return null;
+        }
+
+        try
+        {
+            $stripeSubscription = Cashier::stripe()->subscriptions->retrieve($subscriptionId);
+            $customerId = $stripeSubscription->customer ?? null;
+            if (is_object($customerId))
+            {
+                $customerId = $customerId->id ?? null;
+            }
+
+            $customerId = is_string($customerId) ? trim($customerId) : '';
+            if ($customerId === '' || ! str_starts_with($customerId, 'cus_'))
+            {
+                return null;
+            }
+
+            $this->persistStripeCustomerIdForCategory($team, '', $customerId);
+            $team->refresh();
+
+            return $team->stripe_id;
+        } catch (Throwable $e)
+        {
+            Log::warning('Could not recover team Stripe customer from subscription', [
+                'team_id' => $team->id,
+                'subscription_id' => $subscriptionId,
+                'exception' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     /**
