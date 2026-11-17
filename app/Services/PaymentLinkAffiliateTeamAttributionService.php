@@ -107,7 +107,7 @@ class PaymentLinkAffiliateTeamAttributionService
 
         $subscription->forceFill([
             'referred_by' => $referrerStripeId,
-            'affiliate_commission_percent' => AffiliateCommission::percent(),
+            'affiliate_commission_percent' => AffiliateCommission::percentForSubscription($subscription),
         ])->save();
     }
 

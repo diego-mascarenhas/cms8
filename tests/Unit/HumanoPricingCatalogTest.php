@@ -14,6 +14,8 @@ class HumanoPricingCatalogTest extends TestCase
         $this->assertSame('ads', HumanoPricingCatalog::normalize('ads'));
         $this->assertSame('mailer', HumanoPricingCatalog::normalize('mailer'));
         $this->assertSame('estimator', HumanoPricingCatalog::normalize('Estimator'));
+        $this->assertSame('hosting', HumanoPricingCatalog::normalize('Hosting'));
+        $this->assertSame('vps', HumanoPricingCatalog::normalize('vps'));
         $this->assertNull(HumanoPricingCatalog::normalize('unknown'));
         $this->assertNull(HumanoPricingCatalog::normalize(null));
     }
@@ -43,6 +45,9 @@ class HumanoPricingCatalogTest extends TestCase
         $this->assertContains('projects', $ids);
         $this->assertContains('estimator', $ids);
         $this->assertContains('fanyion', $ids);
+        $this->assertContains('hosting_cloud_starter', $ids);
+        $this->assertContains('hosting_vps_value', $ids);
+        $this->assertContains('hosting_wordpress', $ids);
         $this->assertNotContains('innovation', $ids);
 
         foreach ($plans as $plan)
@@ -63,5 +68,23 @@ class HumanoPricingCatalogTest extends TestCase
 
         $this->assertStringContainsString('/affiliate/checkout/mailer_basic', $url);
         $this->assertStringContainsString('ref=cus_referrer', $url);
+    }
+
+    public function test_revision_alpha_hosting_plans_use_landing_referral_urls(): void
+    {
+        $cloud = collect(app(AffiliateReferralLinkBuilder::class)->availablePlans('hosting'))
+            ->firstWhere('id', 'hosting_cloud_starter');
+        $vps = collect(app(AffiliateReferralLinkBuilder::class)->availablePlans('vps'))
+            ->firstWhere('id', 'hosting_vps_value');
+
+        $this->assertNotNull($cloud);
+        $this->assertNotNull($vps);
+        $this->assertSame('https://revisionalpha.com/cloud', $cloud['checkout_url']);
+        $this->assertSame('https://revisionalpha.com/servidores-dedicados', $vps['checkout_url']);
+
+        $url = app(AffiliateReferralLinkBuilder::class)->referralUrl($cloud, 'cus_referrer');
+        $this->assertStringContainsString('/affiliate/capture', $url);
+        $this->assertStringContainsString('ref=cus_referrer', $url);
+        $this->assertStringContainsString(rawurlencode('https://revisionalpha.com/cloud'), $url);
     }
 }

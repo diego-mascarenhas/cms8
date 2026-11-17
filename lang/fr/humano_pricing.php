@@ -195,6 +195,78 @@ return [
                 'Facturation partagée avec les autres apps Idoneo',
             ],
         ],
+        'hosting_cloud_starter' => [
+            'name' => 'Web Cloud Starter',
+            'description' => 'Cloud hosting for developers: NVMe, CDN, and daily backups.',
+            'features' => [
+                '100 GB NVMe',
+                'CDN and Boost',
+                'Daily backups',
+            ],
+        ],
+        'hosting_cloud_expert' => [
+            'name' => 'Web Cloud Expert',
+            'description' => 'More resources for businesses that need stable performance.',
+            'features' => [
+                '250 GB NVMe',
+                'CDN and Boost',
+                'Daily backups',
+            ],
+        ],
+        'hosting_cloud_guru' => [
+            'name' => 'Web Cloud Guru',
+            'description' => 'Capacity for agencies running multiple sites.',
+            'features' => [
+                '500 GB NVMe',
+                'CDN Basic and on-demand Boost',
+                'Daily backups',
+            ],
+        ],
+        'hosting_vps_value' => [
+            'name' => 'VPS Value',
+            'description' => 'Private virtual server for personal projects.',
+            'features' => [
+                '20 GB NVMe · 1 vCPU · 2 GB RAM',
+                'Daily backups',
+                'High-capacity traffic',
+            ],
+        ],
+        'hosting_vps_essential' => [
+            'name' => 'VPS Essential',
+            'description' => 'VPS for professional websites.',
+            'features' => [
+                '40 GB NVMe · 2 vCPU · 4 GB RAM',
+                'Daily backups',
+                '500 Mbit bandwidth',
+            ],
+        ],
+        'hosting_vps_comfort' => [
+            'name' => 'VPS Comfort',
+            'description' => 'VPS for business applications.',
+            'features' => [
+                '80 GB NVMe · 4 vCPU · 8 GB RAM',
+                'Daily backups',
+                '1 Gbit bandwidth',
+            ],
+        ],
+        'hosting_vps_elite' => [
+            'name' => 'VPS Elite',
+            'description' => 'VPS for demanding applications.',
+            'features' => [
+                '160 GB NVMe · 8 vCPU · 16 GB RAM',
+                'Daily backups',
+                '2 Gbit bandwidth',
+            ],
+        ],
+        'hosting_wordpress' => [
+            'name' => 'WordPress Professional',
+            'description' => 'WordPress hosting with SSL, CDN, backups, and migration included.',
+            'features' => [
+                'WordPress preinstalled',
+                'SSL and anti-DDoS protection',
+                'Daily backups',
+            ],
+        ],
     ],
     'checkout_complete_success' => '¡Bienvenido! Tu espacio de trabajo ya está listo.',
     'checkout_complete_invalid_session' => 'No pudimos confirmar este pago. Abre el enlace del recibo de Stripe o contacta soporte.',

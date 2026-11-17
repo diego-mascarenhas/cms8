@@ -22,6 +22,10 @@ class HumanoPricingCatalog
 
     public const INNOVATION = 'innovation';
 
+    public const HOSTING = 'hosting';
+
+    public const VPS = 'vps';
+
     /**
      * @return list<string>
      */
@@ -37,6 +41,8 @@ class HumanoPricingCatalog
             self::AFFILIATES,
             self::ESTIMATOR,
             self::INNOVATION,
+            self::HOSTING,
+            self::VPS,
         ];
     }
 

@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Subscription;
+
 class HumanoPricingPlanResolver
 {
     /**
@@ -127,5 +129,94 @@ class HumanoPricingPlanResolver
         $id = strtolower(trim((string) ($plan['id'] ?? '')));
 
         return $id !== '' ? $id : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function planById(string $planId): ?array
+    {
+        $planId = strtolower(trim($planId));
+        if ($planId === '')
+        {
+            return null;
+        }
+
+        foreach ($this->plansForDisplay() as $plan)
+        {
+            if (strtolower(trim((string) ($plan['id'] ?? ''))) === $planId)
+            {
+                return $plan;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function planByStripePriceId(string $stripePriceId): ?array
+    {
+        $stripePriceId = trim($stripePriceId);
+        if ($stripePriceId === '')
+        {
+            return null;
+        }
+
+        foreach ($this->plansForDisplay() as $plan)
+        {
+            foreach (['stripe_price_monthly_id', 'stripe_price_yearly_id'] as $key)
+            {
+                $configured = trim((string) ($plan[$key] ?? ''));
+                if ($configured !== '' && $configured === $stripePriceId)
+                {
+                    return $plan;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Best-effort plan match for a Cashier subscription (price id → plan id → subscription_type).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function planForSubscription(Subscription $subscription): ?array
+    {
+        $priceId = trim((string) ($subscription->stripe_price ?? ''));
+        if ($priceId !== '')
+        {
+            $byPrice = $this->planByStripePriceId($priceId);
+            if ($byPrice !== null)
+            {
+                return $byPrice;
+            }
+        }
+
+        $type = strtolower(trim((string) ($subscription->type ?? '')));
+        if ($type === '')
+        {
+            return null;
+        }
+
+        $byId = $this->planById($type);
+        if ($byId !== null)
+        {
+            return $byId;
+        }
+
+        foreach ($this->plansForDisplay() as $plan)
+        {
+            $subscriptionType = strtolower(trim((string) ($plan['subscription_type'] ?? '')));
+            if ($subscriptionType !== '' && $subscriptionType === $type)
+            {
+                return $plan;
+            }
+        }
+
+        return null;
     }
 }

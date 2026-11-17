@@ -198,6 +198,78 @@ return [
                 'Facturación compartida con el resto de las apps',
             ],
         ],
+        'hosting_cloud_starter' => [
+            'name' => 'Web Cloud Starter',
+            'description' => 'Hosting en la nube para desarrolladores: NVMe, CDN y backups diarios.',
+            'features' => [
+                '100 GB NVMe',
+                'CDN y Boost',
+                'Backups diarios',
+            ],
+        ],
+        'hosting_cloud_expert' => [
+            'name' => 'Web Cloud Expert',
+            'description' => 'Más recursos para negocios que necesitan rendimiento estable.',
+            'features' => [
+                '250 GB NVMe',
+                'CDN y Boost',
+                'Backups diarios',
+            ],
+        ],
+        'hosting_cloud_guru' => [
+            'name' => 'Web Cloud Guru',
+            'description' => 'Capacidad para agencias con varios sitios en un solo entorno.',
+            'features' => [
+                '500 GB NVMe',
+                'CDN Basic y Boost bajo demanda',
+                'Backups diarios',
+            ],
+        ],
+        'hosting_vps_value' => [
+            'name' => 'VPS Value',
+            'description' => 'Servidor privado virtual para proyectos personales.',
+            'features' => [
+                '20 GB NVMe · 1 vCPU · 2 GB RAM',
+                'Copias diarias',
+                'Tráfico de alta capacidad',
+            ],
+        ],
+        'hosting_vps_essential' => [
+            'name' => 'VPS Essential',
+            'description' => 'VPS para sitios web profesionales.',
+            'features' => [
+                '40 GB NVMe · 2 vCPU · 4 GB RAM',
+                'Copias diarias',
+                'Ancho de banda 500 Mbits',
+            ],
+        ],
+        'hosting_vps_comfort' => [
+            'name' => 'VPS Comfort',
+            'description' => 'VPS para aplicaciones empresariales.',
+            'features' => [
+                '80 GB NVMe · 4 vCPU · 8 GB RAM',
+                'Copias diarias',
+                'Ancho de banda 1 Gbit',
+            ],
+        ],
+        'hosting_vps_elite' => [
+            'name' => 'VPS Elite',
+            'description' => 'VPS para aplicaciones exigentes.',
+            'features' => [
+                '160 GB NVMe · 8 vCPU · 16 GB RAM',
+                'Copias diarias',
+                'Ancho de banda 2 Gbits',
+            ],
+        ],
+        'hosting_wordpress' => [
+            'name' => 'WordPress Profesional',
+            'description' => 'Hosting WordPress con SSL, CDN, backups y migración incluida.',
+            'features' => [
+                'WordPress preinstalado',
+                'SSL y protección anti-DDoS',
+                'Backups diarios',
+            ],
+        ],
     ],
     'checkout_complete_success' => '¡Bienvenido! Tu espacio de trabajo ya está listo.',
     'checkout_complete_invalid_session' => 'No pudimos confirmar este pago. Abre el enlace del recibo de Stripe o contacta soporte.',
