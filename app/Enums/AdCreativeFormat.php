@@ -65,7 +65,7 @@ enum AdCreativeFormat: string
     {
         return match ($this)
         {
-            self::Square => [AdPlatform::GoogleAds, AdPlatform::Meta, AdPlatform::LinkedIn, AdPlatform::X],
+            self::Square => [AdPlatform::GoogleAds, AdPlatform::Meta, AdPlatform::LinkedIn, AdPlatform::X, AdPlatform::ChatGpt],
             self::Portrait => [AdPlatform::Meta],
             self::Story => [AdPlatform::Meta, AdPlatform::TikTok],
             self::Landscape => [AdPlatform::GoogleAds, AdPlatform::Meta, AdPlatform::LinkedIn, AdPlatform::X],

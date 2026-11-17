@@ -8,6 +8,7 @@ use App\Models\AdPlatformConnection;
 use App\Models\PaidAdCampaign;
 use App\Models\User;
 use App\Services\Ads\AdPlatformGatewayFactory;
+use App\Services\Ads\ChatGptAdsGateway;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,6 +60,12 @@ class AdPlatformConnectionController extends Controller
         $this->ensureModule();
 
         $adPlatform = AdPlatform::tryFrom($platform);
+        if ($adPlatform !== null && $adPlatform->usesApiKey())
+        {
+            return redirect()->route('paid-ads.connections')
+                ->with('warning', __('Paste the ChatGPT Ads API key on this page.'));
+        }
+
         if ($adPlatform === null || ! $adPlatform->isEnabled())
         {
             return redirect()->route('paid-ads.connections')->with('warning', __('This platform is not available.'));
@@ -72,6 +79,38 @@ class AdPlatformConnectionController extends Controller
         }
 
         return redirect()->away($gateway->buildAuthorizationUrl(auth()->user()));
+    }
+
+    public function storeApiKey(string $platform, Request $request): RedirectResponse
+    {
+        $this->authorize('create', PaidAdCampaign::class);
+        $this->ensureModule();
+
+        $adPlatform = AdPlatform::tryFrom($platform);
+        if ($adPlatform === null || ! $adPlatform->usesApiKey())
+        {
+            return redirect()->route('paid-ads.connections')->with('warning', __('This platform is not available.'));
+        }
+
+        $validated = $request->validate([
+            'api_key' => ['required', 'string', 'max:500'],
+        ]);
+
+        $gateway = $this->gateways->make($adPlatform)->forTeam(auth()->user()->currentTeam);
+        if (! $gateway instanceof ChatGptAdsGateway)
+        {
+            return redirect()->route('paid-ads.connections')->with('warning', __('This platform is not available.'));
+        }
+
+        try
+        {
+            $gateway->connectWithApiKey($request->user(), $validated['api_key']);
+        } catch (Throwable $e)
+        {
+            return redirect()->route('paid-ads.connections')->with('warning', $e->getMessage());
+        }
+
+        return redirect()->route('paid-ads.connections')->with('success', __('ChatGPT is ready to publish.'));
     }
 
     public function callback(string $platform, Request $request): RedirectResponse

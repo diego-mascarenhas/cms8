@@ -72,6 +72,8 @@ X_ADS_CLIENT_SECRET=</code></pre>
             <dd class="col-sm-9">{{ __('Separate Business API stack with its own OAuth (auth_code exchange) and sandbox vs production environments.') }}</dd>
             <dt class="col-sm-3">X (Twitter)</dt>
             <dd class="col-sm-9">{{ __('Ads API access is heavily restricted and requires an approved developer account. Kept disabled behind the X_ADS_ENABLED feature flag until approved.') }}</dd>
+            <dt class="col-sm-3">ChatGPT</dt>
+            <dd class="col-sm-9">{{ __('Uses the OpenAI Advertiser API. Create an Ads API key in ChatGPT Ads Manager and paste it in Paid Ads connections. Publishing creates the campaign, ad group, and chat card, then activates them. OpenAI reviews the creative before it can serve. The creative needs a title (3–50 characters), body (up to 100), a destination URL, and a square image of at least 640×640.') }}</dd>
         </dl>
     </div>
 </div>

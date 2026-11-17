@@ -802,6 +802,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('paid-ads/videos/{id}', [ApiPaidAdCampaignController::class, 'videoStatus'])->whereUuid('id');
     Route::get('paid-ads/connections', [ApiAdPlatformConnectionController::class, 'index']);
     Route::post('paid-ads/connections/{platform}/authorize', [ApiAdPlatformConnectionController::class, 'authorizeUrl']);
+    Route::post('paid-ads/connections/{platform}/api-key', [ApiAdPlatformConnectionController::class, 'storeApiKey']);
     Route::post('paid-ads/connections/{id}/select-account', [ApiAdPlatformConnectionController::class, 'selectAccount'])->whereNumber('id');
     Route::delete('paid-ads/connections/{id}', [ApiAdPlatformConnectionController::class, 'destroy'])->whereNumber('id');
     Route::get('paid-ads/audiences', [ApiPaidAdAudienceController::class, 'index']);

@@ -418,6 +418,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/integrations/google/sync-calendar', [GoogleSyncedPreviewController::class, 'queueCalendarSync'])->name('integrations.google.sync-calendar');
 
     Route::get('/integrations/ad-platforms/{platform}/connect', [AdPlatformConnectionController::class, 'connect'])->name('integrations.ad-platforms.connect');
+    Route::post('/integrations/ad-platforms/{platform}/api-key', [AdPlatformConnectionController::class, 'storeApiKey'])->name('integrations.ad-platforms.api-key');
     Route::post('/integrations/ad-platforms/{connection}/select-account', [AdPlatformConnectionController::class, 'selectAccount'])->name('integrations.ad-platforms.select-account');
     Route::delete('/integrations/ad-platforms/{connection}/disconnect', [AdPlatformConnectionController::class, 'disconnect'])->name('integrations.ad-platforms.disconnect');
 
