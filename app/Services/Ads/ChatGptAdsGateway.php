@@ -263,6 +263,38 @@ class ChatGptAdsGateway extends AbstractAdPlatformGateway
     }
 
     /**
+     * Campaigns in the connected ad account, with their ad groups and ads.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listRemoteCampaigns(AdPlatformConnection $connection): array
+    {
+        $campaigns = $this->collectList($connection, '/campaigns');
+
+        foreach ($campaigns as $index => $campaign)
+        {
+            $campaignId = (string) ($campaign['id'] ?? '');
+            if ($campaignId === '')
+            {
+                continue;
+            }
+
+            $groups = $this->collectList($connection, '/ad_groups', ['campaign_id' => $campaignId]);
+            foreach ($groups as $groupIndex => $group)
+            {
+                $groupId = (string) ($group['id'] ?? '');
+                $groups[$groupIndex]['ads'] = $groupId === ''
+                    ? []
+                    : $this->collectList($connection, '/ads', ['ad_group_id' => $groupId]);
+            }
+
+            $campaigns[$index]['ad_groups'] = $groups;
+        }
+
+        return $campaigns;
+    }
+
+    /**
      * @return array<int, AdMetricsDTO>
      */
     public function getMetrics(PaidAdCampaignPlatform $campaignPlatform, CarbonInterface $from, CarbonInterface $to): array
@@ -633,6 +665,52 @@ class ChatGptAdsGateway extends AbstractAdPlatformGateway
                 throw new RuntimeException($this->apiError($response->body()));
             }
         }
+    }
+
+    /**
+     * @param  array<string, scalar>  $query
+     * @return array<int, array<string, mixed>>
+     */
+    private function collectList(AdPlatformConnection $connection, string $path, array $query = []): array
+    {
+        $rows = [];
+        $after = null;
+
+        for ($page = 0; $page < 5; $page++)
+        {
+            $params = array_merge($query, ['limit' => 100, 'order' => 'desc']);
+            if ($after !== null)
+            {
+                $params['after'] = $after;
+            }
+
+            $response = $this->authorizedClient($connection)->get(self::BASE.$path, $params);
+            if ($response->failed())
+            {
+                throw new RuntimeException($this->apiError($response->body()));
+            }
+
+            foreach ((array) $response->json('data', []) as $row)
+            {
+                if (is_array($row))
+                {
+                    $rows[] = $row;
+                }
+            }
+
+            if (! $response->json('has_more'))
+            {
+                break;
+            }
+
+            $after = $response->json('last_id');
+            if (! is_string($after) || $after === '')
+            {
+                break;
+            }
+        }
+
+        return $rows;
     }
 
     private function apiError(string $body): string

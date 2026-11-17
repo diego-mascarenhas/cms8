@@ -15,6 +15,7 @@ use App\Http\Requests\UpdatePaidAdCampaignRequest;
 use App\Jobs\PublishPaidAdCampaignJob;
 use App\Jobs\SyncPaidAdMetricsJob;
 use App\Services\PaidAdPublishOrchestrator;
+use App\Services\PaidAds\ChatGptCampaignImporter;
 use App\Services\PaidAds\PaidAdCampaignApiService;
 use App\Services\PaidAds\PaidAdCopySuggestionService;
 use App\Services\PaidAds\PaidAdImageGenerationService;
@@ -49,6 +50,8 @@ class PaidAdCampaignController extends Controller
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:50',
         ]);
+
+        app(ChatGptCampaignImporter::class)->importForTeam($team);
 
         $search = trim((string) ($validated['search'] ?? ''));
         $page = (int) ($validated['page'] ?? 1);

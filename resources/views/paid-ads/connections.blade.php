@@ -44,7 +44,11 @@
                         <p class="text-muted small mb-0">{{ __('This platform requires approved API access and is disabled by feature flag.') }}</p>
                     @elseif ($platform->usesApiKey() && $connection === null)
                         <span class="badge bg-label-secondary mb-2">{{ __('Disconnected') }}</span>
-                        <p class="text-muted small">{{ __('Paste the Ads API key from ChatGPT Ads Manager. The key belongs to one ad account.') }}</p>
+                        <p class="text-muted small">
+                            {{ __('Paste the Ads API key from') }}
+                            <a href="https://ads.openai.com/settings" target="_blank" rel="noopener noreferrer">ChatGPT Ads Manager</a>.
+                            {{ __('The key belongs to one ad account.') }}
+                        </p>
                         <form action="{{ route('integrations.ad-platforms.api-key', $platform->value) }}" method="POST" class="mt-2">
                             @csrf
                             <input type="password" name="api_key" class="form-control form-control-sm mb-2" placeholder="{{ __('Ads API key') }}" required autocomplete="off">

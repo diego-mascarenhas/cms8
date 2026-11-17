@@ -13,6 +13,7 @@ use App\Models\PaidAdCampaignPlatform;
 use App\Models\User;
 use App\Services\Ads\ChatGptAdsGateway;
 use App\Services\PaidAdPublishOrchestrator;
+use App\Services\PaidAds\ChatGptCampaignImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Jetstream\Features;
@@ -165,6 +166,68 @@ class ChatGptAdsTest extends TestCase
         {
             return $request->url() === 'https://api.ads.openai.com/v1/campaigns';
         }));
+    }
+
+    public function test_remote_chatgpt_campaigns_are_imported_into_the_team_list(): void
+    {
+        Http::fake([
+            'api.ads.openai.com/v1/campaigns*' => Http::response([
+                'data' => [[
+                    'id' => 'cmpn_idoneo',
+                    'name' => 'IDONEO campaign',
+                    'status' => 'active',
+                    'bidding_type' => 'clicks',
+                    'budget' => ['lifetime_spend_limit_micros' => 50_000_000],
+                    'created_at' => 1735689600,
+                ]],
+                'has_more' => false,
+            ], 200),
+            'api.ads.openai.com/v1/ad_groups*' => Http::response([
+                'data' => [[
+                    'id' => 'adgrp_201',
+                    'name' => 'Desarrollo de software',
+                    'context_hints' => ['MVP rápido'],
+                    'status' => 'active',
+                ]],
+                'has_more' => false,
+            ], 200),
+            'api.ads.openai.com/v1/ads*' => Http::response([
+                'data' => [[
+                    'id' => 'ad_301',
+                    'status' => 'active',
+                    'review_status' => 'approved',
+                    'creative' => [
+                        'type' => 'chat_card',
+                        'title' => 'Lanzá tu MVP',
+                        'body' => 'Consultoría y desarrollo.',
+                        'target_url' => 'https://idoneo.dev/',
+                    ],
+                ]],
+                'has_more' => false,
+            ], 200),
+        ]);
+
+        $connection = AdPlatformConnection::factory()->create([
+            'platform' => AdPlatform::ChatGpt,
+            'ad_account_id' => 'adacct_123',
+            'access_token' => 'sk-ads-test',
+            'access_token_expires_at' => null,
+            'metadata' => ['currency_code' => 'EUR'],
+        ]);
+
+        $imported = app(ChatGptCampaignImporter::class)->pull($connection->team);
+
+        $this->assertSame(1, $imported);
+
+        $campaign = PaidAdCampaign::query()->where('team_id', $connection->team_id)->where('name', 'IDONEO campaign')->first();
+        $this->assertNotNull($campaign);
+        $this->assertSame(PaidAdCampaignStatus::Active, $campaign->status);
+        $this->assertSame('50.00', number_format((float) $campaign->budget_amount, 2, '.', ''));
+        $this->assertSame('https://idoneo.dev/', $campaign->creative['url']);
+        $this->assertSame('cmpn_idoneo', $campaign->platforms()->first()->external_campaign_id);
+
+        app(ChatGptCampaignImporter::class)->pull($connection->team);
+        $this->assertSame(1, PaidAdCampaign::query()->where('team_id', $connection->team_id)->count());
     }
 
     public function test_pause_and_metrics_use_the_advertiser_api(): void
