@@ -1845,7 +1845,12 @@ class AssistantSubscriptionService
         {
             if ($customerResponse->json('error.code') === 'resource_missing')
             {
-                $this->customerService->forgetPersistedCustomerId($team);
+                // Do not clear teams.stripe_id here: staging/test keys against a live
+                // customer would wipe the id and break payment banners/methods.
+                Log::warning('Assistant Stripe customer missing while loading payment data', [
+                    'team_id' => $team->id,
+                    'customer_id' => $customerId,
+                ]);
 
                 return ['cacheable' => false, 'data' => array_merge($empty, ['customer_missing' => true])];
             }
@@ -1856,7 +1861,10 @@ class AssistantSubscriptionService
         $customer = $customerResponse->json();
         if (! is_array($customer) || ($customer['deleted'] ?? false))
         {
-            $this->customerService->forgetPersistedCustomerId($team);
+            Log::warning('Assistant Stripe customer deleted while loading payment data', [
+                'team_id' => $team->id,
+                'customer_id' => $customerId,
+            ]);
 
             return ['cacheable' => false, 'data' => array_merge($empty, ['customer_missing' => true])];
         }

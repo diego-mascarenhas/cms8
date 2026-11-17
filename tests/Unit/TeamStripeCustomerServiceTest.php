@@ -114,4 +114,17 @@ class TeamStripeCustomerServiceTest extends TestCase
             app(TeamStripeCustomerService::class)->getStripeCustomerIdForCategory($team, 'mailer'),
         );
     }
+
+    public function test_get_customer_id_returns_null_when_missing_and_no_subscriptions(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create([
+            'user_id' => $owner->id,
+            'stripe_id' => null,
+        ]);
+
+        $this->assertNull(
+            app(TeamStripeCustomerService::class)->getStripeCustomerIdForCategory($team, ''),
+        );
+    }
 }
