@@ -14,7 +14,9 @@ use App\Http\Requests\SuggestPaidAdVideoRequest;
 use App\Http\Requests\UpdatePaidAdCampaignRequest;
 use App\Jobs\PublishPaidAdCampaignJob;
 use App\Jobs\SyncPaidAdMetricsJob;
+use App\Services\PaidAdMetricsAggregator;
 use App\Services\PaidAdPublishOrchestrator;
+use App\Services\PaidAds\ChatGptCampaignImporter;
 use App\Services\PaidAds\PaidAdCampaignApiService;
 use App\Services\PaidAds\PaidAdCopySuggestionService;
 use App\Services\PaidAds\PaidAdImageGenerationService;
@@ -50,6 +52,8 @@ class PaidAdCampaignController extends Controller
             'per_page' => 'nullable|integer|min:1|max:50',
         ]);
 
+        app(ChatGptCampaignImporter::class)->importForTeam($team);
+
         $search = trim((string) ($validated['search'] ?? ''));
         $page = (int) ($validated['page'] ?? 1);
         $perPage = (int) ($validated['per_page'] ?? PaidAdCampaignApiService::PER_PAGE);
@@ -58,8 +62,17 @@ class PaidAdCampaignController extends Controller
         $paginator->setPath($request->url());
         $paginator->appends($request->query());
 
+        $metrics = app(PaidAdMetricsAggregator::class)->forCampaignIds(
+            $paginator->getCollection()->pluck('id')->all(),
+        );
         $items = $paginator->getCollection()
-            ->map(fn ($campaign) => $this->campaigns->formatForList($campaign))
+            ->map(function ($campaign) use ($metrics)
+            {
+                $item = $this->campaigns->formatForList($campaign);
+                $item['metrics'] = $metrics[(int) $campaign->id];
+
+                return $item;
+            })
             ->values()
             ->all();
 

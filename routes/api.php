@@ -802,6 +802,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('paid-ads/videos/{id}', [ApiPaidAdCampaignController::class, 'videoStatus'])->whereUuid('id');
     Route::get('paid-ads/connections', [ApiAdPlatformConnectionController::class, 'index']);
     Route::post('paid-ads/connections/{platform}/authorize', [ApiAdPlatformConnectionController::class, 'authorizeUrl']);
+    Route::post('paid-ads/connections/{platform}/api-key', [ApiAdPlatformConnectionController::class, 'storeApiKey']);
     Route::post('paid-ads/connections/{id}/select-account', [ApiAdPlatformConnectionController::class, 'selectAccount'])->whereNumber('id');
     Route::delete('paid-ads/connections/{id}', [ApiAdPlatformConnectionController::class, 'destroy'])->whereNumber('id');
     Route::get('paid-ads/audiences', [ApiPaidAdAudienceController::class, 'index']);
@@ -912,6 +913,8 @@ Route::middleware('auth.api')->group(function ()
     Route::post('hosting/{domain}/email-quota', [\App\Http\Controllers\Api\HostingController::class, 'updateEmailQuota'])->whereNumber('domain');
     Route::post('hosting', [\App\Http\Controllers\Api\HostingController::class, 'store']);
     Route::post('domains/check', [\App\Http\Controllers\Api\DomainRegistrationController::class, 'check']);
+    Route::post('domains/checkout', [\App\Http\Controllers\Api\DomainCheckoutController::class, 'start']);
+    Route::post('domains/checkout/complete', [\App\Http\Controllers\Api\DomainCheckoutController::class, 'complete']);
     Route::post('domains/register', [\App\Http\Controllers\Api\DomainRegistrationController::class, 'register']);
     Route::get('subscriptions/{id}', [ApiSubscriptionController::class, 'show'])->whereNumber('id');
     Route::patch('subscriptions/{id}/metadata', [ApiSubscriptionController::class, 'updateMetadata'])->whereNumber('id');

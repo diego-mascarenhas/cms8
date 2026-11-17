@@ -15,6 +15,7 @@ use App\Models\PaidAdAudience;
 use App\Models\PaidAdCampaign;
 use App\Services\PaidAdMetricsAggregator;
 use App\Services\PaidAdPublishOrchestrator;
+use App\Services\PaidAds\ChatGptCampaignImporter;
 use App\Services\PaidAds\PaidAdCampaignCalendarSyncer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -26,6 +27,12 @@ class PaidAdCampaignController extends Controller
     {
         $this->authorize('viewAny', PaidAdCampaign::class);
         $this->ensureModule();
+
+        $team = auth()->user()?->currentTeam;
+        if ($team !== null)
+        {
+            app(ChatGptCampaignImporter::class)->importForTeam($team);
+        }
 
         return $dataTable->render('paid-ads.index');
     }

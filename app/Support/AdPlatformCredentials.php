@@ -58,6 +58,7 @@ class AdPlatformCredentials
                 'client_id' => ['setting' => 'paid_ads_x_client_id', 'config' => 'services.x_ads.client_id'],
                 'client_secret' => ['setting' => 'paid_ads_x_client_secret', 'config' => 'services.x_ads.client_secret'],
             ],
+            AdPlatform::ChatGpt => [],
         };
     }
 

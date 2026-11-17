@@ -8,6 +8,11 @@ class CheckDomainRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        if ($this->attributes->get('auth_via') === 'team_token')
+        {
+            return $this->user() !== null;
+        }
+
         $user = $this->user();
 
         return $user !== null && $user->canAccessInfrastructure();

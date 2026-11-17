@@ -51,6 +51,36 @@ class TeamClientContextActivator
         $this->switchToTeam($user, $team);
     }
 
+    /**
+     * Make the user a client of the provider team without moving current_team_id.
+     * Staff and the owner keep the role they already have on that team.
+     */
+    public function ensureClientMembership(User $user, int $teamId): ?string
+    {
+        $team = Team::query()->find($teamId);
+        if (! $team instanceof Team)
+        {
+            return null;
+        }
+
+        if ($this->isProviderStaff($user, $team))
+        {
+            return $user->ownsTeam($team) ? 'owner' : $user->teamRole($team)?->key;
+        }
+
+        if (! $user->belongsToTeam($team))
+        {
+            $user->teams()->attach($team->id, ['role' => 'client']);
+        } elseif (! $user->hasTeamRole($team, 'client'))
+        {
+            $user->teams()->updateExistingPivot($team->id, ['role' => 'client']);
+        }
+
+        $user->unsetRelation('teams');
+
+        return 'client';
+    }
+
     private function isProviderStaff(User $user, Team $team): bool
     {
         if ($user->ownsTeam($team))

@@ -455,6 +455,69 @@ class ApiAuthRegisterAndPasswordResetTest extends TestCase
             ->assertJsonStructure(['token', 'user' => ['id', 'email']]);
     }
 
+    public function test_portal_session_keeps_the_personal_team_and_forces_the_client_role(): void
+    {
+        $this->skipWithoutTeams();
+        $this->ensureSpatieRole('admin');
+
+        $customer = User::factory()->withPersonalTeam()->create([
+            'email' => 'portal-cliente@example.com',
+        ]);
+        $customer->assignRole('admin');
+        $personalTeam = $customer->ownedTeams()->first();
+        $customer->forceFill(['current_team_id' => $personalTeam->id])->save();
+
+        $providerOwner = User::factory()->withPersonalTeam()->create();
+        $providerTeam = $providerOwner->ownedTeams()->first();
+        config(['organization.revision_alpha_team_id' => $providerTeam->id]);
+        config(['services.revisionalpha.portal_secret' => 'portal-secret']);
+
+        $this->postJson('/api/auth/portal-session', [
+            'email' => $customer->email,
+            'secret' => 'portal-secret',
+            'team_id' => $providerTeam->id,
+            'provision' => true,
+        ])->assertOk()
+            ->assertJsonPath('user.provider_team.id', $providerTeam->id)
+            ->assertJsonPath('user.provider_team.role', 'client')
+            ->assertJsonPath('current_team.id', $personalTeam->id);
+
+        $customer->refresh();
+        $this->assertSame($personalTeam->id, $customer->current_team_id);
+        $this->assertTrue($customer->hasTeamRole($providerTeam, 'client'));
+        $this->assertTrue($customer->ownsTeam($personalTeam));
+        $this->assertTrue($customer->hasRole('admin'));
+    }
+
+    public function test_portal_session_does_not_demote_provider_staff(): void
+    {
+        $this->skipWithoutTeams();
+
+        $owner = User::factory()->withPersonalTeam()->create();
+        $providerTeam = $owner->ownedTeams()->first();
+        $staff = User::factory()->withPersonalTeam()->create([
+            'email' => 'portal-staff@example.com',
+        ]);
+        $personalTeam = $staff->ownedTeams()->first();
+        $staff->forceFill(['current_team_id' => $personalTeam->id])->save();
+        $providerTeam->users()->attach($staff, ['role' => 'admin']);
+        config([
+            'organization.revision_alpha_team_id' => $providerTeam->id,
+            'services.revisionalpha.portal_secret' => 'portal-secret',
+        ]);
+
+        $this->postJson('/api/auth/portal-session', [
+            'email' => $staff->email,
+            'secret' => 'portal-secret',
+            'team_id' => $providerTeam->id,
+        ])->assertOk()
+            ->assertJsonPath('user.provider_team.role', 'admin')
+            ->assertJsonPath('current_team.id', $personalTeam->id);
+
+        $this->assertTrue($staff->fresh()->hasTeamRole($providerTeam, 'admin'));
+        $this->assertSame($personalTeam->id, $staff->fresh()->current_team_id);
+    }
+
     public function test_portal_session_rejects_a_missing_secret(): void
     {
         config(['services.revisionalpha.portal_secret' => 'portal-secret']);

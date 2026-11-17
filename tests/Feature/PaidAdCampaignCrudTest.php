@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AdPlatformConnection;
 use App\Models\Module;
 use App\Models\PaidAdCampaign;
+use App\Models\PaidAdCampaignPlatform;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -61,6 +62,48 @@ class PaidAdCampaignCrudTest extends TestCase
             'ad_platform_connection_id' => $connection->id,
             'platform' => $connection->platform->value,
         ]);
+    }
+
+    public function test_show_formats_spanish_dates_and_hides_empty_fields(): void
+    {
+        $user = $this->createUserWithRole('admin');
+        $this->enablePaidAdsModule($user);
+
+        $connection = AdPlatformConnection::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'user_id' => $user->id,
+            'ad_account_name' => 'REVISION ALPHA S.L.',
+        ]);
+
+        $campaign = PaidAdCampaign::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'created_by' => $user->id,
+            'budget_type' => 'lifetime',
+            'budget_amount' => 65,
+            'currency' => 'EUR',
+            'start_at' => '2026-11-17 00:00:00',
+            'end_at' => null,
+        ]);
+
+        PaidAdCampaignPlatform::factory()->published('cmpn_342db85b9bfc819abff93e1dee0210a1')->create([
+            'paid_ad_campaign_id' => $campaign->id,
+            'ad_platform_connection_id' => $connection->id,
+            'platform' => $connection->platform,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('paid-ads.show', $campaign->id));
+
+        $response->assertOk();
+        $response->assertSee('17 de noviembre de 2026', false);
+        $response->assertSee(__('Campaign start'), false);
+        $response->assertSee(route('paid-ads.index'), false);
+        $response->assertSee(__('Back to campaigns'), false);
+        $response->assertSee(__('Account'), false);
+        $response->assertSee(__('Status'), false);
+        $response->assertSee(__('Sync'), false);
+        $response->assertSee('title="cmpn_342db85b9bfc819abff93e1dee0210a1"', false);
+        $response->assertDontSee(__('End date'), false);
+        $response->assertDontSee('—', false);
     }
 
     public function test_client_role_cannot_create_campaign(): void

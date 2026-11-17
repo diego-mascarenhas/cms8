@@ -9,6 +9,7 @@ enum AdPlatform: string
     case LinkedIn = 'linkedin';
     case TikTok = 'tiktok';
     case X = 'x';
+    case ChatGpt = 'chatgpt';
 
     public function label(): string
     {
@@ -19,6 +20,7 @@ enum AdPlatform: string
             self::LinkedIn => 'LinkedIn',
             self::TikTok => 'TikTok',
             self::X => 'X (Twitter)',
+            self::ChatGpt => 'ChatGPT',
         };
     }
 
@@ -31,6 +33,7 @@ enum AdPlatform: string
             self::LinkedIn => 'ti ti-brand-linkedin',
             self::TikTok => 'ti ti-brand-tiktok',
             self::X => 'ti ti-brand-twitter',
+            self::ChatGpt => 'ti ti-message-chatbot',
         };
     }
 
@@ -43,7 +46,16 @@ enum AdPlatform: string
             self::LinkedIn => '#0A66C2',
             self::TikTok => '#000000',
             self::X => '#000000',
+            self::ChatGpt => '#10A37F',
         };
+    }
+
+    /**
+     * ChatGPT Ads uses an account API key from Ads Manager instead of OAuth.
+     */
+    public function usesApiKey(): bool
+    {
+        return $this === self::ChatGpt;
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Concerns\ChecksTeamModule;
 use App\Http\Controllers\Controller;
 use App\Models\AdPlatformConnection;
 use App\Services\Ads\AdPlatformGatewayFactory;
+use App\Services\Ads\ChatGptAdsGateway;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -55,6 +56,7 @@ class AdPlatformConnectionController extends Controller
                 'color' => $platform->color(),
                 'enabled' => $platform->isEnabled(),
                 'configured' => $gateway->isConfigured(),
+                'auth' => $platform->usesApiKey() ? 'api_key' : 'oauth',
                 'connection' => $connection ? $this->formatConnection($connection) : null,
                 'accounts' => $accounts,
             ];
@@ -80,6 +82,14 @@ class AdPlatformConnectionController extends Controller
         }
 
         $adPlatform = AdPlatform::tryFrom($platform);
+        if ($adPlatform !== null && $adPlatform->usesApiKey())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Paste the ChatGPT Ads API key instead of using OAuth.'),
+            ], 422);
+        }
+
         if ($adPlatform === null || ! $adPlatform->isEnabled())
         {
             return response()->json([
@@ -104,6 +114,59 @@ class AdPlatformConnectionController extends Controller
             'data' => [
                 'authorization_url' => $gateway->buildAuthorizationUrl($request->user()),
             ],
+        ]);
+    }
+
+    public function storeApiKey(Request $request, string $platform): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'paid_ads'))
+        {
+            return $denied;
+        }
+
+        $adPlatform = AdPlatform::tryFrom($platform);
+        if ($adPlatform === null || ! $adPlatform->usesApiKey() || ! $adPlatform->isEnabled())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('This platform is not available.'),
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'api_key' => ['required', 'string', 'max:500'],
+        ]);
+
+        $gateway = $this->gateways->make($adPlatform)->forTeam($team);
+        if (! $gateway instanceof ChatGptAdsGateway)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('This platform is not available.'),
+            ], 422);
+        }
+
+        try
+        {
+            $connection = $gateway->connectWithApiKey($request->user(), $validated['api_key']);
+        } catch (Throwable $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('ChatGPT is ready to publish.'),
+            'data' => $this->formatConnection($connection->fresh('user:id,name')),
         ]);
     }
 

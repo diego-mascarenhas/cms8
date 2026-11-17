@@ -17,6 +17,7 @@ class AdPlatformGatewayFactory
             AdPlatform::LinkedIn => app(LinkedInAdsGateway::class),
             AdPlatform::TikTok => app(TikTokAdsGateway::class),
             AdPlatform::X => app(XAdsGateway::class),
+            AdPlatform::ChatGpt => app(ChatGptAdsGateway::class),
         };
     }
 

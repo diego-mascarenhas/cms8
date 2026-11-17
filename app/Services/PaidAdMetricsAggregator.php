@@ -28,6 +28,48 @@ class PaidAdMetricsAggregator
     }
 
     /**
+     * Aggregate totals for many campaigns in one query.
+     *
+     * @param  array<int, int>  $campaignIds
+     * @return array<int, array{impressions: int, clicks: int, spend: float, conversions: int, ctr: float, cpc: float}>
+     */
+    public function forCampaignIds(array $campaignIds): array
+    {
+        $ids = array_values(array_unique(array_map(intval(...), $campaignIds)));
+        $totals = [];
+
+        foreach ($ids as $id)
+        {
+            $totals[$id] = $this->emptyTotals();
+        }
+
+        if ($ids === [])
+        {
+            return [];
+        }
+
+        $rows = PaidAdMetricSnapshot::query()
+            ->join('paid_ad_campaign_platforms', 'paid_ad_campaign_platforms.id', '=', 'paid_ad_metric_snapshots.paid_ad_campaign_platform_id')
+            ->whereIn('paid_ad_campaign_platforms.paid_ad_campaign_id', $ids)
+            ->groupBy('paid_ad_campaign_platforms.paid_ad_campaign_id')
+            ->select('paid_ad_campaign_platforms.paid_ad_campaign_id as campaign_id')
+            ->selectRaw('COALESCE(SUM(paid_ad_metric_snapshots.impressions),0) as impressions, COALESCE(SUM(paid_ad_metric_snapshots.clicks),0) as clicks, COALESCE(SUM(paid_ad_metric_snapshots.spend),0) as spend, COALESCE(SUM(paid_ad_metric_snapshots.conversions),0) as conversions')
+            ->get();
+
+        foreach ($rows as $row)
+        {
+            $totals[(int) $row->campaign_id] = $this->withDerived([
+                'impressions' => (int) $row->impressions,
+                'clicks' => (int) $row->clicks,
+                'spend' => (float) $row->spend,
+                'conversions' => (int) $row->conversions,
+            ]);
+        }
+
+        return $totals;
+    }
+
+    /**
      * Aggregate totals for the whole team (all campaigns).
      *
      * @return array{impressions: int, clicks: int, spend: float, conversions: int, ctr: float, cpc: float}
@@ -72,6 +114,19 @@ class PaidAdMetricsAggregator
                 'conversions' => (int) $row->conversions,
             ])
             ->all();
+    }
+
+    /**
+     * @return array{impressions: int, clicks: int, spend: float, conversions: int, ctr: float, cpc: float}
+     */
+    private function emptyTotals(): array
+    {
+        return $this->withDerived([
+            'impressions' => 0,
+            'clicks' => 0,
+            'spend' => 0.0,
+            'conversions' => 0,
+        ]);
     }
 
     /**
