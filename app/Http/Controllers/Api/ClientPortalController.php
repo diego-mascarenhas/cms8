@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\AssistantWhatsAppUsageByLineService;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\RevisionAlphaBilling;
+use App\Services\TeamClientContextActivator;
 use App\Services\TeamMailerUsageStatsService;
 use App\Services\TeamProspectUsageStatsService;
 use App\Services\TeamWhatsAppUsageStatsService;
@@ -92,6 +93,8 @@ class ClientPortalController extends Controller
             return $user;
         });
 
+        $this->ensurePortalClient($user);
+
         return $this->sent($user->email);
     }
 
@@ -114,6 +117,7 @@ class ClientPortalController extends Controller
         }
 
         Cache::forget($this->cacheKey($email));
+        $role = $this->ensurePortalClient($user);
         $token = $user->createToken('idoneo-mobile')->plainTextToken;
 
         return response()->json([
@@ -121,6 +125,10 @@ class ClientPortalController extends Controller
             'user' => [
                 'name' => $user->name,
                 'email' => $user->email,
+            ],
+            'provider_team' => [
+                'id' => (int) config('organization.revision_alpha_team_id'),
+                'role' => $role,
             ],
         ]);
     }
@@ -330,6 +338,17 @@ class ClientPortalController extends Controller
         ]);
 
         return strtolower($validated['email']);
+    }
+
+    private function ensurePortalClient(User $user): ?string
+    {
+        $teamId = (int) config('organization.revision_alpha_team_id', 0);
+        if ($teamId < 1)
+        {
+            return null;
+        }
+
+        return app(TeamClientContextActivator::class)->ensureClientMembership($user, $teamId);
     }
 
     private function findUser(string $email): ?User

@@ -286,20 +286,35 @@ class AuthController extends Controller
 
         $validated = $request->validate([
             'email' => ['required', 'email'],
+            'name' => ['nullable', 'string', 'max:255'],
             'team_id' => ['nullable', 'integer', 'exists:teams,id'],
+            'provision' => ['sometimes', 'boolean'],
         ]);
 
         $user = User::where('email', $validated['email'])->first();
         if ($user === null)
         {
-            return response()->json([
-                'message' => 'No hay una cuenta de IDONEO para este email.',
-            ], 404);
+            if (! $request->boolean('provision'))
+            {
+                return response()->json([
+                    'message' => 'No hay una cuenta de IDONEO para este email.',
+                ], 404);
+            }
+
+            $name = trim((string) ($validated['name'] ?? ''));
+            $user = User::create([
+                'name' => $name !== '' ? $name : explode('@', $validated['email'])[0],
+                'email' => $validated['email'],
+                'password' => Hash::make(Str::random(40)),
+            ]);
+            $this->createPersonalTeamForApiUser($user);
+            EnsureRegisteredUserRole::assignIfMissing($user);
         }
 
-        if (! empty($validated['team_id']))
+        $teamId = (int) ($validated['team_id'] ?? config('organization.revision_alpha_team_id'));
+        if ($teamId > 0)
         {
-            $this->teamClientContextActivator->activate($user, (int) $validated['team_id']);
+            $this->teamClientContextActivator->ensureClientMembership($user, $teamId);
         } elseif (! $user->currentTeam)
         {
             $team = $user->allTeams()->first();
@@ -627,6 +642,28 @@ class AuthController extends Controller
                 'can_manage' => $user->canManageTeam($team),
                 'apps' => app(AssistantSubscriptionService::class)->appsPayload($team),
             ] : null,
+            'provider_team' => $this->providerTeamPayload($user),
+        ];
+    }
+
+    /**
+     * Role on the Revision Alpha team. Independent of current_team_id.
+     *
+     * @return array{id: int, role: string|null, is_owner: bool}|null
+     */
+    private function providerTeamPayload(User $user): ?array
+    {
+        $teamId = (int) config('organization.revision_alpha_team_id', 0);
+        $team = $teamId > 0 ? Team::query()->find($teamId) : null;
+        if (! $team instanceof Team)
+        {
+            return null;
+        }
+
+        return [
+            'id' => $team->id,
+            'role' => $user->ownsTeam($team) ? 'owner' : $user->teamRole($team)?->key,
+            'is_owner' => $user->ownsTeam($team),
         ];
     }
 

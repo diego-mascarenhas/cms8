@@ -62,13 +62,22 @@ class ClientPortalAuthTest extends TestCase
             'code' => '000000',
         ])->assertStatus(422);
 
+        $provider = User::factory()->withPersonalTeam()->create();
+        $providerTeam = $provider->ownedTeams()->first();
+        config(['organization.revision_alpha_team_id' => $providerTeam->id]);
+
         $this->postJson('/api/client/auth/verify', [
             'email' => 'ana@example.com',
             'code' => $code,
         ])->assertOk()
             ->assertJsonPath('user.email', 'ana@example.com')
             ->assertJsonPath('user.name', 'Ana')
+            ->assertJsonPath('provider_team.role', 'client')
             ->assertJsonStructure(['token']);
+
+        $user->refresh();
+        $this->assertSame($user->ownedTeams()->first()->id, $user->current_team_id);
+        $this->assertTrue($user->hasTeamRole($providerTeam, 'client'));
     }
 
     public function test_dashboard_requires_authentication_and_starts_empty(): void
