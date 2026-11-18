@@ -91,7 +91,7 @@
             <div class="col-12">
                 <label class="form-label" for="prompt_instruction">{{ __('Instrucción para la IA') }} (*)</label>
                 <textarea class="form-control @error('prompt_instruction') is-invalid @enderror" id="prompt_instruction" name="prompt_instruction"
-                    rows="12" required>{{ old('prompt_instruction', $prompt->prompt_instruction ?? '') }}</textarea>
+                    rows="28" required>{{ old('prompt_instruction', $prompt->prompt_instruction ?? '') }}</textarea>
                 <div class="form-text">{{ __('Puedes usar formato Markdown.') }}</div>
                 @error('prompt_instruction')
                     <div class="invalid-feedback">{{ $message }}</div>
