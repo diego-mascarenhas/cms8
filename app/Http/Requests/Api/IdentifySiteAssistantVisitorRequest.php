@@ -29,6 +29,10 @@ class IdentifySiteAssistantVisitorRequest extends FormRequest
             'attribution.utm_content' => ['nullable', 'string', 'max:80'],
             'attribution.utm_term' => ['nullable', 'string', 'max:80'],
             'attribution.tag' => ['nullable', 'string', 'max:80'],
+            'landing' => ['nullable', 'in:escalar'],
+            'intent' => ['nullable', 'string', 'max:40', 'regex:/^[a-z0-9_-]+$/'],
+            'message' => ['nullable', 'string', 'max:4000'],
+            'country' => ['nullable', 'string', 'size:2', 'regex:/^[A-Za-z]{2}$/'],
         ];
     }
 

@@ -307,6 +307,10 @@ class PublicAutomationEmbedController extends Controller
             isset($validated['attribution']) && is_array($validated['attribution'])
                 ? $validated['attribution']
                 : null,
+            isset($validated['landing']) ? (string) $validated['landing'] : null,
+            isset($validated['intent']) ? (string) $validated['intent'] : null,
+            isset($validated['message']) ? (string) $validated['message'] : null,
+            isset($validated['country']) ? (string) $validated['country'] : null,
         );
 
         return response()->json([
