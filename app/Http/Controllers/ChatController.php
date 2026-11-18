@@ -2116,6 +2116,7 @@ class ChatController extends Controller
                     $item['last_channel'] = InboxReplyTargetService::CHANNEL_WHATSAPP;
                 }
                 $item['has_web'] = true;
+                $item['session_key'] = $web['session_key'];
             }
 
             $list[] = $item;
@@ -2206,6 +2207,8 @@ class ChatController extends Controller
         $contact = $web['contact'];
         $name = trim((string) $contact->name.' '.(string) ($contact->surname ?? ''));
         $phone = (string) ($row['phone'] ?? '');
+        // These rows are web-only (no WhatsApp thread in the index). Always expose
+        // session_key + channel=web so the SPA opens the site-assistant thread.
         $item = [
             'from' => $phone !== '' ? (string) ($row['digits'] ?: $phone) : '',
             'last_message' => $web['last_message'],
@@ -2214,6 +2217,8 @@ class ChatController extends Controller
             'is_archived' => $phone !== '' && isset($archivedPhones[$phone]),
             'contact_id' => (int) $contact->id,
             'has_web' => true,
+            'channel' => 'web',
+            'session_key' => $web['session_key'],
             'assistant_toggle_available' => false,
             'assistant_inbound_enabled' => false,
             'assistant_contact_enabled' => true,
@@ -2226,11 +2231,6 @@ class ChatController extends Controller
         if ($name !== '')
         {
             $item['user_name'] = $name;
-        }
-        if ($phone === '')
-        {
-            $item['channel'] = 'web';
-            $item['session_key'] = $web['session_key'];
         }
         $item['last_channel'] = $web['channel'] ?? InboxReplyTargetService::CHANNEL_WEB;
 

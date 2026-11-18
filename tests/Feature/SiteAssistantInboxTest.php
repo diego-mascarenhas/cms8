@@ -758,6 +758,49 @@ class SiteAssistantInboxTest extends TestCase
             ->assertJsonPath('identity.utm_campaign', 'chatgpt-ads');
     }
 
+    public function test_identified_web_contact_with_phone_stays_openable_as_web(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [$owner, $team, $automation] = $this->teamWithWebAssistant();
+        $this->fakeAssistantReply("Listo.\n[[hechos]]\nPedido: Demo\n[[/hechos]]");
+
+        $this->postJson(route('api.embed.automation.identify', $automation->public_token), [
+            'email' => 'web.phone@example.com',
+            'name' => 'Web Phone',
+            'phone' => '34600999888',
+            'session_key' => 'web-phone-session',
+        ])->assertOk();
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Hola',
+            'session_key' => 'web-phone-session',
+        ])->assertOk();
+
+        $stored = SiteAssistantMessage::withoutGlobalScopes()
+            ->where('session_key', 'web-phone-session')
+            ->where('role', 'assistant')
+            ->value('body');
+        $this->assertSame('Listo.', $stored);
+
+        $token = $owner->createToken('admin-inbox')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-list')
+            ->assertOk()
+            ->assertJsonPath('contacts.0.channel', 'web')
+            ->assertJsonPath('contacts.0.session_key', 'web-phone-session')
+            ->assertJsonPath('contacts.0.has_web', true)
+            ->assertJsonPath('contacts.0.user_name', 'Web Phone');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/site-assistant-messages/web-phone-session')
+            ->assertOk()
+            ->assertJsonPath('messages.1.body', 'Listo.');
+    }
+
     /**
      * @return array{0: User, 1: Team, 2: Automation}
      */

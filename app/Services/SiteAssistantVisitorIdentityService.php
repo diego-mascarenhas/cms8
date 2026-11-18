@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Helpers\PhoneHelper;
 use App\Models\Automation;
 use App\Models\AutomationFlowSession;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactStatus;
+use App\Models\Country;
 use App\Services\Contacts\TeamContactMatcher;
 use Illuminate\Support\Str;
 
@@ -38,6 +40,10 @@ class SiteAssistantVisitorIdentityService
         ?string $name = null,
         ?string $phone = null,
         ?array $attribution = null,
+        ?string $landing = null,
+        ?string $intent = null,
+        ?string $message = null,
+        ?string $country = null,
     ): array {
         $normalizedAttribution = $this->normalizeAttribution($attribution);
         $automation->loadMissing('team');
@@ -48,6 +54,10 @@ class SiteAssistantVisitorIdentityService
             $phone,
             (int) ($automation->team?->user_id ?? 0),
             $normalizedAttribution,
+            $landing,
+            $intent,
+            $message,
+            $country,
         );
 
         $this->bind($automation, $sessionKey, $contact);
@@ -349,10 +359,20 @@ class SiteAssistantVisitorIdentityService
         ?string $phone,
         int $ownerUserId,
         ?array $attribution = null,
+        ?string $landing = null,
+        ?string $intent = null,
+        ?string $message = null,
+        ?string $country = null,
     ): Contact {
         $normalizedEmail = strtolower(trim($email));
         $phoneDigits = $this->digitsOrNull($phone);
         $normalizedAttribution = $this->normalizeAttribution($attribution);
+        $landing = $landing === 'escalar' ? 'escalar' : null;
+        $intent = $this->cleanIntent($intent);
+        $countryId = $phoneDigits !== null
+            ? ($this->countryId($country) ?? $this->countryId($this->countryCodeFromPhone($phoneDigits)))
+            : null;
+        $message = trim((string) $message);
         $existing = $this->contacts->findExisting(
             $teamId,
             $normalizedEmail !== '' ? $normalizedEmail : null,
@@ -367,6 +387,8 @@ class SiteAssistantVisitorIdentityService
             {
                 $this->applyAttributionToContact($existing, $normalizedAttribution);
             }
+            $this->rememberLanding($existing, $landing, $intent);
+            $this->rememberLeadDetails($existing, $message, $countryId);
 
             return $existing->fresh() ?? $existing;
         }
@@ -379,9 +401,13 @@ class SiteAssistantVisitorIdentityService
         [$firstName, $surname] = $this->splitVisitorName($name, $normalizedEmail);
 
         $data = [
-            'source' => 'site_assistant',
+            'source' => $landing ?? 'site_assistant',
             'captured_at' => now()->toIso8601String(),
         ];
+        if ($intent !== null)
+        {
+            $data['intent'] = $intent;
+        }
         if ($normalizedAttribution !== [])
         {
             $data['attribution'] = $normalizedAttribution;
@@ -397,6 +423,7 @@ class SiteAssistantVisitorIdentityService
             'surname' => $surname,
             'email' => $normalizedEmail !== '' ? $normalizedEmail : null,
             'phone' => $phoneDigits,
+            'country' => $countryId,
             'status_id' => $this->leadStatusId(),
             'creator_id' => $ownerUserId,
             'responsible_id' => $ownerUserId,
@@ -416,7 +443,92 @@ class SiteAssistantVisitorIdentityService
             }
         }
 
+        if ($message !== '')
+        {
+            $contact->appendNote($message);
+        }
+
         return $contact;
+    }
+
+    private function rememberLeadDetails(Contact $contact, string $message, ?int $countryId): void
+    {
+        if ($countryId !== null && $contact->getAttribute('country') === null)
+        {
+            $contact->setAttribute('country', $countryId);
+            $contact->save();
+        }
+
+        if ($message !== '')
+        {
+            $contact->appendNote($message);
+        }
+    }
+
+    private function countryId(?string $code): ?int
+    {
+        $code = strtolower(trim((string) $code));
+        if (! preg_match('/^[a-z]{2}$/', $code))
+        {
+            return null;
+        }
+
+        $id = Country::query()->where('code', $code)->value('id');
+
+        return $id !== null ? (int) $id : null;
+    }
+
+    private function countryCodeFromPhone(int $phoneDigits): ?string
+    {
+        $clock = PhoneHelper::clockForPhone((string) $phoneDigits);
+        $code = strtoupper((string) ($clock['country'] ?? ''));
+
+        return preg_match('/^[A-Z]{2}$/', $code) === 1 ? $code : null;
+    }
+
+    private function cleanIntent(?string $intent): ?string
+    {
+        $intent = strtolower(trim((string) $intent));
+        if ($intent === '' || strlen($intent) > 40 || ! preg_match('/^[a-z0-9_-]+$/', $intent))
+        {
+            return null;
+        }
+
+        return $intent;
+    }
+
+    private function rememberLanding(Contact $contact, ?string $landing, ?string $intent): void
+    {
+        if ($landing === null && $intent === null)
+        {
+            return;
+        }
+
+        $data = json_decode(json_encode($contact->data ?? new \stdClass), true);
+        if (! is_array($data))
+        {
+            $data = [];
+        }
+
+        $changed = false;
+        if ($intent !== null && trim((string) ($data['intent'] ?? '')) === '')
+        {
+            $data['intent'] = $intent;
+            $changed = true;
+        }
+        if ($landing !== null && trim((string) ($data['source'] ?? '')) === '')
+        {
+            $data['source'] = $landing;
+            $changed = true;
+        }
+
+        if (! $changed)
+        {
+            return;
+        }
+
+        $contact->data = (object) $data;
+        $contact->save();
     }
 
     private function fillMissingVisitorFields(Contact $contact, ?string $name, ?int $phoneDigits): void

@@ -428,6 +428,89 @@ class PublicSiteAssistantIdentifyTest extends TestCase
         $this->assertSame('pref-lead-1', data_get($contact->fresh()->data, 'oppref'));
     }
 
+    public function test_an_escalar_lead_keeps_the_chatgpt_reference_and_intent(): void
+    {
+        [$team, $automation] = $this->webAssistant();
+
+        $this->postJson(route('api.embed.automation.identify', $automation->public_token), [
+            'email' => 'escalar.lead@example.com',
+            'name' => 'Diego Mascarenhas',
+            'phone' => '+34 600000000',
+            'session_key' => 'escalar-session',
+            'landing' => 'escalar',
+            'intent' => 'mvp',
+            'country' => 'ES',
+            'message' => "Quiero lanzar un MVP rápido\n\nLa app ya corre en un preview.",
+            'attribution' => [
+                'oppref' => 'chatgpt-click-1',
+                'utm_source' => 'chatgpt',
+                'utm_medium' => 'cpc',
+            ],
+        ])->assertOk();
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'escalar.lead@example.com')
+            ->first();
+
+        $this->assertNotNull($contact);
+        $this->assertSame('escalar', data_get($contact->data, 'source'));
+        $this->assertSame('mvp', data_get($contact->data, 'intent'));
+        $this->assertSame('chatgpt-click-1', data_get($contact->data, 'oppref'));
+        $this->assertSame('chatgpt', data_get($contact->data, 'attribution.utm_source'));
+        $this->assertSame(724, (int) $contact->country);
+        $this->assertStringContainsString('La app ya corre en un preview.', (string) data_get($contact->data, 'notes'));
+    }
+
+    public function test_an_escalar_lead_without_a_phone_does_not_get_a_country(): void
+    {
+        [$team, $automation] = $this->webAssistant();
+
+        $this->postJson(route('api.embed.automation.identify', $automation->public_token), [
+            'email' => 'escalar.nophone@example.com',
+            'name' => 'Diego Mascarenhas',
+            'session_key' => 'escalar-no-phone',
+            'landing' => 'escalar',
+            'intent' => 'mvp',
+            'country' => 'ES',
+            'message' => 'Quiero publicarla.',
+        ])->assertOk();
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'escalar.nophone@example.com')
+            ->first();
+
+        $this->assertNotNull($contact);
+        $this->assertNull($contact->country);
+        $this->assertNull($contact->phone);
+        $this->assertStringContainsString('Quiero publicarla.', (string) data_get($contact->data, 'notes'));
+    }
+
+    public function test_an_escalar_whatsapp_number_assigns_its_country(): void
+    {
+        [$team, $automation] = $this->webAssistant();
+
+        $this->postJson(route('api.embed.automation.identify', $automation->public_token), [
+            'email' => 'escalar.ar@example.com',
+            'name' => 'Chat GPT',
+            'phone' => '+54 9 11 4448 8888',
+            'session_key' => 'escalar-ar',
+            'landing' => 'escalar',
+            'intent' => 'mvp',
+            'message' => 'Quiero publicarla.',
+        ])->assertOk();
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'escalar.ar@example.com')
+            ->first();
+
+        $this->assertNotNull($contact);
+        $this->assertSame(32, (int) $contact->getAttribute('country'));
+        $this->assertStringContainsString('Quiero publicarla.', (string) data_get($contact->data, 'notes'));
+    }
+
     /**
      * @return array{0: Team, 1: Automation}
      */
