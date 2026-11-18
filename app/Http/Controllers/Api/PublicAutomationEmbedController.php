@@ -38,6 +38,16 @@ class PublicAutomationEmbedController extends Controller
             'session_key' => 'nullable|string|max:191',
             'channel' => 'nullable|string|in:web,mobile',
             'image' => 'nullable|image|max:10240',
+            'context' => 'nullable|string|max:12000',
+            'prompt_key' => 'nullable|string|max:191',
+            'attribution' => 'nullable|array',
+            'attribution.oppref' => 'nullable|string|max:191',
+            'attribution.utm_source' => 'nullable|string|max:80',
+            'attribution.utm_medium' => 'nullable|string|max:80',
+            'attribution.utm_campaign' => 'nullable|string|max:80',
+            'attribution.utm_content' => 'nullable|string|max:80',
+            'attribution.utm_term' => 'nullable|string|max:80',
+            'attribution.tag' => 'nullable|string|max:80',
         ]);
         $origin = $this->originChannel($request, $validated['channel'] ?? null);
         $message = trim((string) ($validated['message'] ?? ''));
@@ -60,6 +70,23 @@ class PublicAutomationEmbedController extends Controller
         $sessionKey = isset($validated['session_key']) && trim($validated['session_key']) !== ''
             ? trim($validated['session_key'])
             : (string) Str::uuid();
+
+        $attribution = $identity->normalizeAttribution($validated['attribution'] ?? null);
+        if ($attribution !== [])
+        {
+            $identity->rememberSessionAttribution($automation, $sessionKey, $attribution);
+        }
+
+        $promptKey = trim((string) ($validated['prompt_key'] ?? ''));
+        if ($promptKey !== '')
+        {
+            $conversations->rememberSessionInboundPrompt($automation, $sessionKey, $promptKey);
+        }
+
+        $context = trim((string) ($validated['context'] ?? ''));
+        $aiMessage = $context !== ''
+            ? $context."\n\nÚltimo mensaje del visitante:\n".$message
+            : $message;
 
         $automation->loadMissing('team');
         $media = null;
@@ -168,7 +195,7 @@ class PublicAutomationEmbedController extends Controller
             $result = $runner->run(
                 $automation,
                 Automation::CHANNEL_API,
-                $message,
+                $aiMessage,
                 null,
                 null,
                 false,
@@ -277,6 +304,9 @@ class PublicAutomationEmbedController extends Controller
             (string) $validated['email'],
             isset($validated['name']) ? (string) $validated['name'] : null,
             isset($validated['phone']) ? (string) $validated['phone'] : null,
+            isset($validated['attribution']) && is_array($validated['attribution'])
+                ? $validated['attribution']
+                : null,
         );
 
         return response()->json([

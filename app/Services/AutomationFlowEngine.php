@@ -74,6 +74,7 @@ class AutomationFlowEngine
             'contact_id' => $previousMeta['contact_id'] ?? null,
             'visitor_email' => $previousMeta['visitor_email'] ?? null,
             'inbound_prompt_key' => $previousMeta['inbound_prompt_key'] ?? null,
+            'attribution' => $previousMeta['attribution'] ?? null,
         ], fn ($value) => $value !== null);
         $session->last_message_at = now();
         $session->save();

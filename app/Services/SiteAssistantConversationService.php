@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Automation;
 use App\Models\AutomationFlowSession;
 use App\Models\Contact;
+use App\Models\Prompt;
 use App\Models\SiteAssistantMessage;
 use App\Models\Team;
 use App\Models\User;
@@ -173,6 +174,13 @@ class SiteAssistantConversationService
             : null;
 
         $categories = app(WhatsAppThreadCategoryService::class);
+        $flowSession = AutomationFlowSession::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('external_key', $sessionKey)
+            ->orderByDesc('last_message_at')
+            ->first();
+        $attribution = app(SiteAssistantVisitorIdentityService::class)
+            ->attributionSnapshot($contact, $flowSession);
 
         return [
             'session_key' => $sessionKey,
@@ -181,7 +189,7 @@ class SiteAssistantConversationService
             'thread_assistant' => $this->threadAssistantMeta($team, $sessionKey, $contact),
             'thread_contact' => $categories->contactMeta($team, $contact, (string) ($contact?->phone ?? '')),
             'thread_categories' => $categories->present($team, $contact),
-            'identity' => app(SiteAssistantInboxIdentityService::class)->present($team, $messages, $contact),
+            'identity' => app(SiteAssistantInboxIdentityService::class)->present($team, $messages, $contact, $attribution),
             'messages' => $this->presentInboxMessages($messages),
             'reply_target' => app(InboxReplyTargetService::class)->forWebSession($sessionKey),
         ];
@@ -207,6 +215,37 @@ class SiteAssistantConversationService
             ->find($id);
 
         return $contact?->inboundChatAssistantPromptKey();
+    }
+
+    /**
+     * First-touch session prompt for public embed (does not change the team WhatsApp default).
+     */
+    public function rememberSessionInboundPrompt(Automation $automation, string $sessionKey, string $routingKey): void
+    {
+        $key = trim($routingKey);
+        if ($key === '' || TeamSiteAssistantPromptService::isReservedOffKey($key) || trim($sessionKey) === '')
+        {
+            return;
+        }
+
+        $prompt = Prompt::findByRoutingKey($key, (int) $automation->team_id);
+        if (! $prompt || ! $prompt->is_active || $prompt->isGeneralRouter())
+        {
+            return;
+        }
+
+        $session = $this->flowEngine->sessionFor($automation, Automation::CHANNEL_API, $sessionKey);
+        $meta = is_array($session->meta) ? $session->meta : [];
+        $existing = trim((string) ($meta[self::META_INBOUND_PROMPT] ?? ''));
+        if ($existing !== '')
+        {
+            return;
+        }
+
+        $meta[self::META_INBOUND_PROMPT] = $key;
+        $session->meta = $meta;
+        $session->last_message_at = now();
+        $session->save();
     }
 
     public function pinInboundPrompt(
