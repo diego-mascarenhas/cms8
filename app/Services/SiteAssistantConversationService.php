@@ -42,7 +42,7 @@ class SiteAssistantConversationService
 
         $this->store($automation, $session, $sessionKey, SiteAssistantMessage::ROLE_VISITOR, $visitorMessage, $contactId, $origin, $visitorMedia);
 
-        $reply = trim($assistantReply);
+        $reply = $this->stripSiteProtocolMarkers(trim($assistantReply));
         if ($reply !== '')
         {
             $this->store($automation, $session, $sessionKey, SiteAssistantMessage::ROLE_ASSISTANT, $reply, $contactId, $origin);
@@ -599,7 +599,7 @@ class SiteAssistantConversationService
             $activity[(int) $contactId] = [
                 'contact' => $contact,
                 'last_at' => $message->created_at?->getTimestamp() ?? 0,
-                'last_message' => (string) $message->body,
+                'last_message' => $this->stripSiteProtocolMarkers((string) $message->body),
                 'last_message_time' => optional($message->created_at)?->diffForHumans() ?? '',
                 'session_key' => (string) $message->session_key,
                 'channel' => $message->originChannel(),
@@ -634,7 +634,7 @@ class SiteAssistantConversationService
                 return [
                     'id' => 'web-'.$message->id,
                     'direction' => $message->role === SiteAssistantMessage::ROLE_VISITOR ? 'inbound' : 'outbound',
-                    'body' => $message->body,
+                    'body' => $presented['body'],
                     'status' => $message->role === SiteAssistantMessage::ROLE_VISITOR ? 'received' : 'sent',
                     'created_at' => $presented['created_at'],
                     'user_id' => $presented['user_id'],
@@ -699,10 +699,16 @@ class SiteAssistantConversationService
             $senderAvatar = ChatMessageAvatar::forUser($user);
         }
 
+        $body = (string) $message->body;
+        if ($fromAssistant)
+        {
+            $body = $this->stripSiteProtocolMarkers($body);
+        }
+
         return [
             'id' => (int) $message->id,
             'role' => (string) $message->role,
-            'body' => (string) $message->body,
+            'body' => $body,
             'created_at' => optional($message->created_at)?->toIso8601String(),
             'user_id' => $message->user_id ? (int) $message->user_id : null,
             'from_assistant' => $fromAssistant,
@@ -820,11 +826,26 @@ class SiteAssistantConversationService
             'email' => $visitor['email'],
             'contact_id' => $contact?->id,
             'identified' => $visitor['identified'],
-            'last_message' => $message->body,
+            'last_message' => $this->stripSiteProtocolMarkers((string) $message->body),
             'last_message_time' => optional($message->created_at)?->diffForHumans() ?? '',
             'last_message_at' => optional($message->created_at)?->toIso8601String(),
             'last_channel' => $message->originChannel(),
         ];
+    }
+
+    /**
+     * Remove site-local AI protocol markers (facts, meeting, invoices, …) from assistant text.
+     */
+    public function stripSiteProtocolMarkers(string $body): string
+    {
+        $clean = preg_replace(
+            '/\[\[(?:facts|hechos|cita|facturas|sugerencia|hosting)\]\].*?\[\[\/(?:facts|hechos|cita|facturas|sugerencia|hosting)\]\]/su',
+            '',
+            $body,
+        );
+        $clean = preg_replace('/\[\[(?:cita|facturas)\]\]\s*\[\[\/(?:cita|facturas)\]\]/su', '', (string) $clean);
+
+        return trim(preg_replace("/[ \t]+\n/", "\n", (string) $clean) ?? '');
     }
 
     /**
