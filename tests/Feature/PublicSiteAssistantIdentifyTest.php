@@ -6,6 +6,8 @@ use App\Models\Automation;
 use App\Models\AutomationFlowSession;
 use App\Models\Contact;
 use App\Models\ContactStatus;
+use App\Models\Module;
+use App\Models\Prompt;
 use App\Models\SiteAssistantMessage;
 use App\Models\Team;
 use App\Services\AssistantChatService;
@@ -288,6 +290,142 @@ class PublicSiteAssistantIdentifyTest extends TestCase
             ->assertOk()
             ->assertJsonPath('visitor.identified', true)
             ->assertJsonPath('visitor.first_name', 'Ana');
+    }
+
+    public function test_chat_persists_attribution_first_touch_on_session_meta(): void
+    {
+        [, $automation] = $this->webAssistant();
+
+        $this->mock(AssistantChatService::class, function ($mock): void
+        {
+            $mock->shouldReceive('run')
+                ->twice()
+                ->andReturn([
+                    'response' => 'Hola',
+                    'routed_to' => 'contacts:landing',
+                ]);
+        });
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Hola',
+            'session_key' => 'attr-session',
+            'context' => 'Contexto de prueba del sitio.',
+            'attribution' => [
+                'oppref' => 'openai-abc',
+                'utm_campaign' => 'black-friday',
+            ],
+        ])->assertOk();
+
+        $this->assertSame(
+            'Hola',
+            SiteAssistantMessage::withoutGlobalScopes()
+                ->where('session_key', 'attr-session')
+                ->where('role', 'visitor')
+                ->value('body'),
+        );
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Seguimos',
+            'session_key' => 'attr-session',
+            'attribution' => [
+                'oppref' => 'other-pref',
+                'utm_source' => 'newsletter',
+            ],
+        ])->assertOk();
+
+        $meta = AutomationFlowSession::query()
+            ->where('external_key', 'attr-session')
+            ->first()
+            ?->meta;
+
+        $this->assertSame('openai-abc', data_get($meta, 'attribution.oppref'));
+        $this->assertSame('black-friday', data_get($meta, 'attribution.utm_campaign'));
+        $this->assertSame('newsletter', data_get($meta, 'attribution.utm_source'));
+    }
+
+    public function test_embed_prompt_key_pins_session_without_changing_team_default(): void
+    {
+        [$team, $automation] = $this->webAssistant();
+        $automation->forceFill(['entry_prompt_key' => 'contacts:landing'])->save();
+
+        $module = Module::query()->firstOrCreate(
+            ['key' => 'contacts'],
+            ['name' => 'Contacts', 'group' => null, 'order' => 0, 'status' => 1],
+        );
+        Prompt::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'web_revision',
+            'section_label' => 'Web revision',
+            'prompt_instruction' => 'Prompt solo para la web.',
+            'is_active' => true,
+            'order' => 0,
+        ]);
+
+        $this->mock(AssistantChatService::class, function ($mock): void
+        {
+            $mock->shouldReceive('run')
+                ->once()
+                ->withArgs(function (...$args): bool
+                {
+                    return ($args[5] ?? null) === 'web_revision';
+                })
+                ->andReturn([
+                    'response' => 'Desde web_revision',
+                    'routed_to' => 'web_revision',
+                ]);
+        });
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Hola web',
+            'session_key' => 'prompt-pin-session',
+            'prompt_key' => 'web_revision',
+        ])
+            ->assertOk()
+            ->assertJsonPath('reply', 'Desde web_revision');
+
+        $this->assertSame(
+            'web_revision',
+            data_get(
+                AutomationFlowSession::query()->where('external_key', 'prompt-pin-session')->first()?->meta,
+                'inbound_prompt_key',
+            ),
+        );
+        $this->assertSame('contacts:landing', $automation->fresh()->entry_prompt_key);
+    }
+
+    public function test_identify_writes_oppref_first_touch_on_contact_data(): void
+    {
+        [$team, $automation] = $this->webAssistant();
+
+        $this->postJson(route('api.embed.automation.identify', $automation->public_token), [
+            'email' => 'lead.oppref@example.com',
+            'name' => 'Lead Pref',
+            'session_key' => 'identify-oppref',
+            'attribution' => [
+                'oppref' => 'pref-lead-1',
+                'utm_campaign' => 'ads-chatgpt',
+            ],
+        ])->assertOk();
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'lead.oppref@example.com')
+            ->first();
+
+        $this->assertNotNull($contact);
+        $this->assertSame('pref-lead-1', data_get($contact->data, 'oppref'));
+        $this->assertSame('ads-chatgpt', data_get($contact->data, 'attribution.utm_campaign'));
+
+        $this->postJson(route('api.embed.automation.identify', $automation->public_token), [
+            'email' => 'lead.oppref@example.com',
+            'session_key' => 'identify-oppref-2',
+            'attribution' => [
+                'oppref' => 'pref-lead-2',
+            ],
+        ])->assertOk();
+
+        $this->assertSame('pref-lead-1', data_get($contact->fresh()->data, 'oppref'));
     }
 
     /**

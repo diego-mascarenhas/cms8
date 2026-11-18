@@ -720,6 +720,44 @@ class SiteAssistantInboxTest extends TestCase
         ])->assertStatus(401);
     }
 
+    public function test_inbox_identity_includes_oppref_from_contact(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [$owner, , $automation] = $this->teamWithWebAssistant();
+        $this->fakeAssistantReply('Hola');
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Hola',
+            'session_key' => 'web-oppref-inbox',
+            'attribution' => [
+                'oppref' => 'openai-inbox',
+                'utm_campaign' => 'chatgpt-ads',
+            ],
+        ])->assertOk();
+
+        $this->postJson(route('api.embed.automation.identify', $automation->public_token), [
+            'email' => 'oppref.inbox@example.com',
+            'name' => 'Pref Inbox',
+            'session_key' => 'web-oppref-inbox',
+            'attribution' => [
+                'oppref' => 'openai-inbox',
+                'utm_campaign' => 'chatgpt-ads',
+            ],
+        ])->assertOk();
+
+        $token = $owner->createToken('admin-inbox')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/site-assistant-messages/web-oppref-inbox')
+            ->assertOk()
+            ->assertJsonPath('identity.identified', true)
+            ->assertJsonPath('identity.oppref', 'openai-inbox')
+            ->assertJsonPath('identity.utm_campaign', 'chatgpt-ads');
+    }
+
     /**
      * @return array{0: User, 1: Team, 2: Automation}
      */

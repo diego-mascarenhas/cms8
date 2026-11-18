@@ -106,10 +106,17 @@ class SiteAssistantInboxIdentityService
 
     /**
      * @param  Collection<int, SiteAssistantMessage>  $messages
-     * @return array{identified: bool, extracted: array{name: string|null, email: string|null, phone: string|null}, suggestions: list<array{id: int, name: string, email: string|null, phone: string|null}>, can_create: bool}
+     * @param  array{oppref: string|null, utm_campaign: string|null, attribution: array<string, string>}|null  $attribution
+     * @return array{identified: bool, extracted: array{name: string|null, email: string|null, phone: string|null}, suggestions: list<array{id: int, name: string, email: string|null, phone: string|null}>, can_create: bool, oppref: string|null, utm_campaign: string|null, attribution: array<string, string>}
      */
-    public function present(Team $team, Collection $messages, ?Contact $contact): array
+    public function present(Team $team, Collection $messages, ?Contact $contact, ?array $attribution = null): array
     {
+        $attribution = $attribution ?? [
+            'oppref' => null,
+            'utm_campaign' => null,
+            'attribution' => [],
+        ];
+
         if ($contact)
         {
             return [
@@ -117,6 +124,9 @@ class SiteAssistantInboxIdentityService
                 'extracted' => ['name' => null, 'email' => null, 'phone' => null],
                 'suggestions' => [],
                 'can_create' => false,
+                'oppref' => $attribution['oppref'] ?? null,
+                'utm_campaign' => $attribution['utm_campaign'] ?? null,
+                'attribution' => $attribution['attribution'] ?? [],
             ];
         }
 
@@ -128,6 +138,9 @@ class SiteAssistantInboxIdentityService
             'extracted' => $extracted,
             'suggestions' => $suggestions,
             'can_create' => $extracted['email'] !== null || $extracted['phone'] !== null,
+            'oppref' => $attribution['oppref'] ?? null,
+            'utm_campaign' => $attribution['utm_campaign'] ?? null,
+            'attribution' => $attribution['attribution'] ?? [],
         ];
     }
 

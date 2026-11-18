@@ -21,6 +21,14 @@ class IdentifySiteAssistantVisitorRequest extends FormRequest
             'name' => ['nullable', 'string', 'max:120'],
             'phone' => ['nullable', 'string', 'max:30'],
             'session_key' => ['nullable', 'string', 'max:191'],
+            'attribution' => ['nullable', 'array'],
+            'attribution.oppref' => ['nullable', 'string', 'max:191'],
+            'attribution.utm_source' => ['nullable', 'string', 'max:80'],
+            'attribution.utm_medium' => ['nullable', 'string', 'max:80'],
+            'attribution.utm_campaign' => ['nullable', 'string', 'max:80'],
+            'attribution.utm_content' => ['nullable', 'string', 'max:80'],
+            'attribution.utm_term' => ['nullable', 'string', 'max:80'],
+            'attribution.tag' => ['nullable', 'string', 'max:80'],
         ];
     }
 

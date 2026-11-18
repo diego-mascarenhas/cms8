@@ -12,6 +12,16 @@ use Illuminate\Support\Str;
 
 class SiteAssistantVisitorIdentityService
 {
+    public const ATTRIBUTION_KEYS = [
+        'oppref',
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'utm_content',
+        'utm_term',
+        'tag',
+    ];
+
     public function __construct(
         protected AutomationFlowEngine $flowEngine,
         protected TeamContactMatcher $contacts,
@@ -27,7 +37,9 @@ class SiteAssistantVisitorIdentityService
         string $email,
         ?string $name = null,
         ?string $phone = null,
+        ?array $attribution = null,
     ): array {
+        $normalizedAttribution = $this->normalizeAttribution($attribution);
         $automation->loadMissing('team');
         $contact = $this->upsertVisitorContact(
             (int) $automation->team_id,
@@ -35,11 +47,189 @@ class SiteAssistantVisitorIdentityService
             $name,
             $phone,
             (int) ($automation->team?->user_id ?? 0),
+            $normalizedAttribution,
         );
 
         $this->bind($automation, $sessionKey, $contact);
+        if ($normalizedAttribution !== [])
+        {
+            $this->rememberSessionAttribution($automation, $sessionKey, $normalizedAttribution);
+        }
 
         return $this->recordFromContact($contact);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $input
+     * @return array<string, string>
+     */
+    public function normalizeAttribution(?array $input): array
+    {
+        if (! is_array($input) || $input === [])
+        {
+            return [];
+        }
+
+        $clean = [];
+        foreach (self::ATTRIBUTION_KEYS as $key)
+        {
+            $value = trim((string) ($input[$key] ?? ''));
+            if ($value === '')
+            {
+                continue;
+            }
+            $max = $key === 'oppref' ? 191 : 80;
+            if (strlen($value) > $max)
+            {
+                continue;
+            }
+            $pattern = $key === 'oppref'
+                ? '/^[A-Za-z0-9._\-]+$/'
+                : '/^[\p{L}\p{N} ._+\-]+$/u';
+            if (! preg_match($pattern, $value))
+            {
+                continue;
+            }
+            $clean[$key] = $value;
+        }
+
+        return $clean;
+    }
+
+    /**
+     * First-touch attribution on the automation flow session.
+     *
+     * @param  array<string, string>  $attribution
+     */
+    public function rememberSessionAttribution(Automation $automation, string $sessionKey, array $attribution): void
+    {
+        $attribution = $this->normalizeAttribution($attribution);
+        if ($attribution === [] || trim($sessionKey) === '')
+        {
+            return;
+        }
+
+        $session = $this->flowEngine->sessionFor(
+            $automation,
+            Automation::CHANNEL_API,
+            $sessionKey,
+        );
+        $meta = is_array($session->meta) ? $session->meta : [];
+        $existing = is_array($meta['attribution'] ?? null) ? $meta['attribution'] : [];
+        $merged = $existing;
+        foreach ($attribution as $key => $value)
+        {
+            if (! isset($merged[$key]) || trim((string) $merged[$key]) === '')
+            {
+                $merged[$key] = $value;
+            }
+        }
+        if ($merged === $existing)
+        {
+            return;
+        }
+
+        $meta['attribution'] = $merged;
+        $session->meta = $meta;
+        $session->last_message_at = now();
+        $session->save();
+    }
+
+    /**
+     * @param  array<string, string>  $attribution
+     */
+    public function applyAttributionToContact(Contact $contact, array $attribution): Contact
+    {
+        $attribution = $this->normalizeAttribution($attribution);
+        if ($attribution === [])
+        {
+            return $contact;
+        }
+
+        $data = json_decode(json_encode($contact->data ?? new \stdClass), true);
+        if (! is_array($data))
+        {
+            $data = [];
+        }
+
+        $existingAttribution = is_array($data['attribution'] ?? null) ? $data['attribution'] : [];
+        $mergedAttribution = $existingAttribution;
+        foreach ($attribution as $key => $value)
+        {
+            if (! isset($mergedAttribution[$key]) || trim((string) $mergedAttribution[$key]) === '')
+            {
+                $mergedAttribution[$key] = $value;
+            }
+        }
+
+        $changed = $mergedAttribution !== $existingAttribution;
+        if (! isset($data['oppref']) && isset($mergedAttribution['oppref']))
+        {
+            $data['oppref'] = $mergedAttribution['oppref'];
+            $changed = true;
+        }
+        if ($mergedAttribution !== [])
+        {
+            $data['attribution'] = $mergedAttribution;
+        }
+
+        if (! $changed && ($data['attribution'] ?? null) === $existingAttribution)
+        {
+            return $contact;
+        }
+
+        $contact->data = (object) $data;
+        $contact->save();
+
+        return $contact->fresh() ?? $contact;
+    }
+
+    /**
+     * @return array{oppref: string|null, utm_campaign: string|null, attribution: array<string, string>}
+     */
+    public function attributionSnapshot(?Contact $contact, ?AutomationFlowSession $session = null): array
+    {
+        $fromContact = [];
+        if ($contact)
+        {
+            $data = json_decode(json_encode($contact->data ?? new \stdClass), true);
+            if (is_array($data))
+            {
+                if (is_array($data['attribution'] ?? null))
+                {
+                    $fromContact = $this->normalizeAttribution($data['attribution']);
+                }
+                if (! isset($fromContact['oppref']) && is_string($data['oppref'] ?? null) && trim($data['oppref']) !== '')
+                {
+                    $fromContact['oppref'] = trim($data['oppref']);
+                }
+            }
+        }
+
+        $fromSession = [];
+        if ($session)
+        {
+            $meta = is_array($session->meta) ? $session->meta : [];
+            if (is_array($meta['attribution'] ?? null))
+            {
+                $fromSession = $this->normalizeAttribution($meta['attribution']);
+            }
+        }
+
+        $merged = $fromContact;
+        foreach ($fromSession as $key => $value)
+        {
+            if (! isset($merged[$key]) || trim((string) $merged[$key]) === '')
+            {
+                $merged[$key] = $value;
+            }
+        }
+
+        return [
+            'oppref' => $merged['oppref'] ?? null,
+            'utm_campaign' => $merged['utm_campaign'] ?? null,
+            'attribution' => $merged,
+        ];
     }
 
     public function bind(Automation $automation, string $sessionKey, Contact $contact): AutomationFlowSession
@@ -149,10 +339,20 @@ class SiteAssistantVisitorIdentityService
         ];
     }
 
-    public function upsertVisitorContact(int $teamId, string $email, ?string $name, ?string $phone, int $ownerUserId): Contact
-    {
+    /**
+     * @param  array<string, string>|null  $attribution
+     */
+    public function upsertVisitorContact(
+        int $teamId,
+        string $email,
+        ?string $name,
+        ?string $phone,
+        int $ownerUserId,
+        ?array $attribution = null,
+    ): Contact {
         $normalizedEmail = strtolower(trim($email));
         $phoneDigits = $this->digitsOrNull($phone);
+        $normalizedAttribution = $this->normalizeAttribution($attribution);
         $existing = $this->contacts->findExisting(
             $teamId,
             $normalizedEmail !== '' ? $normalizedEmail : null,
@@ -163,6 +363,10 @@ class SiteAssistantVisitorIdentityService
         if ($existing)
         {
             $this->fillMissingVisitorFields($existing, $name, $phoneDigits);
+            if ($normalizedAttribution !== [])
+            {
+                $this->applyAttributionToContact($existing, $normalizedAttribution);
+            }
 
             return $existing->fresh() ?? $existing;
         }
@@ -174,6 +378,19 @@ class SiteAssistantVisitorIdentityService
 
         [$firstName, $surname] = $this->splitVisitorName($name, $normalizedEmail);
 
+        $data = [
+            'source' => 'site_assistant',
+            'captured_at' => now()->toIso8601String(),
+        ];
+        if ($normalizedAttribution !== [])
+        {
+            $data['attribution'] = $normalizedAttribution;
+            if (isset($normalizedAttribution['oppref']))
+            {
+                $data['oppref'] = $normalizedAttribution['oppref'];
+            }
+        }
+
         $contact = Contact::withoutGlobalScopes()->create([
             'team_id' => $teamId,
             'name' => $firstName,
@@ -183,10 +400,7 @@ class SiteAssistantVisitorIdentityService
             'status_id' => $this->leadStatusId(),
             'creator_id' => $ownerUserId,
             'responsible_id' => $ownerUserId,
-            'data' => (object) [
-                'source' => 'site_assistant',
-                'captured_at' => now()->toIso8601String(),
-            ],
+            'data' => (object) $data,
         ]);
 
         $defaultCategoryId = config('custom.default_contact_category_id');
