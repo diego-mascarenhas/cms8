@@ -99,7 +99,7 @@ return [
     |
     */
     'ocr_model' => env('AI_OCR_MODEL', 'openai/gpt-4o-mini'),
-    'ocr_failover_model' => env('AI_OCR_FAILOVER_MODEL', 'anthropic/claude-haiku-4.5'),
+    'ocr_failover_model' => env('AI_OCR_FAILOVER_MODEL', 'anthropic/claude-haiku-4-5-20251001'),
 
     /*
     |--------------------------------------------------------------------------
