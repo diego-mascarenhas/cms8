@@ -27,6 +27,31 @@ class CommercialDocumentSourceTextTest extends TestCase
         $this->assertStringContainsString('Aceite 12900', $text);
     }
 
+    public function test_a_photo_is_read_by_the_vision_model(): void
+    {
+        $ai = $this->createMock(DocumentAiOcrService::class);
+        $ai->expects($this->never())->method('extractTextFromLocalFile');
+        $ai->expects($this->once())
+            ->method('completeWithFile')
+            ->willReturn('{"kind":"price_list","supplier_name":"Don Silvio","currency":"ARS","lines":[{"name":"Asado","cost":13890,"unit":"KG"}]}');
+        $documents = new CommercialDocumentInterpreter($ai);
+        $path = tempnam(sys_get_temp_dir(), 'foto').'.jpg';
+        file_put_contents($path, 'not-a-real-image');
+
+        try
+        {
+            $document = $documents->interpret($path, 'lista.jpg');
+        } finally
+        {
+            @unlink($path);
+        }
+
+        $this->assertSame('price_list', $document['kind']);
+        $this->assertSame('Don Silvio', $document['supplier_name']);
+        $this->assertEquals(13890, $document['lines'][0]['cost']);
+        $this->assertSame('KG', $document['lines'][0]['unit']);
+    }
+
     private function minimalTextPdf(string $text): string
     {
         $escaped = str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $text);

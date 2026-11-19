@@ -1853,6 +1853,7 @@
     "The email has already been taken.": "El email ya está siendo utilizado.",
     "The end time must be after the start time (same calendar day).": "La hora de fin debe ser posterior a la de inicio (mismo día).",
     "The enterprise contact does not have a valid email address.": "El contacto de la empresa no tiene un email válido.",
+    "The file could not be read.": "No se pudo leer el texto del archivo.",
     "The given data was invalid.": "Los datos proporcionados no son válidos.",
     "The password is incorrect.": "La contraseña es incorrecta.",
     "The password must be at least 8 characters.": "La contraseña debe tener al menos 8 caracteres.",

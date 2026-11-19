@@ -24,6 +24,12 @@ class CommercialDocumentInterpreter
      */
     public function interpret(string $path, string $originalName, ?int $teamId = null): array
     {
+        $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        if (in_array($extension, ['png', 'jpg', 'jpeg', 'webp'], true))
+        {
+            return $this->interpretImage($path, $teamId);
+        }
+
         $text = trim($this->sourceText($path, $originalName, $teamId));
         if ($text === '')
         {
@@ -45,6 +51,25 @@ class CommercialDocumentInterpreter
         $response = AiTasks::prompt($documentAgent, $prompt, 120, 'shop');
 
         return $this->documentFromModelText((string) ($response->text ?? ''));
+    }
+
+    /**
+     * Photos go to the vision OCR model. DeepSeek only sees text and fails on these images.
+     *
+     * @return array{kind: string, supplier_name: ?string, currency: ?string, lines: list<array{code: string, name: string, cost: ?float, quantity: ?float, unit: ?string, barcode: ?string, oem: ?string}>}
+     */
+    private function interpretImage(string $path, ?int $teamId): array
+    {
+        $prompt = $this->resolveSupplierListPrompt($teamId)
+            ."\n\nThe price list is the attached image. Read the products and prices from that image.";
+        $text = $this->ocr->completeWithFile(
+            $path,
+            'You read supplier price lists from photos. Return only JSON.',
+            $prompt,
+            $teamId,
+        );
+
+        return $this->documentFromModelText($text);
     }
 
     public function sourceText(string $path, string $originalName, ?int $teamId = null): string

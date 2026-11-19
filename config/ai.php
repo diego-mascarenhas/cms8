@@ -93,7 +93,8 @@ return [
     | Photo / document OCR model
     |--------------------------------------------------------------------------
     |
-    | WhatsApp photos and documents use this model for AI OCR.
+    | WhatsApp photos, supplier price-list photos, and documents use this
+    | vision model. Supplier photos do not use the shop text model.
     | If the primary model fails, ocr_failover_model is tried next.
     |
     */

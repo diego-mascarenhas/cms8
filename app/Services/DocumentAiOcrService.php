@@ -29,6 +29,40 @@ class DocumentAiOcrService
         }
 
         $ocrPrompt = 'Extract all visible text from this document or spare-part photo. Return only plain text, preserving line breaks. Include brand names, part numbers, OEM codes, and references exactly as printed.';
+
+        return $this->promptFile(
+            $absolutePath,
+            'You are an OCR engine. Return only extracted text.',
+            $ocrPrompt,
+            $teamId,
+        );
+    }
+
+    /**
+     * Ask the vision OCR model, then its failover, with the file attached.
+     */
+    public function completeWithFile(string $absolutePath, string $instructions, string $prompt, ?int $teamId = null): string
+    {
+        $result = $this->promptFile($absolutePath, $instructions, $prompt, $teamId);
+        $text = trim((string) ($result['text'] ?? ''));
+        if ($text === '')
+        {
+            throw new \RuntimeException(__('The file could not be read.'));
+        }
+
+        return $text;
+    }
+
+    /**
+     * @return array{text: ?string, usage: ?array{model: string, prompt_tokens: int, completion_tokens: int, total_tokens: int}}
+     */
+    private function promptFile(string $absolutePath, string $instructions, string $prompt, ?int $teamId): array
+    {
+        if (! is_file($absolutePath))
+        {
+            return ['text' => null, 'usage' => null];
+        }
+
         $attempts = [
             ['model' => $this->resolveOcrModel(), 'provider' => $this->providerFor($this->resolveOcrModel())],
         ];
@@ -45,13 +79,13 @@ class DocumentAiOcrService
             {
                 $uploadedFile = $this->uploadedFileFromPath($absolutePath);
                 $ocrAgent = agent(
-                    instructions: 'You are an OCR engine. Return only extracted text.',
+                    instructions: $instructions,
                     messages: [],
                     tools: [],
                 );
-                $response = $ocrAgent->prompt($ocrPrompt, [$uploadedFile], $attempt['provider'], $attempt['model']);
+                $response = $ocrAgent->prompt($prompt, [$uploadedFile], $attempt['provider'], $attempt['model']);
                 $text = trim((string) ($response->text ?? ''));
-                $this->logTokenUsage($response, $teamId, $ocrPrompt, $text);
+                $this->logTokenUsage($response, $teamId, $prompt, $text);
 
                 return [
                     'text' => $text !== '' ? $text : null,
