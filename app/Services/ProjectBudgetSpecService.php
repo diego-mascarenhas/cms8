@@ -90,10 +90,7 @@ class ProjectBudgetSpecService
             throw new RuntimeException(__('The budget text is required.'));
         }
 
-        $instructions = Prompt::forModule('projects')
-            ->where('section_key', 'budget_spec')
-            ->active()
-            ->first()?->prompt_instruction ?? $this->getDefaultBudgetSpecPrompt();
+        $instructions = $this->resolveBudgetSpecPrompt($team);
 
         $taskCategoriesContext = $this->getTaskCategoriesContextForAi($team);
         if ($taskCategoriesContext !== '')
@@ -1778,6 +1775,53 @@ class ProjectBudgetSpecService
             ."- **estimated_tokens** (integer): Estimated AI token consumption for that labor (prompt + completion). Use roughly 15k–25k tokens per assisted hour depending on complexity; output a plain integer (e.g. 160000).\n"
             ."- Also add \"token_consumption\": an object with \"notes\" (ONE line per labor, format exactly: \"{title}: {N} K\" — no \"Tokens AI\" prefix), optional totals, currency EUR.\n"
             .'- Suggest between 0 and 15 tasks. Leave suggested_tasks as empty array [] only if the budget does not describe concrete tasks. Every suggested task must have description, resource_level, unit_price and estimated_tokens.';
+    }
+
+    public function resolveBudgetSpecPrompt(?Team $team): string
+    {
+        if ($team === null)
+        {
+            return $this->getDefaultBudgetSpecPrompt();
+        }
+
+        $instruction = trim((string) (Prompt::forTeam($team->id)
+            ->forModule('projects')
+            ->where('section_key', 'budget_spec')
+            ->active()
+            ->first()?->prompt_instruction ?? ''));
+
+        return $instruction !== '' ? $instruction : $this->getDefaultBudgetSpecPrompt();
+    }
+
+    public function ensureBudgetSpecPrompt(Team $team): Prompt
+    {
+        $module = Module::query()->firstOrCreate(
+            ['key' => 'projects'],
+            [
+                'name' => 'Projects',
+                'icon' => 'ti ti-briefcase',
+                'description' => 'Projects',
+                'is_core' => false,
+                'group' => 'work',
+                'order' => 0,
+                'status' => 1,
+            ],
+        );
+
+        return Prompt::withoutGlobalScope('team')->firstOrCreate(
+            [
+                'team_id' => $team->id,
+                'module_id' => $module->id,
+                'section_key' => 'budget_spec',
+            ],
+            [
+                'section_label' => 'Presupuesto: especificación de alcance',
+                'prompt_instruction' => $this->getDefaultBudgetSpecPrompt(),
+                'helper_text' => 'Prompt que convierte el brief en el presupuesto. La respuesta tiene que ser JSON con client_summary, ai_interpretation, dimension, estimated_times, resources, token_consumption y suggested_tasks.',
+                'order' => 3,
+                'is_active' => true,
+            ],
+        );
     }
 
     public function resolveBudgetChatPrompt(?Team $team): string

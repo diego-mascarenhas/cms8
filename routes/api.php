@@ -573,6 +573,14 @@ Route::middleware('auth.api')->group(function ()
         ->name('api.projects.funnel.chat-prompt.show');
     Route::put('projects/funnel/chat-prompt', [ProjectFunnelController::class, 'updateChatPrompt'])
         ->name('api.projects.funnel.chat-prompt.update');
+    Route::get('projects/funnel/spec-prompt', [ProjectFunnelController::class, 'showSpecPrompt'])
+        ->name('api.projects.funnel.spec-prompt.show');
+    Route::put('projects/funnel/spec-prompt', [ProjectFunnelController::class, 'updateSpecPrompt'])
+        ->name('api.projects.funnel.spec-prompt.update');
+    Route::get('projects/funnel/supplier-list-prompt', [ProjectFunnelController::class, 'showSupplierListPrompt'])
+        ->name('api.projects.funnel.supplier-list-prompt.show');
+    Route::put('projects/funnel/supplier-list-prompt', [ProjectFunnelController::class, 'updateSupplierListPrompt'])
+        ->name('api.projects.funnel.supplier-list-prompt.update');
     Route::get('projects/funnel/sender', [ProjectFunnelController::class, 'showSender'])
         ->name('api.projects.funnel.sender.show');
     Route::put('projects/funnel/sender', [ProjectFunnelController::class, 'updateSender'])

@@ -729,6 +729,91 @@ class ProjectFunnelTest extends TestCase
         );
     }
 
+    public function test_funnel_member_can_get_and_update_spec_prompt(): void
+    {
+        $team = $this->createFunnelTeam();
+        $user = $team->owner;
+        $this->assertNotNull($user);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $token = $user->createToken('estimator-spec-prompt')->plainTextToken;
+
+        $get = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/funnel/spec-prompt')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.section_key', 'budget_spec');
+
+        $this->assertStringContainsString('client_summary', (string) $get->json('data.prompt_instruction'));
+
+        $custom = 'Devuelve solo JSON con client_summary y suggested_tasks. Sin markdown.';
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/projects/funnel/spec-prompt', [
+                'prompt_instruction' => $custom,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.prompt_instruction', $custom)
+            ->assertJsonPath('data.section_key', 'budget_spec');
+
+        $this->assertSame(
+            $custom,
+            app(ProjectBudgetSpecService::class)->resolveBudgetSpecPrompt($team),
+        );
+    }
+
+    public function test_funnel_member_can_get_and_update_supplier_list_prompt(): void
+    {
+        $team = $this->createFunnelTeam();
+        $user = $team->owner;
+        $this->assertNotNull($user);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $token = $user->createToken('estimator-supplier-list-prompt')->plainTextToken;
+        $documents = app(\App\Services\CommercialDocumentInterpreter::class);
+
+        $get = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/funnel/supplier-list-prompt')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.section_key', 'supplier_price_list');
+
+        $this->assertStringContainsString('LISTA REVENTA', (string) $get->json('data.prompt_instruction'));
+        $this->assertStringContainsString('Don Silvio', (string) $get->json('data.prompt_instruction'));
+
+        $custom = 'Lee la lista del proveedor y devolvé solo JSON con kind price_list y lines.';
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/projects/funnel/supplier-list-prompt', [
+                'prompt_instruction' => $custom,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.prompt_instruction', $custom)
+            ->assertJsonPath('data.section_key', 'supplier_price_list');
+
+        $this->assertSame($custom, $documents->resolveSupplierListPrompt($team->id));
+        $this->assertStringContainsString("Document:\nALF.AGUILA", $documents->promptFor('ALF.AGUILA', $team->id));
+        $this->assertStringStartsWith($custom, $documents->promptFor('ALF.AGUILA', $team->id));
+    }
+
+    public function test_supplier_list_prompt_requires_authentication(): void
+    {
+        $this->createFunnelTeam();
+
+        $this->getJson('/api/projects/funnel/supplier-list-prompt')->assertUnauthorized();
+        $this->putJson('/api/projects/funnel/supplier-list-prompt', [
+            'prompt_instruction' => 'Lee la lista del proveedor y devolvé solo JSON con lines.',
+        ])->assertUnauthorized();
+    }
+
+    public function test_spec_prompt_requires_authentication(): void
+    {
+        $this->createFunnelTeam();
+
+        $this->getJson('/api/projects/funnel/spec-prompt')->assertUnauthorized();
+        $this->putJson('/api/projects/funnel/spec-prompt', [
+            'prompt_instruction' => 'Devuelve solo JSON con client_summary y suggested_tasks.',
+        ])->assertUnauthorized();
+    }
+
     public function test_funnel_member_can_get_and_update_quote_sender(): void
     {
         $team = $this->createFunnelTeam();
