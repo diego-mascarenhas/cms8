@@ -33,6 +33,7 @@ class StartDomainCheckoutRequest extends FormRequest
             'business_name' => ['nullable', 'string', 'max:255'],
             'success_url' => ['required', 'string', 'max:2048'],
             'cancel_url' => ['required', 'string', 'max:2048'],
+            'ref' => ['nullable', 'string', 'max:64'],
         ];
     }
 

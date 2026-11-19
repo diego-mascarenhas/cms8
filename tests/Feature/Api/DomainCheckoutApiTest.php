@@ -189,6 +189,40 @@ class DomainCheckoutApiTest extends TestCase
         ];
     }
 
+    public function test_checkout_keeps_a_valid_referral_code(): void
+    {
+        Notification::fake();
+        $this->seed([EnterpriseTypeSeeder::class, EnterpriseStatusSeeder::class]);
+        $registrar = $this->registrar();
+        Team::factory()->create([
+            'user_id' => User::factory()->create()->id,
+            'stripe_id' => 'cus_Referrer1',
+        ]);
+        $stripe = new FakeDomainCheckoutSessions;
+        $this->app->instance(DomainCheckoutSessions::class, $stripe);
+        config([
+            'services.porkbun.key' => 'pk_test',
+            'services.porkbun.secret' => 'sk_test',
+            'humano_hosting.domain_markup_percent' => 30,
+        ]);
+        Http::fake([
+            'https://api.porkbun.com/api/json/v3/domain/checkDomain/libre.com' => Http::response([
+                'status' => 'SUCCESS',
+                'avail' => 'yes',
+                'price' => 10,
+            ]),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$registrar['token'])
+            ->postJson('/api/domains/checkout', $this->payload() + ['ref' => 'cus_Referrer1'])
+            ->assertOk();
+
+        $team = User::query()->where('email', 'ana@ejemplo.com')->first()?->currentTeam;
+        $this->assertSame('cus_Referrer1', $team?->referred_by);
+        $this->assertSame('cus_Referrer1', $stripe->sessions[0]['metadata']['referred_by'] ?? null);
+        $this->assertSame('cus_Referrer1', $stripe->sessions[0]['subscription_data']['metadata']['referred_by'] ?? null);
+    }
+
     /**
      * @return array{token: string, team: Team}
      */
@@ -213,6 +247,11 @@ class FakeDomainCheckoutSessions extends DomainCheckoutSessions
      */
     public array $customers = [];
 
+    /**
+     * @var list<array<string, mixed>>
+     */
+    public array $sessions = [];
+
     public function createCustomer(array $payload): string
     {
         $this->customers[] = $payload;
@@ -222,6 +261,8 @@ class FakeDomainCheckoutSessions extends DomainCheckoutSessions
 
     public function create(array $payload): object
     {
+        $this->sessions[] = $payload;
+
         return (object) [
             'id' => 'cs_test_domain',
             'url' => 'https://checkout.stripe.test/c/pay',
