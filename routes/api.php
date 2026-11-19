@@ -1135,6 +1135,7 @@ Route::middleware('team.token')->prefix('team')->group(function ()
     // Assistant chat (router + flows); body: message required, optional prompt_key
     Route::post('assistant/chat', [TeamAssistantController::class, 'chat'])->name('api.team.assistant.chat');
     Route::post('whatsapp/send', [TeamWhatsAppController::class, 'send'])->name('api.team.whatsapp.send');
+    Route::get('communications', [CommunicationController::class, 'index'])->name('api.team.communications.index');
     Route::post('communications', [CommunicationController::class, 'store'])->name('api.team.communications.store');
     Route::get('communications/{id}', [CommunicationController::class, 'show'])->whereNumber('id')->name('api.team.communications.show');
     Route::get('/settings', [TeamController::class, 'settings']);

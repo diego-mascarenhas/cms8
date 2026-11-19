@@ -285,6 +285,53 @@ class CommunicationApiTest extends TestCase
             ->assertJsonPath('data.id', $id);
     }
 
+    public function test_team_token_lists_communications_with_search_and_filters(): void
+    {
+        [$user, $team] = $this->adminWithToken();
+        Communication::factory()->forTeamAndUser($team, $user)->email()->sent()->create([
+            'subject' => 'Invoice 1042',
+            'recipient_email' => 'ada@example.test',
+        ]);
+        Communication::factory()->forTeamAndUser($team, $user)->email()->create([
+            'subject' => 'Draft note',
+            'recipient_email' => 'other@example.test',
+        ]);
+        $created = $team->createApiToken('ERP', '*');
+
+        $this->withHeader('Authorization', 'Bearer '.$created['plain'])
+            ->getJson('/api/team/communications?search=Invoice&channel=email&status=sent&per_page=10&page=1')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('pagination.per_page', 10)
+            ->assertJsonPath('pagination.current_page', 1)
+            ->assertJsonPath('pagination.last_page', 1)
+            ->assertJsonPath('data.0.subject', 'Invoice 1042')
+            ->assertJsonPath('data.0.status', 'sent');
+    }
+
+    public function test_team_token_sorts_communications_by_field_and_direction(): void
+    {
+        [$user, $team] = $this->adminWithToken();
+        Communication::factory()->forTeamAndUser($team, $user)->email()->create([
+            'subject' => 'Zulu',
+        ]);
+        Communication::factory()->forTeamAndUser($team, $user)->email()->create([
+            'subject' => 'Alpha',
+        ]);
+        $created = $team->createApiToken('ERP', '*');
+
+        $this->withHeader('Authorization', 'Bearer '.$created['plain'])
+            ->getJson('/api/team/communications?sort=subject&order=asc')
+            ->assertOk()
+            ->assertJsonPath('data.0.subject', 'Alpha')
+            ->assertJsonPath('data.1.subject', 'Zulu');
+
+        $this->withHeader('Authorization', 'Bearer '.$created['plain'])
+            ->getJson('/api/team/communications?sort=unknown&order=sideways')
+            ->assertStatus(422);
+    }
+
     public function test_links_existing_contact_by_email(): void
     {
         Queue::fake();
