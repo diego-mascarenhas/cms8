@@ -179,10 +179,10 @@ return [
         ],
         'estimator' => [
             'name' => 'Estimator',
-            'description' => 'Kommerzielle Angebote. Der Plan ist kostenlos; nur KI-Tokens werden berechnet.',
+            'description' => 'Kommerzielle Angebote. Der Plan kostet 88 USD pro Monat oder 880 USD pro Jahr. KI-Tokens werden extra berechnet.',
             'features' => [
                 'Angebotsfunnel für das Team',
-                '0-€-Plan; die Karte dient nur der Token-Abrechnung',
+                '88 USD pro Monat oder 880 USD pro Jahr; KI-Tokens werden extra berechnet',
                 'Gemeinsame Abrechnung mit den anderen Idoneo-Apps',
             ],
         ],

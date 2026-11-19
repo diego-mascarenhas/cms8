@@ -179,10 +179,10 @@ return [
         ],
         'estimator' => [
             'name' => 'Estimator',
-            'description' => 'Preventivi commerciali. Il piano è gratis; si fatturano solo i token IA.',
+            'description' => 'Preventivi commerciali. Il piano costa 88 USD al mese, o 880 USD all’anno. I token IA si fatturano a parte.',
             'features' => [
                 'Funnel di preventivo per il team',
-                'Piano a 0 €; la carta serve solo a fatturare i token',
+                '88 USD al mese o 880 USD all’anno; i token IA si fatturano a parte',
                 'Fatturazione condivisa con le altre app Idoneo',
             ],
         ],

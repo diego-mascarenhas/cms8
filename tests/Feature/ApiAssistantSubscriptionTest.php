@@ -179,8 +179,9 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('success', true);
         $response->assertJsonPath('data.plan.id', 'estimator');
-        $response->assertJsonPath('data.plan.monthly_amount', '0');
-        $response->assertJsonPath('data.plan.yearly_amount', '0');
+        $response->assertJsonPath('data.plan.monthly_amount', '88');
+        $response->assertJsonPath('data.plan.yearly_amount', '880');
+        $response->assertJsonPath('data.plan.currency', 'USD');
         $response->assertJsonPath('data.plan.checkout_available', true);
         $response->assertJsonPath('data.can_checkout', true);
         $response->assertJsonPath('data.subscription', null);
@@ -222,9 +223,14 @@ class ApiAssistantSubscriptionTest extends TestCase
             ->assertJsonPath('data.estimator_usage.emails_sent', 1);
     }
 
-    public function test_estimator_checkout_does_not_require_a_stripe_price(): void
+    public function test_estimator_checkout_uses_the_configured_stripe_price(): void
     {
         [, $team] = $this->assistantUserWithToken();
+
+        $this->mock(\App\Services\TeamStripeCustomerService::class, function ($mock): void
+        {
+            $mock->shouldReceive('getOrCreateStripeCustomerIdForCategory')->once()->andReturn(null);
+        });
 
         $result = app(AssistantSubscriptionService::class)->createCheckout(
             $team,
@@ -234,16 +240,10 @@ class ApiAssistantSubscriptionTest extends TestCase
             'estimator',
         );
 
-        if ($result['success'])
-        {
-            $this->assertNotEmpty($result['url'] ?? null);
-
-            return;
-        }
-
-        $this->assertStringNotContainsString(
-            'precio de Stripe configurado',
-            (string) ($result['message'] ?? ''),
+        $this->assertFalse($result['success']);
+        $this->assertSame(
+            'No se pudo crear el cliente de facturación en Stripe.',
+            $result['message'] ?? null,
         );
     }
 

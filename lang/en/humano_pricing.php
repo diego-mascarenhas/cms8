@@ -182,10 +182,10 @@ return [
         ],
         'estimator' => [
             'name' => 'Estimator',
-            'description' => 'Commercial quotes. The plan is free; only AI tokens are billed.',
+            'description' => 'Commercial quotes. The plan is 88 USD per month, or 880 USD per year. AI tokens are billed separately.',
             'features' => [
                 'Quote funnel for the team',
-                '0 € plan; the card is only for token invoices',
+                '88 USD per month or 880 USD per year; AI tokens are billed separately',
                 'Shared billing with the rest of your Idoneo apps',
             ],
         ],

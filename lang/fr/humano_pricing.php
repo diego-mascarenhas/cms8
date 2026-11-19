@@ -179,10 +179,10 @@ return [
         ],
         'estimator' => [
             'name' => 'Estimator',
-            'description' => 'Devis commerciaux. Le plan est gratuit ; seuls les jetons IA sont facturés.',
+            'description' => 'Devis commerciaux. Le plan coûte 88 USD par mois, ou 880 USD par an. Les jetons IA sont facturés en plus.',
             'features' => [
                 'Tunnel de devis pour l’équipe',
-                'Plan à 0 € ; la carte sert uniquement à facturer les jetons',
+                '88 USD par mois ou 880 USD par an ; les jetons IA sont facturés en plus',
                 'Facturation partagée avec les autres apps Idoneo',
             ],
         ],
