@@ -18,6 +18,10 @@ class ProjectBudgetSpecChatPromptTest extends TestCase
         $this->assertStringContainsString('empresa', $prompt);
         $this->assertStringContainsString('no los vuelvas a preguntar', $prompt);
         $this->assertStringContainsString('assistant_message', $prompt);
+        $this->assertStringContainsString('No des por hecho el rubro', $prompt);
+        $this->assertStringNotContainsString('software', $prompt);
+        $this->assertStringNotContainsString('buque', $prompt);
+        $this->assertStringNotContainsString('comestibles', $prompt);
     }
 
     public function test_interpolate_replaces_chat_placeholders(): void
