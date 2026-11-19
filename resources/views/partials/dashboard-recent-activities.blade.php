@@ -57,7 +57,7 @@
                         @foreach ($latestRegisteredContacts as $contact)
                             <tr>
                                 <td class="text-truncate" style="max-width: 220px;">
-                                    @can('contact.show')
+                                    @can('view', $contact)
                                         <a href="{{ route('contact.show', $contact->id) }}" class="text-body text-decoration-none fw-normal">
                                             {{ trim($contact->name.' '.$contact->surname) }}
                                         </a>
