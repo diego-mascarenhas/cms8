@@ -179,10 +179,10 @@ return [
         ],
         'estimator' => [
             'name' => 'Estimator',
-            'description' => 'Cotações comerciais. O plano é grátis; só se faturam os tokens de IA.',
+            'description' => 'Cotações comerciais. O plano custa 88 USD por mês, ou 880 USD por ano. Os tokens de IA faturam-se à parte.',
             'features' => [
                 'Funil de cotação para a equipe',
-                'Plano a 0 €; o cartão serve só para faturar tokens',
+                '88 USD por mês ou 880 USD por ano; os tokens de IA faturam-se à parte',
                 'Faturação partilhada com as outras apps Idoneo',
             ],
         ],

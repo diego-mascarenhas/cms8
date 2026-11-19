@@ -29,13 +29,46 @@ class DocumentAiOcrService
         }
 
         $ocrPrompt = 'Extract all visible text from this document or spare-part photo. Return only plain text, preserving line breaks. Include brand names, part numbers, OEM codes, and references exactly as printed.';
-        $attempts = [
-            ['model' => $this->resolveOcrModel(), 'provider' => $this->providerFor($this->resolveOcrModel())],
-        ];
-        $failover = $this->resolveOcrFailoverModel();
-        if ($failover !== '' && $failover !== $attempts[0]['model'])
+
+        return $this->promptFile(
+            $absolutePath,
+            'You are an OCR engine. Return only extracted text.',
+            $ocrPrompt,
+            $teamId,
+        );
+    }
+
+    /**
+     * Ask the vision OCR model, then its failover, with the file attached.
+     */
+    public function completeWithFile(string $absolutePath, string $instructions, string $prompt, ?int $teamId = null): string
+    {
+        $result = $this->promptFile($absolutePath, $instructions, $prompt, $teamId);
+        $text = trim((string) ($result['text'] ?? ''));
+        if ($text === '')
         {
-            $attempts[] = ['model' => $failover, 'provider' => $this->providerFor($failover)];
+            throw new \RuntimeException(__('The file could not be read.'));
+        }
+
+        return $text;
+    }
+
+    /**
+     * @return array{text: ?string, usage: ?array{model: string, prompt_tokens: int, completion_tokens: int, total_tokens: int}}
+     */
+    private function promptFile(string $absolutePath, string $instructions, string $prompt, ?int $teamId): array
+    {
+        if (! is_file($absolutePath))
+        {
+            return ['text' => null, 'usage' => null];
+        }
+
+        $attempts = [$this->providerAndModel($this->resolveOcrModel())];
+        $failover = $this->resolveOcrFailoverModel();
+        $failoverAttempt = $failover !== '' ? $this->providerAndModel($failover) : null;
+        if ($failoverAttempt !== null && $failoverAttempt !== $attempts[0])
+        {
+            $attempts[] = $failoverAttempt;
         }
 
         $lastError = null;
@@ -45,16 +78,20 @@ class DocumentAiOcrService
             {
                 $uploadedFile = $this->uploadedFileFromPath($absolutePath);
                 $ocrAgent = agent(
-                    instructions: 'You are an OCR engine. Return only extracted text.',
+                    instructions: $instructions,
                     messages: [],
                     tools: [],
                 );
-                $response = $ocrAgent->prompt($ocrPrompt, [$uploadedFile], $attempt['provider'], $attempt['model']);
+                $response = $ocrAgent->prompt($prompt, [$uploadedFile], $attempt['provider'], $attempt['model']);
                 $text = trim((string) ($response->text ?? ''));
-                $this->logTokenUsage($response, $teamId, $ocrPrompt, $text);
+                $this->logTokenUsage($response, $teamId, $prompt, $text);
+                if ($text === '')
+                {
+                    continue;
+                }
 
                 return [
-                    'text' => $text !== '' ? $text : null,
+                    'text' => $text,
                     'usage' => $this->usageFromResponse($response, $attempt['model']),
                 ];
             } catch (\Throwable $e)
@@ -108,7 +145,34 @@ class DocumentAiOcrService
 
     public function resolveOcrFailoverModel(): string
     {
-        return trim((string) config('ai.ocr_failover_model', 'anthropic/claude-haiku-4.5'));
+        return trim((string) config('ai.ocr_failover_model', 'anthropic/claude-haiku-4-5-20251001'));
+    }
+
+    /**
+     * Config keeps provider/model (openai/gpt-4o-mini). The API wants them apart:
+     * provider openai, model gpt-4o-mini.
+     *
+     * @return array{provider: string, model: string}
+     */
+    public function providerAndModel(string $configured): array
+    {
+        $configured = trim($configured);
+        if (str_contains($configured, '/'))
+        {
+            [$provider, $model] = explode('/', $configured, 2);
+
+            return [
+                'provider' => strtolower($provider),
+                'model' => $model,
+            ];
+        }
+
+        $provider = AiTasks::provider('ocr');
+
+        return [
+            'provider' => is_array($provider) ? (string) ($provider[0] ?? 'openai') : $provider,
+            'model' => $configured,
+        ];
     }
 
     /**
@@ -160,18 +224,6 @@ class DocumentAiOcrService
         }
 
         return new UploadedFile($absolutePath, $name, $mime, null, true);
-    }
-
-    private function providerFor(string $model): string
-    {
-        if (str_contains($model, '/'))
-        {
-            return strtolower(explode('/', $model, 2)[0]);
-        }
-
-        $provider = AiTasks::provider('ocr');
-
-        return is_array($provider) ? (string) ($provider[0] ?? 'openai') : $provider;
     }
 
     private function logTokenUsage(mixed $response, ?int $teamId, string $input, string $output): void

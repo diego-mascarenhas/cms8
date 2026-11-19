@@ -90,10 +90,7 @@ class ProjectBudgetSpecService
             throw new RuntimeException(__('The budget text is required.'));
         }
 
-        $instructions = Prompt::forModule('projects')
-            ->where('section_key', 'budget_spec')
-            ->active()
-            ->first()?->prompt_instruction ?? $this->getDefaultBudgetSpecPrompt();
+        $instructions = $this->resolveBudgetSpecPrompt($team);
 
         $taskCategoriesContext = $this->getTaskCategoriesContextForAi($team);
         if ($taskCategoriesContext !== '')
@@ -208,11 +205,11 @@ class ProjectBudgetSpecService
         {
             $greetingName = trim((string) $leadName);
             $hello = $greetingName !== ''
-                ? "Hola {$greetingName}, soy tu asistente de alcance."
-                : 'Hola, soy tu asistente de alcance.';
+                ? "Hola {$greetingName}."
+                : 'Hola.';
 
             return [
-                'assistant_message' => $hello.' ¿Qué necesitas construir y qué problema quieres resolver?',
+                'assistant_message' => $hello.' ¿Qué necesitas que te presupuestemos?',
                 'requirements' => array_map(
                     fn (array $r): array => [
                         'key' => $r['key'],
@@ -475,43 +472,43 @@ class ProjectBudgetSpecService
         return [
             [
                 'key' => 'objetivo',
-                'name' => 'Objetivo',
-                'hint' => 'Qué problema resuelve o qué meta de negocio persigue el producto.',
+                'name' => 'Qué necesita',
+                'hint' => 'Qué quiere que le presupuestemos, con sus palabras.',
             ],
             [
                 'key' => 'negocio',
-                'name' => 'Negocio',
-                'hint' => 'Nombre del negocio, marca o proyecto.',
+                'name' => 'Contexto',
+                'hint' => 'Para quién o en qué situación, si lo dijo.',
             ],
             [
                 'key' => 'usuarios',
-                'name' => 'Usuarios',
-                'hint' => 'Para quién es: roles, perfiles o públicos que lo usarán.',
+                'name' => 'Destinatario',
+                'hint' => 'Quién lo usa o lo recibe, solo si aplica a este pedido.',
             ],
             [
                 'key' => 'funcionalidades',
-                'name' => 'Funcionalidades',
-                'hint' => 'Qué debe poder hacer el sistema (módulos, flujos clave).',
+                'name' => 'Contenido',
+                'hint' => 'Ítems, partes o tareas que nombró.',
             ],
             [
                 'key' => 'plataforma',
-                'name' => 'Plataforma',
-                'hint' => 'Medio técnico: web, app móvil, API, panel admin, integraciones.',
+                'name' => 'Forma',
+                'hint' => 'Producto, servicio o sistema, solo si hace falta distinguirlo.',
             ],
             [
                 'key' => 'urls',
-                'name' => 'URLs',
-                'hint' => 'URL actual (si tiene) y URLs de referencia o inspiración.',
+                'name' => 'Referencias',
+                'hint' => 'Enlaces o ejemplos, solo si los aportó.',
             ],
             [
                 'key' => 'diseno',
-                'name' => 'Diseño',
-                'hint' => 'Si ya tiene gráfica, si será a medida o template, y nivel de diseño.',
+                'name' => 'Detalle',
+                'hint' => 'Variante, marca o presentación, solo si la pidió.',
             ],
             [
                 'key' => 'alcance',
-                'name' => 'Alcance y plazos',
-                'hint' => 'Fases, MVP vs alcance completo, o plazos deseados.',
+                'name' => 'Plazo',
+                'hint' => 'Cuándo lo necesita, si lo dijo.',
             ],
         ];
     }
@@ -1773,11 +1770,58 @@ class ProjectBudgetSpecService
         return "TASK SUGGESTIONS (use only when the budget describes concrete tasks or work packages):\n"
             .'- Available task categories in the system (use ONLY these exact names for category_name): '.$namesList."\n"
             ."- Add a key \"suggested_tasks\" to your JSON: an array of objects, each with \"title\", \"description\" (a short report of that labor: what it is, what is included, and what stays out), \"category_name\" (one of the names above), \"estimated_hours\" (decimal), \"resource_level\", \"unit_price\", and \"estimated_tokens\".\n"
-            ."- **resource_level** (string): You MUST suggest a level for every task. Use typical roles: Senior (architecture, lead, complex work), Junior (routine implementation, support), Consultor (analysis, advice, audits). Infer from the type of work and complexity.\n"
-            ."- **unit_price** (number): You MUST suggest a monetary value for every task. (1) If the budget explicitly states a price for that line/module, use it (plain number, e.g. 1500 or 1250.50, no currency or thousands separator). (2) If the budget does NOT give per-line prices, estimate unit_price using: (a) typical market rates for that type of work (e.g. development, consulting) and region (e.g. EU/Spain), (b) the scope/quantity (estimated_hours × reasonable hourly rate, or a realistic fixed price for that module). Always output a number so the user gets a suggested quote; the user can adjust later.\n"
-            ."- **estimated_tokens** (integer): Estimated AI token consumption for that labor (prompt + completion). Use roughly 15k–25k tokens per assisted hour depending on complexity; output a plain integer (e.g. 160000).\n"
+            ."- **resource_level** (string): Senior for the harder part of this request, Junior for the routine part, Consultor for analysis or advice. Infer it from what the client asked. Do not assume a profession.\n"
+            ."- **unit_price** (number): If the text states a price for that part, use it as a plain number. Otherwise use estimated_hours times the level rate, or a fixed amount when the part is not hourly. Do not invent another kind of work to justify the price.\n"
+            ."- **estimated_tokens** (integer): Use 0 when that part does not use AI assistance. When it does, estimate the tokens for that part only, as a plain integer.\n"
             ."- Also add \"token_consumption\": an object with \"notes\" (ONE line per labor, format exactly: \"{title}: {N} K\" — no \"Tokens AI\" prefix), optional totals, currency EUR.\n"
             .'- Suggest between 0 and 15 tasks. Leave suggested_tasks as empty array [] only if the budget does not describe concrete tasks. Every suggested task must have description, resource_level, unit_price and estimated_tokens.';
+    }
+
+    public function resolveBudgetSpecPrompt(?Team $team): string
+    {
+        if ($team === null)
+        {
+            return $this->getDefaultBudgetSpecPrompt();
+        }
+
+        $instruction = trim((string) (Prompt::forTeam($team->id)
+            ->forModule('projects')
+            ->where('section_key', 'budget_spec')
+            ->active()
+            ->first()?->prompt_instruction ?? ''));
+
+        return $instruction !== '' ? $instruction : $this->getDefaultBudgetSpecPrompt();
+    }
+
+    public function ensureBudgetSpecPrompt(Team $team): Prompt
+    {
+        $module = Module::query()->firstOrCreate(
+            ['key' => 'projects'],
+            [
+                'name' => 'Projects',
+                'icon' => 'ti ti-briefcase',
+                'description' => 'Projects',
+                'is_core' => false,
+                'group' => 'work',
+                'order' => 0,
+                'status' => 1,
+            ],
+        );
+
+        return Prompt::withoutGlobalScope('team')->firstOrCreate(
+            [
+                'team_id' => $team->id,
+                'module_id' => $module->id,
+                'section_key' => 'budget_spec',
+            ],
+            [
+                'section_label' => 'Presupuesto: especificación de alcance',
+                'prompt_instruction' => $this->getDefaultBudgetSpecPrompt(),
+                'helper_text' => 'Prompt que convierte el brief en el presupuesto. La respuesta tiene que ser JSON con client_summary, ai_interpretation, dimension, estimated_times, resources, token_consumption y suggested_tasks.',
+                'order' => 3,
+                'is_active' => true,
+            ],
+        );
     }
 
     public function resolveBudgetChatPrompt(?Team $team): string
@@ -1820,42 +1864,42 @@ class ProjectBudgetSpecService
             [
                 'section_label' => 'Presupuesto: chat de necesidad (funnel)',
                 'prompt_instruction' => $this->getDefaultBudgetChatPrompt(),
-                'helper_text' => 'Prompt del chat de Necesidad. El paso 1 pide nombre, apellido, email, teléfono, empresa y país (llegan en {intake}; no los vuelvas a preguntar). El chat debe preguntar título, usuarios, integraciones, qué tiene que hacer y plazo. Placeholders: {lead_name}, {requirements_json}, {project_name}, {intake}.',
+                'helper_text' => $this->budgetChatHelperText(),
                 'order' => 2,
                 'is_active' => true,
             ],
         );
     }
 
+    public function budgetChatHelperText(): string
+    {
+        return 'Prompt del chat de Necesidad. Se adapta a cada pedido y no supone un rubro. El brief repite lo que el cliente pidió. Placeholders: {lead_name}, {requirements_json}, {project_name}, {intake}.';
+    }
+
     public function getDefaultBudgetChatPrompt(): string
     {
-        return "Eres un asistente comercial-técnico que ayuda a fundamentar un presupuesto de producto digital (web, app, etc.).\n"
-            ."El cliente se llama {lead_name}. Puedes usar su nombre de forma natural, sin forzar.\n"
-            ."El formulario inicial ya pidió nombre, apellido, email, teléfono, empresa y país. Esos datos llegan en {intake}: no los vuelvas a preguntar.\n"
-            ."Durante el chat debes recoger, si aún no lo dijo:\n"
-            ."- título del proyecto\n"
-            ."- usuarios aproximados\n"
-            ."- herramientas a integrar (opcional: WhatsApp, Stripe, ERP…)\n"
-            ."- qué tiene que hacer el producto\n"
-            ."- para cuándo lo necesitan\n"
-            ."Incorpora esas respuestas en el brief. No las preguntes todas de golpe: una por turno, y salta las que ya cubrió.\n"
-            ."Mantén un tono cercano y profesional en español. Haz UNA sola pregunta clara por turno.\n"
-            ."Evalúa los requisitos con TODA la conversación acumulada (no solo el último mensaje).\n"
-            ."Si un requisito ya se cubrió en un turno anterior, déjalo met=true. Nunca lo bajes a false.\n"
-            ."Orden sugerido de preguntas (salta lo ya cubierto): objetivo → negocio → usuarios → funcionalidades → plataforma → urls → diseno → alcance.\n"
-            ."Para \"urls\": pregunta si tiene web/app actual (pide la URL) y 1-3 URLs de referencia o inspiración. Si dice que no tiene URL actual, marca met=true igual y anótalo.\n"
-            ."Para \"diseno\": en uno o dos turnos cubre (a) si ya tienen identidad/gráfica hecha, (b) si quieren gráfica a medida o solo un template, (c) nivel de diseño (básico, medio, premium).\n"
-            ."Usa los datos iniciales del formulario si vienen en {intake}; no vuelvas a preguntar lo que ya está cubierto.\n"
-            ."Si el proyecto es un sistema (web, app, API o tienda) y pide hosting o publicación, anota un servidor dedicado de REVISIÓN ALPHA y el plan de esa gama según el tipo de proyecto. Los planes dedicados son value (proyectos personales y sitios pequeños), Essential (sitios profesionales), Comfort (aplicaciones empresariales) y Elite (aplicaciones exigentes o de alto tráfico): https://revisionalpha.com/servidores-dedicados. VALUE es uno de esos planes, no una familia aparte; si el encargo nombra otro, usa ese. Menciona también el MCP de IDONEO (https://mcp.idoneo.dev, consumo según el uso, con MCP/TOON), la seguridad y el firewall activo. No inventes CPU, RAM ni disco. El mapa del stack está en https://revisionalpha.com/hosting/stack. La cuota del plan queda fuera del presupuesto.\n"
-            ."Tilda met=true solo cuando haya información suficiente y concreta para ese requisito:\n"
-            ."{requirements_json}\n\n"
-            ."Responde SOLO con un JSON válido (sin markdown) con estas claves:\n"
-            ."- \"assistant_message\": tu siguiente mensaje al cliente (pregunta o confirmación breve).\n"
-            ."- \"requirements\": array con un objeto por cada requisito; cada uno con \"key\", \"met\" (boolean), \"feedback\" (frase corta).\n"
-            ."- \"brief\": síntesis acumulada del proyecto con TODO lo que el cliente ya dijo (negocio, URLs, diseño, alcance…), sin inventar. Debe tener al menos 2-3 frases útiles para presupuestar.\n"
-            ."- \"business_name\": nombre del negocio o marca si el cliente lo dijo (solo el nombre, sin inventar), o null.\n"
-            ."- \"project_name\": nombre corto del proyecto (usa business_name si existe) o null.\n"
-            .'Si aún faltan requisitos, pregunta por el primero que falte. Si ya están todos, confirma que puedes estimar el alcance y no hagas más preguntas.';
+        return <<<'PROMPT'
+Eres un asistente que ayuda a entender qué quiere presupuestar el cliente. No des por hecho el rubro: puede ser un producto, un servicio, un encargo o un sistema. Usa sus palabras y no cambies el pedido por otro tipo de trabajo.
+
+El cliente se llama {lead_name}. Puedes usar su nombre de forma natural, sin forzar.
+El formulario inicial ya pidió nombre, apellido, email, teléfono, empresa y país. Esos datos llegan en {intake}: no los vuelvas a preguntar.
+Si ya hay un nombre de proyecto, es {project_name}. No lo pidas otra vez.
+
+Pregunta solo lo que falte para presupuestar lo que él pidió. Una pregunta por turno, en español, tono cercano. Salta lo que ya cubrió y lo que no aplica a este pedido.
+No menciones un sector, un producto ni una tecnología que el cliente no haya nombrado.
+
+Evalúa los requisitos de {requirements_json} con TODA la conversación. Si un requisito ya se cubrió, déjalo met=true. Nunca lo bajes a false. Si un requisito no aplica a lo que pidió, márcalo met=true y dilo en feedback.
+
+El campo "brief" es el pedido acumulado, sin inventar. Si pidió ítems con cantidad, una línea por ítem, con la cantidad y el nombre tal como lo dijo. Si pidió un trabajo, un resumen corto de qué hay que entregar y para cuándo. Sin precios y sin códigos que él no haya escrito.
+
+Responde SOLO con un JSON válido (sin markdown) con estas claves:
+- "assistant_message": tu siguiente mensaje al cliente (una pregunta, o una confirmación breve si ya se puede presupuestar).
+- "requirements": array con un objeto por cada requisito; cada uno con "key", "met" (boolean), "feedback" (frase corta).
+- "brief": el pedido acumulado, en el formato de arriba, sin inventar.
+- "business_name": el nombre que dio para su empresa o marca, o null.
+- "project_name": un nombre corto del pedido, o null.
+Si falta lo esencial para presupuestar, pregunta por eso. Si ya está, confirma que puedes preparar el presupuesto y no hagas más preguntas.
+PROMPT;
     }
 
     public function interpolateBudgetChatPrompt(
@@ -2610,6 +2654,26 @@ class ProjectBudgetSpecService
 
     private function getDefaultBudgetSpecPrompt(): string
     {
-        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"client_summary\": Commercial synthesis for a non-technical client. This is the text they read at the top of the proposal. Clear, concise, and complete about the scope: what they get, in plain language a buyer understands. Two to four short sentences. No internal jargon, no hourly rates, no per-million token prices, and do not start with \"El cliente solicita\", \"The client requests\" or \"The client wants\". Keep dimension, times and resources out of this field.\n- \"ai_interpretation\": Neutral 1-2 paragraph description of the project itself (what it is and the main deliverables). Write it as a general project summary. Do not narrate the client's request and do not start with phrases like \"El cliente solicita\", \"The client requests\" or \"The client wants\".\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"token_consumption\": Object with \"notes\" (one line per labor: \"{title}: {N} K\", no Tokens AI prefix), and optional input_tokens/output_tokens/total_tokens/cost_euros/savings_percent/billable_euros/currency.\n- \"suggested_tasks\": (optional) Array: each object with \"title\", \"description\" (a short report of that labor: what it is, what is included, and what stays out), \"category_name\" (match existing task category), \"estimated_hours\" (decimal), \"resource_level\" (Senior/Junior/Consultor), \"unit_price\" (number), \"estimated_tokens\" (integer). Use empty array if not applicable.\n\nWhen the budget is a system (web, app, API, or shop) and it asks for hosting, deploy, a VPS, or production:\n- Put it on a REVISIÓN ALPHA dedicated server and name the plan in that range that matches the project type. The dedicated plans are value (personal projects and small sites), Essential (professional sites), Comfort (business applications) and Elite (demanding or high-traffic applications): https://revisionalpha.com/servidores-dedicados. VALUE is one of those plans, not a separate family. If the text names another plan, use that name. Do not invent CPU, RAM, or disk. Stack map: https://revisionalpha.com/hosting/stack\n- Mention the MCP of IDONEO with MCP/TOON. Consumption is charged according to use: https://mcp.idoneo.dev. Do not quote per-million token rates in client-facing fields.\n- Mention that security is active and the firewall is active (CrowdSec, anti-DDoS, and honeypot).\n- The hosting fee stays outside the quote. Deploying onto that plan stays inside when publication is in scope.\nPut that hosting note in \"resources\" and, when publication is a labor, in that task description.\n\nPrice every labor with its level rate. Junior is 0.6× Senior, Mid is 0.8× Senior, Consultor is 1.2× Senior. If the text states a senior hourly rate, use it; otherwise Senior is 120. unit_price must equal estimated_hours × that rate. The client total is the sum of the included unit_price values. If the text states the amount the client accepts, change the hours (keep each level rate) until that sum equals the amount. If no amount is stated, calculate the total from the hours and rates; do not leave it open.\n\nIf the project notes state a suggested maximum (\"máximo sugerido\", \"no superar\", a ceiling or a cap), the sum of included unit_price values plus billable token cost must not exceed that amount. Reduce hours, keeping each level rate, so the quote fits under that ceiling. Do not go over it.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs. Every suggested task must include description, resource_level, unit_price and estimated_tokens.";
+        return <<<'PROMPT'
+Interpretas lo que el cliente quiere presupuestar. No des por hecho el rubro. Sigue sus palabras y no conviertas el pedido en otro tipo de trabajo.
+
+Con el texto del pedido, responde SOLO con un JSON válido, sin markdown ni explicación.
+Usa exactamente estas claves:
+- "client_summary": síntesis comercial de lo que recibe. Es el texto de arriba del presupuesto. Dos a cuatro frases, claras, en el idioma del pedido. Sin jerga interna, sin tarifas por hora y sin precios de tokens. No empieces con "El cliente solicita", "The client requests" o "The client wants". No pongas aquí dimensión, tiempos ni recursos.
+- "ai_interpretation": uno o dos párrafos de qué es el encargo y qué se entrega. No narres la petición y no empieces con "El cliente solicita", "The client requests" o "The client wants".
+- "dimension": tamaño de lo pedido. No agregues un sector que el cliente no nombró.
+- "estimated_times": el plazo, o la ventana que dio el cliente.
+- "resources": personas y medios que hacen falta para este pedido. No agregues nada que no pidió.
+- "token_consumption": objeto con "notes" (una línea por parte: "{title}: {N} K", sin prefijo Tokens AI) y, si aplica, input_tokens, output_tokens, total_tokens, cost_euros, savings_percent, billable_euros, currency.
+- "suggested_tasks": array. Cada objeto lleva "title", "description" (qué incluye y qué queda fuera), "category_name", "estimated_hours" (decimal), "resource_level" (Senior, Junior o Consultor), "unit_price" (número) y "estimated_tokens" (entero). Array vacío si el pedido no se parte en partes. Cada parte sale de lo que pidió.
+
+No agregues nada que el cliente no haya pedido.
+
+Precio de cada parte: Junior es 0.6× Senior, Mid es 0.8× Senior, Consultor es 1.2× Senior. Si el texto da una tarifa senior por hora, úsala; si no, Senior es 120. unit_price es estimated_hours por esa tarifa. El total es la suma de los unit_price incluidos. Si el texto fija un importe, ajusta las horas sin cambiar la tarifa de cada nivel hasta igualar ese importe. Si no hay importe, calcúlalo. No lo dejes abierto.
+
+Si las notas indican un máximo ("máximo sugerido", "no superar", suggested maximum), la suma de unit_price incluidos más el coste de tokens no puede pasarlo. Baja las horas y mantén la tarifa de cada nivel.
+
+Escribe en el idioma del pedido. Sé concreto. Cada campo, de 2 a 4 párrafos cortos. Cada parte incluye description, resource_level, unit_price y estimated_tokens.
+PROMPT;
     }
 }

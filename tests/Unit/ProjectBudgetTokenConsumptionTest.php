@@ -537,8 +537,10 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         $prompt = $method->invoke($service);
 
         $this->assertStringContainsString('"client_summary"', $prompt);
-        $this->assertStringContainsString('Commercial synthesis for a non-technical client', $prompt);
+        $this->assertStringContainsString('síntesis comercial', $prompt);
         $this->assertStringContainsString('suggested maximum', $prompt);
+        $this->assertStringNotContainsString('software', $prompt);
+        $this->assertStringNotContainsString('hosting', $prompt);
     }
 
     #[Test]

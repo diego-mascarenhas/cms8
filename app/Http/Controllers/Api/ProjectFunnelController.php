@@ -12,7 +12,9 @@ use App\Http\Requests\Api\QuoteProjectFunnelRequest;
 use App\Http\Requests\Api\SubmitProjectFunnelRequest;
 use App\Http\Requests\Api\UpdateProjectFunnelChatPromptRequest;
 use App\Http\Requests\Api\UpdateProjectFunnelSenderRequest;
+use App\Http\Requests\Api\UpdateProjectFunnelSpecPromptRequest;
 use App\Http\Requests\Api\UpdateProjectFunnelTokenPricingRequest;
+use App\Http\Requests\Api\UpdateSupplierPriceListPromptRequest;
 use App\Jobs\GenerateEstimatorDemoQuoteJob;
 use App\Jobs\GenerateProjectFunnelQuoteJob;
 use App\Models\Category;
@@ -22,6 +24,7 @@ use App\Models\Enterprise;
 use App\Models\Project;
 use App\Models\TaskBoard;
 use App\Models\Team;
+use App\Services\CommercialDocumentInterpreter;
 use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
 use Illuminate\Http\JsonResponse;
@@ -182,6 +185,114 @@ class ProjectFunnelController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('Chat prompt saved.'),
+            'data' => [
+                'section_key' => $prompt->section_key,
+                'section_label' => $prompt->section_label,
+                'prompt_instruction' => $prompt->prompt_instruction,
+                'helper_text' => $prompt->helper_text,
+            ],
+        ]);
+    }
+
+    /**
+     * Editable scope prompt that turns a brief into the quote (internal login).
+     */
+    public function showSpecPrompt(Request $request): JsonResponse
+    {
+        $team = $this->authorizeFunnelEditor($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $prompt = $this->budgetSpecService->ensureBudgetSpecPrompt($team);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'section_key' => $prompt->section_key,
+                'section_label' => $prompt->section_label,
+                'prompt_instruction' => $prompt->prompt_instruction,
+                'helper_text' => $prompt->helper_text,
+            ],
+        ]);
+    }
+
+    /**
+     * Persist the scope prompt used when the estimator builds the quote.
+     */
+    public function updateSpecPrompt(UpdateProjectFunnelSpecPromptRequest $request): JsonResponse
+    {
+        $team = $this->authorizeFunnelEditor($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $prompt = $this->budgetSpecService->ensureBudgetSpecPrompt($team);
+        $prompt->forceFill([
+            'prompt_instruction' => (string) $request->validated('prompt_instruction'),
+            'is_active' => true,
+        ])->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Scope prompt saved.'),
+            'data' => [
+                'section_key' => $prompt->section_key,
+                'section_label' => $prompt->section_label,
+                'prompt_instruction' => $prompt->prompt_instruction,
+                'helper_text' => $prompt->helper_text,
+            ],
+        ]);
+    }
+
+    /**
+     * Editable prompt that reads supplier price lists and requisitions.
+     */
+    public function showSupplierListPrompt(Request $request, CommercialDocumentInterpreter $documents): JsonResponse
+    {
+        $team = $this->authorizeFunnelEditor($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $prompt = $documents->ensureSupplierListPrompt($team);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'section_key' => $prompt->section_key,
+                'section_label' => $prompt->section_label,
+                'prompt_instruction' => $prompt->prompt_instruction,
+                'helper_text' => $prompt->helper_text,
+            ],
+        ]);
+    }
+
+    /**
+     * Persist the prompt used when a supplier price list is read.
+     */
+    public function updateSupplierListPrompt(
+        UpdateSupplierPriceListPromptRequest $request,
+        CommercialDocumentInterpreter $documents,
+    ): JsonResponse {
+        $team = $this->authorizeFunnelEditor($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $prompt = $documents->ensureSupplierListPrompt($team);
+        $prompt->forceFill([
+            'prompt_instruction' => (string) $request->validated('prompt_instruction'),
+            'is_active' => true,
+        ])->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Supplier list prompt saved.'),
             'data' => [
                 'section_key' => $prompt->section_key,
                 'section_label' => $prompt->section_label,

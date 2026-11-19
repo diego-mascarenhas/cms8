@@ -93,12 +93,13 @@ return [
     | Photo / document OCR model
     |--------------------------------------------------------------------------
     |
-    | WhatsApp photos and documents use this model for AI OCR.
+    | WhatsApp photos, supplier price-list photos, and documents use this
+    | vision model. Supplier photos do not use the shop text model.
     | If the primary model fails, ocr_failover_model is tried next.
     |
     */
     'ocr_model' => env('AI_OCR_MODEL', 'openai/gpt-4o-mini'),
-    'ocr_failover_model' => env('AI_OCR_FAILOVER_MODEL', 'anthropic/claude-haiku-4.5'),
+    'ocr_failover_model' => env('AI_OCR_FAILOVER_MODEL', 'anthropic/claude-haiku-4-5-20251001'),
 
     /*
     |--------------------------------------------------------------------------

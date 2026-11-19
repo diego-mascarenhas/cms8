@@ -15,10 +15,24 @@ use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Rule;
 
 class CommunicationController extends Controller
 {
     use ChecksTeamModule;
+
+    /** @var list<string> */
+    private const SORTS = [
+        'id',
+        'created_at',
+        'sent_at',
+        'status',
+        'channel',
+        'subject',
+        'recipient_email',
+        'recipient_name',
+        'recipient_phone',
+    ];
 
     public function __construct(private CommunicationService $communications) {}
 
@@ -37,12 +51,22 @@ class CommunicationController extends Controller
             'sent_today' => 'nullable|boolean',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:50',
+            'sort' => ['nullable', 'string', Rule::in(self::SORTS)],
+            'order' => ['nullable', 'string', Rule::in(['asc', 'desc'])],
         ]);
+
+        $sort = $validated['sort'] ?? 'id';
+        $order = $validated['order'] ?? 'desc';
 
         $query = Communication::query()
             ->where('team_id', $team->id)
             ->with('contact')
-            ->latest('id');
+            ->orderBy($sort, $order);
+
+        if ($sort !== 'id')
+        {
+            $query->orderBy('id', $order);
+        }
 
         $channel = CommunicationChannel::tryFrom((string) ($validated['channel'] ?? ''));
         if ($channel)

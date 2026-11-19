@@ -37,16 +37,20 @@ class HumanoPricingStripePublisherTest extends TestCase
         $this->assertNotContains('hunter', $ids);
     }
 
-    public function test_estimator_plan_is_free_and_not_publishable(): void
+    public function test_estimator_plan_is_88_usd_and_not_publishable(): void
     {
         $plan = collect(config('humano_pricing.plans'))->firstWhere('id', 'estimator');
 
         $this->assertIsArray($plan);
-        $this->assertSame('0', $plan['monthly_amount'] ?? null);
-        $this->assertSame('0', $plan['yearly_amount'] ?? null);
-        $this->assertSame('', $plan['stripe_price_monthly_id'] ?? null);
+        $this->assertSame('88', $plan['monthly_amount'] ?? null);
+        $this->assertSame('880', $plan['yearly_amount'] ?? null);
+        $this->assertSame('usd', $plan['currency'] ?? null);
+        $this->assertSame('prod_VengAbjD6O953p', $plan['stripe_product_id'] ?? null);
+        $this->assertSame('price_1UdU57RwN51ygFde9KwFfUVW', $plan['stripe_price_monthly_id'] ?? null);
+        $this->assertSame('price_1UdV0qRwN51ygFdesMwcKw6A', $plan['stripe_price_yearly_id'] ?? null);
         $this->assertTrue($plan['checkout_available'] ?? false);
         $this->assertSame('Estimator', trans('humano_pricing.plans.estimator.name', [], 'en'));
+        $this->assertNotContains('estimator', collect((new HumanoPricingStripePublisher(new StripeClient('sk_test_dummy')))->publishablePlans())->pluck('id'));
     }
 
     public function test_shop_and_ads_plans_have_test_stripe_ids_in_config(): void

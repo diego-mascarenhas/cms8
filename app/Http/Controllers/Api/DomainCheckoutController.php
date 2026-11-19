@@ -35,6 +35,7 @@ class DomainCheckoutController extends Controller
                 (string) $request->validated('domain'),
                 (string) $request->validated('success_url'),
                 (string) $request->validated('cancel_url'),
+                $request->validated('ref'),
             );
         } catch (RuntimeException $exception)
         {

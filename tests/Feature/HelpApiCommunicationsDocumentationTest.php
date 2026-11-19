@@ -24,6 +24,11 @@ class HelpApiCommunicationsDocumentationTest extends TestCase
         $response->assertSee('"file_name": "recibo-de-pago.pdf"', false);
         $response->assertSee('attachments[]=@./recibo-de-pago.pdf', false);
         $response->assertSee('/api/team/communications/1842', false);
+        $response->assertSee('per_page', false);
+        $response->assertSee('current_page', false);
+        $response->assertSee('search=factura', false);
+        $response->assertSee('sort=sent_at', false);
+        $response->assertSee('order=desc', false);
         $response->assertSee('"status": "pending"', false);
         $response->assertSee('"status": "sent"', false);
     }

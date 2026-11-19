@@ -30,7 +30,7 @@ class PublicDomainCheckout
      * @param  array{name: string, email: string, phone: string, country: string, tax_id: string, business_name?: string|null}  $customer
      * @return array{checkout_url: string, plan: string, plan_amount: int, domain: string, price: float, currency: string, account: string}
      */
-    public function start(Team $registrarTeam, array $customer, string $domain, string $successUrl, string $cancelUrl): array
+    public function start(Team $registrarTeam, array $customer, string $domain, string $successUrl, string $cancelUrl, ?string $referralCode = null): array
     {
         $quote = $this->porkbun->quote($registrarTeam, $domain);
 
@@ -48,6 +48,7 @@ class PublicDomainCheckout
 
         $account = $this->ensureAccount($customer);
         $enterprise = $account['enterprise'];
+        $referrer = $this->rememberReferrer($account['team'], $referralCode);
         $session = $this->stripe->create([
             'customer' => $enterprise->getStripeCustomerId(),
             'mode' => 'subscription',
@@ -69,9 +70,9 @@ class PublicDomainCheckout
             ]],
             'success_url' => $successUrl,
             'cancel_url' => $cancelUrl,
-            'metadata' => $this->metadata($quote['domain'], $enterprise, $account['user']),
+            'metadata' => $this->metadata($quote['domain'], $enterprise, $account['user'], $referrer),
             'subscription_data' => [
-                'metadata' => $this->metadata($quote['domain'], $enterprise, $account['user']),
+                'metadata' => $this->metadata($quote['domain'], $enterprise, $account['user'], $referrer),
             ],
         ]);
 
@@ -335,18 +336,50 @@ class PublicDomainCheckout
         return $enterprise;
     }
 
+    private function rememberReferrer(Team $payer, ?string $referralCode): ?string
+    {
+        $existing = trim((string) ($payer->referred_by ?? ''));
+        if ($existing !== '')
+        {
+            return str_starts_with(strtolower($existing), 'cus_') ? $existing : null;
+        }
+
+        $referralCode = trim((string) $referralCode);
+        if (! str_starts_with(strtolower($referralCode), 'cus_') || strlen($referralCode) > 64)
+        {
+            return null;
+        }
+
+        $referrer = Team::findByStripeCustomerId($referralCode);
+        if ($referrer === null || (int) $referrer->id === (int) $payer->id)
+        {
+            return null;
+        }
+
+        $payer->forceFill(['referred_by' => $referralCode])->save();
+
+        return $referralCode;
+    }
+
     /**
      * @return array<string, string>
      */
-    private function metadata(string $domain, Enterprise $enterprise, User $user): array
+    private function metadata(string $domain, Enterprise $enterprise, User $user, ?string $referrer = null): array
     {
-        return [
+        $metadata = [
             'type' => 'domain',
             'plan' => 'flex',
             'domain' => $domain,
             'enterprise_id' => (string) $enterprise->id,
             'user_id' => (string) $user->id,
         ];
+
+        if ($referrer !== null && $referrer !== '')
+        {
+            $metadata['referred_by'] = $referrer;
+        }
+
+        return $metadata;
     }
 
     /**

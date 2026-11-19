@@ -573,6 +573,14 @@ Route::middleware('auth.api')->group(function ()
         ->name('api.projects.funnel.chat-prompt.show');
     Route::put('projects/funnel/chat-prompt', [ProjectFunnelController::class, 'updateChatPrompt'])
         ->name('api.projects.funnel.chat-prompt.update');
+    Route::get('projects/funnel/spec-prompt', [ProjectFunnelController::class, 'showSpecPrompt'])
+        ->name('api.projects.funnel.spec-prompt.show');
+    Route::put('projects/funnel/spec-prompt', [ProjectFunnelController::class, 'updateSpecPrompt'])
+        ->name('api.projects.funnel.spec-prompt.update');
+    Route::get('projects/funnel/supplier-list-prompt', [ProjectFunnelController::class, 'showSupplierListPrompt'])
+        ->name('api.projects.funnel.supplier-list-prompt.show');
+    Route::put('projects/funnel/supplier-list-prompt', [ProjectFunnelController::class, 'updateSupplierListPrompt'])
+        ->name('api.projects.funnel.supplier-list-prompt.update');
     Route::get('projects/funnel/sender', [ProjectFunnelController::class, 'showSender'])
         ->name('api.projects.funnel.sender.show');
     Route::put('projects/funnel/sender', [ProjectFunnelController::class, 'updateSender'])
@@ -1127,6 +1135,7 @@ Route::middleware('team.token')->prefix('team')->group(function ()
     // Assistant chat (router + flows); body: message required, optional prompt_key
     Route::post('assistant/chat', [TeamAssistantController::class, 'chat'])->name('api.team.assistant.chat');
     Route::post('whatsapp/send', [TeamWhatsAppController::class, 'send'])->name('api.team.whatsapp.send');
+    Route::get('communications', [CommunicationController::class, 'index'])->name('api.team.communications.index');
     Route::post('communications', [CommunicationController::class, 'store'])->name('api.team.communications.store');
     Route::get('communications/{id}', [CommunicationController::class, 'show'])->whereNumber('id')->name('api.team.communications.show');
     Route::get('/settings', [TeamController::class, 'settings']);

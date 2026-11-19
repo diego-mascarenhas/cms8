@@ -40,6 +40,7 @@
                         <h6 class="mb-3">{{ __('Quick Navigation') }}</h6>
                         <ul class="list-unstyled mb-0">
                             <li><a href="#send-communication" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('Send a communication') }}</a></li>
+                            <li><a href="#list-communications" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('List communications') }}</a></li>
                             <li><a href="#get-communication" class="text-decoration-none"><i class="ti ti-chevron-right ti-xs"></i> {{ __('Get a communication') }}</a></li>
                         </ul>
                     </div>
@@ -242,6 +243,88 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+                </div>
+
+                <div class="card mt-4" id="list-communications">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <span class="badge bg-primary me-2">GET</span>
+                            {{ __('List communications') }}
+                            <a href="#list-communications" class="text-muted ms-2" title="{{ __('Anchor link') }}"><i class="ti ti-link ti-xs"></i></a>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <code class="d-block mb-3">{{ url('/') }}/api/team/communications</code>
+                        <p>{{ __('Returns the team communications. Without sort, rows are ordered by id descending, newest first. Walk page until current_page equals last_page. per_page defaults to 20 and cannot exceed 50, the same cap as Mailer and Tickets.') }}</p>
+
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>{{ __('Query') }}</th>
+                                    <th>{{ __('Description') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>page</code></td>
+                                    <td>{{ __('Page number. Defaults to 1.') }}</td>
+                                </tr>
+                                <tr>
+                                    <td><code>per_page</code></td>
+                                    <td>{{ __('Page size. Defaults to 20. Maximum 50.') }}</td>
+                                </tr>
+                                <tr>
+                                    <td><code>search</code></td>
+                                    <td>{{ __('Subject, email, name or phone.') }}</td>
+                                </tr>
+                                <tr>
+                                    <td><code>channel</code></td>
+                                    <td><code>email</code>, <code>whatsapp</code>, <code>sms</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>status</code></td>
+                                    <td><code>pending</code>, <code>sent</code>, <code>failed</code></td>
+                                </tr>
+                                <tr>
+                                    <td><code>sent_today</code></td>
+                                    <td>{{ __('true keeps only messages sent today and ignores status.') }}</td>
+                                </tr>
+                                <tr>
+                                    <td><code>sort</code></td>
+                                    <td><code>id</code>, <code>created_at</code>, <code>sent_at</code>, <code>status</code>, <code>channel</code>, <code>subject</code>, <code>recipient_email</code>, <code>recipient_name</code>, <code>recipient_phone</code>. {{ __('Defaults to id.') }}</td>
+                                </tr>
+                                <tr>
+                                    <td><code>order</code></td>
+                                    <td><code>asc</code> {{ __('or') }} <code>desc</code>. {{ __('Defaults to desc.') }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h6>{{ __('Example request') }}</h6>
+                        <pre class="docs-code"><code class="language-bash">curl "{{ url('/') }}/api/team/communications?search=factura&amp;channel=email&amp;status=sent&amp;sort=sent_at&amp;order=desc&amp;page=1&amp;per_page=20" \
+  -H "Authorization: Bearer {{ $apiToken }}" \
+  -H "Accept: application/json"</code></pre>
+
+                        <h6 class="mt-3">{{ __('Success response (200)') }}</h6>
+                        <pre><code class="language-json">{
+  "success": true,
+  "data": [
+    {
+      "id": 1842,
+      "channel": "email",
+      "status": "sent",
+      "subject": "Tu factura",
+      "sent_at": "2026-09-18T13:54:08+00:00"
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "last_page": 4,
+    "per_page": 20,
+    "total": 73
+  }
+}</code></pre>
                     </div>
                 </div>
 

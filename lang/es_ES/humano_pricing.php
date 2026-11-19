@@ -182,10 +182,10 @@ return [
         ],
         'estimator' => [
             'name' => 'Estimator',
-            'description' => 'Cotizaciones comerciales. El plan es gratis; solo se facturan los tokens de IA.',
+            'description' => 'Cotizaciones comerciales. El plan cuesta 88 USD al mes, o 880 USD al año. Los tokens de IA se facturan aparte.',
             'features' => [
                 'Funnel de cotización para el equipo',
-                'Plan a 0 €; la tarjeta sirve para facturar tokens',
+                '88 USD al mes o 880 USD al año; los tokens de IA se facturan aparte',
                 'Facturación compartida con el resto de las apps',
             ],
         ],

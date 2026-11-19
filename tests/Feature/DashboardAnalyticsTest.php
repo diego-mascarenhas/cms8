@@ -572,6 +572,7 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertSee('PanelTest Contact', false);
         $response->assertSee('dashboard-contact-panel', false);
         $response->assertSee('dashboardLatestContactsTable', false);
+        $response->assertSee('href="'.route('contact.show', $contact->id).'"', false);
     }
 
     public function test_dashboard_ongoing_projects_table_links_to_project_and_client(): void

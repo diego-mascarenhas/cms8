@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Module;
+use App\Models\Prompt;
+use App\Models\Team;
 use App\Support\AiTasks;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -21,6 +24,12 @@ class CommercialDocumentInterpreter
      */
     public function interpret(string $path, string $originalName, ?int $teamId = null): array
     {
+        $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        if (in_array($extension, ['png', 'jpg', 'jpeg', 'webp'], true))
+        {
+            return $this->interpretImage($path, $teamId);
+        }
+
         $text = trim($this->sourceText($path, $originalName, $teamId));
         if ($text === '')
         {
@@ -33,7 +42,7 @@ class CommercialDocumentInterpreter
             return $parsed;
         }
 
-        $prompt = $this->prompt(Str::limit($text, 120000, ''));
+        $prompt = $this->promptFor(Str::limit($text, 120000, ''), $teamId);
         $documentAgent = agent(
             instructions: 'You extract commercial lines from supplier lists and ship requisitions. Return only JSON.',
             messages: [],
@@ -42,6 +51,25 @@ class CommercialDocumentInterpreter
         $response = AiTasks::prompt($documentAgent, $prompt, 120, 'shop');
 
         return $this->documentFromModelText((string) ($response->text ?? ''));
+    }
+
+    /**
+     * Photos go to the vision OCR model. DeepSeek only sees text and fails on these images.
+     *
+     * @return array{kind: string, supplier_name: ?string, currency: ?string, lines: list<array{code: string, name: string, cost: ?float, quantity: ?float, unit: ?string, barcode: ?string, oem: ?string}>}
+     */
+    private function interpretImage(string $path, ?int $teamId): array
+    {
+        $prompt = $this->resolveSupplierListPrompt($teamId)
+            ."\n\nThe price list is the attached image. Read the products and prices from that image.";
+        $text = $this->ocr->completeWithFile(
+            $path,
+            'You read supplier price lists from photos. Return only JSON.',
+            $prompt,
+            $teamId,
+        );
+
+        return $this->documentFromModelText($text);
     }
 
     public function sourceText(string $path, string $originalName, ?int $teamId = null): string
@@ -522,12 +550,70 @@ class CommercialDocumentInterpreter
         ];
     }
 
-    private function prompt(string $text): string
+    public function promptFor(string $text, ?int $teamId = null): string
     {
-        return <<<PROMPT
+        return $this->resolveSupplierListPrompt($teamId)."\n\nDocument:\n{$text}";
+    }
+
+    public function resolveSupplierListPrompt(?int $teamId): string
+    {
+        if ($teamId === null)
+        {
+            return $this->defaultSupplierListPrompt();
+        }
+
+        $instruction = trim((string) (Prompt::forTeam($teamId)
+            ->forModule('shop')
+            ->where('section_key', 'supplier_price_list')
+            ->active()
+            ->first()?->prompt_instruction ?? ''));
+
+        return $instruction !== '' ? $instruction : $this->defaultSupplierListPrompt();
+    }
+
+    public function ensureSupplierListPrompt(Team $team): Prompt
+    {
+        $module = Module::query()->firstOrCreate(
+            ['key' => 'shop'],
+            [
+                'name' => 'Shop',
+                'icon' => 'ti ti-building-store',
+                'description' => 'Shop',
+                'is_core' => false,
+                'group' => 'work',
+                'order' => 0,
+                'status' => 1,
+            ],
+        );
+
+        return Prompt::withoutGlobalScope('team')->firstOrCreate(
+            [
+                'team_id' => $team->id,
+                'module_id' => $module->id,
+                'section_key' => 'supplier_price_list',
+            ],
+            [
+                'section_label' => 'Proveedores: lectura de listas de precios',
+                'prompt_instruction' => $this->defaultSupplierListPrompt(),
+                'helper_text' => 'Prompt que lee listas de precios y pedidos de proveedores. La respuesta es JSON con kind, supplier_name, currency y lines.',
+                'order' => 4,
+                'is_active' => true,
+            ],
+        );
+    }
+
+    public function defaultSupplierListPrompt(): string
+    {
+        return <<<'PROMPT'
 Extract the commercial lines from this document. It is either a supplier price list or a ship requisition.
 
-Price list examples: Maxikol product lists, "LISTA REVENTA", LBP price sheets, and supplier quotations. Each product has a name and a unit cost.
+Price lists from this operation:
+- LISTA REVENTA: a date, category headers, then a numeric code, an abbreviated product name, a pack count in parentheses, and a price that starts with $. The pack count is not an order quantity. cost is the unit price. Example: 1101287 ALF.AGUILA M.TORTAx69g.DARK (21) $1229,98
+- LBP and palta.com.ar sheets: price per kilogram, Argentine format such as 1.044,00. unit is KG.
+- Photo flyers such as Don Silvio / La Granja Don Silvio: columns VACUNA, POLLO, CERDO, EMBUTIDOS and ACHURAS. Each row is a cut and a price per kilogram. $ 13.890 means 13890. A cell that says consultar has cost null. supplier_name is the brand printed on the flyer. currency is ARS. unit is KG. Skip slogans, phones, delivery banners and the minimum order.
+- Wholesale magazines and Lista de Precios Mayorista: read only product rows. Skip ads, page numbers and IVA notes.
+- Maxikol product lists and other supplier quotations. Each product has a name and a unit cost.
+
 Requisition examples: "STORES REQUISITION FORM", RFQ, and galley or bond store sheets. Each item has an ISSA/IMPA code, a description, and a requested quantity. Those rows usually have no unit cost.
 Quotation examples: Seven Seas qt sheets. A row has the item number, description, supplier code, requested quantity, unit, supplied quantity, unit price, discount percent and line amount. cost is the net unit price, the line amount divided by the supplied quantity. Rows marked NA have no cost. currency is the code printed beside the grand total.
 
@@ -538,14 +624,11 @@ Rules:
 - kind is "price_list" when rows have a unit cost, otherwise "requisition".
 - supplier_name is the company that issued the list, or null.
 - currency is ARS, USD, or EUR, or null.
-- cost is a JSON number. Use a dot as the decimal separator and no thousands separator. 12.900,00 is 12900. If there is no unit cost, cost is null.
-- quantity is the amount requested. When there are columns for immediate use and for stock, add them. Ignore ROB. If there is no quantity, quantity is null.
+- cost is a JSON number. Use a dot as the decimal separator and no thousands separator. 12.900,00 and 13.890 are 12900 and 13890. 1229,98 is 1229.98. If there is no unit cost, cost is null.
+- quantity is the amount requested. When there are columns for immediate use and for stock, add them. Ignore ROB. A pack count in parentheses is not quantity. If there is no quantity, quantity is null.
 - code is the supplier code or ISSA/IMPA code. Keep internal single spaces. Do not invent codes.
-- Skip titles, page numbers, totals, and empty rows. Do not invent products.
+- Skip titles, page numbers, totals, ads, phones and empty rows. Do not invent products.
 - Return at most 500 lines.
-
-Document:
-{$text}
 PROMPT;
     }
 
