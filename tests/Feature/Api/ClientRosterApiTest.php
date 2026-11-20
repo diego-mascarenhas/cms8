@@ -309,4 +309,50 @@ class ClientRosterApiTest extends TestCase
             ->assertJsonPath('data.data.0.administrator.name', 'Emilio Arcioni')
             ->assertJsonPath('data.data.0.contact.id', $emilio->id);
     }
+
+    public function test_roster_can_include_every_type_and_search_by_contact_email(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            LanguageSeeder::class,
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $alliance = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'DOA',
+            'type_id' => 3,
+            'status_id' => 2,
+            'responsible_id' => $user->id,
+        ]);
+        $contact = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Ines',
+            'email' => 'iescobar@estudiodoa.com',
+            'language' => 'es',
+            'creator_id' => $user->id,
+        ]);
+        $contact->enterprises()->attach($alliance->id, ['position' => 'Administrador']);
+
+        $token = $user->createToken('roster-admin')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/roster?status=2&search=iescobar@estudiodoa.com')
+            ->assertOk()
+            ->assertJsonPath('data.total', 0);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/roster?status=2&type=all&search=iescobar@estudiodoa.com')
+            ->assertOk()
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.data.0.id', $alliance->id)
+            ->assertJsonPath('data.data.0.name', 'DOA')
+            ->assertJsonPath('data.data.0.contact.email', 'iescobar@estudiodoa.com');
+    }
 }
