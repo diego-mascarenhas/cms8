@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Currency;
 use App\Models\Order;
 use App\Models\Team;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 class ShopBriefOrderService
@@ -80,5 +82,32 @@ class ShopBriefOrderService
             notes: $notes,
             orderNumberPrefix: $fromShop ? 'PED-' : 'WA-',
         );
+    }
+
+    public function createBlank(Team $team): Order
+    {
+        return Order::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'order_number' => $this->nextOrderNumber(),
+            'total_amount' => 0,
+            'currency_id' => Currency::query()->where('code', 'ARS')->value('id'),
+            'payment_status' => 'pending',
+            'delivery_status' => 'processing',
+            'notes' => 'Pedido armado a mano.',
+            'metadata' => [
+                'source' => 'shop_manual',
+                'items' => [],
+            ],
+        ]);
+    }
+
+    private function nextOrderNumber(): string
+    {
+        do
+        {
+            $orderNumber = 'PED-'.strtoupper(Str::random(12));
+        } while (Order::withoutGlobalScopes()->where('order_number', $orderNumber)->exists());
+
+        return $orderNumber;
     }
 }

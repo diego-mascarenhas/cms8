@@ -130,6 +130,7 @@ class SupplierPriceListTest extends TestCase
 
         $this->assertEquals(750, $quote['price']);
         $this->assertSame('Textil Norte', $quote['supplier_name']);
+        $this->assertEquals(500, $quote['supplier_price']);
         $this->assertArrayNotHasKey('cost', $quote);
         $this->assertArrayNotHasKey('markup_percent', $quote);
     }
@@ -203,7 +204,9 @@ class SupplierPriceListTest extends TestCase
             ->getJson('/api/shop/orders/'.$order->id)
             ->assertOk()
             ->assertJsonPath('data.items.0.supplier_name', 'La Bella Palta')
-            ->assertJsonPath('data.items.1.supplier_name', null);
+            ->assertJsonPath('data.items.0.supplier_price', 13890)
+            ->assertJsonPath('data.items.1.supplier_name', null)
+            ->assertJsonPath('data.items.1.supplier_price', null);
     }
 
     public function test_pricing_setting_is_the_default_markup(): void

@@ -10,6 +10,7 @@ use App\Http\Requests\Api\StoreShopBriefOrderRequest;
 use App\Http\Requests\Api\UpdateShopOrderRequest;
 use App\Jobs\GenerateShopBriefOrderJob;
 use App\Models\Order;
+use App\Services\ShopBriefOrderService;
 use App\Services\ShopOrderItemsService;
 use App\Services\ShopOrderWhatsAppQuoteService;
 use App\Support\SearchNormalizer;
@@ -22,6 +23,23 @@ class OrderController extends Controller
 {
     use FormatsShopResources;
     use ResolvesShopTeam;
+
+    public function store(Request $request, ShopBriefOrderService $orders): JsonResponse
+    {
+        $team = $this->shopTeam($request, 'orders');
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $this->authorize('create', Order::class);
+
+        $order = $orders->createBlank($team);
+
+        return response()->json([
+            'data' => $this->formatOrder($order->fresh(['contact', 'currency']) ?? $order),
+        ], 201);
+    }
 
     public function index(Request $request): JsonResponse
     {

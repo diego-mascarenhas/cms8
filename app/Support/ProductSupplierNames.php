@@ -14,6 +14,27 @@ class ProductSupplierNames
      */
     public static function forProducts(int $teamId, array $productIds): array
     {
+        $names = [];
+
+        foreach (self::latestForProducts($teamId, $productIds) as $productId => $row)
+        {
+            if ($row['name'] !== '')
+            {
+                $names[$productId] = $row['name'];
+            }
+        }
+
+        return $names;
+    }
+
+    /**
+     * Latest supplier line for each product.
+     *
+     * @param  list<int>  $productIds
+     * @return array<int, array{name: string, unit_cost: ?float}>
+     */
+    public static function latestForProducts(int $teamId, array $productIds): array
+    {
         $ids = array_values(array_unique(array_filter(
             array_map(static fn (mixed $id): int => (int) $id, $productIds),
             static fn (int $id): bool => $id > 0,
@@ -24,7 +45,7 @@ class ProductSupplierNames
             return [];
         }
 
-        $names = [];
+        $rows = [];
 
         $lines = SupplierPriceLine::withoutGlobalScope('team')
             ->where('team_id', $teamId)
@@ -38,16 +59,18 @@ class ProductSupplierNames
 
         foreach ($lines as $line)
         {
-            $name = trim((string) ($line->list?->enterprise?->name ?? ''));
             $productId = (int) $line->product_id;
-            if ($name === '' || $productId < 1)
+            if ($productId < 1)
             {
                 continue;
             }
 
-            $names[$productId] = $name;
+            $rows[$productId] = [
+                'name' => trim((string) ($line->list?->enterprise?->name ?? '')),
+                'unit_cost' => $line->unit_cost !== null ? (float) $line->unit_cost : null,
+            ];
         }
 
-        return $names;
+        return $rows;
     }
 }

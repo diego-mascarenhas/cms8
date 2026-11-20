@@ -527,24 +527,30 @@ class SupplierPriceListController extends Controller
         }
 
         $products = $query->orderBy('name')->limit(20)->get();
-        $supplierNames = ProductSupplierNames::forProducts(
+        $suppliers = ProductSupplierNames::latestForProducts(
             (int) $team->id,
             $products->pluck('id')->all(),
         );
 
         $items = $products
-            ->map(fn (Product $product): array => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'code' => $product->code,
-                'price' => $product->currentSellingPrice(),
-                'supplier_name' => $supplierNames[$product->id] ?? null,
-                'currency' => $product->currency ? [
-                    'id' => $product->currency->id,
-                    'code' => $product->currency->code,
-                    'symbol' => $product->currency->symbol,
-                ] : null,
-            ])
+            ->map(function (Product $product) use ($suppliers): array
+            {
+                $supplier = $suppliers[$product->id] ?? null;
+
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'code' => $product->code,
+                    'price' => $product->currentSellingPrice(),
+                    'supplier_name' => ($supplier['name'] ?? '') !== '' ? $supplier['name'] : null,
+                    'supplier_price' => $supplier['unit_cost'] ?? null,
+                    'currency' => $product->currency ? [
+                        'id' => $product->currency->id,
+                        'code' => $product->currency->code,
+                        'symbol' => $product->currency->symbol,
+                    ] : null,
+                ];
+            })
             ->values()
             ->all();
 

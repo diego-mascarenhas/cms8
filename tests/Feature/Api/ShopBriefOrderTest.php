@@ -143,6 +143,23 @@ class ShopBriefOrderTest extends TestCase
         $this->assertSame(10976.0, (float) $order->total_amount);
     }
 
+    public function test_a_blank_order_opens_so_products_can_be_added(): void
+    {
+        [, $team, $token] = $this->adminWithShopModules();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/orders')
+            ->assertCreated()
+            ->assertJsonPath('data.items', []);
+
+        $order = Order::withoutGlobalScopes()->find($response->json('data.id'));
+        $this->assertNotNull($order);
+        $this->assertSame($team->id, $order->team_id);
+        $this->assertSame('shop_manual', $order->metadata['source'] ?? null);
+        $this->assertSame(0.0, (float) $order->total_amount);
+        $this->assertStringStartsWith('PED-', (string) $order->order_number);
+    }
+
     /**
      * @return array{0: User, 1: \App\Models\Team, 2: string}
      */

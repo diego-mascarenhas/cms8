@@ -240,9 +240,9 @@ trait FormatsShopResources
             }
         }
 
-        $names = ProductSupplierNames::forProducts((int) $order->team_id, $productIds);
+        $suppliers = ProductSupplierNames::latestForProducts((int) $order->team_id, $productIds);
 
-        return array_map(function (mixed $item) use ($names): mixed
+        return array_map(function (mixed $item) use ($suppliers): mixed
         {
             if (! is_array($item))
             {
@@ -250,7 +250,9 @@ trait FormatsShopResources
             }
 
             $productId = (int) ($item['product_id'] ?? 0);
-            $item['supplier_name'] = $names[$productId] ?? null;
+            $supplier = $suppliers[$productId] ?? null;
+            $item['supplier_name'] = $supplier !== null && $supplier['name'] !== '' ? $supplier['name'] : null;
+            $item['supplier_price'] = $supplier['unit_cost'] ?? null;
 
             return $item;
         }, $items);

@@ -873,6 +873,7 @@ Route::middleware('auth.api')->group(function ()
         Route::post('orders/from-brief', [ShopOrderController::class, 'storeFromBrief']);
         Route::get('orders/from-brief/status', [ShopOrderController::class, 'briefStatus']);
         Route::get('orders', [ShopOrderController::class, 'index']);
+        Route::post('orders', [ShopOrderController::class, 'store']);
         Route::get('orders/{id}', [ShopOrderController::class, 'show'])->whereNumber('id');
         Route::put('orders/{id}', [ShopOrderController::class, 'update'])->whereNumber('id');
         Route::post('orders/{id}/whatsapp-quote', [ShopOrderController::class, 'sendWhatsAppQuote'])->whereNumber('id');
