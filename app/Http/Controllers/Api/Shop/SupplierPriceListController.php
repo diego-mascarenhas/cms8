@@ -52,6 +52,49 @@ class SupplierPriceListController extends Controller
         ]);
     }
 
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $team = $this->shopTeam($request, 'products');
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $this->authorize('viewAny', Product::class);
+
+        $list = SupplierPriceList::query()
+            ->with(['enterprise:id,name', 'currency:id,code,symbol', 'lines.product'])
+            ->withCount('lines')
+            ->find($id);
+        if ($list === null)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Supplier price list not found.'),
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                ...$this->formatList($list),
+                'lines' => $list->lines
+                    ->map(function ($line): array
+                    {
+                        return [
+                            'name' => $line->name,
+                            'code' => $line->supplier_code,
+                            'unit_cost' => $line->unit_cost !== null ? (float) $line->unit_cost : null,
+                            'unit' => $line->unit,
+                            'price' => $line->product?->currentSellingPrice(),
+                        ];
+                    })
+                    ->values()
+                    ->all(),
+            ],
+        ]);
+    }
+
     public function importSchema(Request $request, SupplierPriceListImportService $importer): JsonResponse
     {
         $team = $this->shopTeam($request, 'products');

@@ -6,6 +6,7 @@ use App\Models\Currency;
 use App\Models\Enterprise;
 use App\Models\Module;
 use App\Models\Product;
+use App\Models\SupplierPriceList;
 use App\Models\User;
 use App\Services\CommercialDocumentInterpreter;
 use Database\Seeders\CurrencySeeder;
@@ -233,6 +234,15 @@ class SupplierPriceListTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('data.created', 1);
+
+        $listId = SupplierPriceList::query()->value('id');
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/supplier-price-lists/'.$listId)
+            ->assertOk()
+            ->assertJsonPath('data.lines.0.name', 'Remera blanca')
+            ->assertJsonPath('data.lines.0.code', 'REM-9')
+            ->assertJsonPath('data.lines.0.unit_cost', 800)
+            ->assertJsonPath('data.lines.0.price', 1200);
 
         $product = Product::query()->where('code', 'REM-9')->first();
         $this->assertNotNull($product);
