@@ -156,8 +156,63 @@ class SyncStripeSubscriptions
         });
     }
 
+    /**
+     * @var array<string, string>
+     */
+    private array $productNames = [];
+
+    /**
+     * Keep the contracted product name on the payload. A list sync cannot expand
+     * the product, so an id is resolved once and reused.
+     */
+    private function embedProductName(array &$payload): ?string
+    {
+        $product = Arr::get($payload, 'items.data.0.price.product');
+        if (is_array($product))
+        {
+            $name = $this->labelName($product['name'] ?? null);
+
+            return $name;
+        }
+
+        if (! is_string($product) || ! str_starts_with($product, 'prod_'))
+        {
+            return null;
+        }
+
+        if (! array_key_exists($product, $this->productNames))
+        {
+            $this->productNames[$product] = (string) ($this->stripe->productName($product) ?? '');
+        }
+
+        $name = $this->labelName($this->productNames[$product]);
+        if ($name === null)
+        {
+            return null;
+        }
+
+        Arr::set($payload, 'items.data.0.price.product', [
+            'id' => $product,
+            'name' => $name,
+        ]);
+
+        return $name;
+    }
+
+    private function labelName(mixed $name): ?string
+    {
+        $name = trim((string) $name);
+        if ($name === '' || preg_match('/^actualizado\b/i', $name) === 1)
+        {
+            return null;
+        }
+
+        return $name;
+    }
+
     private function mapSubscription(array $payload): array
     {
+        $productName = $this->embedProductName($payload);
         $item = Arr::get($payload, 'items.data.0', []);
         $price = Arr::get($item, 'price', []);
         $customer = Arr::get($payload, 'customer');
@@ -231,10 +286,10 @@ class SyncStripeSubscriptions
             'customer_tax_id' => Arr::get($taxData ?? [], 'value'),
             'status' => Arr::get($payload, 'status'),
             'collection_method' => Arr::get($payload, 'collection_method'),
-            'plan_name' => Arr::get($price, 'nickname')
-                ?? Arr::get($price, 'product.name')
-                ?? Arr::get($item, 'plan.nickname')
-                ?? Arr::get($payload, 'description'),
+            'plan_name' => $this->labelName(Arr::get($price, 'nickname'))
+                ?? $productName
+                ?? $this->labelName(Arr::get($item, 'plan.nickname'))
+                ?? $this->labelName(Arr::get($payload, 'description')),
             'plan_interval' => Arr::get($price, 'recurring.interval'),
             'plan_interval_count' => Arr::get($price, 'recurring.interval_count'),
             'quantity' => $quantity,
