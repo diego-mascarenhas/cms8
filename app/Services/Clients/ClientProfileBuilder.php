@@ -5,6 +5,7 @@ namespace App\Services\Clients;
 use App\Helpers\PhoneHelper;
 use App\Models\Contact;
 use App\Models\Country;
+use App\Models\Domain;
 use App\Models\Enterprise;
 use App\Models\EnterpriseBillingAddress;
 use App\Models\Invoice;
@@ -257,6 +258,36 @@ class ClientProfileBuilder
             'payment_method' => $sync->clientPaymentMethodLabel(),
             'status' => $status['label'],
             'status_tone' => $status['tone'],
+            'hosting' => $this->cpanelHosting($sync->clientFacingName()),
+        ];
+    }
+
+    /**
+     * cPanel account behind a hosting plan. Both Axis and the client portal open this detail.
+     *
+     * @return array{id: int, domain: string, control_panel: string}|null
+     */
+    private function cpanelHosting(string $name): ?array
+    {
+        if (preg_match('/\b((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,})\b/i', $name, $matches) !== 1)
+        {
+            return null;
+        }
+
+        $domain = Domain::query()
+            ->with('server')
+            ->whereRaw('LOWER(domain) = ?', [strtolower($matches[1])])
+            ->first();
+
+        if ($domain?->server?->control_panel !== 'cpanel')
+        {
+            return null;
+        }
+
+        return [
+            'id' => (int) $domain->id,
+            'domain' => (string) $domain->domain,
+            'control_panel' => 'cpanel',
         ];
     }
 
@@ -289,6 +320,7 @@ class ClientProfileBuilder
             'next' => $next ? Carbon::parse($next)->format('d/m/Y') : '',
             'status' => $status['label'],
             'status_tone' => $status['tone'],
+            'hosting' => $this->cpanelHosting(trim((string) ($service->description ?: $service->category?->name ?: ''))),
         ];
     }
 

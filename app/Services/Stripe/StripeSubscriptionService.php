@@ -41,6 +41,25 @@ class StripeSubscriptionService
         ]);
     }
 
+    public function productName(string $productId): ?string
+    {
+        if (! str_starts_with($productId, 'prod_'))
+        {
+            return null;
+        }
+
+        try
+        {
+            $name = trim((string) $this->client->products->retrieve($productId)->name);
+        }
+        catch (\Throwable)
+        {
+            return null;
+        }
+
+        return $name !== '' ? $name : null;
+    }
+
     /**
      * Retrieve a subscription from Stripe
      */

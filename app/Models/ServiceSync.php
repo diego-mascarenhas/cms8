@@ -153,24 +153,86 @@ class ServiceSync extends Model
     }
 
     /**
-     * Name shown on the client page. Stripe price nicknames were bulk-renamed
-     * (for example "Actualizado 12/2025"); the subscription description keeps the real label.
+     * Name shown on the client page. The contracted Stripe product is the plan
+     * (Assistant, Cloud Starter). A domain in the subscription description keeps
+     * two plans of the same product apart. Price nicknames were bulk-renamed
+     * (for example "Actualizado 12/2025"), so those are ignored.
      */
     public function clientFacingName(): string
     {
         $description = trim((string) data_get($this->raw_payload, 'description'));
+        $product = $this->contractedProductName($description);
+
+        if ($product !== '')
+        {
+            $domain = $this->describedDomain($description);
+            if ($domain !== null && ! str_contains(mb_strtolower($product), mb_strtolower($domain)))
+            {
+                return $product.' · '.$domain;
+            }
+
+            return $product;
+        }
+
         if ($description !== '')
         {
             return $description;
         }
 
         $plan = trim((string) $this->plan_name);
-        if ($plan !== '')
+        if ($plan !== '' && ! $this->isPlaceholderName($plan))
         {
             return $plan;
         }
 
         return (string) $this->stripe_id;
+    }
+
+    private function contractedProductName(string $description): string
+    {
+        $fromPrice = trim((string) data_get($this->raw_payload, 'items.data.0.price.product.name'));
+        if ($fromPrice !== '' && ! $this->isPlaceholderName($fromPrice))
+        {
+            return $fromPrice;
+        }
+
+        $plan = trim((string) $this->plan_name);
+        if ($plan !== '' && $plan !== $description && ! $this->isPlaceholderName($plan))
+        {
+            return $plan;
+        }
+
+        if ($description !== '')
+        {
+            return '';
+        }
+
+        $slug = strtolower(trim((string) data_get(
+            $this->raw_payload,
+            'metadata.subscription_type',
+            data_get($this->raw_payload, 'metadata.plan', ''),
+        )));
+        if (preg_match('/^[a-z]+$/', $slug) !== 1 || in_array($slug, ['hosting', 'domain', 'dominio', 'email', 'service', 'ssl'], true))
+        {
+            return '';
+        }
+
+        return mb_convert_case($slug, MB_CASE_TITLE, 'UTF-8');
+    }
+
+    private function describedDomain(string $description): ?string
+    {
+        if (preg_match('/\b((?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,})\b/i', $description, $matches) !== 1)
+        {
+            return null;
+        }
+
+        return $matches[1];
+    }
+
+    private function isPlaceholderName(string $name): bool
+    {
+        return preg_match('/^(actualizado\b|sub_|prod_|price_)/i', trim($name)) === 1;
     }
 
     /**
@@ -195,7 +257,10 @@ class ServiceSync extends Model
             return false;
         }
 
-        return (bool) preg_match('/^(hosting|plan de hosting)\b/i', $this->clientFacingName());
+        $labels = $this->clientFacingName().' '.(string) data_get($this->raw_payload, 'description');
+
+        return (bool) preg_match('/^(hosting|plan de hosting)\b/i', $labels)
+            || (bool) preg_match('/\b(hosting|plan de hosting)\b/i', (string) data_get($this->raw_payload, 'description'));
     }
 
     /**
@@ -215,7 +280,7 @@ class ServiceSync extends Model
             return $fromSlug;
         }
 
-        $name = mb_strtolower($this->clientFacingName());
+        $name = mb_strtolower($this->clientFacingName().' '.(string) data_get($this->raw_payload, 'description'));
         if (preg_match('/\b(dominio|dominios|domain)\b/u', $name) === 1)
         {
             return 'Dominios';
