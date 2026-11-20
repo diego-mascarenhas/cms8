@@ -34,7 +34,11 @@ class OrderController extends Controller
 
         $this->authorize('create', Order::class);
 
-        $order = $orders->createBlank($team);
+        $validated = $request->validate([
+            'contact_id' => ['nullable', 'integer'],
+        ]);
+        $contact = $orders->resolveContact($team, isset($validated['contact_id']) ? (int) $validated['contact_id'] : null);
+        $order = $orders->createBlank($team, $contact?->id);
 
         return response()->json([
             'data' => $this->formatOrder($order->fresh(['contact', 'currency']) ?? $order),
@@ -98,7 +102,7 @@ class OrderController extends Controller
         ]);
     }
 
-    public function storeFromBrief(StoreShopBriefOrderRequest $request): JsonResponse
+    public function storeFromBrief(StoreShopBriefOrderRequest $request, ShopBriefOrderService $orders): JsonResponse
     {
         $team = $this->shopTeam($request, 'orders');
         if ($team instanceof JsonResponse)
@@ -107,6 +111,11 @@ class OrderController extends Controller
         }
 
         $this->authorize('create', Order::class);
+
+        $contact = $orders->resolveContact(
+            $team,
+            $request->validated('contact_id') !== null ? (int) $request->validated('contact_id') : null,
+        );
 
         $token = Str::random(48);
         Cache::put(GenerateShopBriefOrderJob::cacheKey($token), [
@@ -118,6 +127,7 @@ class OrderController extends Controller
             $token,
             (int) $team->id,
             (string) $request->validated('brief'),
+            $contact?->id,
         );
 
         return response()->json([

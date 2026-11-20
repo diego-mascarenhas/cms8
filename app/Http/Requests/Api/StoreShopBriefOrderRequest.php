@@ -18,6 +18,7 @@ class StoreShopBriefOrderRequest extends FormRequest
     {
         return [
             'brief' => ['required', 'string', 'min:10', 'max:16000'],
+            'contact_id' => ['nullable', 'integer'],
         ];
     }
 
