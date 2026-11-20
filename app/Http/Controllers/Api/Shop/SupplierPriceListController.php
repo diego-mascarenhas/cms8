@@ -9,6 +9,7 @@ use App\Http\Requests\Api\ImportSupplierPriceListRequest;
 use App\Http\Requests\Api\InterpretQuoteDocumentRequest;
 use App\Http\Requests\Api\StoreShopSupplierRequest;
 use App\Http\Requests\Api\UpdateShopPricingRequest;
+use App\Http\Requests\Api\UpdateSupplierPriceListRequest;
 use App\Models\Enterprise;
 use App\Models\Product;
 use App\Models\SupplierPriceList;
@@ -76,22 +77,66 @@ class SupplierPriceListController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => [
-                ...$this->formatList($list),
-                'lines' => $list->lines
-                    ->map(function ($line): array
-                    {
-                        return [
-                            'name' => $line->name,
-                            'code' => $line->supplier_code,
-                            'unit_cost' => $line->unit_cost !== null ? (float) $line->unit_cost : null,
-                            'unit' => $line->unit,
-                            'price' => $line->product?->currentSellingPrice(),
-                        ];
-                    })
-                    ->values()
-                    ->all(),
-            ],
+            'data' => $this->formatListDetail($list),
+        ]);
+    }
+
+    public function update(
+        UpdateSupplierPriceListRequest $request,
+        SupplierPriceListImportService $importer,
+        int $id,
+    ): JsonResponse {
+        $team = $this->shopTeam($request, 'products');
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $list = SupplierPriceList::query()->find($id);
+        if ($list === null)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Supplier price list not found.'),
+            ], 404);
+        }
+
+        $validated = $request->validated();
+        $supplier = ! empty($validated['enterprise_id'])
+            ? Enterprise::query()->where('type_id', 2)->findOrFail($validated['enterprise_id'])
+            : $this->supplierFromName($team, $validated['supplier_name'] ?? null);
+        if ($supplier === null)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Choose or create the supplier.'),
+            ], 422);
+        }
+
+        $markup = array_key_exists('markup_percent', $validated) && $validated['markup_percent'] !== null
+            ? (float) $validated['markup_percent']
+            : $team->shopDefaultMarkupPercent();
+
+        try
+        {
+            $list = $importer->updateList($list, $team, $supplier, [
+                'markup_percent' => $markup,
+                'currency_id' => (int) $validated['currency_id'],
+            ], $validated['lines']);
+        } catch (\RuntimeException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        $list->loadCount('lines');
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Supplier price list updated.'),
+            'data' => $this->formatListDetail($list),
         ]);
     }
 
@@ -550,6 +595,33 @@ class SupplierPriceListController extends Controller
                 'code' => $list->currency->code,
                 'symbol' => $list->currency->symbol,
             ] : null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatListDetail(SupplierPriceList $list): array
+    {
+        $list->loadMissing(['enterprise:id,name', 'currency:id,code,symbol', 'lines.product']);
+
+        return [
+            ...$this->formatList($list),
+            'lines' => $list->lines
+                ->sortBy('id')
+                ->map(function ($line): array
+                {
+                    return [
+                        'id' => $line->id,
+                        'name' => $line->name,
+                        'code' => $line->supplier_code,
+                        'unit_cost' => $line->unit_cost !== null ? (float) $line->unit_cost : null,
+                        'unit' => $line->unit,
+                        'price' => $line->product?->currentSellingPrice(),
+                    ];
+                })
+                ->values()
+                ->all(),
         ];
     }
 }

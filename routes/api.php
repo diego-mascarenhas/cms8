@@ -851,6 +851,7 @@ Route::middleware('auth.api')->group(function ()
         Route::post('supplier-price-lists/import', [ShopSupplierPriceListController::class, 'import']);
         Route::get('supplier-price-lists', [ShopSupplierPriceListController::class, 'index']);
         Route::get('supplier-price-lists/{id}', [ShopSupplierPriceListController::class, 'show'])->whereNumber('id');
+        Route::put('supplier-price-lists/{id}', [ShopSupplierPriceListController::class, 'update'])->whereNumber('id');
         Route::get('suppliers', [ShopSupplierPriceListController::class, 'suppliers']);
         Route::post('suppliers', [ShopSupplierPriceListController::class, 'storeSupplier']);
         Route::get('pricing', [ShopSupplierPriceListController::class, 'pricing']);

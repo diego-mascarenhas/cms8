@@ -150,6 +150,97 @@ class SupplierPriceListImportService
     }
 
     /**
+     * @param  list<array<string, mixed>>  $rows
+     * @param  array{markup_percent: float, currency_id: int}  $meta
+     */
+    public function updateList(SupplierPriceList $list, Team $team, Enterprise $supplier, array $meta, array $rows): SupplierPriceList
+    {
+        $currencyId = (int) $meta['currency_id'];
+        $listMarkup = (float) $meta['markup_percent'];
+        $accepted = [];
+        foreach ($rows as $index => $row)
+        {
+            $prepared = $this->prepareRow(array_map(
+                fn ($value): string => $value === null ? '' : (string) $value,
+                $row,
+            ), $index + 1);
+            $prepared['id'] = isset($row['id']) && $row['id'] !== '' ? (int) $row['id'] : null;
+            $accepted[] = $prepared;
+        }
+
+        return DB::transaction(function () use ($list, $team, $supplier, $currencyId, $listMarkup, $accepted): SupplierPriceList
+        {
+            $list->update([
+                'enterprise_id' => $supplier->id,
+                'currency_id' => $currencyId,
+                'markup_percent' => $listMarkup,
+            ]);
+
+            $kept = [];
+            foreach ($accepted as $row)
+            {
+                $line = $row['id']
+                    ? SupplierPriceLine::query()
+                        ->where('supplier_price_list_id', $list->id)
+                        ->whereKey($row['id'])
+                        ->first()
+                    : null;
+                if ($row['id'] && $line === null)
+                {
+                    throw new \RuntimeException(__('Row :row is not on this list.', ['row' => $row['line']]));
+                }
+
+                $product = $line?->product;
+                if ($product)
+                {
+                    $this->applyIdentity($product, $row, (int) $team->id, $currencyId);
+                    $this->applyCost($product, $row, $currencyId, $listMarkup);
+                } else
+                {
+                    $product = $this->matchProduct((int) $team->id, $row) ?? $this->createDraftProduct((int) $team->id, $row, $currencyId, $listMarkup);
+                    if ($line === null && $product->wasRecentlyCreated === false)
+                    {
+                        $this->applyIdentity($product, $row, (int) $team->id, $currencyId);
+                        $this->applyCost($product, $row, $currencyId, $listMarkup);
+                    }
+                }
+
+                if ($line)
+                {
+                    $line->update([
+                        'product_id' => $product->id,
+                        'supplier_code' => $row['code'] !== '' ? $row['code'] : null,
+                        'name' => $row['name'],
+                        'unit_cost' => $row['cost'],
+                        'unit' => $row['unit'],
+                    ]);
+                } else
+                {
+                    $line = SupplierPriceLine::query()->create([
+                        'team_id' => $team->id,
+                        'supplier_price_list_id' => $list->id,
+                        'product_id' => $product->id,
+                        'supplier_code' => $row['code'] !== '' ? $row['code'] : null,
+                        'name' => $row['name'],
+                        'unit_cost' => $row['cost'],
+                        'min_qty' => $row['min_qty'],
+                        'unit' => $row['unit'],
+                    ]);
+                }
+
+                $kept[] = $line->id;
+            }
+
+            SupplierPriceLine::query()
+                ->where('supplier_price_list_id', $list->id)
+                ->whereNotIn('id', $kept)
+                ->delete();
+
+            return $list->fresh(['enterprise', 'currency', 'lines.product']);
+        });
+    }
+
+    /**
      * @param  array<string, string>  $row
      * @return array{code: string, name: string, cost: float, barcode: ?string, oem: ?string, min_qty: ?float, unit: ?string, price: ?float, line: int}
      */
@@ -249,6 +340,29 @@ class SupplierPriceListImportService
         }
 
         return (clone $base)->whereRaw('LOWER(name) = ?', [mb_strtolower($row['name'])])->first();
+    }
+
+    /**
+     * @param  array{code: string, name: string, line: int}  $row
+     */
+    private function applyIdentity(Product $product, array $row, int $teamId, int $currencyId): void
+    {
+        $product->name = $row['name'];
+        $product->currency_id = $currencyId;
+        if ($row['code'] !== '' && strcasecmp((string) $product->code, $row['code']) !== 0)
+        {
+            $taken = Product::query()
+                ->where('team_id', $teamId)
+                ->where('code', $row['code'])
+                ->whereKeyNot($product->id)
+                ->exists();
+            if ($taken)
+            {
+                throw new \RuntimeException(__('Row :row code is already used.', ['row' => $row['line']]));
+            }
+
+            $product->code = $row['code'];
+        }
     }
 
     /**
