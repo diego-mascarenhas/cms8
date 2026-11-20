@@ -456,7 +456,10 @@ class ClientRoster
             'display_name' => $name !== '' ? $name : (string) $contact->name,
             'email' => (string) ($contact->email ?? ''),
             'phone' => (string) ($contact->phone ?? ''),
-            'status' => $contact->status ? ['id' => (int) $contact->status->id] : null,
+            'status' => $contact->status ? [
+                'id' => (int) $contact->status->id,
+                'name' => (string) $contact->status->name,
+            ] : null,
             'categories' => $contact->categories->map(fn ($category): array => ['id' => (int) $category->id])->values()->all(),
             'user' => $contact->user ? [
                 'id' => (int) $contact->user->id,
