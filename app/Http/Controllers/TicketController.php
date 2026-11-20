@@ -12,6 +12,7 @@ use App\Http\Requests\UpdateTicketStatusRequest;
 use App\Models\Ticket;
 use App\Models\TicketRating;
 use App\Models\TicketResponse;
+use App\Services\Tickets\TicketActivityMailer;
 use Illuminate\Http\Request;
 
 class TicketController extends Controller
@@ -65,6 +66,8 @@ class TicketController extends Controller
             }
         }
 
+        app(TicketActivityMailer::class)->ticketOpened($ticket);
+
         return redirect()->route('ticket.show', $ticket->id)
             ->with('success', __('tickets.Ticket created successfully.'));
     }
@@ -104,6 +107,8 @@ class TicketController extends Controller
                 $response->addMedia($file)->toMediaCollection('attachments');
             }
         }
+
+        app(TicketActivityMailer::class)->replyAdded($response);
 
         if (! $isInternalNote)
         {

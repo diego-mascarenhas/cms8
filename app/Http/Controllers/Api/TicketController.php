@@ -16,6 +16,7 @@ use App\Models\Ticket;
 use App\Models\TicketRating;
 use App\Models\TicketResponse;
 use App\Models\User;
+use App\Services\Tickets\TicketActivityMailer;
 use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -174,6 +175,7 @@ class TicketController extends Controller
         ]);
 
         $this->storeAttachments($ticket, $request);
+        app(TicketActivityMailer::class)->ticketOpened($ticket);
 
         return response()->json([
             'success' => true,
@@ -221,6 +223,7 @@ class TicketController extends Controller
         ]);
 
         $this->storeAttachments($response, $request);
+        app(TicketActivityMailer::class)->replyAdded($response);
 
         if (! $isInternalNote)
         {

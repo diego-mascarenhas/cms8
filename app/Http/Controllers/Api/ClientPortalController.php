@@ -14,6 +14,7 @@ use App\Models\TeamSetting;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Services\AssistantWhatsAppUsageByLineService;
+use App\Services\Tickets\TicketActivityMailer;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\RevisionAlphaBilling;
 use App\Services\TeamClientContextActivator;
@@ -327,6 +328,7 @@ class ClientPortalController extends Controller
         }
 
         $ticket->load(['responses.user']);
+        app(TicketActivityMailer::class)->ticketOpened($ticket);
 
         return response()->json($this->ticketPayload($ticket, collect()), 201);
     }
