@@ -17,6 +17,7 @@ use App\Models\Team;
 use App\Services\CommercialDocumentInterpreter;
 use App\Services\QuoteDocumentService;
 use App\Services\SupplierPriceListImportService;
+use App\Support\ProductSupplierNames;
 use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -525,14 +526,19 @@ class SupplierPriceListController extends Controller
             SearchNormalizer::applyColumnsNavbarConditions($query, ['name', 'code', 'barcode', 'oem'], $search);
         }
 
-        $items = $query->orderBy('name')
-            ->limit(20)
-            ->get()
+        $products = $query->orderBy('name')->limit(20)->get();
+        $supplierNames = ProductSupplierNames::forProducts(
+            (int) $team->id,
+            $products->pluck('id')->all(),
+        );
+
+        $items = $products
             ->map(fn (Product $product): array => [
                 'id' => $product->id,
                 'name' => $product->name,
                 'code' => $product->code,
                 'price' => $product->currentSellingPrice(),
+                'supplier_name' => $supplierNames[$product->id] ?? null,
                 'currency' => $product->currency ? [
                     'id' => $product->currency->id,
                     'code' => $product->currency->code,

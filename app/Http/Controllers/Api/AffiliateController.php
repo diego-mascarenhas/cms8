@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ClaimAffiliateReferralRequest;
 use App\Http\Requests\SendAffiliateInvitationRequest;
 use App\Services\AffiliateProgramService;
+use App\Services\AffiliateReferralLinkBuilder;
 use App\Support\HumanoPricingCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,6 +33,7 @@ class AffiliateController extends Controller
             'data' => $this->affiliates->dashboard(
                 $team,
                 $this->affiliatesCatalog($request),
+                $this->shareOrigin($request),
             ),
         ]);
     }
@@ -85,6 +87,7 @@ class AffiliateController extends Controller
                 $request->user(),
                 $team,
                 $request->validated(),
+                $this->shareOrigin($request),
             );
         } catch (\Illuminate\Validation\ValidationException $exception)
         {
@@ -130,6 +133,20 @@ class AffiliateController extends Controller
             'message' => __('Cliente incorporado correctamente.'),
             'data' => $referral,
         ]);
+    }
+
+    private function shareOrigin(Request $request): ?string
+    {
+        foreach ([$request->headers->get('Origin'), $request->headers->get('Referer')] as $candidate)
+        {
+            $origin = app(AffiliateReferralLinkBuilder::class)->shareOrigin(is_string($candidate) ? $candidate : null);
+            if ($origin !== null)
+            {
+                return $origin;
+            }
+        }
+
+        return null;
     }
 
     private function affiliatesCatalog(Request $request): ?string

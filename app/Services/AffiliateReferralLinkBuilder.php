@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Team;
+use App\Support\BudgetPreviewUrl;
 use App\Support\HumanoHomeAsset;
 use App\Support\HumanoPricingCatalog;
 
@@ -96,7 +97,7 @@ class AffiliateReferralLinkBuilder
      *
      * @param  array<string, mixed>  $plan
      */
-    public function referralUrl(array $plan, string $referralCode, ?string $prefilledEmail = null): string
+    public function referralUrl(array $plan, string $referralCode, ?string $prefilledEmail = null, ?string $appOrigin = null): string
     {
         $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
 
@@ -112,7 +113,27 @@ class AffiliateReferralLinkBuilder
             $query['prefilled_email'] = $prefilledEmail;
         }
 
+        $origin = $this->shareOrigin($appOrigin);
+        if ($origin !== null)
+        {
+            return $origin.'/pricing?'.http_build_query($query);
+        }
+
         return route('affiliate.plan-checkout', ['plan' => $plan['id']]).'?'.http_build_query($query);
+    }
+
+    /**
+     * Public app that requested the link. The CMS host is not a share target.
+     */
+    public function shareOrigin(?string $appOrigin): ?string
+    {
+        $origin = BudgetPreviewUrl::normalizeOrigin($appOrigin);
+        if ($origin === null || ! BudgetPreviewUrl::isAllowedOrigin($origin))
+        {
+            return null;
+        }
+
+        return $origin;
     }
 
     /**

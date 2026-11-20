@@ -5,7 +5,9 @@ namespace Tests\Feature\Api;
 use App\Models\Currency;
 use App\Models\Enterprise;
 use App\Models\Module;
+use App\Models\Order;
 use App\Models\Product;
+use App\Models\SupplierPriceLine;
 use App\Models\SupplierPriceList;
 use App\Models\User;
 use App\Services\CommercialDocumentInterpreter;
@@ -127,8 +129,81 @@ class SupplierPriceListTest extends TestCase
             ->json('data.0');
 
         $this->assertEquals(750, $quote['price']);
+        $this->assertSame('Textil Norte', $quote['supplier_name']);
         $this->assertArrayNotHasKey('cost', $quote);
         $this->assertArrayNotHasKey('markup_percent', $quote);
+    }
+
+    public function test_an_order_item_includes_the_supplier_name(): void
+    {
+        [, $team, $token] = $this->adminWithShop();
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+
+        $supplier = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 2,
+            'status_id' => 2,
+            'name' => 'La Bella Palta',
+        ]);
+
+        $product = Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'ROAST BEEF KG',
+            'code' => 'RB-ORDER',
+            'price' => 18057,
+            'currency_id' => $currencyId,
+        ]);
+
+        $list = SupplierPriceList::query()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $supplier->id,
+            'name' => 'Lista',
+            'currency_id' => $currencyId,
+            'markup_percent' => 30,
+        ]);
+
+        SupplierPriceLine::query()->create([
+            'team_id' => $team->id,
+            'supplier_price_list_id' => $list->id,
+            'product_id' => $product->id,
+            'supplier_code' => 'RB',
+            'name' => 'ROAST BEEF KG',
+            'unit_cost' => 13890,
+            'unit' => 'KG',
+        ]);
+
+        $order = Order::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'order_number' => 'PED-SUPPLIER',
+            'total_amount' => 18057,
+            'currency_id' => $currencyId,
+            'payment_status' => 'pending',
+            'delivery_status' => 'processing',
+            'metadata' => [
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'name' => 'ROAST BEEF KG',
+                        'quantity' => 1,
+                        'unit_price' => 18057,
+                        'line_total' => 18057,
+                    ],
+                    [
+                        'product_id' => null,
+                        'name' => 'Ítem suelto',
+                        'quantity' => 1,
+                        'unit_price' => 10,
+                        'line_total' => 10,
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/orders/'.$order->id)
+            ->assertOk()
+            ->assertJsonPath('data.items.0.supplier_name', 'La Bella Palta')
+            ->assertJsonPath('data.items.1.supplier_name', null);
     }
 
     public function test_pricing_setting_is_the_default_markup(): void
