@@ -20,6 +20,32 @@ class SendShopOrderWhatsAppQuoteRequest extends FormRequest
         return $this->user()?->can('update', $order) ?? false;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $items = $this->input('items');
+        if (! is_array($items))
+        {
+            return;
+        }
+
+        $this->merge([
+            'items' => array_map(function (mixed $item): mixed
+            {
+                if (! is_array($item))
+                {
+                    return $item;
+                }
+
+                if (! isset($item['product_id']) || (int) $item['product_id'] < 1)
+                {
+                    $item['product_id'] = null;
+                }
+
+                return $item;
+            }, $items),
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */
