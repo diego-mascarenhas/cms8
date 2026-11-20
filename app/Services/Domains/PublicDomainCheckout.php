@@ -70,6 +70,14 @@ class PublicDomainCheckout
             ]],
             'success_url' => $successUrl,
             'cancel_url' => $cancelUrl,
+            'consent_collection' => [
+                'terms_of_service' => 'required',
+            ],
+            'custom_text' => [
+                'terms_of_service_acceptance' => [
+                    'message' => 'He leído y acepto los [términos y condiciones](https://revisionalpha.com/terminos-y-condiciones) y el [contrato de hosting](https://revisionalpha.com/templates/contract-hosting.pdf).',
+                ],
+            ],
             'metadata' => $this->metadata($quote['domain'], $enterprise, $account['user'], $referrer),
             'subscription_data' => [
                 'metadata' => $this->metadata($quote['domain'], $enterprise, $account['user'], $referrer),

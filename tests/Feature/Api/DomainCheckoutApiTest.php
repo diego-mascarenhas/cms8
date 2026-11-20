@@ -221,6 +221,11 @@ class DomainCheckoutApiTest extends TestCase
         $this->assertSame('cus_Referrer1', $team?->referred_by);
         $this->assertSame('cus_Referrer1', $stripe->sessions[0]['metadata']['referred_by'] ?? null);
         $this->assertSame('cus_Referrer1', $stripe->sessions[0]['subscription_data']['metadata']['referred_by'] ?? null);
+        $this->assertSame('required', $stripe->sessions[0]['consent_collection']['terms_of_service'] ?? null);
+        $this->assertStringContainsString(
+            'contrato de hosting',
+            (string) ($stripe->sessions[0]['custom_text']['terms_of_service_acceptance']['message'] ?? '')
+        );
     }
 
     /**
