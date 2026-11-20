@@ -10,6 +10,7 @@ use App\Http\Requests\Api\DemoProjectFunnelRequest;
 use App\Http\Requests\Api\GuideProjectFunnelRequest;
 use App\Http\Requests\Api\QuoteProjectFunnelRequest;
 use App\Http\Requests\Api\SubmitProjectFunnelRequest;
+use App\Http\Requests\Api\UpdateEstimatorWorkspaceRequest;
 use App\Http\Requests\Api\UpdateProjectFunnelChatPromptRequest;
 use App\Http\Requests\Api\UpdateProjectFunnelSenderRequest;
 use App\Http\Requests\Api\UpdateProjectFunnelSpecPromptRequest;
@@ -27,6 +28,7 @@ use App\Models\Team;
 use App\Services\CommercialDocumentInterpreter;
 use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
+use App\Support\EstimatorWorkspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -357,6 +359,48 @@ class ProjectFunnelController extends Controller
             'success' => true,
             'message' => __('Quote sender saved.'),
             'data' => $this->funnelSenderPayload($team, $request),
+        ]);
+    }
+
+    public function showWorkspace(Request $request): JsonResponse
+    {
+        $team = $this->authorizeFunnelEditor($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->workspacePayload($team, $request),
+        ]);
+    }
+
+    public function updateWorkspace(UpdateEstimatorWorkspaceRequest $request): JsonResponse
+    {
+        $team = $this->authorizeFunnelEditor($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if (! $request->user()?->can('update', $team))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('You are not allowed to configure the workspace.'),
+            ], 403);
+        }
+
+        $team->setSetting(EstimatorWorkspace::SETTING, (string) $request->validated('mode'), [
+            'group' => 'estimator',
+            'type' => 'string',
+            'is_encrypted' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->workspacePayload($team->fresh() ?? $team, $request),
         ]);
     }
 
@@ -1347,6 +1391,17 @@ class ProjectFunnelController extends Controller
             'required_include' => DnsHelper::REVISION_ALPHA_SPF_INCLUDE,
             'example_txt' => DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT,
             'spf' => $spf,
+        ];
+    }
+
+    /**
+     * @return array{mode: string, can_update: bool}
+     */
+    private function workspacePayload(Team $team, Request $request): array
+    {
+        return [
+            'mode' => EstimatorWorkspace::mode($team),
+            'can_update' => (bool) $request->user()?->can('update', $team),
         ];
     }
 

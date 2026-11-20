@@ -585,6 +585,10 @@ Route::middleware('auth.api')->group(function ()
         ->name('api.projects.funnel.sender.show');
     Route::put('projects/funnel/sender', [ProjectFunnelController::class, 'updateSender'])
         ->name('api.projects.funnel.sender.update');
+    Route::get('projects/funnel/workspace', [ProjectFunnelController::class, 'showWorkspace'])
+        ->name('api.projects.funnel.workspace.show');
+    Route::put('projects/funnel/workspace', [ProjectFunnelController::class, 'updateWorkspace'])
+        ->name('api.projects.funnel.workspace.update');
     Route::get('projects/funnel/token-pricing', [ProjectFunnelController::class, 'showTokenPricing'])
         ->name('api.projects.funnel.token-pricing.show');
     Route::put('projects/funnel/token-pricing', [ProjectFunnelController::class, 'updateTokenPricing'])
