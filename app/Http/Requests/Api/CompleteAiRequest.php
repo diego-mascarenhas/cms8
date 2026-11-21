@@ -25,6 +25,14 @@ class CompleteAiRequest extends FormRequest
             'max_tokens' => ['nullable', 'integer', 'min:1', 'max:16000'],
             'temperature' => ['nullable', 'numeric', 'min:0', 'max:2'],
             'service' => ['nullable', 'string', 'max:120'],
+            'toon' => ['nullable', 'array'],
+            'toon.used_toon' => ['nullable', 'boolean'],
+            'toon.json_size' => ['nullable', 'integer', 'min:0'],
+            'toon.toon_size' => ['nullable', 'integer', 'min:0'],
+            'toon.json_tokens' => ['nullable', 'integer', 'min:0'],
+            'toon.toon_tokens' => ['nullable', 'integer', 'min:0'],
+            'toon.tokens_saved' => ['nullable', 'integer', 'min:0'],
+            'toon.savings_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ];
     }
 

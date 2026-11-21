@@ -24,6 +24,7 @@ class AiCompletionService
     ];
 
     /**
+     * @param  array{used_toon?: bool, json_size?: int, toon_size?: int, json_tokens?: int, toon_tokens?: int, tokens_saved?: int, savings_percentage?: float|int}|null  $toon
      * @return array{text: string, usage: array{prompt_tokens: int, completion_tokens: int, total_tokens: int}, module: string, service: string}
      */
     public function complete(
@@ -33,6 +34,7 @@ class AiCompletionService
         ?string $service = null,
         ?int $maxTokens = null,
         ?float $temperature = null,
+        ?array $toon = null,
     ): array {
         $moduleKey = strtolower(trim($moduleKey));
         if (! in_array($moduleKey, self::ALLOWED_MODULES, true))
@@ -87,17 +89,19 @@ class AiCompletionService
                 moduleKey: $moduleKey,
                 inputSize: strlen($prompt),
                 outputSize: strlen($text),
+                toon: $toon,
             );
         } else
         {
             $estimated = (int) max(1, round(strlen($prompt) / 4) + round(strlen($text) / 4));
-            TokenUsageLogService::log(
+            TokenUsageLogService::logFromAiResponse(
                 teamId: (int) $team->id,
                 service: $serviceName,
-                totalTokens: $estimated,
+                usage: ['total_tokens' => $estimated],
                 moduleKey: $moduleKey,
                 inputSize: strlen($prompt),
                 outputSize: strlen($text),
+                toon: $toon,
             );
             $totalTokens = $estimated;
         }
@@ -117,6 +121,69 @@ class AiCompletionService
 
         return [
             'text' => $text,
+            'usage' => [
+                'prompt_tokens' => $promptTokens,
+                'completion_tokens' => $completionTokens,
+                'total_tokens' => $totalTokens,
+            ],
+            'module' => $moduleKey,
+            'service' => $serviceName,
+        ];
+    }
+
+    /**
+     * Record tokens already spent outside this API, such as an Anthropic fallback.
+     * The model stays with the caller. This ledger keeps the same columns as before.
+     *
+     * @param  array{used_toon?: bool, json_size?: int, toon_size?: int, json_tokens?: int, toon_tokens?: int, tokens_saved?: int, savings_percentage?: float|int}|null  $toon
+     * @return array{usage: array{prompt_tokens: int, completion_tokens: int, total_tokens: int}, module: string, service: string}|null
+     */
+    public function recordUsage(
+        Team $team,
+        string $moduleKey,
+        ?string $service,
+        int $promptTokens,
+        int $completionTokens,
+        int $totalTokens,
+        int $inputSize = 0,
+        int $outputSize = 0,
+        ?array $toon = null,
+    ): ?array {
+        $moduleKey = strtolower(trim($moduleKey));
+        if (! in_array($moduleKey, self::ALLOWED_MODULES, true))
+        {
+            throw new RuntimeException(__('El módulo de IA no es válido.'));
+        }
+
+        $promptTokens = max(0, $promptTokens);
+        $completionTokens = max(0, $completionTokens);
+        $totalTokens = $totalTokens > 0 ? $totalTokens : ($promptTokens + $completionTokens);
+        if ($totalTokens <= 0)
+        {
+            return null;
+        }
+
+        $serviceName = trim((string) $service);
+        if ($serviceName === '')
+        {
+            $serviceName = 'AiCompletionService';
+        }
+
+        TokenUsageLogService::logFromAiResponse(
+            teamId: (int) $team->id,
+            service: $serviceName,
+            usage: [
+                'prompt_tokens' => $promptTokens,
+                'completion_tokens' => $completionTokens,
+                'total_tokens' => $totalTokens,
+            ],
+            moduleKey: $moduleKey,
+            inputSize: max(0, $inputSize),
+            outputSize: max(0, $outputSize),
+            toon: $toon,
+        );
+
+        return [
             'usage' => [
                 'prompt_tokens' => $promptTokens,
                 'completion_tokens' => $completionTokens,

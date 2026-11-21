@@ -603,6 +603,8 @@ Route::middleware('auth.api')->group(function ()
     Route::get('billing/history', [ApiBillingController::class, 'history'])->name('api.billing.history');
     Route::put('billing', [ApiBillingController::class, 'update'])->name('api.billing.update');
     Route::post('ai/complete', [AiCompletionController::class, 'complete'])->name('api.ai.complete');
+    Route::post('ai/usage', [AiCompletionController::class, 'usage'])->name('api.ai.usage');
+    Route::post('ai/usage', [AiCompletionController::class, 'usage'])->name('api.ai.usage');
     Route::get('team/business-profile', [BusinessProfileController::class, 'show'])->name('api.team.business-profile.show');
     Route::put('team/business-profile', [BusinessProfileController::class, 'update'])->name('api.team.business-profile.update');
     Route::get('team/business-profile/assets', [BusinessProfileController::class, 'showAsset'])->name('api.team.business-profile.assets.show');
