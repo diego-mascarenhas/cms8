@@ -15,6 +15,7 @@ use App\Models\ProspectUsageLog;
 use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\AssistantWhatsAppUsageByLineService;
+use App\Services\Billing\McpClientDiscount;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
@@ -35,10 +36,18 @@ class ApiAssistantUsageTest extends TestCase
     {
         parent::setUp();
 
+        McpClientDiscount::freeze(40);
         config(['services.openrouter.cache_store' => 'array']);
         Http::fake([
             'https://openrouter.ai/api/v1/models' => Http::response(['data' => []], 200),
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        McpClientDiscount::freeze(null);
+
+        parent::tearDown();
     }
 
     public function test_usage_requires_authentication(): void
@@ -200,8 +209,8 @@ class ApiAssistantUsageTest extends TestCase
         $response->assertJsonPath('data.whatsapp.messages_sent', 1);
         $response->assertJsonPath('data.whatsapp.our_rate', 0.008);
         $response->assertJsonPath('data.totals.amount_cents', 1000);
-        $response->assertJsonPath('data.all.amount_cents', 1000);
-        $response->assertJsonPath('data.all.tokens', 10_000_000);
+        $response->assertJsonPath('data.all.amount_cents', 600);
+        $response->assertJsonPath('data.all.tokens', 6_000_000);
         $response->assertJsonPath('data.totals.saved_cents', 1000);
         $response->assertJsonPath('data.totals.tokens_saved', 10_000_000);
         $response->assertJsonPath('data.lines.0.amount_cents', 1000);
@@ -427,7 +436,7 @@ class ApiAssistantUsageTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.totals.total_tokens', 8400);
-        $response->assertJsonPath('data.all.tokens', 5_008_400);
+        $response->assertJsonPath('data.all.tokens', 5_005_040);
         $response->assertJsonPath('data.all.calls', 2);
         $this->assertSame('OCR', $response->json('data.sources.0.module_name'));
         $this->assertSame(5_000_000, $response->json('data.sources.0.tokens_used'));
@@ -523,7 +532,7 @@ class ApiAssistantUsageTest extends TestCase
         $response->assertOk();
         $sources = collect($response->json('data.sources'));
         $this->assertSame(5_000_000, $sources->firstWhere('module_name', 'OCR')['tokens_used'] ?? null);
-        $this->assertSame(8400, $sources->firstWhere('module_name', 'Chat')['tokens_used'] ?? null);
+        $this->assertSame(5040, $sources->firstWhere('module_name', 'Chat')['tokens_used'] ?? null);
         $this->assertSame(1_000_000, $sources->firstWhere('module_name', 'Insights')['tokens_used'] ?? null);
         $this->assertSame(
             (int) $sources->sum('tokens_used'),
@@ -533,7 +542,7 @@ class ApiAssistantUsageTest extends TestCase
             (int) $sources->sum('amount_cents'),
             $response->json('data.all.amount_cents'),
         );
-        $this->assertSame(6_008_400, $response->json('data.all.tokens'));
+        $this->assertSame(6_005_040, $response->json('data.all.tokens'));
     }
 
     public function test_usage_ignores_another_team_whatsapp_line(): void

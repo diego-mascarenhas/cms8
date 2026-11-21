@@ -3,7 +3,7 @@
 namespace App\Services\Billing;
 
 /**
- * Commercial TOON discount shown to every team when MCP compression applies.
+ * Commercial discount applied to every MCP call, for every team.
  * The percent is random between the published TOON savings range. It reduces
  * the tokens the client pays, even when that leaves less than the full multiplier.
  */
@@ -47,7 +47,7 @@ final class McpClientDiscount
             $chargedCompletion,
             $charged,
             $saved,
-            (int) round($saved / $total * 100),
+            $percent,
         );
     }
 

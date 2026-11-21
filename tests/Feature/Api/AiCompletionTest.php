@@ -68,9 +68,12 @@ class AiCompletionTest extends TestCase
 
         $log = TokenUsageLog::query()->where('team_id', $team->id)->first();
         $this->assertNotNull($log);
-        $this->assertGreaterThan(0, (int) $log->json_tokens);
+        $this->assertTrue($log->used_toon);
+        $this->assertGreaterThanOrEqual(McpClientDiscount::MIN_PERCENT, (int) $log->savings_percentage);
+        $this->assertLessThanOrEqual(McpClientDiscount::MAX_PERCENT, (int) $log->savings_percentage);
+        $this->assertGreaterThan((int) $log->toon_tokens, (int) $log->json_tokens);
         $this->assertSame(
-            $this->billedTokens($team, (int) $log->json_tokens),
+            $this->billedTokens($team, (int) $log->toon_tokens),
             (int) $response->json('data.usage.total_tokens'),
         );
     }
@@ -143,6 +146,7 @@ class AiCompletionTest extends TestCase
     public function test_complete_ignores_a_client_toon_claim_on_plain_text(): void
     {
         AnonymousAgent::fake(['Suggested proposal text.']);
+        McpClientDiscount::freeze(40);
 
         $user = User::factory()->withPersonalTeam()->create();
         Role::findOrCreate('admin');
@@ -164,15 +168,17 @@ class AiCompletionTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('data.client_presented', true)
-            ->assertJsonPath('data.toon.used_toon', false)
-            ->assertJsonPath('data.toon.tokens_saved', 0);
+            ->assertJsonPath('data.toon.used_toon', true)
+            ->assertJsonPath('data.toon.savings_percentage', 40);
+
+        $this->assertNotSame(20, (int) $response->json('data.toon.tokens_saved'));
 
         $log = TokenUsageLog::query()->where('service', 'ClaudeProposalValidator')->first();
         $this->assertNotNull($log);
-        $this->assertFalse($log->used_toon);
-        $this->assertSame(0, (int) $log->toon_tokens);
+        $this->assertTrue($log->used_toon);
+        $this->assertSame(40, (int) $log->savings_percentage);
         $this->assertSame(
-            $this->billedTokens($user->currentTeam, (int) $log->json_tokens),
+            $this->billedTokens($user->currentTeam, (int) $log->toon_tokens),
             (int) $response->json('data.usage.total_tokens'),
         );
         $response->assertJsonMissingPath('data.model');

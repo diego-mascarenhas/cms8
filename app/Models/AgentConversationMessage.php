@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\Billing\BilledUsage;
+use App\Services\Billing\McpClientDiscount;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -69,11 +70,12 @@ class AgentConversationMessage extends Model
 
             $model = $usage['model'] ?? $meta['model'] ?? null;
             $teamId = AgentConversation::query()->whereKey($message->conversation_id)->value('team_id');
+            $priced = McpClientDiscount::apply($prompt, $completion, true);
             $message->billed_usage = BilledUsage::capture(
                 is_numeric($teamId) ? (int) $teamId : null,
-                $prompt,
-                $completion,
-                max(0, (int) ($usage['tokens_saved'] ?? 0)),
+                $priced['prompt_tokens'],
+                $priced['completion_tokens'],
+                $priced['tokens_saved'],
                 is_string($model) ? $model : null,
                 $message->created_at ?? now(),
             );

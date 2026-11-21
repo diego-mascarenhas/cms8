@@ -8,6 +8,7 @@ use App\Models\AgentConversationMessage;
 use App\Models\TeamBillingRate;
 use App\Models\TokenUsageLog;
 use App\Models\User;
+use App\Services\Billing\McpClientDiscount;
 use App\Services\TeamBillingUsageSummaryService;
 use App\Services\TokenBillingRateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,8 +19,17 @@ class BilledUsageInvoiceTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function tearDown(): void
+    {
+        McpClientDiscount::freeze(null);
+
+        parent::tearDown();
+    }
+
     public function test_billed_usage_keeps_the_multiplier_from_the_call(): void
     {
+        McpClientDiscount::freeze(40);
+
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->currentTeam ?? $user->ownedTeams()->first();
         $this->assertNotNull($team);
@@ -69,14 +79,16 @@ class BilledUsageInvoiceTest extends TestCase
         $log = TokenUsageLog::withoutGlobalScopes()->first();
         $message = AgentConversationMessage::query()->first();
         $expectedLog = (int) round(80 * $multiplier);
-        $expectedPrompt = (int) round(80 * $multiplier);
-        $expectedCompletion = (int) round(20 * $multiplier);
+        $expectedPrompt = (int) round(48 * $multiplier);
+        $expectedCompletion = (int) round(12 * $multiplier);
+        $expectedSaved = (int) round(40 * $multiplier);
 
         $this->assertSame($expectedLog, (int) $log->billed_usage['prompt_tokens']);
         $this->assertSame(0, (int) $log->billed_usage['completion_tokens']);
         $this->assertSame(0, (int) $log->billed_usage['tokens_saved']);
         $this->assertSame($expectedPrompt, (int) $message->billed_usage['prompt_tokens']);
         $this->assertSame($expectedCompletion, (int) $message->billed_usage['completion_tokens']);
+        $this->assertSame($expectedSaved, (int) $message->billed_usage['tokens_saved']);
         $this->assertSame('claude-haiku-4-5-20251001', $message->billed_usage['model']);
 
         $before = app(TeamBillingUsageSummaryService::class)->invoicePreview($team);

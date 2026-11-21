@@ -11,6 +11,7 @@ use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Billing\McpClientDiscount;
 use App\Services\TeamInboundAssistantPolicy;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
@@ -30,6 +31,13 @@ use Tests\TestCase;
 class ApiChatWhatsAppSanctumTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        McpClientDiscount::freeze(null);
+
+        parent::tearDown();
+    }
 
     public function test_whatsapp_list_requires_authentication(): void
     {
@@ -253,6 +261,8 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             'team_id' => $team->id,
             'title' => 'WhatsApp '.$clientPhone,
         ]);
+        McpClientDiscount::freeze(40);
+
         AgentConversationMessage::create([
             'id' => (string) Str::uuid(),
             'conversation_id' => $conversationId,
@@ -277,9 +287,9 @@ class ApiChatWhatsAppSanctumTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('messages.0.from_assistant', true);
-        $response->assertJsonPath('messages.0.usage.prompt_tokens', 120000);
-        $response->assertJsonPath('messages.0.usage.completion_tokens', 1800);
-        $response->assertJsonPath('messages.0.usage.total_tokens', 121800);
+        $response->assertJsonPath('messages.0.usage.prompt_tokens', 72000);
+        $response->assertJsonPath('messages.0.usage.completion_tokens', 1080);
+        $response->assertJsonPath('messages.0.usage.total_tokens', 73080);
         $response->assertJsonPath('messages.0.usage.tool_calls', 2);
         $this->assertGreaterThan(0, $response->json('messages.0.usage.amount_cents'));
     }

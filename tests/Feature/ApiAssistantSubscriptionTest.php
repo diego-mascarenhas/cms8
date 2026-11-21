@@ -12,6 +12,7 @@ use App\Models\Project;
 use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\Billing\AssistantSubscriptionService;
+use App\Services\Billing\McpClientDiscount;
 use App\Services\Billing\TeamBillingDataService;
 use App\Support\TeamUsageInvoiceFrequency;
 use Carbon\Carbon;
@@ -36,10 +37,18 @@ class ApiAssistantSubscriptionTest extends TestCase
     {
         parent::setUp();
 
+        McpClientDiscount::freeze(40);
         config(['services.openrouter.cache_store' => 'array']);
         Http::fake([
             'https://openrouter.ai/api/v1/models' => Http::response(['data' => []], 200),
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        McpClientDiscount::freeze(null);
+
+        parent::tearDown();
     }
 
     /**
@@ -560,8 +569,8 @@ class ApiAssistantSubscriptionTest extends TestCase
             ->getJson('/api/assistant/subscription');
 
         $response->assertOk();
-        $response->assertJsonPath('data.token_usage.total_tokens_used', 10_000_000);
-        $response->assertJsonPath('data.token_usage.amount_due_cents', 1000);
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 6_000_000);
+        $response->assertJsonPath('data.token_usage.amount_due_cents', 600);
         $this->assertSame(
             (int) collect($response->json('data.token_usage.by_module'))->sum('tokens_used'),
             $response->json('data.token_usage.total_tokens_used'),

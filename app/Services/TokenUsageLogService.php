@@ -96,9 +96,15 @@ final class TokenUsageLogService
         $tokensSaved = max(0, (int) ($toon['tokens_saved'] ?? 0));
         $jsonTokens = $usedToon ? $totalTokens + $tokensSaved : $totalTokens;
         $toonTokens = $usedToon ? $totalTokens : 0;
-        $savings = $jsonTokens > 0 && $usedToon
-            ? (int) round(min(100, ($tokensSaved / $jsonTokens) * 100))
-            : 0;
+        $savings = (int) round((float) ($toon['savings_percentage'] ?? 0));
+        if ($usedToon && $savings <= 0 && $jsonTokens > 0)
+        {
+            $savings = (int) round(min(100, ($tokensSaved / $jsonTokens) * 100));
+        }
+        if (! $usedToon)
+        {
+            $savings = 0;
+        }
         [$promptTokens, $completionTokens] = self::splitFromUsage($usage);
         $resolvedModel = self::modelFromUsage($usage) ?? $model;
 

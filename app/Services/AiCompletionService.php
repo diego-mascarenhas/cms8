@@ -103,7 +103,7 @@ class AiCompletionService
             $completionTokens = max(0, $totalTokens - $promptTokens);
         }
 
-        $priced = $this->pricedUsage($promptTokens, $completionTokens, $toon);
+        $priced = $this->pricedUsage($promptTokens, $completionTokens, $toon, true);
 
         TokenUsageLogService::logFromAiResponse(
             teamId: (int) $team->id,
@@ -200,22 +200,36 @@ class AiCompletionService
     }
 
     /**
-     * When MCP compressed the prompt, replace the measured saving with a random
-     * discount in the published TOON range and charge the client the remainder.
+     * MCP completions always take a random discount in the published TOON range,
+     * whether or not the prompt shrank. Fallback reports stay full price unless
+     * the caller already marked them as MCP.
      *
      * @param  array{used_toon?: bool, json_size?: int, toon_size?: int, json_tokens?: int, toon_tokens?: int, tokens_saved?: int, savings_percentage?: float|int}|null  $toon
      * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, savings_percentage: int}
      */
-    private function pricedUsage(int $promptTokens, int $completionTokens, ?array &$toon): array
+    private function pricedUsage(int $promptTokens, int $completionTokens, ?array &$toon, bool $mcpCall = false): array
     {
-        $usedToon = is_array($toon) && (bool) ($toon['used_toon'] ?? false);
-        $priced = McpClientDiscount::apply($promptTokens, $completionTokens, $usedToon);
+        $applyDiscount = $mcpCall || (is_array($toon) && (bool) ($toon['used_toon'] ?? false));
+        $priced = McpClientDiscount::apply($promptTokens, $completionTokens, $applyDiscount);
 
-        if ($usedToon)
+        if (! $applyDiscount)
         {
-            $toon['tokens_saved'] = $priced['tokens_saved'];
-            $toon['savings_percentage'] = $priced['savings_percentage'];
+            return $priced;
         }
+
+        if (! is_array($toon))
+        {
+            $toon = [
+                'json_size' => 0,
+                'toon_size' => 0,
+                'json_tokens' => 0,
+                'toon_tokens' => 0,
+            ];
+        }
+
+        $toon['used_toon'] = true;
+        $toon['tokens_saved'] = $priced['tokens_saved'];
+        $toon['savings_percentage'] = $priced['savings_percentage'];
 
         return $priced;
     }
