@@ -30,6 +30,7 @@ use App\Services\AgentConversationContextService;
 use App\Services\Assistant\AssistantInboundContactCreationService;
 use App\Services\Assistant\AssistantInboundTaskStatusService;
 use App\Services\AssistantPromptCatalog;
+use App\Services\Billing\BilledUsage;
 use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
 use App\Services\InboxContactAccessService;
@@ -4596,10 +4597,12 @@ class ChatController extends Controller
                 continue;
             }
 
-            $fromMeta = $this->presentWhatsAppTokenUsage(
-                is_array($message->metadata ?? null) ? ($message->metadata['token_usage'] ?? null) : null,
-                (int) (is_array($message->metadata ?? null) ? ($message->metadata['token_usage']['tool_calls'] ?? 0) : 0),
-            );
+            $metadata = is_array($message->metadata ?? null) ? $message->metadata : [];
+            $toolCalls = (int) (is_array($metadata['token_usage'] ?? null) ? ($metadata['token_usage']['tool_calls'] ?? 0) : 0);
+            $storedBilled = BilledUsage::read(is_array($metadata['billed_usage'] ?? null) ? $metadata['billed_usage'] : null);
+            $fromMeta = $storedBilled !== null
+                ? $this->presentStoredBilledUsage($storedBilled, $toolCalls)
+                : $this->presentWhatsAppTokenUsage($metadata['token_usage'] ?? null, $toolCalls);
             if ($fromMeta !== null)
             {
                 $byId[$message->id] = $fromMeta;
@@ -4627,7 +4630,7 @@ class ChatController extends Controller
                 $query->where('team_id', $team->id);
             })
             ->orderByDesc('created_at')
-            ->get(['content', 'usage', 'tool_calls']);
+            ->get(['content', 'usage', 'tool_calls', 'billed_usage']);
 
         $latestByBody = [];
         foreach ($rows as $row)
@@ -4649,7 +4652,10 @@ class ChatController extends Controller
             }
 
             $toolCalls = is_array($row->tool_calls) ? count($row->tool_calls) : 0;
-            $presented = $this->presentWhatsAppTokenUsage($row->usage, $toolCalls);
+            $storedBilled = BilledUsage::read(is_array($row->billed_usage) ? $row->billed_usage : null);
+            $presented = $storedBilled !== null
+                ? $this->presentStoredBilledUsage($storedBilled, $toolCalls)
+                : $this->presentWhatsAppTokenUsage($row->usage, $toolCalls);
             if ($presented !== null)
             {
                 $byId[$id] = $presented;
@@ -4663,6 +4669,30 @@ class ChatController extends Controller
      * @param  array<string, mixed>|null  $usage
      * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int, tool_calls: int, amount_cents: int}|null
      */
+    /**
+     * @param  array{model: string|null, prompt_tokens: int, completion_tokens: int, tokens_saved: int}  $billed
+     * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int, tool_calls: int, amount_cents: int, model: string|null}|null
+     */
+    private function presentStoredBilledUsage(array $billed, int $toolCalls = 0): ?array
+    {
+        if (BilledUsage::used($billed) <= 0)
+        {
+            return null;
+        }
+
+        $presenter = app(\App\Services\Billing\ClientTokenPresenter::class)
+            ->usingTeam(auth()->user()?->currentTeam);
+
+        return [
+            'prompt_tokens' => $billed['prompt_tokens'],
+            'completion_tokens' => $billed['completion_tokens'],
+            'total_tokens' => BilledUsage::used($billed),
+            'tool_calls' => max(0, $toolCalls),
+            'amount_cents' => $presenter->costCents($billed['prompt_tokens'], $billed['completion_tokens'], $billed['model']),
+            'model' => $billed['model'],
+        ];
+    }
+
     private function presentWhatsAppTokenUsage(mixed $usage, int $toolCalls = 0): ?array
     {
         if (! is_array($usage))

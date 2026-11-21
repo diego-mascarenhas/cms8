@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AgentConversationMessage;
 use App\Models\Module;
 use App\Models\TokenUsageLog;
+use App\Services\Billing\BilledUsage;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -43,7 +44,9 @@ final class TeamApiUsageStatsService
      *     averageSavings: float,
      *     totalTokensUsed: int,
      *     totalTokensWithoutToon: int,
-     *     byModule: array<string, array{module_name: string, count: int, tokens_used: int, tokens_saved: int}>
+     *     totalBilledTokens: int,
+     *     totalBilledTokensSaved: int,
+     *     byModule: array<string, array{module_name: string, count: int, tokens_used: int, tokens_saved: int, tokens_billed: int, tokens_saved_billed: int}>
      * }
      */
     public static function forTeam(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
@@ -52,8 +55,11 @@ final class TeamApiUsageStatsService
         $chatReplyLogs = self::aggregateChatReplyLogs($teamId, $from, $to);
         $useConversation = $conversationStats['tokens_used'] > 0 || $conversationStats['calls'] > 0;
         $chatUsed = $useConversation ? $conversationStats['tokens_used'] : $chatReplyLogs['tokens_used'];
+        $chatBilled = $useConversation ? $conversationStats['tokens_billed'] : $chatReplyLogs['tokens_billed'];
         $chatCalls = $useConversation ? $conversationStats['calls'] : $chatReplyLogs['calls'];
         $chatSaved = $chatReplyLogs['tokens_saved'];
+        $chatSavedBilled = $chatReplyLogs['tokens_saved_billed'];
+        $nonChatBilled = self::billedTotalsFromLogs(self::nonChatLogQuery($teamId, $from, $to));
 
         $totalCalls = self::nonChatLogQuery($teamId, $from, $to)->count() + $chatCalls;
 
@@ -83,6 +89,8 @@ final class TeamApiUsageStatsService
                     'calls' => $chatCalls,
                     'tokens_used' => $chatUsed,
                     'tokens_saved' => $chatSaved,
+                    'tokens_billed' => $chatBilled,
+                    'tokens_saved_billed' => $chatSavedBilled,
                 ],
             );
         }
@@ -95,6 +103,8 @@ final class TeamApiUsageStatsService
             'averageSavings' => $averageSavings,
             'totalTokensUsed' => $totalTokensUsed,
             'totalTokensWithoutToon' => $totalTokensWithoutToon,
+            'totalBilledTokens' => $nonChatBilled['tokens'] + $chatBilled,
+            'totalBilledTokensSaved' => $nonChatBilled['saved'] + $chatSavedBilled,
             'byModule' => $byModule,
         ];
     }
@@ -104,10 +114,13 @@ final class TeamApiUsageStatsService
      */
     public static function costSummary(int $teamId): array
     {
-        $tokens = (int) self::forTeam($teamId)['totalTokensUsed'];
-        $presented = app(\App\Services\Billing\ClientTokenPresenter::class)
-            ->usingTeam(\App\Models\Team::query()->find($teamId))
-            ->present($tokens, 0, null);
+        $tokens = (int) self::forTeam($teamId)['totalBilledTokens'];
+        $presenter = app(\App\Services\Billing\ClientTokenPresenter::class)
+            ->usingTeam(\App\Models\Team::query()->find($teamId));
+        $presented = [
+            'total_tokens' => $tokens,
+            'amount_cents' => $presenter->costCents($tokens, 0, null),
+        ];
         $currency = TokenBillingRateService::displayCurrency();
         $amountCents = $presented['amount_cents'];
         $amount = $amountCents / 100;
@@ -147,18 +160,23 @@ final class TeamApiUsageStatsService
     }
 
     /**
-     * @return array{calls: int, tokens_used: int, tokens_saved: int}
+     * @return array{calls: int, tokens_used: int, tokens_saved: int, tokens_billed: int, tokens_saved_billed: int}
      */
     private static function aggregateChatReplyLogs(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
     {
         $logs = self::chatReplyLogQuery($teamId, $from, $to)->get([
+            'team_id',
             'json_tokens',
             'toon_tokens',
             'used_toon',
+            'billed_usage',
+            'created_at',
         ]);
 
         $tokensUsed = 0;
         $tokensSaved = 0;
+        $tokensBilled = 0;
+        $tokensSavedBilled = 0;
 
         foreach ($logs as $log)
         {
@@ -167,13 +185,61 @@ final class TeamApiUsageStatsService
             {
                 $tokensSaved += max(0, (int) $log->json_tokens - (int) $log->toon_tokens);
             }
+            $billed = self::billedUsageForLog($log);
+            $tokensBilled += BilledUsage::used($billed);
+            $tokensSavedBilled += $billed['tokens_saved'];
         }
 
         return [
             'calls' => $logs->count(),
             'tokens_used' => $tokensUsed,
             'tokens_saved' => $tokensSaved,
+            'tokens_billed' => $tokensBilled,
+            'tokens_saved_billed' => $tokensSavedBilled,
         ];
+    }
+
+    /**
+     * @param  Builder<\App\Models\TokenUsageLog>  $query
+     * @return array{tokens: int, saved: int}
+     */
+    private static function billedTotalsFromLogs(Builder $query): array
+    {
+        $tokens = 0;
+        $saved = 0;
+
+        foreach ((clone $query)->get(['team_id', 'json_tokens', 'toon_tokens', 'used_toon', 'billed_usage', 'created_at']) as $log)
+        {
+            $billed = self::billedUsageForLog($log);
+            $tokens += BilledUsage::used($billed);
+            $saved += $billed['tokens_saved'];
+        }
+
+        return [
+            'tokens' => $tokens,
+            'saved' => $saved,
+        ];
+    }
+
+    /**
+     * @return array{model: string|null, prompt_tokens: int, completion_tokens: int, tokens_saved: int}
+     */
+    private static function billedUsageForLog(TokenUsageLog $log): array
+    {
+        $stored = BilledUsage::read(is_array($log->billed_usage) ? $log->billed_usage : null);
+        if ($stored !== null)
+        {
+            return $stored;
+        }
+
+        $used = $log->used_toon ? (int) $log->toon_tokens : (int) $log->json_tokens;
+        if ($used <= 0)
+        {
+            $used = (int) $log->json_tokens;
+        }
+        $saved = $log->used_toon ? max(0, (int) $log->json_tokens - (int) $log->toon_tokens) : 0;
+
+        return BilledUsage::capture((int) $log->team_id, $used, 0, $saved, null, $log->created_at);
     }
 
     /**
@@ -204,7 +270,7 @@ final class TeamApiUsageStatsService
     }
 
     /**
-     * @return array{calls: int, tokens_used: int}
+     * @return array{calls: int, tokens_used: int, tokens_billed: int}
      */
     private static function aggregateAssistantConversationUsage(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
     {
@@ -215,10 +281,11 @@ final class TeamApiUsageStatsService
                 $query->where('team_id', $teamId);
             });
 
-        $messages = self::constrainPeriod($query, $from, $to)->get(['usage']);
+        $messages = self::constrainPeriod($query, $from, $to)->get(['usage', 'billed_usage', 'created_at']);
 
         $calls = 0;
         $tokensUsed = 0;
+        $tokensBilled = 0;
 
         foreach ($messages as $message)
         {
@@ -239,11 +306,30 @@ final class TeamApiUsageStatsService
 
             $calls++;
             $tokensUsed += $total;
+            $billed = BilledUsage::read(is_array($message->billed_usage) ? $message->billed_usage : null);
+            if ($billed === null)
+            {
+                if ($prompt + $completion <= 0)
+                {
+                    $prompt = $total;
+                    $completion = 0;
+                }
+                $billed = BilledUsage::capture(
+                    $teamId,
+                    $prompt,
+                    $completion,
+                    max(0, (int) ($usage['tokens_saved'] ?? 0)),
+                    is_string($usage['model'] ?? null) ? $usage['model'] : null,
+                    $message->created_at,
+                );
+            }
+            $tokensBilled += BilledUsage::used($billed);
         }
 
         return [
             'calls' => $calls,
             'tokens_used' => $tokensUsed,
+            'tokens_billed' => $tokensBilled,
         ];
     }
 
@@ -268,6 +354,8 @@ final class TeamApiUsageStatsService
                     'count' => $logs->count(),
                     'tokens_used' => self::tokensUsedByLogs($logs),
                     'tokens_saved' => self::tokensSavedByLogs($logs),
+                    'tokens_billed' => self::tokensBilledByLogs($logs),
+                    'tokens_saved_billed' => self::tokensSavedBilledByLogs($logs),
                 ];
             })
             ->toArray();
@@ -285,6 +373,8 @@ final class TeamApiUsageStatsService
                 'count' => $logs->count(),
                 'tokens_used' => self::tokensUsedByLogs($logs),
                 'tokens_saved' => self::tokensSavedByLogs($logs),
+                'tokens_billed' => self::tokensBilledByLogs($logs),
+                'tokens_saved_billed' => self::tokensSavedBilledByLogs($logs),
             ];
         }
 
@@ -314,11 +404,27 @@ final class TeamApiUsageStatsService
     }
 
     /**
+     * @param  Collection<int, TokenUsageLog>  $logs
+     */
+    private static function tokensBilledByLogs(Collection $logs): int
+    {
+        return (int) $logs->sum(fn (TokenUsageLog $log): int => BilledUsage::used(self::billedUsageForLog($log)));
+    }
+
+    /**
+     * @param  Collection<int, TokenUsageLog>  $logs
+     */
+    private static function tokensSavedBilledByLogs(Collection $logs): int
+    {
+        return (int) $logs->sum(fn (TokenUsageLog $log): int => self::billedUsageForLog($log)['tokens_saved']);
+    }
+
+    /**
      * Prefer merging assistant conversation totals into TokenUsage slices for the team's {@see Module}
      * with {@code key} {@code chat} so the donut chart legend does not show the label twice.
      *
      * @param  array<int|string, array{module_name: string, count: int, tokens_used: int, tokens_saved: int}>  $byModule  Mutated.
-     * @param  array{calls: int, tokens_used: int, tokens_saved?: int}  $conversationStats
+     * @param  array{calls: int, tokens_used: int, tokens_saved?: int, tokens_billed?: int, tokens_saved_billed?: int}  $conversationStats
      */
     private static function mergeAssistantChatConversationUsageIntoByModule(array &$byModule, array $conversationStats): void
     {
@@ -330,6 +436,8 @@ final class TeamApiUsageStatsService
             'count' => $conversationStats['calls'],
             'tokens_used' => $conversationStats['tokens_used'],
             'tokens_saved' => (int) ($conversationStats['tokens_saved'] ?? 0),
+            'tokens_billed' => (int) ($conversationStats['tokens_billed'] ?? 0),
+            'tokens_saved_billed' => (int) ($conversationStats['tokens_saved_billed'] ?? 0),
         ];
 
         if ($chatModuleId !== null)
@@ -341,6 +449,8 @@ final class TeamApiUsageStatsService
                     $byModule[$key]['count'] += $incoming['count'];
                     $byModule[$key]['tokens_used'] += $incoming['tokens_used'];
                     $byModule[$key]['tokens_saved'] = ($byModule[$key]['tokens_saved'] ?? 0) + $incoming['tokens_saved'];
+                    $byModule[$key]['tokens_billed'] = ($byModule[$key]['tokens_billed'] ?? 0) + $incoming['tokens_billed'];
+                    $byModule[$key]['tokens_saved_billed'] = ($byModule[$key]['tokens_saved_billed'] ?? 0) + $incoming['tokens_saved_billed'];
 
                     return;
                 }
@@ -378,6 +488,8 @@ final class TeamApiUsageStatsService
             $merged[$name]['count'] = ($merged[$name]['count'] ?? 0) + ($entry['count'] ?? 0);
             $merged[$name]['tokens_used'] = ($merged[$name]['tokens_used'] ?? 0) + ($entry['tokens_used'] ?? 0);
             $merged[$name]['tokens_saved'] = ($merged[$name]['tokens_saved'] ?? 0) + ($entry['tokens_saved'] ?? 0);
+            $merged[$name]['tokens_billed'] = ($merged[$name]['tokens_billed'] ?? 0) + ($entry['tokens_billed'] ?? 0);
+            $merged[$name]['tokens_saved_billed'] = ($merged[$name]['tokens_saved_billed'] ?? 0) + ($entry['tokens_saved_billed'] ?? 0);
         }
 
         return $merged;

@@ -3,9 +3,11 @@
 namespace App\Services\Billing;
 
 use App\Enums\TeamBillingFrequency;
+use App\Models\AgentConversationMessage;
 use App\Models\Team;
 use App\Models\TeamUsageInvoice;
 use App\Models\TeamUsageInvoiceAdjustment;
+use App\Models\TokenUsageLog;
 use App\Services\TeamBillingUsageSummaryService;
 use App\Support\TeamUsageInvoiceFrequency;
 use Carbon\Carbon;
@@ -236,6 +238,8 @@ class TeamUsageInvoiceDraftIssuer
                 $job['adjustment']->forceFill(['invoiced_at' => now()])->save();
             }
 
+            $this->attachConsumption($team, $record, $job['from'], $job['closes_on']);
+
             return [
                 'team_id' => $team->id,
                 'kind' => $job['kind'],
@@ -309,6 +313,33 @@ class TeamUsageInvoiceDraftIssuer
         }
 
         return in_array((int) $team->id, array_map('intval', $ids), true);
+    }
+
+    private function attachConsumption(Team $team, TeamUsageInvoice $invoice, Carbon $from, Carbon $closesOn): void
+    {
+        $to = $closesOn->copy()->subSecond();
+        if ($to->lt($from))
+        {
+            $to = $from->copy();
+        }
+
+        TokenUsageLog::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->whereNull('usage_invoice_id')
+            ->where('created_at', '>=', $from)
+            ->where('created_at', '<=', $to)
+            ->update(['usage_invoice_id' => $invoice->id]);
+
+        AgentConversationMessage::query()
+            ->where('role', 'assistant')
+            ->whereNull('usage_invoice_id')
+            ->where('created_at', '>=', $from)
+            ->where('created_at', '<=', $to)
+            ->whereHas('conversation', function ($query) use ($team): void
+            {
+                $query->where('team_id', $team->id);
+            })
+            ->update(['usage_invoice_id' => $invoice->id]);
     }
 
     private function alreadyIssued(Team $team, Carbon $from, Carbon $closesOn): bool

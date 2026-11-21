@@ -10,6 +10,7 @@ use App\Http\Requests\Api\StoreShopBriefOrderRequest;
 use App\Http\Requests\Api\UpdateShopOrderRequest;
 use App\Jobs\GenerateShopBriefOrderJob;
 use App\Models\Order;
+use App\Services\ShopBriefOrderService;
 use App\Services\ShopOrderItemsService;
 use App\Services\ShopOrderWhatsAppQuoteService;
 use App\Support\SearchNormalizer;
@@ -22,6 +23,27 @@ class OrderController extends Controller
 {
     use FormatsShopResources;
     use ResolvesShopTeam;
+
+    public function store(Request $request, ShopBriefOrderService $orders): JsonResponse
+    {
+        $team = $this->shopTeam($request, 'orders');
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $this->authorize('create', Order::class);
+
+        $validated = $request->validate([
+            'contact_id' => ['nullable', 'integer'],
+        ]);
+        $contact = $orders->resolveContact($team, isset($validated['contact_id']) ? (int) $validated['contact_id'] : null);
+        $order = $orders->createBlank($team, $contact?->id);
+
+        return response()->json([
+            'data' => $this->formatOrder($order->fresh(['contact', 'currency']) ?? $order),
+        ], 201);
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -80,7 +102,7 @@ class OrderController extends Controller
         ]);
     }
 
-    public function storeFromBrief(StoreShopBriefOrderRequest $request): JsonResponse
+    public function storeFromBrief(StoreShopBriefOrderRequest $request, ShopBriefOrderService $orders): JsonResponse
     {
         $team = $this->shopTeam($request, 'orders');
         if ($team instanceof JsonResponse)
@@ -89,6 +111,11 @@ class OrderController extends Controller
         }
 
         $this->authorize('create', Order::class);
+
+        $contact = $orders->resolveContact(
+            $team,
+            $request->validated('contact_id') !== null ? (int) $request->validated('contact_id') : null,
+        );
 
         $token = Str::random(48);
         Cache::put(GenerateShopBriefOrderJob::cacheKey($token), [
@@ -100,6 +127,7 @@ class OrderController extends Controller
             $token,
             (int) $team->id,
             (string) $request->validated('brief'),
+            $contact?->id,
         );
 
         return response()->json([

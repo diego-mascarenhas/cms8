@@ -786,6 +786,50 @@ class ShopApiTest extends TestCase
             ->assertJsonPath('data.items.1.unit_price', 22900);
     }
 
+    public function test_an_unmatched_line_saves_without_a_product(): void
+    {
+        [, $team, $token] = $this->adminWithShopModules();
+
+        $order = Order::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'store_id' => null,
+            'order_number' => 'PED-UNMATCHED',
+            'contact_id' => null,
+            'total_amount' => 0,
+            'currency_id' => null,
+            'payment_status' => 'pending',
+            'delivery_status' => 'processing',
+            'notes' => null,
+            'metadata' => [
+                'items' => [
+                    [
+                        'product_id' => 0,
+                        'name' => 'potato',
+                        'quantity' => 100,
+                        'unit_price' => 0,
+                        'line_total' => 0,
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/shop/orders/'.$order->id, [
+                'items' => [
+                    [
+                        'product_id' => 0,
+                        'name' => 'potato',
+                        'quantity' => 100,
+                        'unit_price' => 0,
+                    ],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.items.0.name', 'potato')
+            ->assertJsonPath('data.items.0.product_id', null)
+            ->assertJsonPath('data.items.0.quantity', 100);
+    }
+
     public function test_product_search_matches_spanish_accents_when_query_has_none(): void
     {
         [, $team, $token] = $this->adminWithShopModules();

@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\Module;
 use App\Models\TokenUsageLog;
 use App\Models\User;
+use App\Services\TokenBillingRateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\AnonymousAgent;
 use Spatie\Permission\Models\Role;
@@ -48,7 +49,7 @@ class AiCompletionTest extends TestCase
         $response->assertJsonPath('data.text', 'Suggested proposal text.');
         $response->assertJsonPath('data.module', 'proposals');
         $response->assertJsonPath('data.service', 'AIAssistanceService');
-        $this->assertGreaterThan(0, (int) $response->json('data.usage.total_tokens'));
+        $this->assertTrue($response->json('data.client_presented'));
 
         $this->assertDatabaseHas('token_usage_logs', [
             'team_id' => $team->id,
@@ -59,6 +60,10 @@ class AiCompletionTest extends TestCase
         $log = TokenUsageLog::query()->where('team_id', $team->id)->first();
         $this->assertNotNull($log);
         $this->assertGreaterThan(0, (int) $log->json_tokens);
+        $this->assertSame(
+            $this->billedTokens($team, (int) $log->json_tokens),
+            (int) $response->json('data.usage.total_tokens'),
+        );
     }
 
     public function test_website_module_logs_token_usage_for_content_site_chat(): void
@@ -93,6 +98,7 @@ class AiCompletionTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.module', 'website');
         $response->assertJsonPath('data.service', 'ContentSiteChat');
+        $this->assertTrue($response->json('data.client_presented'));
         $this->assertGreaterThan(0, (int) $response->json('data.usage.total_tokens'));
 
         $this->assertDatabaseHas('token_usage_logs', [
@@ -123,5 +129,80 @@ class AiCompletionTest extends TestCase
             'module' => 'proposals',
             'prompt' => 'Hello',
         ])->assertStatus(401);
+    }
+
+    public function test_complete_stores_toon_savings_without_a_model_column(): void
+    {
+        AnonymousAgent::fake(['Suggested proposal text.']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        Role::findOrCreate('admin');
+        $user->assignRole('admin');
+        $created = $user->currentTeam->createApiToken('Fanyion', '*');
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$created['plain'])
+            ->postJson('/api/ai/complete', [
+                'module' => 'proposals',
+                'prompt' => 'Write a short innovation proposal title.',
+                'service' => 'ClaudeProposalValidator',
+                'model' => 'claude-3-5-sonnet-20241022',
+                'toon' => [
+                    'used_toon' => true,
+                    'tokens_saved' => 20,
+                    'json_size' => 400,
+                    'toon_size' => 250,
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.client_presented', true);
+
+        $log = TokenUsageLog::query()->where('service', 'ClaudeProposalValidator')->first();
+        $this->assertNotNull($log);
+        $this->assertTrue($log->used_toon);
+        $this->assertGreaterThan((int) $log->toon_tokens, (int) $log->json_tokens);
+        $this->assertSame(
+            $this->billedTokens($user->currentTeam, (int) $log->toon_tokens),
+            (int) $response->json('data.usage.total_tokens'),
+        );
+        $this->assertFalse(isset($log->model));
+    }
+
+    public function test_usage_endpoint_records_fallback_tokens(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        Role::findOrCreate('admin');
+        $user->assignRole('admin');
+        $created = $user->currentTeam->createApiToken('Fanyion', '*');
+
+        $this->withHeader('Authorization', 'Bearer '.$created['plain'])
+            ->postJson('/api/ai/usage', [
+                'module' => 'proposals',
+                'service' => 'ClaudeProposalValidator',
+                'model' => 'claude-sonnet-4-5-20250929',
+                'prompt_tokens' => 80,
+                'completion_tokens' => 20,
+                'total_tokens' => 100,
+                'toon' => [
+                    'used_toon' => true,
+                    'tokens_saved' => 15,
+                ],
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.service', 'ClaudeProposalValidator')
+            ->assertJsonPath('data.client_presented', true)
+            ->assertJsonPath('data.usage.prompt_tokens', $this->billedTokens($user->currentTeam, 80))
+            ->assertJsonPath('data.usage.completion_tokens', $this->billedTokens($user->currentTeam, 20))
+            ->assertJsonPath('data.usage.total_tokens', $this->billedTokens($user->currentTeam, 100));
+
+        $log = TokenUsageLog::query()->where('service', 'ClaudeProposalValidator')->first();
+        $this->assertNotNull($log);
+        $this->assertTrue($log->used_toon);
+        $this->assertSame(100, (int) $log->toon_tokens);
+        $this->assertSame(115, (int) $log->json_tokens);
+    }
+
+    private function billedTokens(mixed $team, int $tokens): int
+    {
+        return (int) round($tokens * TokenBillingRateService::clientTokenMultiplier($team));
     }
 }

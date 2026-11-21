@@ -5,7 +5,10 @@ namespace Tests\Feature\Api;
 use App\Models\Currency;
 use App\Models\Enterprise;
 use App\Models\Module;
+use App\Models\Order;
 use App\Models\Product;
+use App\Models\SupplierPriceLine;
+use App\Models\SupplierPriceList;
 use App\Models\User;
 use App\Services\CommercialDocumentInterpreter;
 use Database\Seeders\CurrencySeeder;
@@ -126,8 +129,84 @@ class SupplierPriceListTest extends TestCase
             ->json('data.0');
 
         $this->assertEquals(750, $quote['price']);
+        $this->assertSame('Textil Norte', $quote['supplier_name']);
+        $this->assertEquals(500, $quote['supplier_price']);
         $this->assertArrayNotHasKey('cost', $quote);
         $this->assertArrayNotHasKey('markup_percent', $quote);
+    }
+
+    public function test_an_order_item_includes_the_supplier_name(): void
+    {
+        [, $team, $token] = $this->adminWithShop();
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+
+        $supplier = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 2,
+            'status_id' => 2,
+            'name' => 'La Bella Palta',
+        ]);
+
+        $product = Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'ROAST BEEF KG',
+            'code' => 'RB-ORDER',
+            'price' => 18057,
+            'currency_id' => $currencyId,
+        ]);
+
+        $list = SupplierPriceList::query()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $supplier->id,
+            'name' => 'Lista',
+            'currency_id' => $currencyId,
+            'markup_percent' => 30,
+        ]);
+
+        SupplierPriceLine::query()->create([
+            'team_id' => $team->id,
+            'supplier_price_list_id' => $list->id,
+            'product_id' => $product->id,
+            'supplier_code' => 'RB',
+            'name' => 'ROAST BEEF KG',
+            'unit_cost' => 13890,
+            'unit' => 'KG',
+        ]);
+
+        $order = Order::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'order_number' => 'PED-SUPPLIER',
+            'total_amount' => 18057,
+            'currency_id' => $currencyId,
+            'payment_status' => 'pending',
+            'delivery_status' => 'processing',
+            'metadata' => [
+                'items' => [
+                    [
+                        'product_id' => $product->id,
+                        'name' => 'ROAST BEEF KG',
+                        'quantity' => 1,
+                        'unit_price' => 18057,
+                        'line_total' => 18057,
+                    ],
+                    [
+                        'product_id' => null,
+                        'name' => 'Ítem suelto',
+                        'quantity' => 1,
+                        'unit_price' => 10,
+                        'line_total' => 10,
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/orders/'.$order->id)
+            ->assertOk()
+            ->assertJsonPath('data.items.0.supplier_name', 'La Bella Palta')
+            ->assertJsonPath('data.items.0.supplier_price', 13890)
+            ->assertJsonPath('data.items.1.supplier_name', null)
+            ->assertJsonPath('data.items.1.supplier_price', null);
     }
 
     public function test_pricing_setting_is_the_default_markup(): void
@@ -233,6 +312,15 @@ class SupplierPriceListTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('data.created', 1);
+
+        $listId = SupplierPriceList::query()->value('id');
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/supplier-price-lists/'.$listId)
+            ->assertOk()
+            ->assertJsonPath('data.lines.0.name', 'Remera blanca')
+            ->assertJsonPath('data.lines.0.code', 'REM-9')
+            ->assertJsonPath('data.lines.0.unit_cost', 800)
+            ->assertJsonPath('data.lines.0.price', 1200);
 
         $product = Product::query()->where('code', 'REM-9')->first();
         $this->assertNotNull($product);
@@ -360,5 +448,70 @@ class SupplierPriceListTest extends TestCase
         $this->assertSame(6, (int) $line['quantity']);
         $this->assertEquals(200, $line['unit_price']);
         $this->assertArrayNotHasKey('cost', $line);
+    }
+
+    public function test_an_imported_list_updates_supplier_markup_and_line_prices(): void
+    {
+        [, $team, $token] = $this->adminWithShop();
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $supplier = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 2,
+            'status_id' => 2,
+            'name' => 'La Bella Palta',
+        ]);
+        $other = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 2,
+            'status_id' => 2,
+            'name' => 'La Granja',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/supplier-price-lists/confirm', [
+                'enterprise_id' => $supplier->id,
+                'currency_id' => $currencyId,
+                'markup_percent' => 30,
+                'lines' => [
+                    ['code' => 'RB', 'name' => 'ROAST BEEF KG', 'cost' => 10000],
+                    ['code' => 'PA', 'name' => 'PALETA KG', 'cost' => 9000],
+                ],
+            ])
+            ->assertOk();
+
+        $listId = SupplierPriceList::query()->value('id');
+        $lines = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/supplier-price-lists/'.$listId)
+            ->assertOk()
+            ->json('data.lines');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/shop/supplier-price-lists/'.$listId, [
+                'enterprise_id' => $other->id,
+                'currency_id' => $currencyId,
+                'markup_percent' => 10,
+                'lines' => [[
+                    'id' => $lines[0]['id'],
+                    'code' => 'RB',
+                    'name' => 'ROAST BEEF',
+                    'cost' => 12000,
+                    'price' => 15000,
+                    'unit' => 'KG',
+                ]],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.supplier.name', 'La Granja')
+            ->assertJsonPath('data.markup_percent', 10)
+            ->assertJsonPath('data.lines.0.name', 'ROAST BEEF')
+            ->assertJsonPath('data.lines.0.unit_cost', 12000)
+            ->assertJsonPath('data.lines.0.price', 15000)
+            ->assertJsonCount(1, 'data.lines');
+
+        $product = Product::query()->where('code', 'RB')->first();
+        $this->assertNotNull($product);
+        $this->assertSame('ROAST BEEF', $product->name);
+        $this->assertEquals(12000, (float) $product->cost);
+        $this->assertEquals(15000, (float) $product->price);
+        $this->assertNotNull(Product::query()->where('code', 'PA')->first());
     }
 }

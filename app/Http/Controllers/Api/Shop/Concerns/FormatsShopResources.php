@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use App\Models\Store;
 use App\Services\ProductImageService;
 use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
+use App\Support\ProductSupplierNames;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 trait FormatsShopResources
@@ -212,13 +213,49 @@ trait FormatsShopResources
             'notes' => $order->notes === 'Order placed via WhatsApp'
                 ? 'Pedido realizado por WhatsApp'
                 : $order->notes,
-            'items' => is_array($metadata['items'] ?? null) ? $metadata['items'] : [],
+            'items' => $this->itemsWithSupplierNames(
+                $order,
+                is_array($metadata['items'] ?? null) ? $metadata['items'] : [],
+            ),
             'metadata' => $metadata,
             'checkout_payment_method_labels' => $order->checkoutPaymentMethodDisplayLabels(),
             'checkout_fulfillment_labels' => $order->checkoutFulfillmentDisplayLabels(),
             'created_at' => $order->created_at?->toIso8601String(),
             'updated_at' => $order->updated_at?->toIso8601String(),
         ];
+    }
+
+    /**
+     * @param  list<mixed>  $items
+     * @return list<mixed>
+     */
+    protected function itemsWithSupplierNames(Order $order, array $items): array
+    {
+        $productIds = [];
+        foreach ($items as $item)
+        {
+            if (is_array($item))
+            {
+                $productIds[] = (int) ($item['product_id'] ?? 0);
+            }
+        }
+
+        $suppliers = ProductSupplierNames::latestForProducts((int) $order->team_id, $productIds);
+
+        return array_map(function (mixed $item) use ($suppliers): mixed
+        {
+            if (! is_array($item))
+            {
+                return $item;
+            }
+
+            $productId = (int) ($item['product_id'] ?? 0);
+            $supplier = $suppliers[$productId] ?? null;
+            $item['supplier_name'] = $supplier !== null && $supplier['name'] !== '' ? $supplier['name'] : null;
+            $item['supplier_price'] = $supplier['unit_cost'] ?? null;
+
+            return $item;
+        }, $items);
     }
 
     /**

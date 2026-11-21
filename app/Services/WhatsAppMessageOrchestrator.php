@@ -26,6 +26,7 @@ use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Billing\BilledUsage;
 use App\Services\Billing\SubscriptionCatalogText;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
@@ -381,6 +382,13 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
         return [
             'token_usage' => $tokenUsage,
+            'billed_usage' => BilledUsage::capture(
+                $this->team?->id,
+                $prompt,
+                $completion,
+                $tokensSaved,
+                $model !== '' ? $model : null,
+            ),
         ];
     }
 

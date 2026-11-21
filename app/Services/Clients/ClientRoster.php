@@ -21,9 +21,13 @@ class ClientRoster
     /**
      * @return array{data: list<array<string, mixed>>, current_page: int, last_page: int, total: int, summary: array{clients: int, active: int, with_consumption: int, with_renewal: int}}
      */
-    public function page(User $user, ?string $search, int $page, int $perPage, ?string $filter = null, ?string $status = null): array
+    public function page(User $user, ?string $search, int $page, int $perPage, ?string $filter = null, ?string $status = null, bool $allTypes = false, bool $brief = false): array
     {
-        $query = Enterprise::query()->clients()->with(['status:id,name,label_class']);
+        $query = Enterprise::query()->with(['status:id,name,label_class']);
+        if (! $allTypes)
+        {
+            $query->clients();
+        }
         $query = ClientPolicy::getQueryFilter($user)($query);
         $this->applyFilter($query, $user, (string) $filter);
         $this->applyStatus($query, (string) $status);
@@ -31,7 +35,16 @@ class ClientRoster
         $term = trim((string) $search);
         if ($term !== '')
         {
-            SearchNormalizer::applyColumnsNavbarConditions($query, ['name'], $term);
+            $query->where(function ($builder) use ($term): void
+            {
+                $builder->where(function ($names) use ($term): void
+                {
+                    SearchNormalizer::applyColumnsNavbarConditions($names, ['name'], $term);
+                })->orWhereHas('contacts', function ($contacts) use ($term): void
+                {
+                    SearchNormalizer::applyColumnsNavbarConditions($contacts, ['email'], $term);
+                });
+            });
         }
 
         $paginator = $query->orderBy('name')->paginate($perPage, ['*'], 'page', $page);
@@ -60,7 +73,7 @@ class ClientRoster
                 ->get()
                 ->groupBy('customer_id');
 
-        $serviceCounts = $ids === []
+        $serviceCounts = $brief || $ids === []
             ? collect()
             : Service::withoutGlobalScopes()
                 ->whereIn('enterprise_id', $ids)
@@ -81,19 +94,24 @@ class ClientRoster
                 ->get()
                 ->keyBy('enterprise_id');
 
+        $contactWith = [
+            'categories:id',
+            'user:id,name,email',
+            'currentSentiment.sentiment',
+            'enterprises' => function ($query) use ($ids, $teamId)
+            {
+                $query->where('enterprises.team_id', $teamId)->whereIn('enterprises.id', $ids);
+            },
+        ];
+        if (! $brief)
+        {
+            array_unshift($contactWith, 'status:id,name');
+        }
+
         $contacts = $ids === []
             ? collect()
             : Contact::query()
-                ->with([
-                    'status:id,name',
-                    'categories:id',
-                    'user:id,name,email',
-                    'currentSentiment.sentiment',
-                    'enterprises' => function ($query) use ($ids, $teamId)
-                    {
-                        $query->where('enterprises.team_id', $teamId)->whereIn('enterprises.id', $ids);
-                    },
-                ])
+                ->with($contactWith)
                 ->where('team_id', $teamId)
                 ->whereHas('enterprises', fn ($builder) => $builder->where('enterprises.team_id', $teamId)->whereIn('enterprises.id', $ids))
                 ->get();
@@ -127,9 +145,9 @@ class ClientRoster
 
         $logins = $this->lastLogins($contacts->pluck('user_id')->filter()->map(fn ($id): int => (int) $id)->unique()->all());
 
-        $rows = $clients->map(function (Enterprise $client) use ($subscriptions, $usages, $balances, $contactsByClient, $positionsByClient, $logins, $serviceCounts, $staffUserIds): array
+        $rows = $clients->map(function (Enterprise $client) use ($subscriptions, $usages, $balances, $contactsByClient, $positionsByClient, $logins, $serviceCounts, $staffUserIds, $brief): array
         {
-            return $this->row($client, $subscriptions, $usages, $balances, $contactsByClient, $positionsByClient, $logins, $serviceCounts, $staffUserIds);
+            return $this->row($client, $subscriptions, $usages, $balances, $contactsByClient, $positionsByClient, $logins, $serviceCounts, $staffUserIds, $brief);
         })->values()->all();
 
         return [
@@ -152,7 +170,7 @@ class ClientRoster
      * @param  array<int, true>  $staffUserIds
      * @return array<string, mixed>
      */
-    private function row(Enterprise $client, $subscriptions, $usages, $balances, array $contactsByClient, array $positionsByClient, array $logins, $serviceCounts, array $staffUserIds): array
+    private function row(Enterprise $client, $subscriptions, $usages, $balances, array $contactsByClient, array $positionsByClient, array $logins, $serviceCounts, array $staffUserIds, bool $brief = false): array
     {
         $people = collect($contactsByClient[(int) $client->id] ?? [])
             ->sortBy(fn (Contact $contact): string => mb_strtolower(trim($contact->name.' '.(string) ($contact->surname ?? ''))));
@@ -193,7 +211,7 @@ class ClientRoster
                 'id' => (int) $administrator->id,
                 'name' => trim($administrator->name.' '.(string) ($administrator->surname ?? '')),
             ] : null,
-            'contact' => $primary ? $this->contact($primary, $staffUserIds) : null,
+            'contact' => $primary ? $this->contact($primary, $staffUserIds, $brief) : null,
         ];
     }
 
@@ -444,7 +462,7 @@ class ClientRoster
      * @param  array<int, true>  $staffUserIds
      * @return array<string, mixed>
      */
-    private function contact(Contact $contact, array $staffUserIds): array
+    private function contact(Contact $contact, array $staffUserIds, bool $brief = false): array
     {
         $name = trim($contact->name.' '.(string) ($contact->surname ?? ''));
         $sentiment = $contact->currentSentiment?->sentiment;
@@ -456,7 +474,10 @@ class ClientRoster
             'display_name' => $name !== '' ? $name : (string) $contact->name,
             'email' => (string) ($contact->email ?? ''),
             'phone' => (string) ($contact->phone ?? ''),
-            'status' => $contact->status ? ['id' => (int) $contact->status->id] : null,
+            'status' => ! $brief && $contact->status ? [
+                'id' => (int) $contact->status->id,
+                'name' => (string) $contact->status->name,
+            ] : null,
             'categories' => $contact->categories->map(fn ($category): array => ['id' => (int) $category->id])->values()->all(),
             'user' => $contact->user ? [
                 'id' => (int) $contact->user->id,

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Contact;
 use App\Models\Team;
 use App\Services\EstimatorProductQuoteService;
 use App\Services\ShopBriefOrderService;
@@ -22,6 +23,7 @@ class GenerateShopBriefOrderJob implements ShouldQueue
         public string $pollToken,
         public int $teamId,
         public string $brief,
+        public ?int $contactId = null,
     ) {}
 
     public static function cacheKey(string $pollToken): string
@@ -78,6 +80,17 @@ class GenerateShopBriefOrderJob implements ShouldQueue
         try
         {
             $order = $orders->create($team, $quotes->quote($this->brief, $team), 'shop');
+            if ($this->contactId)
+            {
+                $contact = Contact::withoutGlobalScopes()
+                    ->where('team_id', $team->id)
+                    ->whereKey($this->contactId)
+                    ->first();
+                if ($contact)
+                {
+                    $orders->attachContact($order, $contact);
+                }
+            }
         } catch (\Throwable $exception)
         {
             Log::error('GenerateShopBriefOrderJob failed', [

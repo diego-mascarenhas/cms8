@@ -47,7 +47,7 @@ class AffiliateProgramService
      *     totals_as_payer: array<string, array{paid_cents: int, commission_cents: int}>,
      * }
      */
-    public function dashboard(Team $team, ?string $catalog = null): array
+    public function dashboard(Team $team, ?string $catalog = null, ?string $appOrigin = null): array
     {
         if (! $team->canUseAffiliateProgram())
         {
@@ -89,7 +89,7 @@ class AffiliateProgramService
         {
             $plans[] = array_merge($plan, [
                 'referral_url' => $referralCode !== null
-                    ? $this->linkBuilder->referralUrl($plan, $referralCode)
+                    ? $this->linkBuilder->referralUrl($plan, $referralCode, null, $appOrigin)
                     : null,
             ]);
         }
@@ -163,7 +163,7 @@ class AffiliateProgramService
      * @param  array{invite_name: string, invite_email: string, invite_plan: string, catalog?: string|null}  $data
      * @return array{invitation: array<string, mixed>}
      */
-    public function sendInvitation(User $user, Team $team, array $data): array
+    public function sendInvitation(User $user, Team $team, array $data, ?string $appOrigin = null): array
     {
         if (! $team->canUseAffiliateProgram())
         {
@@ -202,6 +202,7 @@ class AffiliateProgramService
             $plan,
             $referralCode,
             (string) $data['invite_email'],
+            $appOrigin,
         );
 
         $planMarketing = $this->linkBuilder->planMarketing($planId, 'es_ES') ?? [

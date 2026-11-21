@@ -585,6 +585,10 @@ Route::middleware('auth.api')->group(function ()
         ->name('api.projects.funnel.sender.show');
     Route::put('projects/funnel/sender', [ProjectFunnelController::class, 'updateSender'])
         ->name('api.projects.funnel.sender.update');
+    Route::get('projects/funnel/workspace', [ProjectFunnelController::class, 'showWorkspace'])
+        ->name('api.projects.funnel.workspace.show');
+    Route::put('projects/funnel/workspace', [ProjectFunnelController::class, 'updateWorkspace'])
+        ->name('api.projects.funnel.workspace.update');
     Route::get('projects/funnel/token-pricing', [ProjectFunnelController::class, 'showTokenPricing'])
         ->name('api.projects.funnel.token-pricing.show');
     Route::put('projects/funnel/token-pricing', [ProjectFunnelController::class, 'updateTokenPricing'])
@@ -599,6 +603,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('billing/history', [ApiBillingController::class, 'history'])->name('api.billing.history');
     Route::put('billing', [ApiBillingController::class, 'update'])->name('api.billing.update');
     Route::post('ai/complete', [AiCompletionController::class, 'complete'])->name('api.ai.complete');
+    Route::post('ai/usage', [AiCompletionController::class, 'usage'])->name('api.ai.usage');
     Route::get('team/business-profile', [BusinessProfileController::class, 'show'])->name('api.team.business-profile.show');
     Route::put('team/business-profile', [BusinessProfileController::class, 'update'])->name('api.team.business-profile.update');
     Route::get('team/business-profile/assets', [BusinessProfileController::class, 'showAsset'])->name('api.team.business-profile.assets.show');
@@ -850,6 +855,8 @@ Route::middleware('auth.api')->group(function ()
         Route::post('supplier-price-lists/confirm', [ShopSupplierPriceListController::class, 'confirm']);
         Route::post('supplier-price-lists/import', [ShopSupplierPriceListController::class, 'import']);
         Route::get('supplier-price-lists', [ShopSupplierPriceListController::class, 'index']);
+        Route::get('supplier-price-lists/{id}', [ShopSupplierPriceListController::class, 'show'])->whereNumber('id');
+        Route::put('supplier-price-lists/{id}', [ShopSupplierPriceListController::class, 'update'])->whereNumber('id');
         Route::get('suppliers', [ShopSupplierPriceListController::class, 'suppliers']);
         Route::post('suppliers', [ShopSupplierPriceListController::class, 'storeSupplier']);
         Route::get('pricing', [ShopSupplierPriceListController::class, 'pricing']);
@@ -871,6 +878,7 @@ Route::middleware('auth.api')->group(function ()
         Route::post('orders/from-brief', [ShopOrderController::class, 'storeFromBrief']);
         Route::get('orders/from-brief/status', [ShopOrderController::class, 'briefStatus']);
         Route::get('orders', [ShopOrderController::class, 'index']);
+        Route::post('orders', [ShopOrderController::class, 'store']);
         Route::get('orders/{id}', [ShopOrderController::class, 'show'])->whereNumber('id');
         Route::put('orders/{id}', [ShopOrderController::class, 'update'])->whereNumber('id');
         Route::post('orders/{id}/whatsapp-quote', [ShopOrderController::class, 'sendWhatsAppQuote'])->whereNumber('id');

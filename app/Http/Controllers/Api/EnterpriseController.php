@@ -137,7 +137,16 @@ class EnterpriseController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $roster->page($user, $request->get('search'), $page, $perPage, $filter, $status),
+            'data' => $roster->page(
+                $user,
+                $request->get('search'),
+                $page,
+                $perPage,
+                $filter,
+                $status,
+                $request->get('type') === 'all',
+                $request->boolean('brief'),
+            ),
         ]);
     }
 

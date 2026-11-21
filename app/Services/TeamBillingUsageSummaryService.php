@@ -528,11 +528,11 @@ final class TeamBillingUsageSummaryService
         $this->tokens->usingTeam($team);
         $stats = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
         $realTokens = (int) $stats['totalTokensUsed'];
-        $billedTokens = $this->tokens->scale($realTokens, $asOf);
+        $billedTokens = (int) ($stats['totalBilledTokens'] ?? $this->tokens->scale($realTokens, $asOf));
         $tokenCostCents = $this->tokens->costCents($realTokens, 0, null, $asOf);
         $tokenBilledCents = $this->tokens->costCents($billedTokens, 0, null, $asOf);
         $tokenMarkupCents = max(0, $tokenBilledCents - $tokenCostCents);
-        $tokensByModule = $this->tokensByModule($stats['byModule'] ?? [], $realTokens, $asOf);
+        $tokensByModule = $this->tokensByModule($stats['byModule'] ?? [], $realTokens, $billedTokens, $asOf);
 
         $whatsapp = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
         $mailer = $this->mailerForPeriod($team, $from, $to, $asOf);
@@ -628,24 +628,28 @@ final class TeamBillingUsageSummaryService
     }
 
     /**
-     * @param  array<string, array{module_name?: string, tokens_used?: int}>  $byModule
+     * @param  array<string, array{module_name?: string, tokens_used?: int, tokens_billed?: int}>  $byModule
      * @return list<array{name: string, tokens_real: int, tokens_billed: int, formatted: string}>
      */
-    private function tokensByModule(array $byModule, int $realTokens, Carbon $asOf): array
+    private function tokensByModule(array $byModule, int $realTokens, int $billedTokens, Carbon $asOf): array
     {
         $rows = [];
         $assigned = 0;
+        $assignedBilled = 0;
 
         $named = collect($byModule)
-            ->filter(fn (array $row): bool => (int) ($row['tokens_used'] ?? 0) > 0)
-            ->sortByDesc(fn (array $row): int => (int) $row['tokens_used'])
+            ->filter(fn (array $row): bool => (int) ($row['tokens_used'] ?? 0) > 0 || (int) ($row['tokens_billed'] ?? 0) > 0)
+            ->sortByDesc(fn (array $row): int => (int) ($row['tokens_billed'] ?? $row['tokens_used'] ?? 0))
             ->values();
 
         foreach ($named as $row)
         {
-            $real = (int) $row['tokens_used'];
+            $real = (int) ($row['tokens_used'] ?? 0);
             $assigned += $real;
-            $billed = $this->tokens->scale($real, $asOf);
+            $billed = array_key_exists('tokens_billed', $row)
+                ? (int) $row['tokens_billed']
+                : $this->tokens->scale($real, $asOf);
+            $assignedBilled += $billed;
             $rows[] = [
                 'name' => (string) ($row['module_name'] ?? 'Otros'),
                 'tokens_real' => $real,
@@ -655,14 +659,14 @@ final class TeamBillingUsageSummaryService
         }
 
         $leftover = max(0, $realTokens - $assigned);
-        if ($rows !== [] && $leftover > 0)
+        $leftoverBilled = max(0, $billedTokens - $assignedBilled);
+        if ($rows !== [] && ($leftover > 0 || $leftoverBilled > 0))
         {
-            $billed = $this->tokens->scale($leftover, $asOf);
             $rows[] = [
                 'name' => 'Otros',
                 'tokens_real' => $leftover,
-                'tokens_billed' => $billed,
-                'formatted' => $this->formatCount($billed),
+                'tokens_billed' => $leftoverBilled,
+                'formatted' => $this->formatCount($leftoverBilled),
             ];
         }
 

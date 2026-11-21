@@ -70,6 +70,17 @@ class HumanoPricingCatalogTest extends TestCase
         $this->assertStringContainsString('ref=cus_referrer', $url);
     }
 
+    public function test_referral_checkout_uses_the_requesting_app(): void
+    {
+        $url = app(AffiliateReferralLinkBuilder::class)->referralUrl([
+            'id' => 'estimator',
+            'checkout_url' => '',
+        ], 'cus_referrer', null, 'https://estimator.idoneo.dev/affiliates');
+
+        $this->assertSame('https://estimator.idoneo.dev/pricing?ref=cus_referrer', $url);
+        $this->assertNull(app(AffiliateReferralLinkBuilder::class)->shareOrigin('https://evil.example'));
+    }
+
     public function test_revision_alpha_hosting_plans_use_landing_referral_urls(): void
     {
         $cloud = collect(app(AffiliateReferralLinkBuilder::class)->availablePlans('hosting'))

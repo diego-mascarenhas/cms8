@@ -3,13 +3,17 @@
 namespace Tests\Feature\Api;
 
 use App\Jobs\GenerateShopBriefOrderJob;
+use App\Models\Contact;
+use App\Models\ContactStatus;
 use App\Models\Module;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
 use App\Services\AssistantToolsService;
 use App\Services\EstimatorProductQuoteService;
+use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CurrencySeeder;
+use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Jetstream\Features;
@@ -25,12 +29,16 @@ class ShopBriefOrderTest extends TestCase
         parent::setUp();
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-        $this->seed(CurrencySeeder::class);
+        $this->seed([
+            CurrencySeeder::class,
+            LanguageSeeder::class,
+            ContactStatusSeeder::class,
+        ]);
     }
 
     public function test_a_pasted_list_becomes_a_shop_order(): void
     {
-        [, $team, $token] = $this->adminWithShopModules();
+        [$user, $team, $token] = $this->adminWithShopModules();
         Product::factory()->create([
             'team_id' => $team->id,
             'name' => 'ASPARAGUS GREEN FRESH',
@@ -69,9 +77,12 @@ class ShopBriefOrderTest extends TestCase
             });
         });
 
+        $contact = $this->contactFor($user, $team);
+
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/shop/orders/from-brief', [
                 'brief' => '3 ASPARAGUS GREEN FRESH y PLUM FRESH',
+                'contact_id' => $contact->id,
             ]);
 
         $response->assertOk()
@@ -91,6 +102,8 @@ class ShopBriefOrderTest extends TestCase
         $this->assertSame('PLUM FRESH', $items[1]['name'] ?? null);
         $this->assertSame(0.0, (float) ($items[1]['unit_price'] ?? -1));
         $this->assertSame($order->id, $state['order_id'] ?? null);
+        $order->refresh();
+        $this->assertSame($contact->id, $order->contact_id);
     }
 
     public function test_a_quote_failure_stays_on_the_same_team(): void
@@ -143,6 +156,76 @@ class ShopBriefOrderTest extends TestCase
         $this->assertSame(10976.0, (float) $order->total_amount);
     }
 
+    public function test_a_blank_order_opens_so_products_can_be_added(): void
+    {
+        [, $team, $token] = $this->adminWithShopModules();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/orders')
+            ->assertCreated()
+            ->assertJsonPath('data.items', []);
+
+        $order = Order::withoutGlobalScopes()->find($response->json('data.id'));
+        $this->assertNotNull($order);
+        $this->assertSame($team->id, $order->team_id);
+        $this->assertSame('shop_manual', $order->metadata['source'] ?? null);
+        $this->assertSame(0.0, (float) $order->total_amount);
+        $this->assertStringStartsWith('PED-', (string) $order->order_number);
+    }
+
+    public function test_a_blank_order_keeps_the_selected_contact(): void
+    {
+        [$user, $team, $token] = $this->adminWithShopModules();
+        $contact = $this->contactFor($user, $team);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/orders', [
+                'contact_id' => $contact->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.contact.name', 'Ana García');
+
+        $order = Order::withoutGlobalScopes()->find($response->json('data.id'));
+        $this->assertSame($contact->id, $order->contact_id);
+    }
+
+    public function test_an_open_order_can_be_assigned_to_a_contact(): void
+    {
+        [$user, $team, $token] = $this->adminWithShopModules();
+        $contact = $this->contactFor($user, $team);
+        $order = Order::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'order_number' => 'PED-CONTACT01',
+            'total_amount' => 0,
+            'payment_status' => 'pending',
+            'delivery_status' => 'processing',
+            'metadata' => ['source' => 'shop_manual', 'items' => []],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/shop/orders/'.$order->id, [
+                'contact_id' => $contact->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.contact.name', 'Ana García');
+
+        $this->assertSame($contact->id, $order->fresh()->contact_id);
+    }
+
+    public function test_a_contact_from_another_team_is_rejected(): void
+    {
+        [$user, , $token] = $this->adminWithShopModules();
+        $contact = $this->contactFor($user, $user->ownedTeams()->first());
+        $contact->forceFill(['team_id' => null])->save();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/orders', [
+                'contact_id' => $contact->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['contact_id']);
+    }
+
     /**
      * @return array{0: User, 1: \App\Models\Team, 2: string}
      */
@@ -176,5 +259,19 @@ class ShopBriefOrderTest extends TestCase
         $token = $user->createToken('idoneo-shop-test')->plainTextToken;
 
         return [$user->fresh(), $team->fresh(), $token];
+    }
+
+    private function contactFor(User $user, ?\App\Models\Team $team): Contact
+    {
+        return Contact::withoutGlobalScopes()->create([
+            'team_id' => $team?->id,
+            'name' => 'Ana',
+            'surname' => 'García',
+            'email' => 'ana-'.$user->id.'@norte.test',
+            'language' => 'es',
+            'status_id' => ContactStatus::query()->where('name', 'Lead')->value('id'),
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
     }
 }

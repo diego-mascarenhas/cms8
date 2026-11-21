@@ -20,6 +20,11 @@ class UpdateShopOrderRequest extends FormRequest
         return $this->user()?->can('update', $order) ?? false;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->blankMissingProductIds();
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -37,6 +42,12 @@ class UpdateShopOrderRequest extends FormRequest
                 'integer',
                 Rule::exists('stores', 'id')->where('team_id', $teamId),
             ],
+            'contact_id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                Rule::exists('contacts', 'id')->where('team_id', $teamId),
+            ],
             'items' => ['sometimes', 'array'],
             'items.*.product_id' => [
                 'nullable',
@@ -48,5 +59,31 @@ class UpdateShopOrderRequest extends FormRequest
             'items.*.name' => ['nullable', 'string', 'max:255'],
             'items.*.category_name' => ['nullable', 'string', 'max:255'],
         ];
+    }
+
+    private function blankMissingProductIds(): void
+    {
+        $items = $this->input('items');
+        if (! is_array($items))
+        {
+            return;
+        }
+
+        $this->merge([
+            'items' => array_map(function (mixed $item): mixed
+            {
+                if (! is_array($item))
+                {
+                    return $item;
+                }
+
+                if (! isset($item['product_id']) || (int) $item['product_id'] < 1)
+                {
+                    $item['product_id'] = null;
+                }
+
+                return $item;
+            }, $items),
+        ]);
     }
 }

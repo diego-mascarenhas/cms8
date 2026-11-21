@@ -63,6 +63,9 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
             'status' => TeamUsageInvoice::STATUS_DRAFT,
             'stripe_invoice_id' => 'in_draft_usage_1',
         ]);
+
+        $invoiceId = TeamUsageInvoice::query()->where('stripe_invoice_id', 'in_draft_usage_1')->value('id');
+        $this->assertSame($invoiceId, TokenUsageLog::withoutGlobalScopes()->where('team_id', $team->id)->value('usage_invoice_id'));
     }
 
     public function test_skips_zero_amount_windows_without_calling_stripe(): void

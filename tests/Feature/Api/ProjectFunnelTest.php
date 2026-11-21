@@ -903,6 +903,28 @@ class ProjectFunnelTest extends TestCase
         $this->assertFalse(filter_var($fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_INCLUDE), FILTER_VALIDATE_BOOLEAN));
     }
 
+    public function test_funnel_member_can_choose_budget_or_order_workspace(): void
+    {
+        $team = $this->createFunnelTeam();
+        $user = $team->owner;
+        $this->assertNotNull($user);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $token = $user->createToken('estimator-workspace')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/funnel/workspace')
+            ->assertOk()
+            ->assertJsonPath('data.mode', 'budget')
+            ->assertJsonPath('data.can_update', true);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/projects/funnel/workspace', ['mode' => 'order'])
+            ->assertOk()
+            ->assertJsonPath('data.mode', 'order');
+
+        $this->assertSame('order', $team->fresh()->getSetting('estimator_workspace_mode'));
+    }
+
     public function test_token_pricing_requires_authentication(): void
     {
         $this->createFunnelTeam();

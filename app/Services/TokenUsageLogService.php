@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Module;
 use App\Models\TokenUsageLog;
+use App\Services\Billing\BilledUsage;
 use Illuminate\Support\Facades\Log;
 
 final class TokenUsageLogService
@@ -23,10 +24,25 @@ final class TokenUsageLogService
         int $jsonTokens = 0,
         int $toonTokens = 0,
         int $savingsPercentage = 0,
+        ?int $promptTokens = null,
+        ?int $completionTokens = null,
+        ?string $model = null,
     ): void {
         if ($totalTokens <= 0)
         {
             return;
+        }
+
+        $storedJson = $usedToon ? ($jsonTokens > 0 ? $jsonTokens : $totalTokens) : $totalTokens;
+        $storedToon = $usedToon ? ($toonTokens > 0 ? $toonTokens : $totalTokens) : 0;
+        $used = $usedToon ? $storedToon : $storedJson;
+        $saved = $usedToon ? max(0, $storedJson - $storedToon) : 0;
+        $prompt = $promptTokens;
+        $completion = max(0, (int) $completionTokens);
+        if ($prompt === null || $prompt + $completion <= 0)
+        {
+            $prompt = $used;
+            $completion = 0;
         }
 
         try
@@ -37,10 +53,11 @@ final class TokenUsageLogService
                 'service' => $service,
                 'json_size' => max(0, $inputSize),
                 'toon_size' => max(0, $outputSize),
-                'json_tokens' => $usedToon ? ($jsonTokens > 0 ? $jsonTokens : $totalTokens) : $totalTokens,
-                'toon_tokens' => $usedToon ? ($toonTokens > 0 ? $toonTokens : $totalTokens) : 0,
+                'json_tokens' => $storedJson,
+                'toon_tokens' => $storedToon,
                 'savings_percentage' => $savingsPercentage,
                 'used_toon' => $usedToon,
+                'billed_usage' => BilledUsage::capture($teamId, max(0, (int) $prompt), $completion, $saved, $model),
             ]);
         } catch (\Throwable $e)
         {
@@ -67,6 +84,7 @@ final class TokenUsageLogService
         int $inputSize = 0,
         int $outputSize = 0,
         ?array $toon = null,
+        ?string $model = null,
     ): void {
         $totalTokens = self::totalTokensFromUsage($usage);
         if ($totalTokens <= 0)
@@ -81,6 +99,8 @@ final class TokenUsageLogService
         $savings = $jsonTokens > 0 && $usedToon
             ? (int) round(min(100, ($tokensSaved / $jsonTokens) * 100))
             : 0;
+        [$promptTokens, $completionTokens] = self::splitFromUsage($usage);
+        $resolvedModel = self::modelFromUsage($usage) ?? $model;
 
         self::log(
             teamId: $teamId,
@@ -94,7 +114,44 @@ final class TokenUsageLogService
             jsonTokens: $jsonTokens,
             toonTokens: $toonTokens,
             savingsPercentage: $savings,
+            promptTokens: ($promptTokens + $completionTokens) > 0 ? $promptTokens : null,
+            completionTokens: ($promptTokens + $completionTokens) > 0 ? $completionTokens : null,
+            model: $resolvedModel,
         );
+    }
+
+    /**
+     * @return array{0: int, 1: int}
+     */
+    private static function splitFromUsage(mixed $usage): array
+    {
+        if (is_array($usage))
+        {
+            return [
+                max(0, (int) ($usage['prompt_tokens'] ?? $usage['promptTokens'] ?? 0)),
+                max(0, (int) ($usage['completion_tokens'] ?? $usage['completionTokens'] ?? 0)),
+            ];
+        }
+
+        if (is_object($usage))
+        {
+            return [
+                max(0, (int) ($usage->promptTokens ?? $usage->prompt_tokens ?? 0)),
+                max(0, (int) ($usage->completionTokens ?? $usage->completion_tokens ?? 0)),
+            ];
+        }
+
+        return [0, 0];
+    }
+
+    private static function modelFromUsage(mixed $usage): ?string
+    {
+        $model = is_array($usage)
+            ? ($usage['model'] ?? null)
+            : (is_object($usage) ? ($usage->model ?? null) : null);
+        $model = is_string($model) ? trim($model) : '';
+
+        return $model !== '' ? $model : null;
     }
 
     /**
