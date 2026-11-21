@@ -139,8 +139,8 @@ class AssistantWhatsAppUsageByLineService
         // Same universe as TeamBillingUsageSummaryService / invoice preview:
         // TokenUsageLog + agent chat, scaled and priced as prompt tokens.
         $sources = $this->presentSources($teamUsage['byModule'], $from, $defaultModel);
-        $headline = $this->invoiceAlignedHeadline((int) $teamUsage['totalTokensUsed'], $from, $defaultModel);
-        $allSaved = $this->tokens->scale((int) $teamUsage['totalTokensSaved']);
+        $headline = $this->invoiceAlignedHeadline((int) ($teamUsage['totalBilledTokens'] ?? 0), $from, $defaultModel, alreadyBilled: true);
+        $allSaved = (int) ($teamUsage['totalBilledTokensSaved'] ?? $this->tokens->scale((int) $teamUsage['totalTokensSaved']));
         $whatsapp = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
         $prospect = TeamProspectUsageStatsService::forTeam($team, $from, $to);
         $storage = TeamStorageUsageStatsService::forTeam($team, $to);
@@ -497,9 +497,17 @@ class AssistantWhatsAppUsageByLineService
      *
      * @return array{tokens: int, amount_cents: int}
      */
-    private function invoiceAlignedHeadline(int $realTokens, Carbon $from, string $defaultModel): array
+    private function invoiceAlignedHeadline(int $tokens, Carbon $from, string $defaultModel, bool $alreadyBilled = false): array
     {
-        $presented = $this->tokens->present($realTokens, 0, $defaultModel, $from);
+        if ($alreadyBilled)
+        {
+            return [
+                'tokens' => $tokens,
+                'amount_cents' => $this->tokens->costCents($tokens, 0, $defaultModel, $from),
+            ];
+        }
+
+        $presented = $this->tokens->present($tokens, 0, $defaultModel, $from);
 
         return [
             'tokens' => $presented['total_tokens'],
@@ -517,14 +525,18 @@ class AssistantWhatsAppUsageByLineService
 
         foreach ($byModule as $row)
         {
-            $presented = $this->tokens->present((int) ($row['tokens_used'] ?? 0), 0, $defaultModel, $from);
-            $saved = $this->tokens->scale((int) ($row['tokens_saved'] ?? 0));
+            $used = array_key_exists('tokens_billed', $row)
+                ? (int) $row['tokens_billed']
+                : $this->tokens->present((int) ($row['tokens_used'] ?? 0), 0, $defaultModel, $from)['total_tokens'];
+            $saved = array_key_exists('tokens_saved_billed', $row)
+                ? (int) $row['tokens_saved_billed']
+                : $this->tokens->scale((int) ($row['tokens_saved'] ?? 0));
             $sources[] = [
                 'module_name' => (string) ($row['module_name'] ?? ''),
                 'count' => (int) ($row['count'] ?? 0),
-                'tokens_used' => $presented['total_tokens'],
+                'tokens_used' => $used,
                 'tokens_saved' => $saved,
-                'amount_cents' => $presented['amount_cents'],
+                'amount_cents' => $this->tokens->costCents($used, 0, $defaultModel, $from),
                 'saved_cents' => $this->tokens->costCents($saved, 0, $defaultModel, $from),
             ];
         }

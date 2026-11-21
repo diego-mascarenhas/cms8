@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Billing\BilledUsage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,8 @@ class TokenUsageLog extends Model
         'toon_tokens',
         'savings_percentage',
         'used_toon',
+        'billed_usage',
+        'usage_invoice_id',
     ];
 
     protected $casts = [
@@ -30,6 +33,7 @@ class TokenUsageLog extends Model
         'json_tokens' => 'integer',
         'toon_tokens' => 'integer',
         'savings_percentage' => 'integer',
+        'billed_usage' => 'array',
     ];
 
     /**
@@ -44,6 +48,29 @@ class TokenUsageLog extends Model
                 $builder->where('team_id', auth()->user()->currentTeam->id);
             }
         });
+
+        static::creating(function (TokenUsageLog $log): void
+        {
+            if (BilledUsage::read(is_array($log->billed_usage) ? $log->billed_usage : null) !== null)
+            {
+                return;
+            }
+
+            $used = $log->used_toon ? (int) $log->toon_tokens : (int) $log->json_tokens;
+            if ($used <= 0)
+            {
+                $used = (int) $log->json_tokens;
+            }
+            $saved = $log->used_toon ? max(0, (int) $log->json_tokens - (int) $log->toon_tokens) : 0;
+            $log->billed_usage = BilledUsage::capture(
+                $log->team_id !== null ? (int) $log->team_id : null,
+                $used,
+                0,
+                $saved,
+                null,
+                $log->created_at ?? now(),
+            );
+        });
     }
 
     /**
@@ -52,6 +79,11 @@ class TokenUsageLog extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    public function usageInvoice(): BelongsTo
+    {
+        return $this->belongsTo(TeamUsageInvoice::class, 'usage_invoice_id');
     }
 
     /**

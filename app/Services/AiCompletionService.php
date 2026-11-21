@@ -91,6 +91,7 @@ class AiCompletionService
                 inputSize: strlen($prompt),
                 outputSize: strlen($text),
                 toon: $toon,
+                model: AiTasks::model('assistant'),
             );
         } else
         {
@@ -103,6 +104,7 @@ class AiCompletionService
                 inputSize: strlen($prompt),
                 outputSize: strlen($text),
                 toon: $toon,
+                model: AiTasks::model('assistant'),
             );
             $totalTokens = $estimated;
         }
@@ -145,6 +147,7 @@ class AiCompletionService
         int $inputSize = 0,
         int $outputSize = 0,
         ?array $toon = null,
+        ?string $model = null,
     ): ?array {
         $moduleKey = strtolower(trim($moduleKey));
         if (! in_array($moduleKey, self::ALLOWED_MODULES, true))
@@ -178,6 +181,7 @@ class AiCompletionService
             inputSize: max(0, $inputSize),
             outputSize: max(0, $outputSize),
             toon: $toon,
+            model: $model,
         );
 
         return [

@@ -60,6 +60,7 @@ class AiCompletionController extends Controller
                 (int) ($request->validated('input_size') ?? 0),
                 (int) ($request->validated('output_size') ?? 0),
                 is_array($request->validated('toon')) ? $request->validated('toon') : null,
+                is_string($request->validated('model')) ? $request->validated('model') : null,
             );
         } catch (RuntimeException $e)
         {

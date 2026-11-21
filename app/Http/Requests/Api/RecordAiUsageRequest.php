@@ -22,6 +22,7 @@ class RecordAiUsageRequest extends FormRequest
         return [
             'module' => ['required', 'string', Rule::in(AiCompletionService::ALLOWED_MODULES)],
             'service' => ['nullable', 'string', 'max:120'],
+            'model' => ['nullable', 'string', 'max:120'],
             'prompt_tokens' => ['nullable', 'integer', 'min:0'],
             'completion_tokens' => ['nullable', 'integer', 'min:0'],
             'total_tokens' => ['nullable', 'integer', 'min:0'],
