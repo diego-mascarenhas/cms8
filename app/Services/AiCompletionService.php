@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Team;
+use App\Services\Billing\ClientTokenPresenter;
 use App\Support\AiTasks;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -25,7 +26,7 @@ class AiCompletionService
 
     /**
      * @param  array{used_toon?: bool, json_size?: int, toon_size?: int, json_tokens?: int, toon_tokens?: int, tokens_saved?: int, savings_percentage?: float|int}|null  $toon
-     * @return array{text: string, usage: array{prompt_tokens: int, completion_tokens: int, total_tokens: int}, module: string, service: string}
+     * @return array{text: string, usage: array{prompt_tokens: int, completion_tokens: int, total_tokens: int}, token_multiplier: float, client_presented: bool, module: string, service: string}
      */
     public function complete(
         Team $team,
@@ -121,11 +122,7 @@ class AiCompletionService
 
         return [
             'text' => $text,
-            'usage' => [
-                'prompt_tokens' => $promptTokens,
-                'completion_tokens' => $completionTokens,
-                'total_tokens' => $totalTokens,
-            ],
+            ...$this->billedPayload($team, $promptTokens, $completionTokens, $totalTokens),
             'module' => $moduleKey,
             'service' => $serviceName,
         ];
@@ -136,7 +133,7 @@ class AiCompletionService
      * The model stays with the caller. This ledger keeps the same columns as before.
      *
      * @param  array{used_toon?: bool, json_size?: int, toon_size?: int, json_tokens?: int, toon_tokens?: int, tokens_saved?: int, savings_percentage?: float|int}|null  $toon
-     * @return array{usage: array{prompt_tokens: int, completion_tokens: int, total_tokens: int}, module: string, service: string}|null
+     * @return array{usage: array{prompt_tokens: int, completion_tokens: int, total_tokens: int}, token_multiplier: float, client_presented: bool, module: string, service: string}|null
      */
     public function recordUsage(
         Team $team,
@@ -184,13 +181,38 @@ class AiCompletionService
         );
 
         return [
-            'usage' => [
-                'prompt_tokens' => $promptTokens,
-                'completion_tokens' => $completionTokens,
-                'total_tokens' => $totalTokens,
-            ],
+            ...$this->billedPayload($team, $promptTokens, $completionTokens, $totalTokens),
             'module' => $moduleKey,
             'service' => $serviceName,
+        ];
+    }
+
+    /**
+     * The ledger keeps provider tokens. Callers that show or store this payload
+     * receive the same multiplied counts the invoice will charge.
+     *
+     * @return array{usage: array{prompt_tokens: int, completion_tokens: int, total_tokens: int}, token_multiplier: float, client_presented: bool}
+     */
+    private function billedPayload(Team $team, int $promptTokens, int $completionTokens, int $totalTokens): array
+    {
+        $presenter = app(ClientTokenPresenter::class)->usingTeam($team);
+        $total = $presenter->scale($totalTokens);
+        $prompt = $promptTokens > 0 ? $presenter->scale($promptTokens) : $total;
+        $completion = $completionTokens > 0 ? $presenter->scale($completionTokens) : 0;
+
+        if ($prompt + $completion !== $total)
+        {
+            $prompt = max(0, $total - $completion);
+        }
+
+        return [
+            'usage' => [
+                'prompt_tokens' => $prompt,
+                'completion_tokens' => $completion,
+                'total_tokens' => $total,
+            ],
+            'token_multiplier' => $presenter->multiplier(),
+            'client_presented' => true,
         ];
     }
 }
