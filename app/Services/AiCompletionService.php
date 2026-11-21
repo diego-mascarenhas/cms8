@@ -25,8 +25,10 @@ class AiCompletionService
     ];
 
     /**
-     * @param  array{used_toon?: bool, json_size?: int, toon_size?: int, json_tokens?: int, toon_tokens?: int, tokens_saved?: int, savings_percentage?: float|int}|null  $toon
-     * @return array{text: string, usage: array{prompt_tokens: int, completion_tokens: int, total_tokens: int}, token_multiplier: float, client_presented: bool, module: string, service: string}
+     * The client sends the prompt uncompressed. Compression happens here, and the
+     * response tells the client whether TOON was applied.
+     *
+     * @return array{text: string, usage: array{prompt_tokens: int, completion_tokens: int, total_tokens: int}, token_multiplier: float, client_presented: bool, module: string, service: string, toon: array{used_toon: bool, json_size: int, toon_size: int, json_tokens: int, toon_tokens: int, tokens_saved: int, savings_percentage: int}}
      */
     public function complete(
         Team $team,
@@ -35,7 +37,6 @@ class AiCompletionService
         ?string $service = null,
         ?int $maxTokens = null,
         ?float $temperature = null,
-        ?array $toon = null,
     ): array {
         $moduleKey = strtolower(trim($moduleKey));
         if (! in_array($moduleKey, self::ALLOWED_MODULES, true))
@@ -53,6 +54,10 @@ class AiCompletionService
         // providers use their configured defaults for anonymous agent prompts.
         unset($maxTokens, $temperature);
 
+        $compressed = PromptToonCompressor::compress($prompt);
+        $promptForModel = $compressed['prompt'];
+        $toon = $compressed['toon'];
+
         try
         {
             $agent = agent(
@@ -61,7 +66,7 @@ class AiCompletionService
                 tools: [],
             );
             $response = $agent->prompt(
-                $prompt,
+                $promptForModel,
                 [],
                 AiTasks::provider('assistant'),
                 AiTasks::model('assistant'),
@@ -127,6 +132,7 @@ class AiCompletionService
             ...$this->billedPayload($team, $promptTokens, $completionTokens, $totalTokens),
             'module' => $moduleKey,
             'service' => $serviceName,
+            'toon' => $toon,
         ];
     }
 

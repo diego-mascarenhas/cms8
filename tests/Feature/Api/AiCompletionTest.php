@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\TokenBillingRateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\AnonymousAgent;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -131,7 +132,7 @@ class AiCompletionTest extends TestCase
         ])->assertStatus(401);
     }
 
-    public function test_complete_stores_toon_savings_without_a_model_column(): void
+    public function test_complete_ignores_a_client_toon_claim_on_plain_text(): void
     {
         AnonymousAgent::fake(['Suggested proposal text.']);
 
@@ -154,17 +155,57 @@ class AiCompletionTest extends TestCase
                 ],
             ])
             ->assertOk()
-            ->assertJsonPath('data.client_presented', true);
+            ->assertJsonPath('data.client_presented', true)
+            ->assertJsonPath('data.toon.used_toon', false)
+            ->assertJsonPath('data.toon.tokens_saved', 0);
+
+        $log = TokenUsageLog::query()->where('service', 'ClaudeProposalValidator')->first();
+        $this->assertNotNull($log);
+        $this->assertFalse($log->used_toon);
+        $this->assertSame(0, (int) $log->toon_tokens);
+        $this->assertSame(
+            $this->billedTokens($user->currentTeam, (int) $log->json_tokens),
+            (int) $response->json('data.usage.total_tokens'),
+        );
+        $response->assertJsonMissingPath('data.model');
+    }
+
+    public function test_complete_compresses_json_blocks_before_calling_the_model(): void
+    {
+        AnonymousAgent::fake(['Suggested proposal text.']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        Role::findOrCreate('admin');
+        $user->assignRole('admin');
+        $created = $user->currentTeam->createApiToken('Fanyion', '*');
+
+        $rows = [
+            ['name' => 'Costo', 'detail' => 'El presupuesto inicial es alto para el primer trimestre del proyecto'],
+            ['name' => 'Plazo', 'detail' => 'La ventana de implementación supera los seis meses previstos'],
+        ];
+        $prompt = "Evaluá estos riesgos:\n```json\n".json_encode($rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)."\n```\n";
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$created['plain'])
+            ->postJson('/api/ai/complete', [
+                'module' => 'proposals',
+                'prompt' => $prompt,
+                'service' => 'ClaudeProposalValidator',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.toon.used_toon', true);
+
+        $this->assertGreaterThan(0, (int) $response->json('data.toon.tokens_saved'));
+
+        AnonymousAgent::assertPrompted(function (AgentPrompt $prompt): bool
+        {
+            return str_contains($prompt->prompt, '```toon')
+                && ! str_contains($prompt->prompt, '```json');
+        });
 
         $log = TokenUsageLog::query()->where('service', 'ClaudeProposalValidator')->first();
         $this->assertNotNull($log);
         $this->assertTrue($log->used_toon);
         $this->assertGreaterThan((int) $log->toon_tokens, (int) $log->json_tokens);
-        $this->assertSame(
-            $this->billedTokens($user->currentTeam, (int) $log->toon_tokens),
-            (int) $response->json('data.usage.total_tokens'),
-        );
-        $this->assertFalse(isset($log->model));
     }
 
     public function test_usage_endpoint_records_fallback_tokens(): void
