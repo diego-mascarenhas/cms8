@@ -28,7 +28,6 @@ class AiCompletionController extends Controller
                 $request->validated('service'),
                 $request->validated('max_tokens') !== null ? (int) $request->validated('max_tokens') : null,
                 $request->validated('temperature') !== null ? (float) $request->validated('temperature') : null,
-                is_array($request->validated('toon')) ? $request->validated('toon') : null,
             );
         } catch (RuntimeException $e)
         {

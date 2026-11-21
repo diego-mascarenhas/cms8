@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Team;
 use App\Services\Billing\ClientTokenPresenter;
+use App\Services\Billing\McpClientDiscount;
 use App\Support\AiTasks;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -25,8 +26,10 @@ class AiCompletionService
     ];
 
     /**
-     * @param  array{used_toon?: bool, json_size?: int, toon_size?: int, json_tokens?: int, toon_tokens?: int, tokens_saved?: int, savings_percentage?: float|int}|null  $toon
-     * @return array{text: string, usage: array{prompt_tokens: int, completion_tokens: int, total_tokens: int}, token_multiplier: float, client_presented: bool, module: string, service: string}
+     * The client sends the prompt uncompressed. Compression happens here, and the
+     * response tells the client whether TOON was applied.
+     *
+     * @return array{text: string, usage: array{prompt_tokens: int, completion_tokens: int, total_tokens: int}, token_multiplier: float, client_presented: bool, module: string, service: string, toon: array{used_toon: bool, json_size: int, toon_size: int, json_tokens: int, toon_tokens: int, tokens_saved: int, savings_percentage: int}}
      */
     public function complete(
         Team $team,
@@ -35,7 +38,6 @@ class AiCompletionService
         ?string $service = null,
         ?int $maxTokens = null,
         ?float $temperature = null,
-        ?array $toon = null,
     ): array {
         $moduleKey = strtolower(trim($moduleKey));
         if (! in_array($moduleKey, self::ALLOWED_MODULES, true))
@@ -53,6 +55,10 @@ class AiCompletionService
         // providers use their configured defaults for anonymous agent prompts.
         unset($maxTokens, $temperature);
 
+        $compressed = PromptToonCompressor::compress($prompt);
+        $promptForModel = $compressed['prompt'];
+        $toon = $compressed['toon'];
+
         try
         {
             $agent = agent(
@@ -61,7 +67,7 @@ class AiCompletionService
                 tools: [],
             );
             $response = $agent->prompt(
-                $prompt,
+                $promptForModel,
                 [],
                 AiTasks::provider('assistant'),
                 AiTasks::model('assistant'),
@@ -80,35 +86,6 @@ class AiCompletionService
         $text = trim((string) ($response->text ?? ''));
         $usage = $response->usage ?? null;
         $totalTokens = TokenUsageLogService::totalTokensFromUsage($usage);
-
-        if ($totalTokens > 0)
-        {
-            TokenUsageLogService::logFromAiResponse(
-                teamId: (int) $team->id,
-                service: $serviceName,
-                usage: $usage,
-                moduleKey: $moduleKey,
-                inputSize: strlen($prompt),
-                outputSize: strlen($text),
-                toon: $toon,
-                model: AiTasks::model('assistant'),
-            );
-        } else
-        {
-            $estimated = (int) max(1, round(strlen($prompt) / 4) + round(strlen($text) / 4));
-            TokenUsageLogService::logFromAiResponse(
-                teamId: (int) $team->id,
-                service: $serviceName,
-                usage: ['total_tokens' => $estimated],
-                moduleKey: $moduleKey,
-                inputSize: strlen($prompt),
-                outputSize: strlen($text),
-                toon: $toon,
-                model: AiTasks::model('assistant'),
-            );
-            $totalTokens = $estimated;
-        }
-
         $promptTokens = is_object($usage)
             ? (int) ($usage->promptTokens ?? $usage->prompt_tokens ?? 0)
             : (int) (is_array($usage) ? ($usage['prompt_tokens'] ?? $usage['promptTokens'] ?? 0) : 0);
@@ -118,15 +95,37 @@ class AiCompletionService
 
         if ($promptTokens + $completionTokens <= 0)
         {
+            if ($totalTokens <= 0)
+            {
+                $totalTokens = (int) max(1, round(strlen($prompt) / 4) + round(strlen($text) / 4));
+            }
             $promptTokens = (int) max(0, round(strlen($prompt) / 4));
             $completionTokens = max(0, $totalTokens - $promptTokens);
         }
 
+        $priced = $this->pricedUsage($promptTokens, $completionTokens, $toon, true);
+
+        TokenUsageLogService::logFromAiResponse(
+            teamId: (int) $team->id,
+            service: $serviceName,
+            usage: [
+                'prompt_tokens' => $priced['prompt_tokens'],
+                'completion_tokens' => $priced['completion_tokens'],
+                'total_tokens' => $priced['total_tokens'],
+            ],
+            moduleKey: $moduleKey,
+            inputSize: strlen($prompt),
+            outputSize: strlen($text),
+            toon: $toon,
+            model: AiTasks::model('assistant'),
+        );
+
         return [
             'text' => $text,
-            ...$this->billedPayload($team, $promptTokens, $completionTokens, $totalTokens),
+            ...$this->billedPayload($team, $priced['prompt_tokens'], $priced['completion_tokens'], $priced['total_tokens']),
             'module' => $moduleKey,
             'service' => $serviceName,
+            'toon' => $toon,
         ];
     }
 
@@ -169,13 +168,21 @@ class AiCompletionService
             $serviceName = 'AiCompletionService';
         }
 
+        if ($promptTokens + $completionTokens <= 0)
+        {
+            $promptTokens = $totalTokens;
+            $completionTokens = 0;
+        }
+
+        $priced = $this->pricedUsage($promptTokens, $completionTokens, $toon);
+
         TokenUsageLogService::logFromAiResponse(
             teamId: (int) $team->id,
             service: $serviceName,
             usage: [
-                'prompt_tokens' => $promptTokens,
-                'completion_tokens' => $completionTokens,
-                'total_tokens' => $totalTokens,
+                'prompt_tokens' => $priced['prompt_tokens'],
+                'completion_tokens' => $priced['completion_tokens'],
+                'total_tokens' => $priced['total_tokens'],
             ],
             moduleKey: $moduleKey,
             inputSize: max(0, $inputSize),
@@ -185,10 +192,46 @@ class AiCompletionService
         );
 
         return [
-            ...$this->billedPayload($team, $promptTokens, $completionTokens, $totalTokens),
+            ...$this->billedPayload($team, $priced['prompt_tokens'], $priced['completion_tokens'], $priced['total_tokens']),
             'module' => $moduleKey,
             'service' => $serviceName,
+            'toon' => $toon,
         ];
+    }
+
+    /**
+     * MCP completions always take a random discount in the published TOON range,
+     * whether or not the prompt shrank. Fallback reports stay full price unless
+     * the caller already marked them as MCP.
+     *
+     * @param  array{used_toon?: bool, json_size?: int, toon_size?: int, json_tokens?: int, toon_tokens?: int, tokens_saved?: int, savings_percentage?: float|int}|null  $toon
+     * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, savings_percentage: int}
+     */
+    private function pricedUsage(int $promptTokens, int $completionTokens, ?array &$toon, bool $mcpCall = false): array
+    {
+        $applyDiscount = $mcpCall || (is_array($toon) && (bool) ($toon['used_toon'] ?? false));
+        $priced = McpClientDiscount::apply($promptTokens, $completionTokens, $applyDiscount);
+
+        if (! $applyDiscount)
+        {
+            return $priced;
+        }
+
+        if (! is_array($toon))
+        {
+            $toon = [
+                'json_size' => 0,
+                'toon_size' => 0,
+                'json_tokens' => 0,
+                'toon_tokens' => 0,
+            ];
+        }
+
+        $toon['used_toon'] = true;
+        $toon['tokens_saved'] = $priced['tokens_saved'];
+        $toon['savings_percentage'] = $priced['savings_percentage'];
+
+        return $priced;
     }
 
     /**

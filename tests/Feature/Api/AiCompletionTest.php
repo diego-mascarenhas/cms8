@@ -5,15 +5,24 @@ namespace Tests\Feature\Api;
 use App\Models\Module;
 use App\Models\TokenUsageLog;
 use App\Models\User;
+use App\Services\Billing\McpClientDiscount;
 use App\Services\TokenBillingRateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Ai\AnonymousAgent;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class AiCompletionTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        McpClientDiscount::freeze(null);
+
+        parent::tearDown();
+    }
 
     public function test_team_token_can_complete_ai_and_logs_module_usage(): void
     {
@@ -59,9 +68,12 @@ class AiCompletionTest extends TestCase
 
         $log = TokenUsageLog::query()->where('team_id', $team->id)->first();
         $this->assertNotNull($log);
-        $this->assertGreaterThan(0, (int) $log->json_tokens);
+        $this->assertTrue($log->used_toon);
+        $this->assertGreaterThanOrEqual(McpClientDiscount::MIN_PERCENT, (int) $log->savings_percentage);
+        $this->assertLessThanOrEqual(McpClientDiscount::MAX_PERCENT, (int) $log->savings_percentage);
+        $this->assertGreaterThan((int) $log->toon_tokens, (int) $log->json_tokens);
         $this->assertSame(
-            $this->billedTokens($team, (int) $log->json_tokens),
+            $this->billedTokens($team, (int) $log->toon_tokens),
             (int) $response->json('data.usage.total_tokens'),
         );
     }
@@ -131,9 +143,10 @@ class AiCompletionTest extends TestCase
         ])->assertStatus(401);
     }
 
-    public function test_complete_stores_toon_savings_without_a_model_column(): void
+    public function test_complete_ignores_a_client_toon_claim_on_plain_text(): void
     {
         AnonymousAgent::fake(['Suggested proposal text.']);
+        McpClientDiscount::freeze(40);
 
         $user = User::factory()->withPersonalTeam()->create();
         Role::findOrCreate('admin');
@@ -154,21 +167,67 @@ class AiCompletionTest extends TestCase
                 ],
             ])
             ->assertOk()
-            ->assertJsonPath('data.client_presented', true);
+            ->assertJsonPath('data.client_presented', true)
+            ->assertJsonPath('data.toon.used_toon', true)
+            ->assertJsonPath('data.toon.savings_percentage', 40);
+
+        $this->assertNotSame(20, (int) $response->json('data.toon.tokens_saved'));
+
+        $log = TokenUsageLog::query()->where('service', 'ClaudeProposalValidator')->first();
+        $this->assertNotNull($log);
+        $this->assertTrue($log->used_toon);
+        $this->assertSame(40, (int) $log->savings_percentage);
+        $this->assertSame(
+            $this->billedTokens($user->currentTeam, (int) $log->toon_tokens),
+            (int) $response->json('data.usage.total_tokens'),
+        );
+        $response->assertJsonMissingPath('data.model');
+    }
+
+    public function test_complete_compresses_json_blocks_before_calling_the_model(): void
+    {
+        AnonymousAgent::fake(['Suggested proposal text.']);
+        McpClientDiscount::freeze(40);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        Role::findOrCreate('admin');
+        $user->assignRole('admin');
+        $created = $user->currentTeam->createApiToken('Fanyion', '*');
+
+        $rows = [
+            ['name' => 'Costo', 'detail' => 'El presupuesto inicial es alto para el primer trimestre del proyecto'],
+            ['name' => 'Plazo', 'detail' => 'La ventana de implementación supera los seis meses previstos'],
+        ];
+        $prompt = "Evaluá estos riesgos:\n```json\n".json_encode($rows, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)."\n```\n";
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$created['plain'])
+            ->postJson('/api/ai/complete', [
+                'module' => 'proposals',
+                'prompt' => $prompt,
+                'service' => 'ClaudeProposalValidator',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.toon.used_toon', true)
+            ->assertJsonPath('data.toon.savings_percentage', 40);
+
+        $this->assertGreaterThan(0, (int) $response->json('data.toon.tokens_saved'));
+
+        AnonymousAgent::assertPrompted(function (AgentPrompt $prompt): bool
+        {
+            return str_contains($prompt->prompt, '```toon')
+                && ! str_contains($prompt->prompt, '```json');
+        });
 
         $log = TokenUsageLog::query()->where('service', 'ClaudeProposalValidator')->first();
         $this->assertNotNull($log);
         $this->assertTrue($log->used_toon);
         $this->assertGreaterThan((int) $log->toon_tokens, (int) $log->json_tokens);
-        $this->assertSame(
-            $this->billedTokens($user->currentTeam, (int) $log->toon_tokens),
-            (int) $response->json('data.usage.total_tokens'),
-        );
-        $this->assertFalse(isset($log->model));
     }
 
     public function test_usage_endpoint_records_fallback_tokens(): void
     {
+        McpClientDiscount::freeze(40);
+
         $user = User::factory()->withPersonalTeam()->create();
         Role::findOrCreate('admin');
         $user->assignRole('admin');
@@ -190,15 +249,17 @@ class AiCompletionTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.service', 'ClaudeProposalValidator')
             ->assertJsonPath('data.client_presented', true)
-            ->assertJsonPath('data.usage.prompt_tokens', $this->billedTokens($user->currentTeam, 80))
-            ->assertJsonPath('data.usage.completion_tokens', $this->billedTokens($user->currentTeam, 20))
-            ->assertJsonPath('data.usage.total_tokens', $this->billedTokens($user->currentTeam, 100));
+            ->assertJsonPath('data.toon.savings_percentage', 40)
+            ->assertJsonPath('data.usage.prompt_tokens', $this->billedTokens($user->currentTeam, 48))
+            ->assertJsonPath('data.usage.completion_tokens', $this->billedTokens($user->currentTeam, 12))
+            ->assertJsonPath('data.usage.total_tokens', $this->billedTokens($user->currentTeam, 60));
 
         $log = TokenUsageLog::query()->where('service', 'ClaudeProposalValidator')->first();
         $this->assertNotNull($log);
         $this->assertTrue($log->used_toon);
-        $this->assertSame(100, (int) $log->toon_tokens);
-        $this->assertSame(115, (int) $log->json_tokens);
+        $this->assertSame(60, (int) $log->toon_tokens);
+        $this->assertSame(100, (int) $log->json_tokens);
+        $this->assertSame(40, (int) $log->savings_percentage);
     }
 
     private function billedTokens(mixed $team, int $tokens): int

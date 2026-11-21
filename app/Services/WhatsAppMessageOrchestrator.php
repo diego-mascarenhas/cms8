@@ -27,6 +27,7 @@ use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\Billing\BilledUsage;
+use App\Services\Billing\McpClientDiscount;
 use App\Services\Billing\SubscriptionCatalogText;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
@@ -361,19 +362,14 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             return [];
         }
 
+        $priced = McpClientDiscount::apply($prompt, $completion, true);
         $tokenUsage = [
             'prompt_tokens' => $prompt,
             'completion_tokens' => $completion,
             'total_tokens' => $total,
             'tool_calls' => is_countable($tools) ? count($tools) : 0,
+            'tokens_saved' => $priced['tokens_saved'],
         ];
-        $tokensSaved = max(0, (int) ($usage['tokens_saved'] ?? 0));
-        if ($tokensSaved > 0)
-        {
-            $tokenUsage['tokens_saved'] = $tokensSaved;
-            $tokenUsage['json_tokens'] = (int) ($usage['json_tokens'] ?? 0);
-            $tokenUsage['toon_tokens'] = (int) ($usage['toon_tokens'] ?? 0);
-        }
         $model = (string) ($usage['model'] ?? ($replyResponse['meta']['model'] ?? ''));
         if ($model !== '')
         {
@@ -384,9 +380,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             'token_usage' => $tokenUsage,
             'billed_usage' => BilledUsage::capture(
                 $this->team?->id,
-                $prompt,
-                $completion,
-                $tokensSaved,
+                $priced['prompt_tokens'],
+                $priced['completion_tokens'],
+                $priced['tokens_saved'],
                 $model !== '' ? $model : null,
             ),
         ];
