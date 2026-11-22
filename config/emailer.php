@@ -8,7 +8,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | The email provider to use for sending campaigns. Options:
-    | smtp, mailgun, sendgrid, mailbaby
+    | smtp, sendgrid, mailbaby
     |
     */
 
@@ -145,13 +145,6 @@ return [
     */
 
     'providers' => [
-        'mailgun' => [
-            'enabled' => env('EMAILER_MAILGUN_ENABLED', env('MAILGUN_SECRET') ? true : false),
-            'domain' => env('MAILGUN_DOMAIN'),
-            'secret' => env('MAILGUN_SECRET'),
-            'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
-        ],
-
         'sendgrid' => [
             'enabled' => env('EMAILER_SENDGRID_ENABLED', env('SENDGRID_API_KEY') ? true : false),
             'api_key' => env('SENDGRID_API_KEY'),

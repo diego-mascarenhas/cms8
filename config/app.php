@@ -84,6 +84,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | API rate limit per IP
+    |--------------------------------------------------------------------------
+    |
+    | Maximum requests per minute to /api from a single client IP.
+    | The WordPress webhook is excluded from this limiter.
+    |
+    */
+
+    'api_rate_limit_per_minute' => (int) env('API_RATE_LIMIT_PER_MINUTE', 60),
+
+    /*
+    |--------------------------------------------------------------------------
     | Assistant chat stub (testing)
     |--------------------------------------------------------------------------
     |
