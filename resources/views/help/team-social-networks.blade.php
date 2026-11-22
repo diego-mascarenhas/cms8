@@ -23,7 +23,7 @@
 
                 <div class="alert alert-primary mb-4">
                     <h6 class="alert-heading mb-2"><i class="ti ti-key me-2"></i>{{ __('App keys (.env) — global for the whole product') }}</h6>
-                    <p class="mb-0">{{ __('You register one Meta app, one LinkedIn app, etc., as the developer of Humano. Their Client ID and Client Secret live in the server .env (or hosting secrets) and map to config/services.php for Laravel Socialite. Every team uses the same app; redirect URIs must match your APP_URL.') }}</p>
+                    <p class="mb-0">{{ __('You register one Meta app, one LinkedIn app, etc., as the developer of Humano. Their Client ID and Client Secret would live in the server .env and in config/services.php. Every team would use the same app; redirect URIs must match your APP_URL. Those Connect routes are not enabled in this build.') }}</p>
                 </div>
 
                 <div class="alert alert-info mb-4">
@@ -37,19 +37,7 @@
                 <p class="small text-muted">{{ __('Replace') }} <code>&lt;team_id&gt;</code> {{ __('with the numeric ID of the team (same as in') }} <code>/team/&lt;team_id&gt;/settings</code>).</p>
 
                 <h5 class="mt-4">{{ __('Typical server variables (when OAuth is wired)') }}</h5>
-                <p>{{ __('Exact names follow your config/services.php entries. Common Socialite examples:') }}</p>
-                <pre class="mb-3"><code class="language-env">APP_URL=https://humano.test
-
-# Meta (Facebook Login / Graph) — example keys; align with services.facebook
-FACEBOOK_CLIENT_ID=
-FACEBOOK_CLIENT_SECRET=
-FACEBOOK_REDIRECT_URI="${APP_URL}/integrations/social/facebook/callback"
-
-# LinkedIn OpenID — example; align with services.linkedin-openid
-LINKEDIN_CLIENT_ID=
-LINKEDIN_CLIENT_SECRET=
-LINKEDIN_REDIRECT_URI="${APP_URL}/integrations/social/linkedin-openid/callback"</code></pre>
-                <p class="small text-muted">{{ __('Register the same redirect URLs in the Meta and LinkedIn developer consoles. Until OAuth routes are enabled in your build, the Connect buttons in Team Settings may stay disabled.') }}</p>
+                <p>{{ __('Meta and LinkedIn OAuth env keys are not defined until those routes exist. Google OAuth is the connection that is wired today.') }}</p>
 
                 <h5 class="mt-4">{{ __('Bluesky') }}</h5>
                 <p>{{ __('Public follower counts can use the Bluesky handle alone in some flows; optional app passwords are for authenticated API access. Team-specific handles or secrets are never global .env keys for all teams.') }}</p>

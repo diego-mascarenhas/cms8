@@ -1169,7 +1169,6 @@ Route::middleware(['auth'])->group(function ()
 
     Route::get('/send-sms', [MessageController::class, 'sendSmsMessage']);
     Route::get('/send-whatsapp', [MessageController::class, 'sendWhatsAppMessage']);
-    Route::get('/send-email', [MessageController::class, 'sendSendGridMessage']);
 
     // Templates
     Route::post('/template/generate-html', [TemplateController::class, 'generateHtml'])->name('template.generate-html')->middleware('throttle:10,1');

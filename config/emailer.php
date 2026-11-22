@@ -8,7 +8,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | The email provider to use for sending campaigns. Options:
-    | smtp, sendgrid, mailbaby
+    | smtp, mailbaby
     |
     */
 
@@ -145,11 +145,6 @@ return [
     */
 
     'providers' => [
-        'sendgrid' => [
-            'enabled' => env('EMAILER_SENDGRID_ENABLED', env('SENDGRID_API_KEY') ? true : false),
-            'api_key' => env('SENDGRID_API_KEY'),
-        ],
-
         'mailbaby' => [
             'enabled' => env('EMAILER_MAILBABY_ENABLED', env('MAILBABY_API_KEY') ? true : false),
             'api_key' => env('MAILBABY_API_KEY'),

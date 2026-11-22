@@ -36,14 +36,14 @@ php artisan config:clear
 
 ---
 
-## ✅ **OPCIÓN 3: SendGrid (Producción)**
+## ✅ **OPCIÓN 3: SMTP de producción**
 ```bash
 # En .env:
 MAIL_MAILER=smtp
-MAIL_HOST=smtp.sendgrid.net
+MAIL_HOST=smtp.tudominio.com
 MAIL_PORT=587
-MAIL_USERNAME=apikey
-MAIL_PASSWORD=tu_sendgrid_api_key
+MAIL_USERNAME=
+MAIL_PASSWORD=
 MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=noreply@tudominio.com
 MAIL_FROM_NAME="Tu Empresa"
@@ -51,7 +51,7 @@ MAIL_FROM_NAME="Tu Empresa"
 # Luego:
 php artisan config:clear
 ```
-**Resultado**: Emails reales de producción
+**Resultado**: Emails reales de producción. Las campañas usan la API de MailBaby cuando `MAILBABY_ENABLED` está activo.
 
 ---
 
