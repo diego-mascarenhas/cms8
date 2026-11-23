@@ -14,8 +14,11 @@ use Illuminate\Support\Collection;
  */
 class InvoiceAnalyticsService
 {
-    /** @var list<int> Void, credit-note statuses, error, draft — excluded from totals. */
+    /** @var list<int> Void, credit-note, error, draft — excluded from year P&L totals. */
     public const EXCLUDED_INVOICE_STATUSES = [3, 4, 6, 7, 9];
+
+    /** @var list<int> Same as year totals but drafts (9) stay visible on category charts. */
+    public const CATEGORY_CHARTS_EXCLUDED_STATUSES = [3, 4, 6, 7];
 
     public function __construct(
         private readonly PaymentReportingCurrencyService $reportingCurrencyService,
@@ -305,17 +308,41 @@ class InvoiceAnalyticsService
 
         return [
             'reporting_currency' => $reportingCurrency,
-            'income_categories' => $this->aggregateCategoryBreakdown($teamId, $from, $to, 'sell', $reportingCurrency),
-            'expense_categories' => $this->aggregateCategoryBreakdown($teamId, $from, $to, 'buy', $reportingCurrency),
+            'income_categories' => $this->aggregateCategoryBreakdown(
+                $teamId,
+                $from,
+                $to,
+                'sell',
+                $reportingCurrency,
+                self::CATEGORY_CHARTS_EXCLUDED_STATUSES,
+                true,
+            ),
+            'expense_categories' => $this->aggregateCategoryBreakdown(
+                $teamId,
+                $from,
+                $to,
+                'buy',
+                $reportingCurrency,
+                self::CATEGORY_CHARTS_EXCLUDED_STATUSES,
+                true,
+            ),
         ];
     }
 
     /**
+     * @param  list<int>|null  $excludedStatuses
      * @return list<array{id: int|null, name: string, total: float, share_percent: float}>
      */
-    private function aggregateCategoryBreakdown(int $teamId, Carbon $from, Carbon $to, string $operation, string $reportingCurrency): array
-    {
-        $items = $this->loadItemsInRange($teamId, $from, $to);
+    private function aggregateCategoryBreakdown(
+        int $teamId,
+        Carbon $from,
+        Carbon $to,
+        string $operation,
+        string $reportingCurrency,
+        ?array $excludedStatuses = null,
+        bool $fetchLiveRate = false,
+    ): array {
+        $items = $this->loadItemsInRange($teamId, $from, $to, $excludedStatuses);
         $hints = $this->subscriptionInvoiceCategoryResolver->hintsFor($items);
         $totalsByCategory = [];
 
@@ -330,7 +357,7 @@ class InvoiceAnalyticsService
 
             $hintId = $hints[(int) $item->id]['category_id'] ?? null;
             $key = $hintId ?? ($item->category_id !== null ? (int) $item->category_id : 0);
-            $converted = $this->convertedLineAmount($item, $reportingCurrency);
+            $converted = $this->convertedLineAmount($item, $reportingCurrency, fetchLiveRate: $fetchLiveRate);
 
             if ($converted === null)
             {
@@ -378,16 +405,19 @@ class InvoiceAnalyticsService
     }
 
     /**
+     * @param  list<int>|null  $excludedStatuses
      * @return Collection<int, InvoiceItem>
      */
-    private function loadItemsInRange(int $teamId, Carbon $from, Carbon $to): Collection
+    private function loadItemsInRange(int $teamId, Carbon $from, Carbon $to, ?array $excludedStatuses = null): Collection
     {
+        $excluded = $excludedStatuses ?? self::EXCLUDED_INVOICE_STATUSES;
+
         return InvoiceItem::query()
-            ->whereHas('invoice', function ($query) use ($teamId, $from, $to): void
+            ->whereHas('invoice', function ($query) use ($teamId, $from, $to, $excluded): void
             {
                 $query->withoutGlobalScopes()
                     ->where('team_id', $teamId)
-                    ->whereNotIn('status', self::EXCLUDED_INVOICE_STATUSES)
+                    ->whereNotIn('status', $excluded)
                     ->withoutCreditNotes()
                     ->whereNotNull('date')
                     ->whereDate('date', '>=', $from->toDateString())
@@ -414,6 +444,7 @@ class InvoiceAnalyticsService
         string $reportingCurrency,
         array &$missingPairs = [],
         array &$nativeTotals = ['income' => [], 'expense' => []],
+        bool $fetchLiveRate = false,
     ): ?float {
         $invoice = $item->invoice;
 
@@ -437,6 +468,7 @@ class InvoiceAnalyticsService
             $reportingCurrency,
             $invoice->date,
             $invoice,
+            $fetchLiveRate,
         );
 
         if ($converted !== null)

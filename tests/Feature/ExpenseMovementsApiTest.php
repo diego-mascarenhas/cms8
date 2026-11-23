@@ -486,6 +486,106 @@ class ExpenseMovementsApiTest extends TestCase
             ->assertJsonPath('data.data.0.invoice_number', 'FV-CHART');
     }
 
+    public function test_category_charts_include_draft_expenses(): void
+    {
+        $user = $this->makeAdminUser();
+        $teamId = (int) $user->current_team_id;
+        $supplier = $this->createEnterpriseForTeam($user, 'Proveedor Draft', 2);
+        $category = Category::factory()->create([
+            'team_id' => $teamId,
+            'name' => 'Haberes Draft',
+        ]);
+
+        $draft = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $supplier->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'GC-DRAFT',
+            'date' => '2026-10-05',
+            'due_date' => '2026-10-05',
+            'gross_amount' => 1800,
+            'discount' => 0,
+            'total_amount' => 1800,
+            'balance' => 1800,
+            'currency_id' => 978,
+            'status' => 9,
+            'source_provider' => 'manual',
+        ]);
+        InvoiceItem::query()->create([
+            'invoice_id' => $draft->id,
+            'category_id' => $category->id,
+            'description' => 'Nómina',
+            'quantity' => 1,
+            'unit_price' => 1800,
+            'discount' => 0,
+            'tax_percentage' => 0,
+        ]);
+
+        $token = $user->createToken('movements-api')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/expenses/category-charts?vat_year=2026&vat_period=m:10')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('expense_categories.0.name', 'Haberes Draft')
+            ->assertJsonPath('expense_categories.0.total', 1800);
+    }
+
+    public function test_category_charts_convert_foreign_currency_without_payment(): void
+    {
+        $user = $this->makeAdminUser();
+        $teamId = (int) $user->current_team_id;
+        $user->currentTeam->setSetting('finance_reporting_currency', 'EUR', ['group' => 'finance']);
+        $supplier = $this->createEnterpriseForTeam($user, 'Proveedor USD', 2);
+        $category = Category::factory()->create([
+            'team_id' => $teamId,
+            'name' => 'Licencias USD',
+        ]);
+
+        ExchangeRate::query()->create([
+            'base_currency' => 'USD',
+            'target_currency' => 'EUR',
+            'rate' => 0.90,
+            'date' => '2026-10-31',
+            'fetched_at' => now(),
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $supplier->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'GC-USD',
+            'date' => '2026-10-12',
+            'due_date' => '2026-10-12',
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'currency_id' => 840,
+            'status' => 2,
+            'source_provider' => 'manual',
+        ]);
+        InvoiceItem::query()->create([
+            'invoice_id' => $invoice->id,
+            'category_id' => $category->id,
+            'description' => 'SaaS',
+            'quantity' => 1,
+            'unit_price' => 100,
+            'discount' => 0,
+            'tax_percentage' => 0,
+        ]);
+
+        $token = $user->createToken('movements-api')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/expenses/category-charts?vat_year=2026&vat_period=m:10')
+            ->assertOk()
+            ->assertJsonPath('expense_categories.0.name', 'Licencias USD')
+            ->assertJsonPath('expense_categories.0.total', 90);
+    }
+
     public function test_api_can_update_invoice_item_category(): void
     {
         $user = $this->makeAdminUser();
