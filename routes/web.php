@@ -727,6 +727,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list');
     Route::get('/service/projection', [ServiceController::class, 'projectBilling'])->name('service.projectBilling');
     Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create');
+    Route::post('/service/{id}/proforma', [ServiceController::class, 'createProforma'])->name('service.proforma');
     Route::get('/service/{id}', [ServiceController::class, 'show'])->name('service.show');
     Route::get('/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit');
     Route::post('/service', [ServiceController::class, 'store'])->name('service.store');
@@ -1063,6 +1064,8 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/expense/create-supplier', [ExpenseController::class, 'createSupplier'])->name('expense.create-supplier');
     Route::get('/expense/suggested-categories', [ExpenseController::class, 'suggestedCategories'])->name('expense.suggested-categories');
     Route::post('/expense', [ExpenseController::class, 'store'])->name('expense.store');
+    Route::get('/expense/{invoice}/edit', [ExpenseController::class, 'edit'])->whereNumber('invoice')->name('expense.edit');
+    Route::put('/expense/{invoice}', [ExpenseController::class, 'update'])->whereNumber('invoice')->name('expense.update');
 
     Route::get('/payment-account/list', [PaymentAccountController::class, 'index'])->name('payment-account.index');
     Route::get('/payment-account/create', [PaymentAccountController::class, 'create'])->name('payment-account.create');
@@ -1169,7 +1172,6 @@ Route::middleware(['auth'])->group(function ()
 
     Route::get('/send-sms', [MessageController::class, 'sendSmsMessage']);
     Route::get('/send-whatsapp', [MessageController::class, 'sendWhatsAppMessage']);
-    Route::get('/send-email', [MessageController::class, 'sendSendGridMessage']);
 
     // Templates
     Route::post('/template/generate-html', [TemplateController::class, 'generateHtml'])->name('template.generate-html')->middleware('throttle:10,1');

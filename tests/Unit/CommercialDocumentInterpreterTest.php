@@ -33,6 +33,32 @@ JSON);
         $this->assertNull($document['lines'][0]['cost']);
     }
 
+    public function test_a_column_price_list_uses_the_bonified_price(): void
+    {
+        $documents = new CommercialDocumentInterpreter(new \App\Services\DocumentAiOcrService);
+        $document = $documents->priceListFromText(<<<'TEXT'
+13-11-2026
+Grito de Asencio 3632
+ACEITES                                                                                      Cant p/ desc   U.V   Prec. Lista         Desc.         Precio bonif.
+ACE20                               ACEITE DE GIRASOL DON HUGO X 5 LTS (21.00)                   20         Uni       18,698.28       5.00%              17,763.37
+DUL012             DULCE DE LECHE DON BENITO CARTÓN X 10 KG (21.00)                         2,416.13   +1 tacho bonif.    2,196.48
+AZU001                              AZUCAR IMPALPABLE MARJUANC X 10 KG (21.00)                   100        Kg         1,759.40   +1 bolsa bonif.         1,599.46
+TEXT, 'LISTA DE PRECIOS 13-11.pdf');
+
+        $this->assertNotNull($document);
+        $this->assertSame('MarJuanC', $document['supplier_name']);
+        $this->assertSame('ARS', $document['currency']);
+        $this->assertSame('ACE20', $document['lines'][0]['code']);
+        $this->assertSame('ACEITE DE GIRASOL DON HUGO X 5 LTS', $document['lines'][0]['name']);
+        $this->assertEquals(17763.37, $document['lines'][0]['cost']);
+        $this->assertNull($document['lines'][0]['quantity']);
+        $this->assertSame('Uni', $document['lines'][0]['unit']);
+        $this->assertSame('DULCE DE LECHE DON BENITO CARTÓN X 10 KG', $document['lines'][1]['name']);
+        $this->assertEquals(2196.48, $document['lines'][1]['cost']);
+        $this->assertEquals(1599.46, $document['lines'][2]['cost']);
+        $this->assertSame('Kg', $document['lines'][2]['unit']);
+    }
+
     public function test_a_price_sheet_names_the_supplier_and_the_first_price(): void
     {
         $documents = new CommercialDocumentInterpreter(new \App\Services\DocumentAiOcrService);
@@ -136,6 +162,52 @@ TEXT, 'qt_9020-FRS265012A_Seven_Seas_Ship_Suppliers_Argentina.pdf');
         $text = $documents->spreadsheetText($path);
 
         $this->assertSame("STAINLESS STEEL CONTAINERS\t3", $text);
+        unlink($path);
+    }
+
+    public function test_a_workbook_keeps_every_category_sheet_and_skips_the_intro(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'list');
+        $zip = new ZipArchive;
+        $zip->open($path, ZipArchive::OVERWRITE);
+        $main = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+        $rel = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+        $zip->addFromString(
+            'xl/workbook.xml',
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            .'<workbook xmlns="'.$main.'" xmlns:r="'.$rel.'">'
+            .'<sheets>'
+            .'<sheet name="INTRO" sheetId="1" r:id="rId1"/>'
+            .'<sheet name="ALMACEN" sheetId="2" r:id="rId2"/>'
+            .'<sheet name="FIAMBRES" sheetId="3" r:id="rId3"/>'
+            .'<sheet name="Sheet28" sheetId="4" state="hidden" r:id="rId4"/>'
+            .'</sheets></workbook>',
+        );
+        $zip->addFromString(
+            'xl/_rels/workbook.xml.rels',
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            .'<Relationship Id="rId1" Type="worksheet" Target="worksheets/sheet1.xml"/>'
+            .'<Relationship Id="rId2" Type="worksheet" Target="worksheets/sheet2.xml"/>'
+            .'<Relationship Id="rId3" Type="worksheet" Target="worksheets/sheet3.xml"/>'
+            .'<Relationship Id="rId4" Type="worksheet" Target="worksheets/sheet4.xml"/>'
+            .'</Relationships>',
+        );
+        $sheet = fn (string $value): string => '<?xml version="1.0" encoding="UTF-8"?>'
+            .'<worksheet xmlns="'.$main.'"><sheetData><row><c><v>'.$value.'</v></c></row></sheetData></worksheet>';
+        $zip->addFromString('xl/worksheets/sheet1.xml', $sheet('1'));
+        $zip->addFromString('xl/worksheets/sheet2.xml', $sheet('23300.5'));
+        $zip->addFromString('xl/worksheets/sheet3.xml', $sheet('11100'));
+        $zip->addFromString('xl/worksheets/sheet4.xml', $sheet('999'));
+        $zip->close();
+
+        $documents = new CommercialDocumentInterpreter(new \App\Services\DocumentAiOcrService);
+        $text = $documents->spreadsheetText($path);
+
+        $this->assertStringContainsString("# ALMACEN\n23300.5", $text);
+        $this->assertStringContainsString("# FIAMBRES\n11100", $text);
+        $this->assertStringNotContainsString('INTRO', $text);
+        $this->assertStringNotContainsString('999', $text);
         unlink($path);
     }
 }

@@ -2,12 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Mail\ProjectBudgetQuoteMail;
+use App\Mail\CommunicationMail;
 use App\Models\Contact;
 use App\Models\Enterprise;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\User;
+use App\Services\Communications\CommunicationSender;
 use App\Services\ProjectBudgetQuoteMailService;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
@@ -59,8 +60,9 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
         $project->refresh();
         $this->assertSame(ProjectStatus::STATUS_AUTHORIZED, (int) $project->status_id);
         $this->assertSame($contact->email, data_get($project->data, 'budget_email.to_email'));
-        $this->assertSame('quotes@example.test', data_get($project->data, 'budget_email.bcc_email'));
+        $this->assertNull(data_get($project->data, 'budget_email.bcc_email'));
         $this->assertSame($contact->id, data_get($project->data, 'budget_email.contact_id'));
+        $this->assertNotEmpty(data_get($project->data, 'budget_email.communication_id'));
         $this->assertNotEmpty(data_get($project->data, 'budget_email.tracking_token'));
         $this->assertNotEmpty(data_get($project->data, 'budget_email.sent_at'));
 
@@ -69,7 +71,7 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
             app(ProjectBudgetQuoteMailService::class)->countSentForTeam((int) $user->current_team_id),
         );
 
-        Mail::assertSent(ProjectBudgetQuoteMail::class, function (ProjectBudgetQuoteMail $mail) use ($contact, $project): bool
+        Mail::assertSent(CommunicationMail::class, function (CommunicationMail $mail) use ($contact, $project): bool
         {
             $html = $mail->render();
             $reportUrl = route('project.budget-preview', [
@@ -78,8 +80,6 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
             ]);
 
             return $mail->hasTo($contact->email)
-                && $mail->hasFrom('quotes@example.test')
-                && $mail->hasBcc('quotes@example.test')
                 && str_contains($html, __('Hello :name,', ['name' => 'Client Contact']))
                 && str_contains($html, __('This quote covers the following project:'))
                 && str_contains($html, 'Un sitio web institucional desarrollado en WordPress.')
@@ -123,16 +123,19 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
         $project->refresh();
         $this->assertNull(data_get($project->data, 'budget_email.bcc_email'));
 
-        Mail::assertSent(ProjectBudgetQuoteMail::class, function (ProjectBudgetQuoteMail $mail): bool
+        Mail::assertSent(CommunicationMail::class, function (CommunicationMail $mail): bool
         {
-            return $mail->hasTo('quotes@example.test') && ! $mail->hasBcc('quotes@example.test');
+            return $mail->hasTo('quotes@example.test');
         });
     }
 
     #[Test]
     public function failed_send_does_not_mark_email_as_sent(): void
     {
-        Mail::shouldReceive('to')->once()->andThrow(new \RuntimeException('SMTP rejected'));
+        $this->mock(CommunicationSender::class, function ($mock): void
+        {
+            $mock->shouldReceive('send')->once()->andThrow(new \RuntimeException('SMTP rejected'));
+        });
 
         [$user, $project] = $this->createBudgetedProject();
 
@@ -191,7 +194,7 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
         $project->refresh();
         $this->assertSame(ProjectStatus::STATUS_AUTHORIZED, (int) $project->status_id);
         $this->assertSame($contact->email, data_get($project->data, 'budget_email.to_email'));
-        Mail::assertSent(ProjectBudgetQuoteMail::class);
+        Mail::assertSent(CommunicationMail::class);
     }
 
     #[Test]

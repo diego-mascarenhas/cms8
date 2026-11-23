@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ServiceDataTable;
+use App\Models\Currency;
 use App\Models\Invoice;
 use App\Models\Service;
 use App\Models\ServiceSync;
@@ -126,10 +127,11 @@ class ServiceController extends Controller
             ? ServiceSync::where('team_id', $teamId)->where('provider', 'stripe')->orderBy('customer_name')->orderBy('plan_name')->get()
             : collect();
         $categoryOptions = $teamId
-            ? app(ServiceCategoryOptionsService::class)->optionsForTeam((int) $teamId)
+            ? app(ServiceCategoryOptionsService::class)->optionsForServiceForm((int) $teamId)
             : [];
+        $currencies = Currency::query()->active()->orderBy('code')->get(['id', 'code', 'name']);
 
-        return view('service.form', compact('enterprise_id', 'serviceSyncs', 'categoryOptions'));
+        return view('service.form', compact('enterprise_id', 'serviceSyncs', 'categoryOptions', 'currencies'));
     }
 
     /**
@@ -141,22 +143,8 @@ class ServiceController extends Controller
 
         try
         {
-            $validator = \Validator::make($request->all(), [
-                'enterprise_id' => 'required|exists:enterprises,id',
-                'subscription_id' => ['nullable', 'exists:service_syncs,id'],
-                'category_id' => ['nullable', 'exists:categories,id'],
-                'operation' => 'required|in:buy,sell',
-                'description' => 'nullable|string',
-                'currency_id' => 'nullable|exists:currencies,id',
-                'price' => 'nullable|numeric',
-                'discount' => 'nullable|numeric',
-                'frequency' => 'nullable|integer|min:1',
-                'next_billing' => 'nullable|date',
-                'expires_at' => 'nullable|date',
-                'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
-                'data' => 'nullable|array',
-                'responsible_id' => 'nullable|exists:users,id',
-            ]);
+            $this->normalizeServiceDates($request);
+            $validator = \Validator::make($request->all(), $this->serviceRules());
 
             if ($validator->fails())
             {
@@ -193,8 +181,13 @@ class ServiceController extends Controller
             // Create the service
             $service = Service::create($input);
             \Log::info('Service created successfully', ['service_id' => $service->id]);
+            $proforma = app(\App\Services\Finance\RecurringPurchaseProformaIssuer::class)->issueForService($service);
 
-            return redirect()->route('service-list')->with('success', 'Service created successfully');
+            return redirect()
+                ->route('service.show', $service)
+                ->with('success', $proforma !== null
+                    ? 'Servicio guardado. La proforma del período quedó lista para reemplazarla por la factura.'
+                    : 'Service created successfully');
         } catch (\Exception $e)
         {
             \Log::error('Error creating service', [
@@ -224,7 +217,36 @@ class ServiceController extends Controller
             abort(403);
         }
 
-        return view('service.show', compact('service'));
+        $proforma = \App\Models\Invoice::withoutGlobalScopes()
+            ->with('items')
+            ->where('source_provider', 'manual')
+            ->where('status', 9)
+            ->where('source_reference_id', 'like', \App\Services\Finance\RecurringPurchaseProformaIssuer::REFERENCE_PREFIX.$service->id.'-%')
+            ->orderByDesc('date')
+            ->first();
+
+        return view('service.show', compact('service', 'proforma'));
+    }
+
+    public function createProforma(string $id)
+    {
+        $service = Service::findOrFail($id);
+        $this->authorize('update', $service);
+
+        $invoice = app(\App\Services\Finance\RecurringPurchaseProformaIssuer::class)->createProformaAndAdvance($service);
+
+        if ($invoice === null)
+        {
+            return redirect()
+                ->route('service.show', $service)
+                ->with('error', 'La próxima fecha de facturación todavía no venció.');
+        }
+
+        $service->refresh();
+
+        return redirect()
+            ->route('service.show', $service)
+            ->with('success', 'Proforma creada. La próxima facturación pasó al '.$service->next_billing->format('d/m/Y').'.');
     }
 
     /**
@@ -246,10 +268,11 @@ class ServiceController extends Controller
             ? ServiceSync::where('team_id', $teamId)->where('provider', 'stripe')->orderBy('customer_name')->orderBy('plan_name')->get()
             : collect();
         $categoryOptions = $teamId
-            ? app(ServiceCategoryOptionsService::class)->optionsForTeam((int) $teamId)
+            ? app(ServiceCategoryOptionsService::class)->optionsForServiceForm((int) $teamId)
             : [];
+        $currencies = Currency::query()->active()->orderBy('code')->get(['id', 'code', 'name']);
 
-        return view('service.form', compact('data', 'enterprise_id', 'serviceSyncs', 'categoryOptions'));
+        return view('service.form', compact('data', 'enterprise_id', 'serviceSyncs', 'categoryOptions', 'currencies'));
     }
 
     /**
@@ -260,23 +283,8 @@ class ServiceController extends Controller
         $service = Service::findOrFail($id);
         $this->authorize('update', $service);
 
-        $rules = [
-            'enterprise_id' => 'required|exists:enterprises,id',
-            'subscription_id' => ['nullable', 'exists:service_syncs,id'],
-            'category_id' => ['nullable', 'exists:categories,id'],
-            'operation' => 'required|in:buy,sell',
-            'description' => 'nullable|string',
-            'currency_id' => 'nullable|exists:currencies,id',
-            'price' => 'nullable|numeric',
-            'discount' => 'nullable|numeric',
-            'frequency' => 'nullable|integer|min:1',
-            'next_billing' => 'nullable|date',
-            'expires_at' => 'nullable|date',
-            'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
-            'data' => 'nullable|array',
-            'responsible_id' => 'nullable|exists:users,id',
-        ];
-        $request->validate($rules);
+        $this->normalizeServiceDates($request);
+        $request->validate($this->serviceRules());
 
         $input = $request->all();
         $input['subscription_id'] = $request->filled('subscription_id') ? $request->input('subscription_id') : null;
@@ -295,8 +303,13 @@ class ServiceController extends Controller
 
         // Update the service
         $service->update($input);
+        $proforma = app(\App\Services\Finance\RecurringPurchaseProformaIssuer::class)->issueForService($service);
 
-        return redirect()->route('service-list')->with('success', 'Service updated successfully');
+        return redirect()
+            ->route('service.show', $service)
+            ->with('success', $proforma !== null
+                ? 'Servicio guardado. La proforma del período quedó lista para reemplazarla por la factura.'
+                : 'Service updated successfully');
     }
 
     /**
@@ -310,6 +323,65 @@ class ServiceController extends Controller
         $model->delete();
 
         return response()->json(['success' => 'The record has been deleted.'], 200);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serviceRules(): array
+    {
+        return [
+            'enterprise_id' => 'required|exists:enterprises,id',
+            'subscription_id' => ['nullable', 'exists:service_syncs,id'],
+            'category_id' => ['nullable', 'required_if:operation,buy', 'exists:categories,id'],
+            'operation' => 'required|in:buy,sell',
+            'description' => 'nullable|string',
+            'currency_id' => 'nullable|exists:currencies,id',
+            'price' => ['nullable', 'required_if:operation,buy', 'numeric'],
+            'discount' => 'nullable|numeric',
+            'frequency' => ['nullable', 'required_if:operation,buy', 'integer', 'in:'.implode(',', array_keys(Service::frequencyOptions()))],
+            'next_billing' => ['nullable', 'required_if:operation,buy', 'date'],
+            'expires_at' => 'nullable|date',
+            'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
+            'data' => 'nullable|array',
+            'responsible_id' => 'nullable|exists:users,id',
+        ];
+    }
+
+    private function normalizeServiceDates(Request $request): void
+    {
+        $request->merge([
+            'next_billing' => $this->normalizeServiceDate($request->input('next_billing')),
+            'expires_at' => $this->normalizeServiceDate($request->input('expires_at')),
+        ]);
+    }
+
+    private function normalizeServiceDate(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '')
+        {
+            return null;
+        }
+
+        $value = trim($value);
+
+        foreach (['d/m/Y', 'Y-m-d', 'd-m-Y'] as $format)
+        {
+            try
+            {
+                $parsed = \Carbon\Carbon::createFromFormat('!'.$format, $value);
+            } catch (\Throwable)
+            {
+                continue;
+            }
+
+            if ($parsed instanceof \Carbon\Carbon && $parsed->format($format) === $value)
+            {
+                return $parsed->toDateString();
+            }
+        }
+
+        return $value;
     }
 
     public function projectBilling()

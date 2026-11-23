@@ -46,12 +46,12 @@ class ProjectBudgetSpecService
 
     public const SETTING_TOKEN_MODEL = 'estimator_token_model';
 
-    /** Mid-range catalog model used when the team has not picked one. */
+    /** Catalog model used when the team has not picked one. */
     public const DEFAULT_TOKEN_MODEL = [
-        'id' => 'openai/gpt-4.1',
-        'name' => 'OpenAI: GPT-4.1',
-        'prompt_per_million' => 2.0,
-        'completion_per_million' => 8.0,
+        'id' => 'anthropic/claude-opus-5.5',
+        'name' => 'Anthropic: Claude Opus 5.5',
+        'prompt_per_million' => 4.0,
+        'completion_per_million' => 20.0,
     ];
 
     private float $tokenInputRate = self::DEFAULT_TOKEN_INPUT_RATE;
@@ -1272,7 +1272,7 @@ class ProjectBudgetSpecService
     }
 
     /**
-     * Team default, or GPT-4.1 when none is saved.
+     * Team default, or Claude Opus 5.5 when none is saved.
      *
      * @return array{id: string, name: string, prompt_per_million: float|null, completion_per_million: float|null}
      */

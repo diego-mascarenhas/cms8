@@ -22,7 +22,7 @@ return [
         'clients' => true,
         'list60' => true,
         'prospecting' => true,
-        'services' => false,
+        'services' => true,
         'projects' => false,
         'opportunities' => true,
         'tasks' => false,

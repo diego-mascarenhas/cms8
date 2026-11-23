@@ -352,7 +352,7 @@ class ProjectApiTest extends TestCase
                 'data.data.ai_usage_percent',
                 (int) (new ProjectBudgetSpecService)->aiUsagePercentFromTokenModel(ProjectBudgetSpecService::DEFAULT_TOKEN_MODEL),
             )
-            ->assertJsonPath('data.data.token_model.id', 'openai/gpt-4.1');
+            ->assertJsonPath('data.data.token_model.id', 'anthropic/claude-opus-5.5');
 
         $this->assertNotNull($create->json('data.board_id'));
         $this->assertGreaterThan(0, (int) $create->json('totals.grand_total'));

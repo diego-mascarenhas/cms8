@@ -58,7 +58,7 @@
         <h5 class="card-title mb-0">{{ __('Add connections') }}</h5>
     </div>
     <div class="card-body">
-        <p class="text-muted">{{ __('Meta (Facebook / Instagram) and LinkedIn use Laravel Socialite. Bluesky can use a handle (and optional app password) once the form is wired.') }}</p>
+        <p class="text-muted">{{ __('Meta, LinkedIn and Bluesky connections are not wired yet.') }}</p>
         <div class="d-flex flex-wrap gap-2">
             <span class="btn btn-label-secondary disabled">{{ __('Connect Meta') }}</span>
             <span class="btn btn-label-secondary disabled">{{ __('Connect LinkedIn') }}</span>

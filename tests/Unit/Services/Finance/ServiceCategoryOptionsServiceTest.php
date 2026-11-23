@@ -105,6 +105,43 @@ class ServiceCategoryOptionsServiceTest extends TestCase
         );
     }
 
+    public function test_service_form_includes_team_categories_without_a_module(): void
+    {
+        $team = Team::factory()->create();
+        $otherTeam = Team::factory()->create();
+
+        $payroll = Category::factory()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'name' => 'Payroll & Benefits',
+            'parent_id' => null,
+            'status' => true,
+        ]);
+
+        $otherTeamPayroll = Category::factory()->create([
+            'team_id' => $otherTeam->id,
+            'module_id' => null,
+            'name' => 'Payroll & Benefits',
+            'parent_id' => null,
+            'status' => true,
+        ]);
+
+        $global = Category::factory()->create([
+            'team_id' => null,
+            'module_id' => null,
+            'name' => 'Services',
+            'parent_id' => null,
+            'status' => true,
+        ]);
+
+        $options = app(ServiceCategoryOptionsService::class)->optionsForServiceForm((int) $team->id);
+        $ids = collect($options)->pluck('id')->all();
+
+        $this->assertContains((int) $payroll->id, $ids);
+        $this->assertNotContains((int) $otherTeamPayroll->id, $ids);
+        $this->assertNotContains((int) $global->id, $ids);
+    }
+
     public function test_belongs_to_team_invoice_line_category_accepts_legacy_active_status(): void
     {
         $team = Team::factory()->create();

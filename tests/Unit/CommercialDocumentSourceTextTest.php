@@ -52,6 +52,79 @@ class CommercialDocumentSourceTextTest extends TestCase
         $this->assertSame('KG', $document['lines'][0]['unit']);
     }
 
+    public function test_a_pdf_price_list_with_text_uses_the_invoice_model_without_the_file(): void
+    {
+        $ai = $this->createMock(DocumentAiOcrService::class);
+        $ai->expects($this->never())->method('completeWithFile');
+        $ai->expects($this->once())
+            ->method('complete')
+            ->willReturn('{"kind":"price_list","supplier_name":"MarJuanC","currency":"ARS","lines":[{"code":"ACE120","name":"Aceite","cost":17753.37}]}');
+        $documents = new CommercialDocumentInterpreter($ai);
+        $path = tempnam(sys_get_temp_dir(), 'lista-').'.pdf';
+        file_put_contents($path, $this->minimalTextPdf('LISTA DE PRECIOS'));
+
+        try
+        {
+            $document = $documents->interpret($path, 'LISTA DE PRECIOS 13-11.pdf');
+        } finally
+        {
+            @unlink($path);
+        }
+
+        $this->assertSame('MarJuanC', $document['supplier_name']);
+        $this->assertEquals(17753.37, $document['lines'][0]['cost']);
+    }
+
+    public function test_a_pdf_without_text_uses_the_vision_model(): void
+    {
+        $ai = $this->createMock(DocumentAiOcrService::class);
+        $ai->expects($this->once())->method('extractTextFromLocalFile')->willReturn('');
+        $ai->expects($this->never())->method('complete');
+        $ai->expects($this->once())
+            ->method('completeWithFile')
+            ->willReturn('{"kind":"price_list","supplier_name":"MarJuanC","currency":"ARS","lines":[{"code":"ACE120","name":"Aceite","cost":17753.37}]}');
+        $documents = new CommercialDocumentInterpreter($ai);
+        $path = tempnam(sys_get_temp_dir(), 'lista-').'.pdf';
+        file_put_contents($path, 'not-a-pdf');
+
+        try
+        {
+            $document = $documents->interpret($path, 'LISTA DE PRECIOS 13-11.pdf');
+        } finally
+        {
+            @unlink($path);
+        }
+
+        $this->assertSame('MarJuanC', $document['supplier_name']);
+        $this->assertEquals(17753.37, $document['lines'][0]['cost']);
+    }
+
+    public function test_a_spreadsheet_uses_the_same_model_as_invoice_images(): void
+    {
+        $ai = $this->createMock(DocumentAiOcrService::class);
+        $ai->expects($this->never())->method('completeWithFile');
+        $ai->expects($this->once())
+            ->method('complete')
+            ->willReturn('{"kind":"price_list","supplier_name":"La Reina Mayorista","currency":"ARS","lines":[{"name":"Aceite girasol","cost":23300.5}]}');
+        $documents = new CommercialDocumentInterpreter($ai);
+        $path = sys_get_temp_dir().'/lista-'.uniqid('', true).'.xlsx';
+        $zip = new \ZipArchive;
+        $zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+        $zip->addFromString('xl/worksheets/sheet1.xml', '<?xml version="1.0" encoding="UTF-8"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row><c t="inlineStr"><is><t>Aceite girasol</t></is></c><c><v>23300.5</v></c></row></sheetData></worksheet>');
+        $zip->close();
+
+        try
+        {
+            $document = $documents->interpret($path, 'Precios_Mayorista La reina.xlsx');
+        } finally
+        {
+            @unlink($path);
+        }
+
+        $this->assertSame('La Reina Mayorista', $document['supplier_name']);
+        $this->assertEquals(23300.5, $document['lines'][0]['cost']);
+    }
+
     private function minimalTextPdf(string $text): string
     {
         $escaped = str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $text);

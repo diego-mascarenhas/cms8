@@ -5,11 +5,13 @@ namespace App\Services\Finance;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\Currency;
+use App\Models\Enterprise;
 use App\Models\EnterpriseOrganization;
 use App\Models\ExchangeRate;
 use App\Models\Invoice;
 use App\Models\Project;
 use App\Models\ProjectStatus;
+use App\Models\Service;
 use App\Models\StripeSubscription;
 use App\Models\Team;
 use App\Services\ProjectBudgetSpecService;
@@ -589,6 +591,19 @@ TXT;
             }
         }
 
+        foreach ($this->recurringPurchaseOccurrences($team, $monthStart, $monthEnd) as $purchase)
+        {
+            $items[] = [
+                'source' => 'purchase_proforma',
+                'source_label' => 'Compra recurrente (proforma)',
+                'label' => (string) $purchase['label'],
+                'amount' => round((float) $purchase['amount'], 2),
+                'kind' => 'expense',
+                'due_date' => $purchase['when']->toDateString(),
+                'project_id' => null,
+            ];
+        }
+
         usort($items, function (array $left, array $right): int
         {
             $kind = ($left['kind'] === 'income' ? 0 : 1) <=> ($right['kind'] === 'income' ? 0 : 1);
@@ -1011,6 +1026,7 @@ TXT;
         $plans = $this->contractedIncomeByMonth($this->openInstallments($team), $horizonStart, $span);
         $finishes = $this->contractedIncomeByMonth($this->projectFinishes($team), $horizonStart, $span);
         $renewals = $this->annualRenewalsByMonth($team, $horizonStart, $horizonEnd);
+        $purchases = $this->recurringPurchaseExpenseByMonth($team, $horizonStart, $horizonEnd);
         $points = [];
         $totalMonths = $historyMonths + $forwardMonths;
 
@@ -1030,7 +1046,8 @@ TXT;
             $extraIncome = (float) ($plans[$key] ?? 0)
                 + (float) ($finishes[$key] ?? 0)
                 + (float) ($renewals['income'][$key] ?? 0);
-            $extraExpense = (float) ($renewals['expense'][$key] ?? 0);
+            $extraExpense = (float) ($renewals['expense'][$key] ?? 0)
+                + (float) ($purchases[$key] ?? 0);
 
             if ($isHistory)
             {
@@ -1075,7 +1092,7 @@ TXT;
             'year_profit' => round($chartIncome - $chartExpense, 2),
             'months_with_data' => $monthsWithData,
             'contracted_income' => round(array_sum($plans) + array_sum($finishes) + array_sum($renewals['income']), 2),
-            'contracted_expense' => round(array_sum($renewals['expense']), 2),
+            'contracted_expense' => round(array_sum($renewals['expense']) + array_sum($purchases), 2),
             'points' => $points,
         ];
     }
@@ -1192,6 +1209,163 @@ TXT;
             'income' => $income,
             'expense' => $expense,
         ];
+    }
+
+    /**
+     * Active recurring purchases (services.operation = buy) placed on each
+     * billing date. A month that already has the supplier invoice for the
+     * same company and category is omitted: the invoice replaces the proforma.
+     *
+     * @return array<string, float>
+     */
+    private function recurringPurchaseExpenseByMonth(Team $team, Carbon $from, Carbon $end): array
+    {
+        $totals = [];
+
+        foreach ($this->recurringPurchaseOccurrences($team, $from, $end) as $purchase)
+        {
+            $key = $purchase['when']->format('Y-m');
+            $totals[$key] = round(($totals[$key] ?? 0) + $purchase['amount'], 2);
+        }
+
+        return $totals;
+    }
+
+    /**
+     * @return list<array{label: string, amount: float, when: Carbon}>
+     */
+    private function recurringPurchaseOccurrences(Team $team, Carbon $from, Carbon $end): array
+    {
+        $reporting = $this->reportingCurrency($team);
+        $covered = $this->invoicedPurchaseKeys($team, $from, $end);
+        $enterpriseIds = Enterprise::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->select('id');
+        $services = Service::withoutGlobalScopes()
+            ->with([
+                'category' => function ($query)
+                {
+                    $query->withoutGlobalScopes()->select('id', 'name');
+                },
+                'enterprise' => function ($query)
+                {
+                    $query->withoutGlobalScopes()->select('id', 'name');
+                },
+            ])
+            ->where('operation', 'buy')
+            ->where('status', '>=', 4)
+            ->whereNotNull('category_id')
+            ->whereNotNull('next_billing')
+            ->whereIn('enterprise_id', $enterpriseIds)
+            ->get();
+        $rows = [];
+
+        foreach ($services as $service)
+        {
+            $frequency = max(1, (int) ($service->frequency ?? 1));
+            $when = $service->next_billing->copy();
+            $guard = 0;
+
+            while ($when->lt($from) && $guard < 240)
+            {
+                $when->addMonthsNoOverflow($frequency);
+                $guard++;
+            }
+
+            while ($when->lte($end) && $guard < 480)
+            {
+                if ($service->expires_at !== null && $when->gt($service->expires_at))
+                {
+                    break;
+                }
+
+                $monthKey = $when->format('Y-m');
+                $coveredKey = $service->enterprise_id.'|'.$service->category_id.'|'.$monthKey;
+
+                if (! isset($covered[$coveredKey]))
+                {
+                    $amount = $this->purchaseCycleAmount($service, $reporting, $when);
+
+                    if ($amount !== null && $amount > 0)
+                    {
+                        $supplier = trim((string) ($service->enterprise?->name ?? ''));
+                        $category = trim((string) ($service->category?->name ?? ''));
+                        $label = $supplier !== '' && $category !== ''
+                            ? $supplier.' — '.$category
+                            : ($category !== '' ? $category : ($supplier !== '' ? $supplier : 'Compra recurrente'));
+
+                        $rows[] = [
+                            'label' => $label,
+                            'amount' => $amount,
+                            'when' => $when->copy(),
+                        ];
+                    }
+                }
+
+                $when->addMonthsNoOverflow($frequency);
+                $guard++;
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @return array<string, true>
+     */
+    private function invoicedPurchaseKeys(Team $team, Carbon $from, Carbon $end): array
+    {
+        $keys = [];
+        $invoices = Invoice::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('operation', 'buy')
+            ->whereNotIn('status', InvoiceAnalyticsService::EXCLUDED_INVOICE_STATUSES)
+            ->whereDate('date', '>=', $from->toDateString())
+            ->whereDate('date', '<=', $end->toDateString())
+            ->with(['items:id,invoice_id,category_id'])
+            ->get(['id', 'enterprise_id', 'date']);
+
+        foreach ($invoices as $invoice)
+        {
+            $month = Carbon::parse($invoice->date)->format('Y-m');
+
+            foreach ($invoice->items as $item)
+            {
+                if ($item->category_id === null)
+                {
+                    continue;
+                }
+
+                $keys[$invoice->enterprise_id.'|'.$item->category_id.'|'.$month] = true;
+            }
+        }
+
+        return $keys;
+    }
+
+    private function purchaseCycleAmount(Service $service, string $reporting, Carbon $on): ?float
+    {
+        $price = (float) $service->price;
+
+        if ($price <= 0)
+        {
+            return null;
+        }
+
+        $discount = min(100, max(0, (float) ($service->discount ?? 0)));
+        $native = round($price - ($price * ($discount / 100)), 2);
+
+        if ($native <= 0)
+        {
+            return null;
+        }
+
+        return $this->toReportingCurrency(
+            $native,
+            $this->currencyCode($service->currency_id !== null ? (int) $service->currency_id : null, $reporting),
+            $reporting,
+            $on,
+        );
     }
 
     /**

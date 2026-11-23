@@ -129,10 +129,10 @@ QUEUE_CONNECTION=database
 
 # Email Configuration (producción)
 MAIL_MAILER=smtp
-MAIL_HOST=smtp.sendgrid.net
+MAIL_HOST=smtp.tudominio.com
 MAIL_PORT=587
-MAIL_USERNAME=apikey
-MAIL_PASSWORD=tu_sendgrid_api_key
+MAIL_USERNAME=
+MAIL_PASSWORD=
 MAIL_ENCRYPTION=tls
 MAIL_FROM_ADDRESS=noreply@tudominio.com
 MAIL_FROM_NAME="Tu Empresa"
@@ -234,6 +234,6 @@ tail -f storage/logs/laravel.log
 
 Solo necesitas:
 1. ✅ Configurar el queue worker en servidor
-2. ✅ Configurar SMTP/SendGrid en `.env`
+2. ✅ Configurar SMTP o MailBaby en `.env`
 3. ✅ Ejecutar las migraciones y seeders
 4. ✅ ¡Empezar a enviar campañas!

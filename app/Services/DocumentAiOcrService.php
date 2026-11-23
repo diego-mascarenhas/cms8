@@ -43,7 +43,22 @@ class DocumentAiOcrService
      */
     public function completeWithFile(string $absolutePath, string $instructions, string $prompt, ?int $teamId = null): string
     {
-        $result = $this->promptFile($absolutePath, $instructions, $prompt, $teamId);
+        return $this->completeFromResult($this->promptFile($absolutePath, $instructions, $prompt, $teamId));
+    }
+
+    /**
+     * Same invoice vision model, without attaching a file. Spreadsheet text uses this.
+     */
+    public function complete(string $instructions, string $prompt, ?int $teamId = null): string
+    {
+        return $this->completeFromResult($this->promptModel($instructions, $prompt, null, $teamId));
+    }
+
+    /**
+     * @param  array{text: ?string, usage: ?array{model: string, prompt_tokens: int, completion_tokens: int, total_tokens: int}}  $result
+     */
+    private function completeFromResult(array $result): string
+    {
         $text = trim((string) ($result['text'] ?? ''));
         if ($text === '')
         {
@@ -63,6 +78,14 @@ class DocumentAiOcrService
             return ['text' => null, 'usage' => null];
         }
 
+        return $this->promptModel($instructions, $prompt, $absolutePath, $teamId);
+    }
+
+    /**
+     * @return array{text: ?string, usage: ?array{model: string, prompt_tokens: int, completion_tokens: int, total_tokens: int}}
+     */
+    private function promptModel(string $instructions, string $prompt, ?string $absolutePath, ?int $teamId): array
+    {
         $attempts = [$this->providerAndModel($this->resolveOcrModel())];
         $failover = $this->resolveOcrFailoverModel();
         $failoverAttempt = $failover !== '' ? $this->providerAndModel($failover) : null;
@@ -76,13 +99,17 @@ class DocumentAiOcrService
         {
             try
             {
-                $uploadedFile = $this->uploadedFileFromPath($absolutePath);
+                $attachments = [];
+                if ($absolutePath !== null)
+                {
+                    $attachments[] = $this->uploadedFileFromPath($absolutePath);
+                }
                 $ocrAgent = agent(
                     instructions: $instructions,
                     messages: [],
                     tools: [],
                 );
-                $response = $ocrAgent->prompt($prompt, [$uploadedFile], $attempt['provider'], $attempt['model']);
+                $response = $ocrAgent->prompt($prompt, $attachments, $attempt['provider'], $attempt['model']);
                 $text = trim((string) ($response->text ?? ''));
                 $this->logTokenUsage($response, $teamId, $prompt, $text);
                 if ($text === '')

@@ -3,16 +3,16 @@
 @section('title', __('Service Details'))
 
 @section('content')
+@if (session('success'))
+    <div class="alert alert-success mt-3">{{ session('success') }}</div>
+@endif
+@if (session('error'))
+    <div class="alert alert-danger mt-3">{{ session('error') }}</div>
+@endif
 @php
-    $frequency = (int) ($service->frequency ?? 0);
-    $frequencyLabel = match ($frequency) {
-        1 => 'Mensual',
-        3 => 'Trimestral',
-        6 => 'Semestral',
-        12 => 'Anual',
-        default => $frequency > 0 ? $frequency.' meses' : '',
-    };
+    $frequencyLabel = $service->frequencyLabel();
     $currencyCode = $service->currency?->code ?? ($service->currency?->symbol ?? '');
+    $proformaIsOverdue = app(\App\Services\Finance\RecurringPurchaseProformaIssuer::class)->isOverdue($service);
 @endphp
 
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
@@ -28,7 +28,20 @@
             <a href="{{ route('service.edit', $service->id) }}" class="btn btn-primary waves-effect waves-light">
                 <i class="ti ti-edit me-1"></i>{{ __('Edit') }}
             </a>
+            @if ($proformaIsOverdue)
+                <form method="POST" action="{{ route('service.proforma', $service->id) }}" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-success waves-effect waves-light">
+                        <i class="ti ti-file-invoice me-1"></i>Crear proforma
+                    </button>
+                </form>
+            @endif
         @endcan
+        @if (! empty($proforma))
+            <a href="{{ route('expense.edit', $proforma) }}" class="btn btn-outline-primary waves-effect waves-light">
+                <i class="ti ti-file-invoice me-1"></i>Editar proforma
+            </a>
+        @endif
         @if($service->client)
             <a href="{{ route('client.show', $service->client->id) }}" class="btn btn-outline-primary waves-effect waves-light">
                 <i class="ti ti-building me-1"></i>Empresa
@@ -52,6 +65,12 @@
             <div class="col-md-3 fw-medium">Categoría</div>
             <div class="col-md-9">{{ $service->category?->name }}</div>
         </div>
+        @if (filled($service->description))
+            <div class="row mb-3">
+                <div class="col-md-3 fw-medium">Descripción</div>
+                <div class="col-md-9">{{ $service->description }}</div>
+            </div>
+        @endif
         <div class="row mb-3">
             <div class="col-md-3 fw-medium">Precio</div>
             <div class="col-md-9">
@@ -74,10 +93,21 @@
             <div class="col-md-3 fw-medium">Próxima</div>
             <div class="col-md-9">{{ $service->next_billing ? $service->next_billing->format('d/m/Y') : '' }}</div>
         </div>
-        <div class="row mb-0">
+        <div class="row {{ empty($proforma) ? 'mb-0' : 'mb-3' }}">
             <div class="col-md-3 fw-medium">Estado</div>
             <div class="col-md-9">{!! $service->status_label !!}</div>
         </div>
+        @if (! empty($proforma))
+            <div class="row mb-0">
+                <div class="col-md-3 fw-medium">Proforma</div>
+                <div class="col-md-9">
+                    <a href="{{ route('expense.edit', $proforma) }}">{{ $proforma->number }}</a>
+                    @if ($proforma->items->first())
+                        <span class="text-muted">· {{ $proforma->items->first()->description }}</span>
+                    @endif
+                </div>
+            </div>
+        @endif
     </div>
 </div>
 @endsection

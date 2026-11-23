@@ -26,7 +26,13 @@ class RouteServiceProvider extends ServiceProvider
     {
         RateLimiter::for('api', function (Request $request)
         {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            if ($request->is('api/wordpress/webhook/*'))
+            {
+                return Limit::none();
+            }
+
+            return Limit::perMinute((int) config('app.api_rate_limit_per_minute'))
+                ->by($request->ip());
         });
 
         RateLimiter::for('auth-register', function (Request $request)

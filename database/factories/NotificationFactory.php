@@ -54,7 +54,7 @@ class NotificationFactory extends Factory
             'is_sent' => $isSent,
             'sent_at' => $isSent ? $this->faker->dateTimeBetween('-30 days', 'now') : null,
             'sent_data' => $isSent ? [
-                'email_provider' => 'sendgrid',
+                'email_provider' => 'smtp',
                 'message_id' => $this->faker->uuid(),
                 'attempts' => $this->faker->numberBetween(1, 3),
             ] : null,
@@ -143,7 +143,7 @@ class NotificationFactory extends Factory
             'is_sent' => true,
             'sent_at' => $this->faker->dateTimeBetween('-30 days', 'now'),
             'sent_data' => [
-                'email_provider' => 'sendgrid',
+                'email_provider' => 'smtp',
                 'message_id' => $this->faker->uuid(),
                 'attempts' => 1,
             ],
@@ -163,7 +163,7 @@ class NotificationFactory extends Factory
             'is_sent' => true,
             'sent_at' => $sentAt,
             'sent_data' => [
-                'email_provider' => 'sendgrid',
+                'email_provider' => 'smtp',
                 'message_id' => $this->faker->uuid(),
                 'attempts' => 1,
             ],

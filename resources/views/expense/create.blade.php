@@ -50,11 +50,14 @@
 
 @section('content')
 @php
+    $editingInvoice = $editingInvoice ?? null;
+    $editingDate = filled($editingInvoice?->date) ? \Carbon\Carbon::parse($editingInvoice->date)->toDateString() : null;
+    $editingDueDate = filled($editingInvoice?->due_date) ? \Carbon\Carbon::parse($editingInvoice->due_date)->toDateString() : $editingDate;
     $clientTaxProfiles = $clientTaxProfiles ?? [];
-    $selectedEnterpriseId = (string) old('enterprise_id', request('enterprise_id'));
+    $selectedEnterpriseId = (string) old('enterprise_id', $editingInvoice->enterprise_id ?? request('enterprise_id'));
     $selectedTaxProfile = $clientTaxProfiles[$selectedEnterpriseId] ?? $clientTaxProfiles[(int) $selectedEnterpriseId] ?? null;
     $defaultVatPercent = $selectedTaxProfile['vat_percent'] ?? '0';
-    $selectedCurrencyId = old('currency_id');
+    $selectedCurrencyId = old('currency_id', $editingInvoice->currency_id ?? null);
     if ($selectedCurrencyId === null && request()->filled('currency') && isset($currencies))
     {
         $matchedCurrency = $currencies->first(function ($currency)
@@ -63,7 +66,17 @@
         });
         $selectedCurrencyId = $matchedCurrency?->id;
     }
-    $oldLines = old('lines', [
+    $prefillLines = $editingInvoice
+        ? $editingInvoice->items->map(fn ($item): array => [
+            'concept' => (string) $item->description,
+            'category_id' => (string) ($item->category_id ?? ''),
+            'base_amount' => number_format((float) $item->unit_price, 2, '.', ''),
+            'vat_percent' => (string) ($item->tax_percentage ?? 0),
+            'retention_percent' => '0',
+            'allocation_percent' => '100',
+        ])->all()
+        : null;
+    $oldLines = old('lines', $prefillLines ?: [
         [
             'concept' => (string) request('concept', request('remarks', '')),
             'category_id' => (string) ($defaultCategoryId ?? ''),
@@ -111,8 +124,11 @@
 @endif
 
 <div class="card">
-    <form class="card-body" action="{{ $documentFlow['store_route'] }}" method="POST" enctype="multipart/form-data" novalidate>
+        <form class="card-body" action="{{ $documentFlow['store_route'] }}" method="POST" enctype="multipart/form-data" novalidate>
         @csrf
+        @if (! empty($editingInvoice))
+            @method('PUT')
+        @endif
         @php
             $reconcileStatementId = old('bank_statement_id', request('bank_statement_id', request('statement_id')));
             $reconcileLineId = old('bank_statement_line_id', request('bank_statement_line_id', request('statement_line_id')));
@@ -281,7 +297,7 @@
 
                     <div class="{{ $isSellDocumentFlow ? 'col-md-4' : 'col-md-6' }}">
                         <label for="date" class="form-label">Fecha (*)</label>
-                        <input type="text" id="date" name="date" class="form-control expense-date @error('date') is-invalid @enderror" value="{{ old('date', request('date', now()->toDateString())) }}">
+                        <input type="text" id="date" name="date" class="form-control expense-date @error('date') is-invalid @enderror" value="{{ old('date', $editingDate ?? request('date', now()->toDateString())) }}">
                         @error('date')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -289,7 +305,7 @@
 
                     <div class="{{ $isSellDocumentFlow ? 'col-md-4' : 'col-md-6' }}">
                         <label for="due_date" class="form-label">Fecha vencimiento</label>
-                        <input type="text" id="due_date" name="due_date" class="form-control expense-date @error('due_date') is-invalid @enderror" value="{{ old('due_date', old('date', now()->toDateString())) }}">
+                        <input type="text" id="due_date" name="due_date" class="form-control expense-date @error('due_date') is-invalid @enderror" value="{{ old('due_date', $editingDueDate ?? old('date', now()->toDateString())) }}">
                         @error('due_date')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -298,7 +314,7 @@
                     @unless ($isSellDocumentFlow)
                         <div class="col-12">
                             <label for="document_number" class="form-label">Número de comprobante</label>
-                            <input type="text" id="document_number" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number', request('document_number')) }}">
+                            <input type="text" id="document_number" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number', $editingInvoice->number ?? request('document_number')) }}">
                             <small id="document-number-duplicate-warning" class="d-none text-danger d-block mt-1"></small>
                             @error('document_number')
                                 <div class="invalid-feedback">{{ $message }}</div>

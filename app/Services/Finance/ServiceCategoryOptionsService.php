@@ -28,10 +28,21 @@ class ServiceCategoryOptionsService
     }
 
     /**
+     * Invoice line categories plus the team's projection buckets that are not
+     * tied to a module, such as Payroll & Benefits.
+     *
+     * @return list<array{id: int, name: string, group: string|null}>
+     */
+    public function optionsForServiceForm(int $teamId): array
+    {
+        return $this->optionsForModules($teamId, ['services', 'projects'], true);
+    }
+
+    /**
      * @param  list<string>  $moduleKeys
      * @return list<array{id: int, name: string, group: string|null}>
      */
-    public function optionsForModules(int $teamId, array $moduleKeys): array
+    public function optionsForModules(int $teamId, array $moduleKeys, bool $includeUnassignedTeamCategories = false): array
     {
         $moduleIds = Module::query()
             ->whereIn('key', $moduleKeys)
@@ -50,7 +61,22 @@ class ServiceCategoryOptionsService
 
         if ($moduleIds !== [])
         {
-            $categoriesQuery->whereIn('module_id', $moduleIds);
+            $categoriesQuery->where(function ($query) use ($moduleIds, $teamId, $includeUnassignedTeamCategories)
+            {
+                $query->whereIn('module_id', $moduleIds);
+
+                if ($includeUnassignedTeamCategories)
+                {
+                    $query->orWhere(function ($unassigned) use ($teamId)
+                    {
+                        $unassigned->whereNull('module_id')
+                            ->where('team_id', $teamId);
+                    });
+                }
+            });
+        } elseif ($includeUnassignedTeamCategories)
+        {
+            $categoriesQuery->whereNull('module_id')->where('team_id', $teamId);
         } else
         {
             $categoriesQuery->whereNull('module_id');
