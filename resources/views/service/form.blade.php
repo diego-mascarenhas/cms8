@@ -182,22 +182,10 @@
                         </div>
                     </div>
 
-                    <div class="col-md-8">
+                    <div class="col-12">
                         <div class="form-group">
                             <label for="description" class="form-label">{{ __('Description') }}</label>
                             <textarea id="description" name="description" class="form-control" rows="3">{{ old('description', isset($data) ? $data->description : '') }}</textarea>
-                        </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="frequency" class="form-label">{{ __('Period') }}</label>
-                            <select id="frequency" name="frequency" class="select2 form-select">
-                                @php($selectedFrequency = (string) old('frequency', isset($data) ? $data->frequency : 1))
-                                @foreach (\App\Models\Service::frequencyOptions() as $months => $label)
-                                    <option value="{{ $months }}" {{ $selectedFrequency === (string) $months ? 'selected' : '' }}>{{ $label }}</option>
-                                @endforeach
-                            </select>
                         </div>
                     </div>
                 </div>
@@ -237,6 +225,18 @@
                             <label for="discount" class="form-label">{{ __('Discount') }} (%)</label>
                             <input type="number" id="discount" name="discount" class="form-control" step="1" max="30" value="{{ isset($data) ? $data->discount : '0' }}">
                             <small class="text-muted">{{ __('Maximum discount allowed: 30%') }}</small>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="frequency" class="form-label">{{ __('Period') }}</label>
+                            <select id="frequency" name="frequency" class="select2 form-select">
+                                @php($selectedFrequency = (string) old('frequency', isset($data) ? $data->frequency : 1))
+                                @foreach (\App\Models\Service::frequencyOptions() as $months => $label)
+                                    <option value="{{ $months }}" {{ $selectedFrequency === (string) $months ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
 
