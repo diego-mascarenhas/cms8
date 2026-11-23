@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Api;
 
-use App\Mail\ProjectBudgetQuoteMail;
+use App\Mail\CommunicationMail;
 use App\Models\Contact;
 use App\Models\Enterprise;
 use App\Models\Project;
@@ -112,10 +112,9 @@ class ProjectAuthorizeBudgetApiTest extends TestCase
         $this->assertSame($contact->email, data_get($project->data, 'budget_email.to_email'));
         $this->assertNotEmpty(data_get($project->data, 'budget_email.tracking_token'));
 
-        Mail::assertSent(ProjectBudgetQuoteMail::class, function (ProjectBudgetQuoteMail $mail) use ($contact): bool
+        Mail::assertSent(CommunicationMail::class, function (CommunicationMail $mail) use ($contact): bool
         {
-            return $mail->hasTo($contact->email)
-                && $mail->hasBcc('quotes@example.test');
+            return $mail->hasTo($contact->email);
         });
     }
 

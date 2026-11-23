@@ -2,15 +2,16 @@
 
 namespace App\Services;
 
+use App\Enums\CommunicationChannel;
 use App\Helpers\DnsHelper;
 use App\Mail\ProjectBudgetQuoteMail;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\User;
+use App\Services\Communications\CommunicationService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -121,7 +122,6 @@ class ProjectBudgetQuoteMailService
         $recipientName = $ready['recipient_name'];
         $recipientEmail = $ready['recipient_email'];
         $previewToken = $ready['preview_token'];
-        $from = $ready['from'];
 
         $trackingToken = Str::random(48);
         $previewUrl = $this->clientReportUrl($previewToken);
@@ -132,26 +132,23 @@ class ProjectBudgetQuoteMailService
             previewUrl: $previewUrl,
             trackingToken: $trackingToken,
         );
-
-        $mail->from($from['from_address'], $from['from_name']);
-
-        $mailer = (string) config('mail.default');
-        if (! app()->runningUnitTests() && in_array($mailer, ['log', 'array'], true))
-        {
-            throw new RuntimeException(__('Mail is set to :mailer, so the quote was not delivered to an inbox. Configure SMTP and try again.', [
-                'mailer' => $mailer,
-            ]));
-        }
+        $projectName = trim((string) ($project->real_name ?: $project->name));
 
         try
         {
-            $outgoing = Mail::to($recipientEmail, $recipientName !== '' ? $recipientName : null);
-            $copyTo = $this->senderCopyAddress($from['from_address'], $recipientEmail);
-            if ($copyTo !== null)
-            {
-                $outgoing->bcc($copyTo);
-            }
-            $outgoing->send($mail);
+            $communication = app(CommunicationService::class)->create($project->team, [
+                'channel' => CommunicationChannel::Email,
+                'recipient_email' => $recipientEmail,
+                'recipient_name' => $recipientName !== '' ? $recipientName : $recipientEmail,
+                'contact_id' => $recipient->id,
+                'subject' => __('Quote: :project', ['project' => $projectName]),
+                'message' => $mail->render(),
+                'metadata' => [
+                    'html' => true,
+                    'project_id' => $project->id,
+                    'budget_tracking_token' => $trackingToken,
+                ],
+            ], $sender);
         } catch (\Throwable $e)
         {
             Log::error('Project budget quote email failed', [
@@ -169,12 +166,13 @@ class ProjectBudgetQuoteMailService
             'to_email' => $recipientEmail,
             'to_name' => $recipientName !== '' ? $recipientName : $recipientEmail,
             'contact_id' => $recipient->id,
+            'communication_id' => $communication->id,
             'sent_at' => now()->toIso8601String(),
             'opened_at' => null,
             'clicked_at' => null,
             'visited_count' => 0,
             'sent_by' => $sender->id,
-            'bcc_email' => $copyTo,
+            'bcc_email' => null,
         ];
 
         $project->data = $data;
@@ -246,22 +244,6 @@ class ProjectBudgetQuoteMailService
             'preview_token' => $previewToken,
             'from' => $from,
         ];
-    }
-
-    private function senderCopyAddress(string $fromAddress, string $recipientEmail): ?string
-    {
-        $copyTo = trim($fromAddress);
-        if ($copyTo === '' || ! filter_var($copyTo, FILTER_VALIDATE_EMAIL))
-        {
-            return null;
-        }
-
-        if (strcasecmp($copyTo, trim($recipientEmail)) === 0)
-        {
-            return null;
-        }
-
-        return $copyTo;
     }
 
     /**

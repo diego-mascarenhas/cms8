@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Api;
 
-use App\Mail\ProjectBudgetQuoteMail;
+use App\Mail\CommunicationMail;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Enterprise;
@@ -326,7 +326,7 @@ class ProjectFunnelTest extends TestCase
             'created_at' => now()->toIso8601String(),
         ], JSON_THROW_ON_ERROR));
 
-        $this->mock(ProjectBudgetSpecService::class, function ($mock) use ($spec)
+        $this->partialMock(ProjectBudgetSpecService::class, function ($mock) use ($spec)
         {
             $mock->shouldReceive('mergeClientTaskEdits')
                 ->once()
@@ -385,7 +385,7 @@ class ProjectFunnelTest extends TestCase
             (new ProjectBudgetSpecService)->aiUsagePercentFromTokenModel(ProjectBudgetSpecService::DEFAULT_TOKEN_MODEL),
             (float) $project->data['ai_usage_percent'],
         );
-        $this->assertSame('openai/gpt-4.1', $project->data['token_model']['id'] ?? null);
+        $this->assertSame('anthropic/claude-opus-5.5', $project->data['token_model']['id'] ?? null);
         $this->assertSame(20.0, (float) $project->data['suggested_tasks'][1]['estimated_hours']);
         $this->assertArrayHasKey('unit_price', $project->data['suggested_tasks'][0]);
         $this->assertNotNull($project->board_id);
@@ -435,7 +435,7 @@ class ProjectFunnelTest extends TestCase
             'created_at' => now()->toIso8601String(),
         ], JSON_THROW_ON_ERROR));
 
-        $this->mock(ProjectBudgetSpecService::class, function ($mock) use ($spec)
+        $this->partialMock(ProjectBudgetSpecService::class, function ($mock) use ($spec)
         {
             $mock->shouldReceive('mergeClientTaskEdits')
                 ->once()
@@ -476,11 +476,9 @@ class ProjectFunnelTest extends TestCase
         $this->assertSame('ana.send@example.com', data_get($project->data, 'budget_email.to_email'));
         $this->assertNotEmpty(data_get($project->data, 'budget_email.sent_at'));
 
-        Mail::assertSent(ProjectBudgetQuoteMail::class, function (ProjectBudgetQuoteMail $mail): bool
+        Mail::assertSent(CommunicationMail::class, function (CommunicationMail $mail): bool
         {
-            return $mail->hasTo('ana.send@example.com')
-                && $mail->hasFrom('quotes@example.test')
-                && $mail->hasBcc('quotes@example.test');
+            return $mail->hasTo('ana.send@example.com');
         });
     }
 
@@ -778,6 +776,9 @@ class ProjectFunnelTest extends TestCase
 
         $this->assertStringContainsString('LISTA REVENTA', (string) $get->json('data.prompt_instruction'));
         $this->assertStringContainsString('Don Silvio', (string) $get->json('data.prompt_instruction'));
+        $this->assertStringContainsString('MarJuanC', (string) $get->json('data.prompt_instruction'));
+        $this->assertStringContainsString('Del Campo Distribuidora', (string) $get->json('data.prompt_instruction'));
+        $this->assertStringContainsString('La Reina Mayorista', (string) $get->json('data.prompt_instruction'));
 
         $custom = 'Lee la lista del proveedor y devolvé solo JSON con kind price_list y lines.';
 
@@ -792,6 +793,26 @@ class ProjectFunnelTest extends TestCase
         $this->assertSame($custom, $documents->resolveSupplierListPrompt($team->id));
         $this->assertStringContainsString("Document:\nALF.AGUILA", $documents->promptFor('ALF.AGUILA', $team->id));
         $this->assertStringStartsWith($custom, $documents->promptFor('ALF.AGUILA', $team->id));
+    }
+
+    public function test_an_existing_supplier_list_prompt_gains_the_new_lists(): void
+    {
+        $team = $this->createFunnelTeam();
+        $documents = app(\App\Services\CommercialDocumentInterpreter::class);
+        $prompt = $documents->ensureSupplierListPrompt($team);
+        $prompt->forceFill([
+            'prompt_instruction' => "Extract the commercial lines.\n- LISTA REVENTA: code, name and a price.\n\nReturn only JSON with this shape:\n{}",
+        ])->save();
+
+        $resolved = $documents->resolveSupplierListPrompt((int) $team->id);
+
+        $this->assertStringContainsString('LISTA REVENTA', $resolved);
+        $this->assertStringContainsString('MarJuanC', $resolved);
+        $this->assertStringContainsString('Del Campo Distribuidora', $resolved);
+        $this->assertStringContainsString('La Reina Mayorista', $resolved);
+        $this->assertStringContainsString('Precios Comerciantes', $resolved);
+        $this->assertLessThan(strpos($resolved, 'Return only JSON'), strpos($resolved, 'MarJuanC'));
+        $this->assertStringContainsString('MarJuanC', (string) $prompt->fresh()->prompt_instruction);
     }
 
     public function test_supplier_list_prompt_requires_authentication(): void
@@ -872,7 +893,7 @@ class ProjectFunnelTest extends TestCase
             ->assertJsonPath('data.output_rate', 55)
             ->assertJsonPath('data.discriminate', true)
             ->assertJsonPath('data.include', true)
-            ->assertJsonPath('data.token_model.id', 'openai/gpt-4.1')
+            ->assertJsonPath('data.token_model.id', 'anthropic/claude-opus-5.5')
             ->assertJsonPath('data.can_update', true);
 
         $this->withHeader('Authorization', 'Bearer '.$token)

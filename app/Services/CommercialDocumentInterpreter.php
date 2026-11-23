@@ -5,12 +5,9 @@ namespace App\Services;
 use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\Team;
-use App\Support\AiTasks;
 use Illuminate\Support\Str;
 use RuntimeException;
 use ZipArchive;
-
-use function Laravel\Ai\agent;
 
 class CommercialDocumentInterpreter
 {
@@ -31,26 +28,31 @@ class CommercialDocumentInterpreter
         }
 
         $text = trim($this->sourceText($path, $originalName, $teamId));
-        if ($text === '')
-        {
-            throw new RuntimeException(__('The file could not be read.'));
-        }
-
-        $parsed = $this->priceListFromText($text, $originalName) ?? $this->quotationFromText($text, $originalName);
+        $parsed = $text !== ''
+            ? ($this->priceListFromText($text, $originalName) ?? $this->quotationFromText($text, $originalName))
+            : null;
         if ($parsed !== null)
         {
             return $parsed;
         }
 
-        $prompt = $this->promptFor(Str::limit($text, 120000, ''), $teamId);
-        $documentAgent = agent(
-            instructions: 'You extract commercial lines from supplier lists and ship requisitions. Return only JSON.',
-            messages: [],
-            tools: [],
-        );
-        $response = AiTasks::prompt($documentAgent, $prompt, 120, 'shop');
+        if ($extension === 'pdf')
+        {
+            return $this->interpretAttachment($path, $teamId);
+        }
 
-        return $this->documentFromModelText((string) ($response->text ?? ''));
+        if ($text === '')
+        {
+            throw new RuntimeException(__('The file could not be read.'));
+        }
+
+        $json = $this->ocr->complete(
+            'You extract commercial lines from supplier lists and ship requisitions. Return only JSON.',
+            $this->promptFor(Str::limit($text, 120000, ''), $teamId),
+            $teamId,
+        );
+
+        return $this->documentFromModelText($json);
     }
 
     /**
@@ -60,11 +62,21 @@ class CommercialDocumentInterpreter
      */
     private function interpretImage(string $path, ?int $teamId): array
     {
+        return $this->interpretAttachment($path, $teamId);
+    }
+
+    /**
+     * PDFs and photos use the invoice vision model. DeepSeek only sees text.
+     *
+     * @return array{kind: string, supplier_name: ?string, currency: ?string, lines: list<array{code: string, name: string, cost: ?float, quantity: ?float, unit: ?string, barcode: ?string, oem: ?string}>}
+     */
+    private function interpretAttachment(string $path, ?int $teamId): array
+    {
         $prompt = $this->resolveSupplierListPrompt($teamId)
-            ."\n\nThe price list is the attached image. Read the products and prices from that image.";
+            ."\n\nThe price list is the attached file. Read the products and prices from that file.";
         $text = $this->ocr->completeWithFile(
             $path,
-            'You read supplier price lists from photos. Return only JSON.',
+            'You read supplier price lists. Return only JSON.',
             $prompt,
             $teamId,
         );
@@ -118,12 +130,17 @@ class CommercialDocumentInterpreter
         }
 
         $lines = [];
-        for ($sheet = 1; $sheet <= 3; $sheet++)
+        foreach ($this->spreadsheetSheets($zip) as $sheet)
         {
-            $xml = $this->officeXml($zip->getFromName('xl/worksheets/sheet'.$sheet.'.xml'));
+            $xml = $this->officeXml($zip->getFromName($sheet['path']));
             if ($xml === null)
             {
                 continue;
+            }
+
+            if ($sheet['name'] !== '')
+            {
+                $lines[] = '# '.$sheet['name'];
             }
 
             foreach ($xml->sheetData->row as $row)
@@ -163,6 +180,91 @@ class CommercialDocumentInterpreter
         $zip->close();
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * @return list<array{name: string, path: string}>
+     */
+    private function spreadsheetSheets(ZipArchive $zip): array
+    {
+        $workbook = $this->plainXml($zip->getFromName('xl/workbook.xml'));
+        $rels = $this->plainXml($zip->getFromName('xl/_rels/workbook.xml.rels'));
+        if ($workbook === null || $rels === null)
+        {
+            return [
+                ['name' => '', 'path' => 'xl/worksheets/sheet1.xml'],
+                ['name' => '', 'path' => 'xl/worksheets/sheet2.xml'],
+                ['name' => '', 'path' => 'xl/worksheets/sheet3.xml'],
+            ];
+        }
+
+        $targets = [];
+        $package = 'http://schemas.openxmlformats.org/package/2006/relationships';
+        $relationships = $rels->children($package)->Relationship;
+        if (count($relationships) === 0)
+        {
+            $relationships = $rels->Relationship;
+        }
+
+        foreach ($relationships as $relationship)
+        {
+            $attributes = $relationship->attributes();
+            $id = (string) $attributes['Id'];
+            $target = (string) $attributes['Target'];
+            if ($id === '' || $target === '')
+            {
+                continue;
+            }
+
+            $targets[$id] = str_starts_with($target, '/')
+                ? ltrim($target, '/')
+                : (str_starts_with($target, 'xl/') ? $target : 'xl/'.ltrim($target, '/'));
+        }
+
+        $main = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+        $relation = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+        $sheets = [];
+        foreach ($workbook->children($main)->sheets->sheet as $sheet)
+        {
+            $attributes = $sheet->attributes();
+            $state = strtolower((string) $attributes['state']);
+            $name = trim((string) $attributes['name']);
+            if ($state === 'hidden' || $state === 'veryhidden' || strcasecmp($name, 'INTRO') === 0)
+            {
+                continue;
+            }
+
+            $id = (string) $sheet->attributes($relation)['id'];
+            $path = $targets[$id] ?? '';
+            if ($path === '')
+            {
+                continue;
+            }
+
+            $sheets[] = [
+                'name' => $name,
+                'path' => $path,
+            ];
+        }
+
+        return $sheets !== [] ? $sheets : [
+            ['name' => '', 'path' => 'xl/worksheets/sheet1.xml'],
+        ];
+    }
+
+    private function plainXml(string|false $contents): ?\SimpleXMLElement
+    {
+        if (! is_string($contents) || $contents === '')
+        {
+            return null;
+        }
+
+        $previous = libxml_use_internal_errors(true);
+        $xml = simplexml_load_string($contents, \SimpleXMLElement::class, LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        return $xml === false ? null : $xml;
     }
 
     private function officeXml(string|false $contents): ?\SimpleXMLElement
@@ -562,13 +664,51 @@ class CommercialDocumentInterpreter
             return $this->defaultSupplierListPrompt();
         }
 
-        $instruction = trim((string) (Prompt::forTeam($teamId)
+        $prompt = Prompt::forTeam($teamId)
             ->forModule('shop')
             ->where('section_key', 'supplier_price_list')
             ->active()
-            ->first()?->prompt_instruction ?? ''));
+            ->first();
+        $instruction = trim((string) ($prompt?->prompt_instruction ?? ''));
+        if ($instruction === '')
+        {
+            return $this->defaultSupplierListPrompt();
+        }
 
-        return $instruction !== '' ? $instruction : $this->defaultSupplierListPrompt();
+        $withLists = $this->withCurrentSupplierLists($instruction);
+        if ($withLists !== $instruction && $prompt !== null)
+        {
+            $prompt->prompt_instruction = $withLists;
+            $prompt->save();
+        }
+
+        return $withLists;
+    }
+
+    public function withCurrentSupplierLists(string $instruction): string
+    {
+        if (str_contains($instruction, 'MarJuanC') || ! str_contains($instruction, 'LISTA REVENTA'))
+        {
+            return $instruction;
+        }
+
+        $formats = $this->addedSupplierListFormats();
+        $marker = 'Return only JSON';
+        if (str_contains($instruction, $marker))
+        {
+            return str_replace($marker, $formats."\n\n".$marker, $instruction);
+        }
+
+        return rtrim($instruction)."\n\n".$formats;
+    }
+
+    public function addedSupplierListFormats(): string
+    {
+        return <<<'PROMPT'
+- MarJuanC alimentos lists, dated like 13-11-2026, from Grito de Asencio. A row is a short code, a product name, a parenthetical such as (21.00), a discount quantity, a unit (Uni or Kg), Prec. Lista, a discount percent, and Precio bonif. cost is Precio bonif. 17,753.37 is 17753.37. The parentheses are IVA, not a pack count and not quantity. Cant p/ desc is not an order quantity. A note such as "+1 bolsa bonif." is not a price. Category bands such as ACEITES, AZUCARES, BAKERY and CREMAS y MANTECA are not products. supplier_name is MarJuanC. currency is ARS. Example: ACE120 ACEITE DE GIRASOL DON HUGO X 5 LTS (21.00), Precio bonif. 17,753.37, so cost is 17753.37.
+- Del Campo Distribuidora, "LISTA DE PRECIOS COMPLETA". Columns are PRODUCTO, MARCA, TIPO ENVASE, CONTENIDO and PRECIO FINAL. name is the product plus the brand when the brand is not "CONSULTAR MARCA". cost is PRECIO FINAL. $8.508 means 8508. CONTENIDO such as 850 GRS or 3,1 KILOS stays in the name. ENCARGADo or a missing price has cost null. Section titles such as CONSERVAS DE FRUTA and SALSAS Y ADEREZOS are not products. Skip phones, gluten and kosher marks, and the stock disclaimer. supplier_name is Del Campo Distribuidora. currency is ARS.
+- La Reina Mayorista, also shown as Precios Mayorista or Mayorista Almacén. One sheet per category: ALMACEN, QUESOS, FIAMBRES, ENCURTIDOS, FRUTAS SECAS, CONDIMENTOS, CONGELADOS and PAPELERA. Skip the INTRO sheet. Columns are Producto, Consumidor Final, Consumidor Final en Efectivo, Precios Comerciantes and Precios Comerciantes por cantidad. cost is Precios Comerciantes, the third price. Do not use the consumer prices or the quantity price. 23,300.50 and 23300.5 are 23300.5. Rows marked NUEVO or OFERTA are still products. Category labels such as JAMON CRUDO, BARRAS and HAMBURGUESAS are not products. Skip the Muñiz banner, the Saturday delivery note, the phone, the mail and Instagram. supplier_name is La Reina Mayorista. currency is ARS. A screenshot of that same grid is the same list: ignore the browser and the desktop around it.
+PROMPT;
     }
 
     public function ensureSupplierListPrompt(Team $team): Prompt
@@ -613,7 +753,11 @@ Price lists from this operation:
 - Photo flyers such as Don Silvio / La Granja Don Silvio: columns VACUNA, POLLO, CERDO, EMBUTIDOS and ACHURAS. Each row is a cut and a price per kilogram. $ 13.890 means 13890. A cell that says consultar has cost null. supplier_name is the brand printed on the flyer. currency is ARS. unit is KG. Skip slogans, phones, delivery banners and the minimum order.
 - Wholesale magazines and Lista de Precios Mayorista: read only product rows. Skip ads, page numbers and IVA notes.
 - Maxikol product lists and other supplier quotations. Each product has a name and a unit cost.
-
+PROMPT
+            ."\n"
+            .$this->addedSupplierListFormats()
+            ."\n\n"
+            .<<<'PROMPT'
 Requisition examples: "STORES REQUISITION FORM", RFQ, and galley or bond store sheets. Each item has an ISSA/IMPA code, a description, and a requested quantity. Those rows usually have no unit cost.
 Quotation examples: Seven Seas qt sheets. A row has the item number, description, supplier code, requested quantity, unit, supplied quantity, unit price, discount percent and line amount. cost is the net unit price, the line amount divided by the supplied quantity. Rows marked NA have no cost. currency is the code printed beside the grand total.
 
@@ -624,7 +768,7 @@ Rules:
 - kind is "price_list" when rows have a unit cost, otherwise "requisition".
 - supplier_name is the company that issued the list, or null.
 - currency is ARS, USD, or EUR, or null.
-- cost is a JSON number. Use a dot as the decimal separator and no thousands separator. 12.900,00 and 13.890 are 12900 and 13890. 1229,98 is 1229.98. If there is no unit cost, cost is null.
+- cost is a JSON number. Use a dot as the decimal separator and no thousands separator. 12.900,00 and 13.890 are 12900 and 13890. 1229,98 is 1229.98. 17,753.37 and 23300.5 are 17753.37 and 23300.5. If there is no unit cost, cost is null.
 - quantity is the amount requested. When there are columns for immediate use and for stock, add them. Ignore ROB. A pack count in parentheses is not quantity. If there is no quantity, quantity is null.
 - code is the supplier code or ISSA/IMPA code. Keep internal single spaces. Do not invent codes.
 - Skip titles, page numbers, totals, ads, phones and empty rows. Do not invent products.

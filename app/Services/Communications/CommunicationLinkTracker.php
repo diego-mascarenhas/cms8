@@ -8,6 +8,11 @@ class CommunicationLinkTracker
 {
     public function render(Communication $communication): string
     {
+        if (data_get($communication->metadata, 'html') === true)
+        {
+            return (string) $communication->message;
+        }
+
         $html = nl2br(e((string) $communication->message));
         $html = $this->autolink($html);
         $html = $this->rewriteAnchors($html, $communication);

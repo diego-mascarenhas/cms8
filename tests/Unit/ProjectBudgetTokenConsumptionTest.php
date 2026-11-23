@@ -525,7 +525,7 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
             'prompt_per_million' => 30,
             'completion_per_million' => 30,
         ]));
-        $this->assertSame('openai/gpt-4.1', $service->normalizeTokenModel(ProjectBudgetSpecService::DEFAULT_TOKEN_MODEL)['id'] ?? null);
+        $this->assertSame('anthropic/claude-opus-5.5', $service->normalizeTokenModel(ProjectBudgetSpecService::DEFAULT_TOKEN_MODEL)['id'] ?? null);
         $this->assertNull($service->normalizeTokenModel(['name' => 'Broken']));
     }
 
