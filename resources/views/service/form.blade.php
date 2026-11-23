@@ -132,7 +132,9 @@
                             </div>
                             <select id="subscription_id" name="subscription_id" class="form-select select2-subscription" data-allow-clear="true" data-placeholder="{{ __('Subscripción local') }}">
                                 <option value="" {{ old('subscription_id', isset($data) ? $data->subscription_id : '') === '' ? 'selected' : '' }}>{{ __('Subscripción local') }}</option>
-                                @php($serviceSyncOptions = $serviceSyncs ?? $stripeSubscriptions ?? collect())
+                                @php
+                                    $serviceSyncOptions = $serviceSyncs ?? $stripeSubscriptions ?? collect();
+                                @endphp
                                 @foreach($serviceSyncOptions as $serviceSync)
                                         <option value="{{ $serviceSync->id }}" {{ old('subscription_id', isset($data) ? $data->subscription_id : '') == $serviceSync->id ? 'selected' : '' }}>
                                             {{ $serviceSync->customer_name ?: $serviceSync->customer_email }} — {{ $serviceSync->plan_name ?: '—' }} ({{ $serviceSync->status ?? '—' }})
@@ -154,7 +156,9 @@
                                 <label for="operation" class="form-label mb-0">{{ __('Operación') }}</label>
                             </div>
                             <select id="operation" name="operation" class="select2 form-select" required data-placeholder="{{ __('Operación') }}">
-                                @php($selectedOperation = old('operation', isset($data) ? $data->operation : 'buy'))
+                                @php
+                                    $selectedOperation = old('operation', isset($data) ? $data->operation : 'buy');
+                                @endphp
                                 <option value="buy" {{ $selectedOperation === 'buy' ? 'selected' : '' }}>{{ __('Compra') }}</option>
                                 <option value="sell" {{ $selectedOperation === 'sell' ? 'selected' : '' }}>{{ __('Venta') }}</option>
                             </select>
@@ -168,7 +172,9 @@
                                 <label for="status" class="form-label mb-0">{{ __('Status') }}</label>
                             </div>
                             <select id="status" name="status" class="select2 form-select" required data-placeholder="{{ __('Select Status') }}">
-                                @php($selectedStatus = (string) old('status', isset($data) ? $data->status : '4'))
+                                @php
+                                    $selectedStatus = (string) old('status', isset($data) ? $data->status : '4');
+                                @endphp
                                 <option value="">{{ __('Select Status') }}</option>
                                 <option value="1" {{ $selectedStatus === '1' ? 'selected' : '' }}>Suspendido</option>
                                 <option value="2" {{ $selectedStatus === '2' ? 'selected' : '' }}>Suspender</option>
@@ -186,6 +192,7 @@
                         <div class="form-group">
                             <label for="description" class="form-label">{{ __('Description') }}</label>
                             <textarea id="description" name="description" class="form-control" rows="3">{{ old('description', isset($data) ? $data->description : '') }}</textarea>
+                            <small class="text-muted d-block mt-1">En la factura: <span id="description-preview"></span></small>
                         </div>
                     </div>
                 </div>
@@ -201,7 +208,9 @@
                         <div class="form-group">
                             <label for="currency_id" class="form-label">{{ __('Currency') }} ({{ __('optional') }})</label>
                             <select id="currency_id" name="currency_id" class="select2 form-select" data-allow-clear="true" data-placeholder="{{ __('Select Currency') }}">
-                                @php($selectedCurrencyId = (string) old('currency_id', isset($data) ? ($data->currency_id ?? '') : ''))
+                                @php
+                                    $selectedCurrencyId = (string) old('currency_id', isset($data) ? ($data->currency_id ?? '') : '');
+                                @endphp
                                 <option value="">{{ __('Select Currency') }}</option>
                                 @foreach (($currencies ?? collect()) as $currency)
                                     <option value="{{ $currency->id }}" {{ $selectedCurrencyId === (string) $currency->id ? 'selected' : '' }}>
@@ -232,7 +241,9 @@
                         <div class="form-group">
                             <label for="frequency" class="form-label">{{ __('Period') }}</label>
                             <select id="frequency" name="frequency" class="select2 form-select">
-                                @php($selectedFrequency = (string) old('frequency', isset($data) ? $data->frequency : 1))
+                                @php
+                                    $selectedFrequency = (string) old('frequency', isset($data) ? $data->frequency : 1);
+                                @endphp
                                 @foreach (\App\Models\Service::frequencyOptions() as $months => $label)
                                     <option value="{{ $months }}" {{ $selectedFrequency === (string) $months ? 'selected' : '' }}>{{ $label }}</option>
                                 @endforeach
@@ -243,14 +254,26 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="next_billing" class="form-label">{{ __('Next Billing Date') }}</label>
-                            <input type="text" id="next_billing" name="next_billing" class="form-control flatpickr-date" value="{{ isset($data) && $data->next_billing ? $data->next_billing->format('Y-m-d') : '' }}">
+                            @php
+                                $nextBillingValue = old('next_billing', isset($data) && $data->next_billing ? $data->next_billing->format('Y-m-d') : now()->toDateString());
+                                $nextBillingValue = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $nextBillingValue)
+                                    ? \Carbon\Carbon::parse($nextBillingValue)->format('d/m/Y')
+                                    : $nextBillingValue;
+                            @endphp
+                            <input type="text" id="next_billing" name="next_billing" class="form-control flatpickr-date" value="{{ $nextBillingValue }}" placeholder="dd/mm/aaaa">
                         </div>
                     </div>
 
                     <div class="col-md-4">
                         <div class="form-group">
                             <label for="expires_at" class="form-label">{{ __('Expiration Date') }}</label>
-                            <input type="text" id="expires_at" name="expires_at" class="form-control flatpickr-date" value="{{ isset($data) && $data->expires_at ? $data->expires_at->format('Y-m-d') : '' }}">
+                            @php
+                                $expiresValue = old('expires_at', isset($data) && $data->expires_at ? $data->expires_at->format('Y-m-d') : '');
+                                $expiresValue = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $expiresValue)
+                                    ? \Carbon\Carbon::parse($expiresValue)->format('d/m/Y')
+                                    : $expiresValue;
+                            @endphp
+                            <input type="text" id="expires_at" name="expires_at" class="form-control flatpickr-date" value="{{ $expiresValue }}" placeholder="dd/mm/aaaa">
                         </div>
                     </div>
                 </div>
@@ -389,11 +412,53 @@
             }
         }
 
-        // Initialize Flatpickr
+        var spanishMonths = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+        function billingConceptPreview() {
+            var description = $.trim($('#description').val());
+            var period = $.trim($('#frequency option:selected').text());
+            var raw = $.trim($('#next_billing').val());
+            var match = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+            var monthLabel = '';
+
+            if (match) {
+                var monthIndex = parseInt(match[2], 10) - 1;
+                if (spanishMonths[monthIndex]) {
+                    monthLabel = spanishMonths[monthIndex] + ' ' + match[3];
+                }
+            }
+
+            var text = description !== '' ? description + ' — ' + period : period;
+            if (monthLabel) {
+                text += ' · ' + monthLabel;
+            }
+
+            $('#description-preview').text(text);
+        }
+
+        $('#description').on('input', billingConceptPreview);
+        $('#frequency').on('change', billingConceptPreview);
+
         $('.flatpickr-date').flatpickr({
-            dateFormat: 'Y-m-d',
-            allowInput: true
+            dateFormat: 'd/m/Y',
+            allowInput: true,
+            disableMobile: true,
+            locale: {
+                firstDayOfWeek: 1,
+                weekdays: {
+                    shorthand: ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'],
+                    longhand: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+                },
+                months: {
+                    shorthand: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+                    longhand: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+                }
+            },
+            onChange: billingConceptPreview,
+            onClose: billingConceptPreview
         });
+
+        billingConceptPreview();
     });
 </script>
 @endsection

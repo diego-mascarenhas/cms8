@@ -73,8 +73,8 @@ class RecurringPurchaseProformaIssuer
         }
 
         $frequency = max(1, (int) ($service->frequency ?? 1));
-        $when = $service->next_billing->copy();
-        $horizon = $today->copy()->endOfMonth();
+        $when = $service->next_billing->copy()->startOfDay();
+        $horizon = $today->copy()->endOfDay()->endOfMonth();
         $guard = 0;
         $openDraft = null;
 
@@ -132,6 +132,49 @@ class RecurringPurchaseProformaIssuer
         return $openDraft;
     }
 
+    public function isOverdue(Service $service): bool
+    {
+        if ((string) $service->operation !== 'buy' || (int) $service->status < 4 || $service->category_id === null || $service->next_billing === null)
+        {
+            return false;
+        }
+
+        if ($service->expires_at !== null && $service->next_billing->gt($service->expires_at))
+        {
+            return false;
+        }
+
+        return $service->next_billing->copy()->startOfDay()->lt(now()->startOfDay());
+    }
+
+    public function createProformaAndAdvance(Service $service): ?Invoice
+    {
+        $service = Service::withoutGlobalScopes()->find($service->id);
+
+        if (! $service instanceof Service || ! $this->isOverdue($service))
+        {
+            return null;
+        }
+
+        $enterprise = Enterprise::withoutGlobalScopes()->find($service->enterprise_id);
+
+        if ($enterprise === null || (int) $enterprise->team_id <= 0)
+        {
+            return null;
+        }
+
+        $when = $service->next_billing->copy()->startOfDay();
+        $invoice = $this->findLinkedInvoice($service, $when) ?? $this->createDraft($service, $enterprise, $when);
+        $next = $when->copy()->addMonthsNoOverflow(max(1, (int) ($service->frequency ?? 1)));
+
+        $service->forceFill([
+            'last_billed' => $when->toDateString(),
+            'next_billing' => $next->toDateString(),
+        ])->save();
+
+        return $invoice;
+    }
+
     public function syncAfterInvoice(Invoice $invoice): ?Invoice
     {
         $serviceId = $this->serviceIdFromReference((string) $invoice->source_reference_id);
@@ -163,7 +206,7 @@ class RecurringPurchaseProformaIssuer
     {
         $amount = $this->cycleAmount($service);
         $currencyId = $this->currencyId($service);
-        $concept = $this->concept($service);
+        $concept = $this->concept($service, $when);
 
         $invoice = Invoice::withoutGlobalScopes()->create([
             'team_id' => (int) $enterprise->team_id,
@@ -217,13 +260,14 @@ class RecurringPurchaseProformaIssuer
         return $euro !== null ? (int) $euro : null;
     }
 
-    private function concept(Service $service): string
+    private function concept(Service $service, Carbon $when): string
     {
         $description = trim((string) $service->description);
         $period = $service->frequencyLabel();
-        $concept = $description !== '' ? $description.' — '.$period : $period;
+        $month = $when->copy()->locale('es')->isoFormat('MMMM YYYY');
+        $base = $description !== '' ? $description.' — '.$period : $period;
 
-        return mb_substr($concept, 0, 255);
+        return mb_substr($base.' · '.$month, 0, 255);
     }
 
     private function proformaNumber(Carbon $when): string

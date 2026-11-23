@@ -727,6 +727,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/service/list', [ServiceController::class, 'index'])->name('service-list');
     Route::get('/service/projection', [ServiceController::class, 'projectBilling'])->name('service.projectBilling');
     Route::get('/service/create', [ServiceController::class, 'create'])->name('service.create');
+    Route::post('/service/{id}/proforma', [ServiceController::class, 'createProforma'])->name('service.proforma');
     Route::get('/service/{id}', [ServiceController::class, 'show'])->name('service.show');
     Route::get('/service/{id}/edit', [ServiceController::class, 'edit'])->name('service.edit');
     Route::post('/service', [ServiceController::class, 'store'])->name('service.store');

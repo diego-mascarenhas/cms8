@@ -143,6 +143,7 @@ class ServiceController extends Controller
 
         try
         {
+            $this->normalizeServiceDates($request);
             $validator = \Validator::make($request->all(), $this->serviceRules());
 
             if ($validator->fails())
@@ -182,14 +183,11 @@ class ServiceController extends Controller
             \Log::info('Service created successfully', ['service_id' => $service->id]);
             $proforma = app(\App\Services\Finance\RecurringPurchaseProformaIssuer::class)->issueForService($service);
 
-            if ($proforma !== null)
-            {
-                return redirect()
-                    ->route('expense.edit', $proforma)
-                    ->with('success', 'Proforma creada. Sustituila por la factura del proveedor cuando llegue.');
-            }
-
-            return redirect()->route('service-list')->with('success', 'Service created successfully');
+            return redirect()
+                ->route('service.show', $service)
+                ->with('success', $proforma !== null
+                    ? 'Servicio guardado. La proforma del período quedó lista para reemplazarla por la factura.'
+                    : 'Service created successfully');
         } catch (\Exception $e)
         {
             \Log::error('Error creating service', [
@@ -220,6 +218,7 @@ class ServiceController extends Controller
         }
 
         $proforma = \App\Models\Invoice::withoutGlobalScopes()
+            ->with('items')
             ->where('source_provider', 'manual')
             ->where('status', 9)
             ->where('source_reference_id', 'like', \App\Services\Finance\RecurringPurchaseProformaIssuer::REFERENCE_PREFIX.$service->id.'-%')
@@ -227,6 +226,27 @@ class ServiceController extends Controller
             ->first();
 
         return view('service.show', compact('service', 'proforma'));
+    }
+
+    public function createProforma(string $id)
+    {
+        $service = Service::findOrFail($id);
+        $this->authorize('update', $service);
+
+        $invoice = app(\App\Services\Finance\RecurringPurchaseProformaIssuer::class)->createProformaAndAdvance($service);
+
+        if ($invoice === null)
+        {
+            return redirect()
+                ->route('service.show', $service)
+                ->with('error', 'La próxima fecha de facturación todavía no venció.');
+        }
+
+        $service->refresh();
+
+        return redirect()
+            ->route('service.show', $service)
+            ->with('success', 'Proforma creada. La próxima facturación pasó al '.$service->next_billing->format('d/m/Y').'.');
     }
 
     /**
@@ -263,6 +283,7 @@ class ServiceController extends Controller
         $service = Service::findOrFail($id);
         $this->authorize('update', $service);
 
+        $this->normalizeServiceDates($request);
         $request->validate($this->serviceRules());
 
         $input = $request->all();
@@ -284,14 +305,11 @@ class ServiceController extends Controller
         $service->update($input);
         $proforma = app(\App\Services\Finance\RecurringPurchaseProformaIssuer::class)->issueForService($service);
 
-        if ($proforma !== null)
-        {
-            return redirect()
-                ->route('expense.edit', $proforma)
-                ->with('success', 'Proforma creada. Sustituila por la factura del proveedor cuando llegue.');
-        }
-
-        return redirect()->route('service-list')->with('success', 'Service updated successfully');
+        return redirect()
+            ->route('service.show', $service)
+            ->with('success', $proforma !== null
+                ? 'Servicio guardado. La proforma del período quedó lista para reemplazarla por la factura.'
+                : 'Service updated successfully');
     }
 
     /**
@@ -328,6 +346,42 @@ class ServiceController extends Controller
             'data' => 'nullable|array',
             'responsible_id' => 'nullable|exists:users,id',
         ];
+    }
+
+    private function normalizeServiceDates(Request $request): void
+    {
+        $request->merge([
+            'next_billing' => $this->normalizeServiceDate($request->input('next_billing')),
+            'expires_at' => $this->normalizeServiceDate($request->input('expires_at')),
+        ]);
+    }
+
+    private function normalizeServiceDate(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '')
+        {
+            return null;
+        }
+
+        $value = trim($value);
+
+        foreach (['d/m/Y', 'Y-m-d', 'd-m-Y'] as $format)
+        {
+            try
+            {
+                $parsed = \Carbon\Carbon::createFromFormat('!'.$format, $value);
+            } catch (\Throwable)
+            {
+                continue;
+            }
+
+            if ($parsed instanceof \Carbon\Carbon && $parsed->format($format) === $value)
+            {
+                return $parsed->toDateString();
+            }
+        }
+
+        return $value;
     }
 
     public function projectBilling()
