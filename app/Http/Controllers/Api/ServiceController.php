@@ -79,7 +79,7 @@ class ServiceController extends Controller
         // Validate the request
         $validatedData = $request->validate([
             'enterprise_id' => 'required|exists:enterprises,id',
-            'category_id' => 'nullable|exists:categories,id',
+            'category_id' => 'nullable|required_if:operation,buy|exists:categories,id',
             'operation' => 'nullable|string|max:255',
             'description' => 'required|string',
             'data' => 'nullable|array',
@@ -182,7 +182,7 @@ class ServiceController extends Controller
         // Validate the request
         $validatedData = $request->validate([
             'enterprise_id' => 'sometimes|required|exists:enterprises,id',
-            'category_id' => 'nullable|exists:categories,id',
+            'category_id' => 'nullable|required_if:operation,buy|exists:categories,id',
             'operation' => 'nullable|string|max:255',
             'description' => 'sometimes|required|string',
             'data' => 'nullable|array',

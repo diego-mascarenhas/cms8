@@ -232,6 +232,34 @@ class Service extends Model
         }
     }
 
+    /**
+     * Billing interval in months, shown as a named period.
+     *
+     * @return array<int, string>
+     */
+    public static function frequencyOptions(): array
+    {
+        return [
+            1 => 'Mensual',
+            2 => 'Bimestral',
+            3 => 'Trimestral',
+            4 => 'Cuatrimestral',
+            6 => 'Semestral',
+            12 => 'Anual',
+            24 => 'Cada 2 años',
+            36 => 'Cada 3 años',
+            60 => 'Cada 5 años',
+            120 => 'Cada 10 años',
+        ];
+    }
+
+    public function frequencyLabel(): string
+    {
+        $months = (int) ($this->frequency ?? 0);
+
+        return self::frequencyOptions()[$months] ?? ($months > 0 ? $months.' meses' : '');
+    }
+
     public function getCalculatedPriceAttribute()
     {
         $categoryData = [];

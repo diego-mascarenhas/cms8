@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ServiceDataTable;
+use App\Models\Currency;
 use App\Models\Invoice;
 use App\Models\Service;
 use App\Models\ServiceSync;
@@ -126,10 +127,11 @@ class ServiceController extends Controller
             ? ServiceSync::where('team_id', $teamId)->where('provider', 'stripe')->orderBy('customer_name')->orderBy('plan_name')->get()
             : collect();
         $categoryOptions = $teamId
-            ? app(ServiceCategoryOptionsService::class)->optionsForTeam((int) $teamId)
+            ? app(ServiceCategoryOptionsService::class)->optionsForServiceForm((int) $teamId)
             : [];
+        $currencies = Currency::query()->active()->orderBy('code')->get(['id', 'code', 'name']);
 
-        return view('service.form', compact('enterprise_id', 'serviceSyncs', 'categoryOptions'));
+        return view('service.form', compact('enterprise_id', 'serviceSyncs', 'categoryOptions', 'currencies'));
     }
 
     /**
@@ -141,22 +143,7 @@ class ServiceController extends Controller
 
         try
         {
-            $validator = \Validator::make($request->all(), [
-                'enterprise_id' => 'required|exists:enterprises,id',
-                'subscription_id' => ['nullable', 'exists:service_syncs,id'],
-                'category_id' => ['nullable', 'exists:categories,id'],
-                'operation' => 'required|in:buy,sell',
-                'description' => 'nullable|string',
-                'currency_id' => 'nullable|exists:currencies,id',
-                'price' => 'nullable|numeric',
-                'discount' => 'nullable|numeric',
-                'frequency' => 'nullable|integer|min:1',
-                'next_billing' => 'nullable|date',
-                'expires_at' => 'nullable|date',
-                'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
-                'data' => 'nullable|array',
-                'responsible_id' => 'nullable|exists:users,id',
-            ]);
+            $validator = \Validator::make($request->all(), $this->serviceRules());
 
             if ($validator->fails())
             {
@@ -246,10 +233,11 @@ class ServiceController extends Controller
             ? ServiceSync::where('team_id', $teamId)->where('provider', 'stripe')->orderBy('customer_name')->orderBy('plan_name')->get()
             : collect();
         $categoryOptions = $teamId
-            ? app(ServiceCategoryOptionsService::class)->optionsForTeam((int) $teamId)
+            ? app(ServiceCategoryOptionsService::class)->optionsForServiceForm((int) $teamId)
             : [];
+        $currencies = Currency::query()->active()->orderBy('code')->get(['id', 'code', 'name']);
 
-        return view('service.form', compact('data', 'enterprise_id', 'serviceSyncs', 'categoryOptions'));
+        return view('service.form', compact('data', 'enterprise_id', 'serviceSyncs', 'categoryOptions', 'currencies'));
     }
 
     /**
@@ -260,23 +248,7 @@ class ServiceController extends Controller
         $service = Service::findOrFail($id);
         $this->authorize('update', $service);
 
-        $rules = [
-            'enterprise_id' => 'required|exists:enterprises,id',
-            'subscription_id' => ['nullable', 'exists:service_syncs,id'],
-            'category_id' => ['nullable', 'exists:categories,id'],
-            'operation' => 'required|in:buy,sell',
-            'description' => 'nullable|string',
-            'currency_id' => 'nullable|exists:currencies,id',
-            'price' => 'nullable|numeric',
-            'discount' => 'nullable|numeric',
-            'frequency' => 'nullable|integer|min:1',
-            'next_billing' => 'nullable|date',
-            'expires_at' => 'nullable|date',
-            'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
-            'data' => 'nullable|array',
-            'responsible_id' => 'nullable|exists:users,id',
-        ];
-        $request->validate($rules);
+        $request->validate($this->serviceRules());
 
         $input = $request->all();
         $input['subscription_id'] = $request->filled('subscription_id') ? $request->input('subscription_id') : null;
@@ -310,6 +282,29 @@ class ServiceController extends Controller
         $model->delete();
 
         return response()->json(['success' => 'The record has been deleted.'], 200);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serviceRules(): array
+    {
+        return [
+            'enterprise_id' => 'required|exists:enterprises,id',
+            'subscription_id' => ['nullable', 'exists:service_syncs,id'],
+            'category_id' => ['nullable', 'required_if:operation,buy', 'exists:categories,id'],
+            'operation' => 'required|in:buy,sell',
+            'description' => 'nullable|string',
+            'currency_id' => 'nullable|exists:currencies,id',
+            'price' => ['nullable', 'required_if:operation,buy', 'numeric'],
+            'discount' => 'nullable|numeric',
+            'frequency' => ['nullable', 'required_if:operation,buy', 'integer', 'in:'.implode(',', array_keys(Service::frequencyOptions()))],
+            'next_billing' => ['nullable', 'required_if:operation,buy', 'date'],
+            'expires_at' => 'nullable|date',
+            'status' => 'required|integer|in:1,2,3,4,5,6,7,8',
+            'data' => 'nullable|array',
+            'responsible_id' => 'nullable|exists:users,id',
+        ];
     }
 
     public function projectBilling()

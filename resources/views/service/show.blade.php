@@ -4,14 +4,7 @@
 
 @section('content')
 @php
-    $frequency = (int) ($service->frequency ?? 0);
-    $frequencyLabel = match ($frequency) {
-        1 => 'Mensual',
-        3 => 'Trimestral',
-        6 => 'Semestral',
-        12 => 'Anual',
-        default => $frequency > 0 ? $frequency.' meses' : '',
-    };
+    $frequencyLabel = $service->frequencyLabel();
     $currencyCode = $service->currency?->code ?? ($service->currency?->symbol ?? '');
 @endphp
 
