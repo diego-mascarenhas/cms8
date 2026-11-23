@@ -74,6 +74,9 @@ class ServiceCategoryOptionsService
                     });
                 }
             });
+        } elseif ($includeUnassignedTeamCategories)
+        {
+            $categoriesQuery->whereNull('module_id')->where('team_id', $teamId);
         } else
         {
             $categoriesQuery->whereNull('module_id');

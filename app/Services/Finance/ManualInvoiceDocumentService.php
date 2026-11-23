@@ -255,6 +255,9 @@ class ManualInvoiceDocumentService
             {
                 $attributes['type_id'] = $this->resolveInvoiceTypeId();
                 $attributes['status'] = 2;
+            } elseif ((int) $invoice->status === 9)
+            {
+                $attributes['status'] = $isDraft ? 9 : 2;
             }
 
             $invoice->update($attributes);

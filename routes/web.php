@@ -1063,6 +1063,8 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/expense/create-supplier', [ExpenseController::class, 'createSupplier'])->name('expense.create-supplier');
     Route::get('/expense/suggested-categories', [ExpenseController::class, 'suggestedCategories'])->name('expense.suggested-categories');
     Route::post('/expense', [ExpenseController::class, 'store'])->name('expense.store');
+    Route::get('/expense/{invoice}/edit', [ExpenseController::class, 'edit'])->whereNumber('invoice')->name('expense.edit');
+    Route::put('/expense/{invoice}', [ExpenseController::class, 'update'])->whereNumber('invoice')->name('expense.update');
 
     Route::get('/payment-account/list', [PaymentAccountController::class, 'index'])->name('payment-account.index');
     Route::get('/payment-account/create', [PaymentAccountController::class, 'create'])->name('payment-account.create');

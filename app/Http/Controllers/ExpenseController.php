@@ -203,6 +203,48 @@ class ExpenseController extends Controller
         return view('expense.create', $this->creationFormData());
     }
 
+    public function edit(Request $request, Invoice $invoice): View
+    {
+        $this->resolveBuyInvoiceForCurrentTeam($request, $invoice);
+        $this->authorize('update', $invoice);
+
+        $invoice->load(['items.category:id,name']);
+        $data = $this->creationFormData();
+        $options = $data['expenseCategoryOptions'];
+
+        foreach ($invoice->items as $item)
+        {
+            if ($item->category_id === null)
+            {
+                continue;
+            }
+
+            $alreadyListed = collect($options)->contains(
+                fn (array $option): bool => (int) $option['id'] === (int) $item->category_id,
+            );
+
+            if ($alreadyListed)
+            {
+                continue;
+            }
+
+            $options[] = [
+                'id' => (int) $item->category_id,
+                'name' => (string) ($item->category?->name ?? 'Categoría'),
+                'group' => null,
+            ];
+        }
+
+        $data['expenseCategoryOptions'] = $options;
+        $data['editingInvoice'] = $invoice;
+        $data['documentFlow']['store_route'] = route('expense.update', $invoice);
+        $data['documentFlow']['page_title'] = 'Editar proforma';
+        $data['documentFlow']['subtitle'] = 'Sustituí el número y los importes por la factura del proveedor, y guardá el gasto.';
+        $data['documentFlow']['submit_label'] = 'Guardar factura';
+
+        return view('expense.create', $data);
+    }
+
     public function categoryCharts(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Payment::class);
@@ -1196,7 +1238,7 @@ class ExpenseController extends Controller
         StoreExpenseRequest $request,
         Invoice $invoice,
         ManualInvoiceDocumentService $manualInvoiceDocumentService,
-    ): JsonResponse {
+    ): JsonResponse|RedirectResponse {
         $this->resolveBuyInvoiceForCurrentTeam($request, $invoice);
         $this->authorize('create', Payment::class);
 
@@ -1209,6 +1251,15 @@ class ExpenseController extends Controller
                 ? (string) $validated['pending_document_token']
                 : null,
         );
+
+        app(\App\Services\Finance\RecurringPurchaseProformaIssuer::class)->syncAfterInvoice($result['invoice']);
+
+        if (! $request->expectsJson())
+        {
+            return redirect()
+                ->route('expense.index')
+                ->with('success', 'Factura guardada correctamente.');
+        }
 
         return response()->json([
             'success' => true,

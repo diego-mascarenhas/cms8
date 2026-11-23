@@ -36,6 +36,13 @@ Artisan::command('tasks:cap-timers', function ()
 | resolves schedules from this file.
 |
 */
+Schedule::command('purchases:issue-proformas')
+    ->dailyAt('06:30')
+    ->timezone('Europe/Madrid')
+    ->name('recurring-purchase-proformas')
+    ->description('Create draft purchase invoices for due recurring services')
+    ->withoutOverlapping();
+
 Schedule::command('stripe:suspend-overdue')
     ->daily()
     ->at('03:00');

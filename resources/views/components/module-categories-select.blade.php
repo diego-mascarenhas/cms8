@@ -308,6 +308,10 @@
                 return;
             }
 
+            if (String($s.data('own-category-refresh')) === '1') {
+                return;
+            }
+
             var emptyText = $s.data('empty-text') || '';
             var isMultiple = $s.prop('multiple');
             var showEmpty = !isMultiple && String($s.data('show-empty-option')) === '1';

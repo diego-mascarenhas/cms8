@@ -89,6 +89,7 @@
                                 data-placeholder="{{ __('Uncategorized') }}"
                                 data-allow-clear="true"
                                 data-module-key="services"
+                                data-own-category-refresh="1"
                                 data-empty-text="{{ __('Uncategorized') }}"
                                 data-show-empty-option="1"
                                 data-allow-empty-select="1"
@@ -329,6 +330,8 @@
                         );
                     });
 
+                    var initialCategories = @json($serviceCategoryOptions->values());
+
                     $.when.apply($, categoryRequests).done(function () {
                             var payloads = Array.prototype.slice.call(arguments);
                             var prevVal = $categorySelect.val();
@@ -347,6 +350,31 @@
                                         $categorySelect.append(og);
                                     }
                                 });
+                            });
+
+                            initialCategories.forEach(function (option) {
+                                if ($categorySelect.find('option[value="' + String(option.id) + '"]').length) {
+                                    return;
+                                }
+
+                                var extra = new Option(option.name, String(option.id), false, false);
+
+                                if (option.group) {
+                                    var group = $categorySelect.find('optgroup').filter(function () {
+                                        return $(this).attr('label') === option.group;
+                                    }).first();
+
+                                    if (! group.length) {
+                                        group = $('<optgroup>').attr('label', option.group);
+                                        $categorySelect.append(group);
+                                    }
+
+                                    group.append(extra);
+
+                                    return;
+                                }
+
+                                $categorySelect.append(extra);
                             });
 
                             initServiceCategorySelect();

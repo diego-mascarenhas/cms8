@@ -180,6 +180,14 @@ class ServiceController extends Controller
             // Create the service
             $service = Service::create($input);
             \Log::info('Service created successfully', ['service_id' => $service->id]);
+            $proforma = app(\App\Services\Finance\RecurringPurchaseProformaIssuer::class)->issueForService($service);
+
+            if ($proforma !== null)
+            {
+                return redirect()
+                    ->route('expense.edit', $proforma)
+                    ->with('success', 'Proforma creada. Sustituila por la factura del proveedor cuando llegue.');
+            }
 
             return redirect()->route('service-list')->with('success', 'Service created successfully');
         } catch (\Exception $e)
@@ -211,7 +219,14 @@ class ServiceController extends Controller
             abort(403);
         }
 
-        return view('service.show', compact('service'));
+        $proforma = \App\Models\Invoice::withoutGlobalScopes()
+            ->where('source_provider', 'manual')
+            ->where('status', 9)
+            ->where('source_reference_id', 'like', \App\Services\Finance\RecurringPurchaseProformaIssuer::REFERENCE_PREFIX.$service->id.'-%')
+            ->orderByDesc('date')
+            ->first();
+
+        return view('service.show', compact('service', 'proforma'));
     }
 
     /**
@@ -267,6 +282,14 @@ class ServiceController extends Controller
 
         // Update the service
         $service->update($input);
+        $proforma = app(\App\Services\Finance\RecurringPurchaseProformaIssuer::class)->issueForService($service);
+
+        if ($proforma !== null)
+        {
+            return redirect()
+                ->route('expense.edit', $proforma)
+                ->with('success', 'Proforma creada. Sustituila por la factura del proveedor cuando llegue.');
+        }
 
         return redirect()->route('service-list')->with('success', 'Service updated successfully');
     }

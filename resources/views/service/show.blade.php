@@ -22,6 +22,11 @@
                 <i class="ti ti-edit me-1"></i>{{ __('Edit') }}
             </a>
         @endcan
+        @if (! empty($proforma))
+            <a href="{{ route('expense.edit', $proforma) }}" class="btn btn-outline-primary waves-effect waves-light">
+                <i class="ti ti-file-invoice me-1"></i>Editar proforma
+            </a>
+        @endif
         @if($service->client)
             <a href="{{ route('client.show', $service->client->id) }}" class="btn btn-outline-primary waves-effect waves-light">
                 <i class="ti ti-building me-1"></i>Empresa
