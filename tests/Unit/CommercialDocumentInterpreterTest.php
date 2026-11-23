@@ -33,6 +33,32 @@ JSON);
         $this->assertNull($document['lines'][0]['cost']);
     }
 
+    public function test_a_column_price_list_uses_the_bonified_price(): void
+    {
+        $documents = new CommercialDocumentInterpreter(new \App\Services\DocumentAiOcrService);
+        $document = $documents->priceListFromText(<<<'TEXT'
+13-11-2026
+Grito de Asencio 3632
+ACEITES                                                                                      Cant p/ desc   U.V   Prec. Lista         Desc.         Precio bonif.
+ACE20                               ACEITE DE GIRASOL DON HUGO X 5 LTS (21.00)                   20         Uni       18,698.28       5.00%              17,763.37
+DUL012             DULCE DE LECHE DON BENITO CARTÓN X 10 KG (21.00)                         2,416.13   +1 tacho bonif.    2,196.48
+AZU001                              AZUCAR IMPALPABLE MARJUANC X 10 KG (21.00)                   100        Kg         1,759.40   +1 bolsa bonif.         1,599.46
+TEXT, 'LISTA DE PRECIOS 13-11.pdf');
+
+        $this->assertNotNull($document);
+        $this->assertSame('MarJuanC', $document['supplier_name']);
+        $this->assertSame('ARS', $document['currency']);
+        $this->assertSame('ACE20', $document['lines'][0]['code']);
+        $this->assertSame('ACEITE DE GIRASOL DON HUGO X 5 LTS', $document['lines'][0]['name']);
+        $this->assertEquals(17763.37, $document['lines'][0]['cost']);
+        $this->assertNull($document['lines'][0]['quantity']);
+        $this->assertSame('Uni', $document['lines'][0]['unit']);
+        $this->assertSame('DULCE DE LECHE DON BENITO CARTÓN X 10 KG', $document['lines'][1]['name']);
+        $this->assertEquals(2196.48, $document['lines'][1]['cost']);
+        $this->assertEquals(1599.46, $document['lines'][2]['cost']);
+        $this->assertSame('Kg', $document['lines'][2]['unit']);
+    }
+
     public function test_a_price_sheet_names_the_supplier_and_the_first_price(): void
     {
         $documents = new CommercialDocumentInterpreter(new \App\Services\DocumentAiOcrService);

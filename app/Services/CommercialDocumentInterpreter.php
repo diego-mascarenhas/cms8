@@ -36,13 +36,13 @@ class CommercialDocumentInterpreter
             return $parsed;
         }
 
-        if ($extension === 'pdf')
-        {
-            return $this->interpretAttachment($path, $teamId);
-        }
-
         if ($text === '')
         {
+            if ($extension === 'pdf')
+            {
+                return $this->interpretAttachment($path, $teamId);
+            }
+
             throw new RuntimeException(__('The file could not be read.'));
         }
 
@@ -355,6 +355,12 @@ class CommercialDocumentInterpreter
      */
     public function priceListFromText(string $text, string $originalName = ''): ?array
     {
+        $columns = $this->columnPriceListFromText($text, $originalName);
+        if ($columns !== null)
+        {
+            return $columns;
+        }
+
         $rows = [];
         $preface = [];
         $pending = [];
@@ -614,6 +620,111 @@ class CommercialDocumentInterpreter
             'name' => $name,
             'cost' => $cost,
             'quantity' => $quantity,
+            'unit' => $unit,
+            'barcode' => null,
+            'oem' => null,
+        ];
+    }
+
+    /**
+     * A laid-out price list: code, name, optional discount quantity, unit, list price, discount and bonified price.
+     * The discount quantity is not an order quantity. cost is the bonified price.
+     *
+     * @return array{kind: string, supplier_name: ?string, currency: ?string, lines: list<array{code: string, name: string, cost: ?float, quantity: null, unit: ?string, barcode: null, oem: null}>}|null
+     */
+    private function columnPriceListFromText(string $text, string $originalName): ?array
+    {
+        $lines = [];
+        foreach (preg_split('/\r\n|\n|\r/', $text) ?: [] as $rawLine)
+        {
+            $row = $this->columnPriceRow($rawLine);
+            if ($row === null)
+            {
+                continue;
+            }
+
+            $lines[] = $row;
+            if (count($lines) >= 2000)
+            {
+                break;
+            }
+        }
+
+        if (count($lines) < 3)
+        {
+            return null;
+        }
+
+        $supplier = $this->supplierFromPreface(preg_split('/\r\n|\n|\r/', $text) ?: [], $originalName);
+        $currency = null;
+        if (preg_match('/precio bonif|grito de asencio|marjuanc/i', $text) === 1)
+        {
+            $supplier = 'MarJuanC';
+            $currency = 'ARS';
+        }
+
+        return [
+            'kind' => 'price_list',
+            'supplier_name' => $supplier,
+            'currency' => $currency,
+            'lines' => $lines,
+        ];
+    }
+
+    /**
+     * @return array{code: string, name: string, cost: ?float, quantity: null, unit: ?string, barcode: null, oem: null}|null
+     */
+    private function columnPriceRow(string $line): ?array
+    {
+        $line = rtrim($line);
+        if (preg_match('/^([A-Z0-9][A-Z0-9]{0,13})\s{2,}(.+)$/u', $line, $match) !== 1)
+        {
+            return null;
+        }
+
+        $rest = trim($match[2]);
+        if (preg_match('/(\d{1,3}(?:,\d{3})+\.\d{2}|\d+\.\d{2}|#N\/A)\s*$/', $rest, $cost, PREG_OFFSET_CAPTURE) !== 1)
+        {
+            return null;
+        }
+
+        $rest = rtrim(substr($rest, 0, $cost[0][1]));
+        if (preg_match('/(\d{1,2}[.,]\d{2}%|\+\d+\s+\S+\s+bonif\.)\s*$/iu', $rest, $discount, PREG_OFFSET_CAPTURE) !== 1)
+        {
+            return null;
+        }
+
+        $rest = rtrim(substr($rest, 0, $discount[0][1]));
+        if (preg_match('/(\d{1,3}(?:,\d{3})+\.\d{2}|\d+\.\d{2}|#N\/A)\s*$/', $rest, $listPrice, PREG_OFFSET_CAPTURE) !== 1)
+        {
+            return null;
+        }
+
+        $rest = rtrim(substr($rest, 0, $listPrice[0][1]));
+        $unit = null;
+        if (preg_match('/(?:^|\s)(Uni|Kg|Lt)\s*$/iu', $rest, $unitMatch) === 1)
+        {
+            $unit = $unitMatch[1];
+            $rest = rtrim(substr($rest, 0, -strlen($unitMatch[0])));
+        }
+
+        if (preg_match('/\s{2,}(\d{1,4})$/', $rest, $quantity) === 1)
+        {
+            $rest = rtrim(substr($rest, 0, -strlen($quantity[0])));
+        }
+
+        $name = trim(preg_replace('/\s+/', ' ', $rest) ?? $rest);
+        $name = trim(preg_replace('/\s*\(\d{1,2}[.,]\d{2}\)\s*$/', '', $name) ?? $name);
+        if ($name === '' || preg_match('/[A-Za-zÁÉÍÓÚÑáéíóúñ]/u', $name) !== 1)
+        {
+            return null;
+        }
+
+        return [
+            'code' => strtoupper($match[1]),
+            'name' => $name,
+            'cost' => $this->number(trim($cost[0][0])),
+            'quantity' => null,
             'unit' => $unit,
             'barcode' => null,
             'oem' => null,

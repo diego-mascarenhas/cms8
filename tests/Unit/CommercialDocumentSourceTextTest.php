@@ -52,16 +52,40 @@ class CommercialDocumentSourceTextTest extends TestCase
         $this->assertSame('KG', $document['lines'][0]['unit']);
     }
 
-    public function test_a_pdf_price_list_uses_the_invoice_vision_model(): void
+    public function test_a_pdf_price_list_with_text_uses_the_invoice_model_without_the_file(): void
     {
         $ai = $this->createMock(DocumentAiOcrService::class);
+        $ai->expects($this->never())->method('completeWithFile');
+        $ai->expects($this->once())
+            ->method('complete')
+            ->willReturn('{"kind":"price_list","supplier_name":"MarJuanC","currency":"ARS","lines":[{"code":"ACE120","name":"Aceite","cost":17753.37}]}');
+        $documents = new CommercialDocumentInterpreter($ai);
+        $path = tempnam(sys_get_temp_dir(), 'lista-').'.pdf';
+        file_put_contents($path, $this->minimalTextPdf('LISTA DE PRECIOS'));
+
+        try
+        {
+            $document = $documents->interpret($path, 'LISTA DE PRECIOS 13-11.pdf');
+        } finally
+        {
+            @unlink($path);
+        }
+
+        $this->assertSame('MarJuanC', $document['supplier_name']);
+        $this->assertEquals(17753.37, $document['lines'][0]['cost']);
+    }
+
+    public function test_a_pdf_without_text_uses_the_vision_model(): void
+    {
+        $ai = $this->createMock(DocumentAiOcrService::class);
+        $ai->expects($this->once())->method('extractTextFromLocalFile')->willReturn('');
         $ai->expects($this->never())->method('complete');
         $ai->expects($this->once())
             ->method('completeWithFile')
             ->willReturn('{"kind":"price_list","supplier_name":"MarJuanC","currency":"ARS","lines":[{"code":"ACE120","name":"Aceite","cost":17753.37}]}');
         $documents = new CommercialDocumentInterpreter($ai);
         $path = tempnam(sys_get_temp_dir(), 'lista-').'.pdf';
-        file_put_contents($path, $this->minimalTextPdf('LISTA DE PRECIOS'));
+        file_put_contents($path, 'not-a-pdf');
 
         try
         {
