@@ -4,14 +4,24 @@ namespace App\Support;
 
 use App\Models\ExchangeRate;
 use App\Models\Invoice;
+use App\Services\Currency\FrankfurterExchangeRateClient;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class InvoiceSettlementConverter
 {
+    /** @var array<string, float|null> */
+    private static array $liveRateCache = [];
+
+    public static function clearLiveRateCache(): void
+    {
+        self::$liveRateCache = [];
+    }
+
     /**
      * Convert a document-currency amount to reporting currency.
      * Prefers the implied rate from cross-currency payments (bank settlement),
-     * then falls back to Frankfurter mid-market at end of invoice month.
+     * then stored Frankfurter/BCRA rates, then a live Frankfurter latest quote.
      */
     public static function convert(
         float $amount,
@@ -19,6 +29,7 @@ class InvoiceSettlementConverter
         string $reportingCurrency,
         mixed $invoiceDate = null,
         ?Invoice $invoice = null,
+        bool $fetchLiveRate = false,
     ): ?float {
         $fromCurrency = strtoupper(trim($fromCurrency));
         $reportingCurrency = strtoupper(trim($reportingCurrency));
@@ -42,7 +53,9 @@ class InvoiceSettlementConverter
 
         if (blank($invoiceDate))
         {
-            return ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
+            $converted = ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
+
+            return $converted ?? ($fetchLiveRate ? self::convertWithLiveRate($amount, $fromCurrency, $reportingCurrency) : null);
         }
 
         $conversionDate = Carbon::parse($invoiceDate)->endOfMonth();
@@ -53,7 +66,59 @@ class InvoiceSettlementConverter
             return $converted;
         }
 
-        return ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
+        $converted = ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
+
+        return $converted ?? ($fetchLiveRate ? self::convertWithLiveRate($amount, $fromCurrency, $reportingCurrency) : null);
+    }
+
+    private static function convertWithLiveRate(float $amount, string $fromCurrency, string $reportingCurrency): ?float
+    {
+        $rate = self::liveRate($fromCurrency, $reportingCurrency);
+
+        return $rate !== null && $rate > 0 ? round($amount * $rate, 2) : null;
+    }
+
+    private static function liveRate(string $fromCurrency, string $reportingCurrency): ?float
+    {
+        $cacheKey = $fromCurrency.'->'.$reportingCurrency;
+        if (array_key_exists($cacheKey, self::$liveRateCache))
+        {
+            return self::$liveRateCache[$cacheKey];
+        }
+
+        try
+        {
+            $client = FrankfurterExchangeRateClient::fromConfig();
+            $result = $client->fetchLatest($fromCurrency, [$reportingCurrency]);
+            $rate = ($result['success'] ?? false) ? (float) ($result['rates'][$reportingCurrency] ?? 0) : 0.0;
+
+            if ($rate <= 0)
+            {
+                $inverse = $client->fetchLatest($reportingCurrency, [$fromCurrency]);
+                $inverseRate = ($inverse['success'] ?? false) ? (float) ($inverse['rates'][$fromCurrency] ?? 0) : 0.0;
+                $rate = $inverseRate > 0 ? (1 / $inverseRate) : 0.0;
+            }
+
+            if ($rate > 0)
+            {
+                $date = (string) ($result['date'] ?? now()->toDateString());
+                ExchangeRate::storeDailyIfChanged($fromCurrency, $reportingCurrency, $date, $rate);
+                self::$liveRateCache[$cacheKey] = $rate;
+
+                return $rate;
+            }
+        } catch (\Throwable $e)
+        {
+            Log::warning('InvoiceSettlementConverter live FX fetch failed', [
+                'from' => $fromCurrency,
+                'to' => $reportingCurrency,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        self::$liveRateCache[$cacheKey] = null;
+
+        return null;
     }
 
     /**

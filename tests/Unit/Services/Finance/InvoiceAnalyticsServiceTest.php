@@ -9,12 +9,14 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\User;
 use App\Services\Finance\InvoiceAnalyticsService;
+use App\Support\InvoiceSettlementConverter;
 use Carbon\Carbon;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\InvoiceTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class InvoiceAnalyticsServiceTest extends TestCase
@@ -33,6 +35,70 @@ class InvoiceAnalyticsServiceTest extends TestCase
             InvoiceTypeSeeder::class,
         ]);
         $this->service = app(InvoiceAnalyticsService::class);
+        InvoiceSettlementConverter::clearLiveRateCache();
+    }
+
+    public function test_category_charts_include_drafts_and_live_fx_without_payment(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->setSetting('finance_reporting_currency', 'EUR', ['group' => 'finance']);
+
+        Http::fake([
+            'api.frankfurter.dev/*' => Http::response([
+                'amount' => 1,
+                'base' => 'USD',
+                'date' => '2026-10-20',
+                'rates' => ['EUR' => 0.85],
+            ]),
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Vendor SL',
+            'type_id' => 2,
+            'status_id' => 1,
+        ]);
+        $category = Category::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Autónomos',
+        ]);
+
+        $draft = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'currency_id' => 840,
+            'number' => 'GC-LIVE',
+            'date' => '2026-10-08',
+            'due_date' => '2026-10-08',
+            'gross_amount' => 200,
+            'discount' => 0,
+            'total_amount' => 200,
+            'balance' => 200,
+            'status' => 9,
+        ]);
+        InvoiceItem::query()->create([
+            'invoice_id' => $draft->id,
+            'category_id' => $category->id,
+            'description' => 'Fee',
+            'quantity' => 1,
+            'unit_price' => 200,
+            'discount' => 0,
+        ]);
+
+        $categories = $this->service->buildCategoryBreakdownForRange(
+            $team->id,
+            Carbon::create(2026, 10, 1)->startOfDay(),
+            Carbon::create(2026, 10, 31)->endOfDay(),
+        );
+
+        $this->assertSame('Autónomos', $categories['expense_categories'][0]['name']);
+        $this->assertEqualsWithDelta(170.0, $categories['expense_categories'][0]['total'], 0.01);
+
+        $yearReport = $this->service->buildYearReport($team->id, 2026);
+        $this->assertEqualsWithDelta(0.0, $yearReport['summary']['expense'], 0.01);
     }
 
     public function test_build_year_report_aggregates_by_operation_and_category(): void
