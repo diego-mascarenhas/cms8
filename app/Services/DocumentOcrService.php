@@ -272,6 +272,11 @@ class DocumentOcrService
             || str_ends_with(strtolower($absolutePath), '.pdf');
     }
 
+    public function pdftotextBinary(): ?string
+    {
+        return $this->resolvePdftotextBinary();
+    }
+
     private function resolvePdftotextBinary(): ?string
     {
         $configured = trim((string) config('app.pdftotext_binary_path', ''));

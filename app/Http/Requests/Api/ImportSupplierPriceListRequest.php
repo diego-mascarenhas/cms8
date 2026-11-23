@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use App\Models\Product;
+use App\Services\SupplierPriceListImportService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -50,7 +51,7 @@ class ImportSupplierPriceListRequest extends FormRequest
             }
 
             $extension = strtolower($file->getClientOriginalExtension());
-            if (! in_array($extension, ['csv', 'txt', 'xlsx', 'pdf', 'png', 'jpg', 'jpeg', 'webp'], true))
+            if (! in_array($extension, SupplierPriceListImportService::FILE_EXTENSIONS, true))
             {
                 $validator->errors()->add('file', __('The file must be a CSV, spreadsheet, PDF, or image.'));
             }

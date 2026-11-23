@@ -23,6 +23,11 @@ class SupplierPriceListImportService
     public const OPTIONAL_COLUMNS = ['code', 'barcode', 'oem', 'min_qty', 'unit'];
 
     /**
+     * @var list<string>
+     */
+    public const FILE_EXTENSIONS = ['csv', 'txt', 'xlsx', 'pdf', 'png', 'jpg', 'jpeg', 'webp'];
+
+    /**
      * @var array<string, string>
      */
     private const HEADER_ALIASES = [
