@@ -170,8 +170,20 @@ class TeamMeetingController extends Controller
             'language' => $meeting->language,
             'transcript' => $meeting->transcript,
             'turns' => $turns,
-            'summary' => $meeting->summary,
+            'summary' => $this->summaryForClient($meeting->summary),
             'error' => $meeting->error,
         ];
+    }
+
+    private function summaryForClient(mixed $summary): mixed
+    {
+        if (! is_array($summary))
+        {
+            return $summary;
+        }
+
+        unset($summary['consumption']);
+
+        return $summary;
     }
 }

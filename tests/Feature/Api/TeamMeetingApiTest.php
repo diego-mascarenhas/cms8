@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Jobs\TranscribeMeetingTranscript;
 use App\Models\MeetingTranscript;
+use App\Models\Module;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -19,8 +20,19 @@ class TeamMeetingApiTest extends TestCase
     {
         Storage::fake('local');
         Queue::fake();
+        Module::query()->updateOrCreate(
+            ['key' => 'meetings'],
+            [
+                'name' => 'Meetings',
+                'icon' => 'microphone',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
+        $team->enableModule('meetings');
         $token = $team->createApiToken('Jitsi')['plain'];
 
         $store = $this->withHeader('Authorization', 'Bearer '.$token)
@@ -44,7 +56,9 @@ class TeamMeetingApiTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/team/meetings/'.$id)
             ->assertOk()
-            ->assertJsonPath('data.id', $id);
+            ->assertJsonPath('data.id', $id)
+            ->assertJsonMissingPath('data.consumption')
+            ->assertJsonMissingPath('data.summary.consumption');
 
         $this->flushHeaders()
             ->getJson('/api/team/meetings/'.$id)
