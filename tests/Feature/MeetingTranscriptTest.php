@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\MeetingTranscriptStatus;
+use App\Jobs\SummarizeMeetingTranscript;
 use App\Jobs\TranscribeMeetingTranscript;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
@@ -466,5 +467,34 @@ class MeetingTranscriptTest extends TestCase
 
         $this->assertSame('Reunión semanal', $meeting->fresh()->title);
         $this->assertSame('Reunión semanal', CalendarEvent::query()->find($meeting->fresh()->calendar_event_id)?->title);
+    }
+
+    public function test_a_colab_recording_is_summarized_after_transcription(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $meeting = MeetingTranscript::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'title' => 'Tema',
+            'external_ref' => 'colab:draft:4',
+            'original_filename' => 'reunion.webm',
+            'audio_path' => 'meetings/'.$team->id.'/reunion.webm',
+            'language' => 'es',
+            'status' => MeetingTranscriptStatus::Pending,
+        ]);
+        $transcripts = $this->mock(MeetingTranscriptService::class);
+        $transcripts->shouldReceive('transcribe')->once()->andReturnUsing(function (MeetingTranscript $row): void
+        {
+            $row->forceFill(['status' => MeetingTranscriptStatus::Ready])->save();
+        });
+        Queue::fake();
+
+        (new TranscribeMeetingTranscript($meeting->id))->handle($transcripts);
+
+        Queue::assertPushed(SummarizeMeetingTranscript::class, function (SummarizeMeetingTranscript $job) use ($meeting): bool
+        {
+            return $job->meetingTranscriptId === $meeting->id;
+        });
     }
 }

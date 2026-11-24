@@ -41,7 +41,7 @@ PROMPT;
     /**
      * @return array<string, mixed>
      */
-    public function summarize(MeetingTranscript $meeting): array
+    public function summarize(MeetingTranscript $meeting, bool $createTasks = true): array
     {
         if ($meeting->status !== MeetingTranscriptStatus::Ready)
         {
@@ -69,7 +69,11 @@ PROMPT;
             throw new RuntimeException('No se pudo resumir la reunión.');
         }
 
-        $summary = $this->assignConclusions($meeting, $summary);
+        if ($createTasks)
+        {
+            $summary = $this->assignConclusions($meeting, $summary);
+        }
+
         $this->logUsage($meeting, $response->usage ?? null, $encoded, $raw);
         $meeting->forceFill(['summary' => $summary])->save();
 

@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Enums\MeetingTranscriptStatus;
 use App\Models\MeetingTranscript;
 use App\Services\MeetingTranscriptService;
 use Illuminate\Bus\Queueable;
@@ -39,5 +40,18 @@ class TranscribeMeetingTranscript implements ShouldQueue
         }
 
         $transcripts->transcribe($meeting);
+        $meeting->refresh();
+
+        if ($meeting->status !== MeetingTranscriptStatus::Ready)
+        {
+            return;
+        }
+
+        if (! str_starts_with((string) $meeting->external_ref, 'colab:'))
+        {
+            return;
+        }
+
+        SummarizeMeetingTranscript::dispatch($meeting->id);
     }
 }
