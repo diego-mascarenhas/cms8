@@ -27,6 +27,7 @@ final class TokenUsageLogService
         ?int $promptTokens = null,
         ?int $completionTokens = null,
         ?string $model = null,
+        ?string $label = null,
     ): void {
         if ($totalTokens <= 0)
         {
@@ -45,6 +46,13 @@ final class TokenUsageLogService
             $completion = 0;
         }
 
+        $billed = BilledUsage::capture($teamId, max(0, (int) $prompt), $completion, $saved, $model);
+        $label = trim((string) $label);
+        if ($label !== '')
+        {
+            $billed['label'] = mb_substr($label, 0, 160);
+        }
+
         try
         {
             TokenUsageLog::withoutGlobalScopes()->create([
@@ -57,7 +65,7 @@ final class TokenUsageLogService
                 'toon_tokens' => $storedToon,
                 'savings_percentage' => $savingsPercentage,
                 'used_toon' => $usedToon,
-                'billed_usage' => BilledUsage::capture($teamId, max(0, (int) $prompt), $completion, $saved, $model),
+                'billed_usage' => $billed,
             ]);
         } catch (\Throwable $e)
         {
@@ -85,6 +93,7 @@ final class TokenUsageLogService
         int $outputSize = 0,
         ?array $toon = null,
         ?string $model = null,
+        ?string $label = null,
     ): void {
         $totalTokens = self::totalTokensFromUsage($usage);
         if ($totalTokens <= 0)
@@ -123,6 +132,7 @@ final class TokenUsageLogService
             promptTokens: ($promptTokens + $completionTokens) > 0 ? $promptTokens : null,
             completionTokens: ($promptTokens + $completionTokens) > 0 ? $completionTokens : null,
             model: $resolvedModel,
+            label: $label,
         );
     }
 

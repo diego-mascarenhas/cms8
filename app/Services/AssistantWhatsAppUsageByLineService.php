@@ -209,6 +209,11 @@ class AssistantWhatsAppUsageByLineService
                 'currency' => (string) $transcription['currency'],
             ],
             'transcriptions' => TeamTranscriptionUsageStatsService::lines($team, $from, $to),
+            'summaries' => $this->presentSummaries(
+                TeamApiUsageStatsService::summaryLines((int) $team->id, $from, $to),
+                $from,
+                $defaultModel,
+            ),
             'emails' => TeamMailerUsageStatsService::lines($team, $from, $to),
             'prospects' => TeamProspectUsageStatsService::lines($team, $from, $to),
             'storage_sources' => TeamStorageUsageStatsService::sourceLines($team, $to),
@@ -513,6 +518,32 @@ class AssistantWhatsAppUsageByLineService
             'tokens' => $presented['total_tokens'],
             'amount_cents' => $presented['amount_cents'],
         ];
+    }
+
+    /**
+     * @param  list<array{label: string, tokens: int, at: ?string}>  $rows
+     * @return list<array{label: string, tokens: int, amount_cents: int, at: ?string}>
+     */
+    private function presentSummaries(array $rows, Carbon $from, string $defaultModel): array
+    {
+        $summaries = [];
+        foreach ($rows as $row)
+        {
+            $tokens = (int) ($row['tokens'] ?? 0);
+            if ($tokens < 1)
+            {
+                continue;
+            }
+
+            $summaries[] = [
+                'label' => (string) ($row['label'] ?? 'Resumen de reunión'),
+                'tokens' => $tokens,
+                'amount_cents' => $this->tokens->costCents($tokens, 0, $defaultModel, $from),
+                'at' => $row['at'] ?? null,
+            ];
+        }
+
+        return $summaries;
     }
 
     /**

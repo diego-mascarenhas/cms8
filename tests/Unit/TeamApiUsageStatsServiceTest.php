@@ -387,4 +387,35 @@ class TeamApiUsageStatsServiceTest extends TestCase
         $this->assertSame('Reuniones', $stats['byModule']['Reuniones']['module_name']);
         $this->assertSame(400, $stats['byModule']['Reuniones']['tokens_used']);
     }
+
+    public function test_each_meeting_summary_is_listed_with_its_title(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'MeetingSummaryService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 1500,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+            'billed_usage' => [
+                'model' => null,
+                'prompt_tokens' => 1200,
+                'completion_tokens' => 300,
+                'tokens_saved' => 0,
+                'label' => 'iniciativa: Primera semana visible',
+            ],
+        ]);
+
+        $lines = TeamApiUsageStatsService::summaryLines((int) $team->id);
+
+        $this->assertSame('Resumen · iniciativa: Primera semana visible', $lines[0]['label']);
+        $this->assertSame(1500, $lines[0]['tokens']);
+    }
 }

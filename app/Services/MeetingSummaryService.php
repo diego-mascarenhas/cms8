@@ -632,6 +632,7 @@ PROMPT;
                 inputSize: strlen($encoded['text']),
                 outputSize: strlen($raw),
                 toon: $encoded,
+                label: $meeting->title,
             );
 
             return;
@@ -648,6 +649,7 @@ PROMPT;
             jsonTokens: (int) ($encoded['json_tokens'] ?? 0),
             toonTokens: (int) ($encoded['toon_tokens'] ?? 0),
             savingsPercentage: (int) ($encoded['savings_percentage'] ?? 0),
+            label: $meeting->title,
         );
     }
 }

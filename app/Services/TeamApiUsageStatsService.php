@@ -334,6 +334,39 @@ final class TeamApiUsageStatsService
     }
 
     /**
+     * One row per meeting summary, with the tokens already prepared for billing.
+     *
+     * @return list<array{label: string, tokens: int, at: ?string}>
+     */
+    public static function summaryLines(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
+    {
+        $logs = self::nonChatLogQuery($teamId, $from, $to)
+            ->where('service', 'MeetingSummaryService')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $rows = [];
+        foreach ($logs as $log)
+        {
+            $tokens = BilledUsage::used(self::billedUsageForLog($log));
+            if ($tokens < 1)
+            {
+                continue;
+            }
+
+            $stored = is_array($log->billed_usage) ? $log->billed_usage : [];
+            $title = trim((string) ($stored['label'] ?? ''));
+            $rows[] = [
+                'label' => $title !== '' ? 'Resumen · '.$title : 'Resumen de reunión',
+                'tokens' => $tokens,
+                'at' => $log->created_at?->toIso8601String(),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
      * @return array<string, array{module_name: string, count: int, tokens_used: int, tokens_saved: int}>
      */
     private static function callsByModuleFromNonChatLogs(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
