@@ -37,6 +37,7 @@ class TeamMeetingController extends Controller
             'title' => ['required', 'string', 'max:160'],
             'language' => ['nullable', 'string', 'size:2'],
             'external_ref' => ['nullable', 'string', 'max:160'],
+            'participants' => ['nullable'],
             'audio' => ['required', 'file', 'mimes:mp3,wav,m4a,mp4,webm,ogg,mpeg', 'max:512000'],
         ], [
             'title.required' => 'Indicá un título para la reunión.',
@@ -52,6 +53,7 @@ class TeamMeetingController extends Controller
             'user_id' => $team->user_id,
             'title' => $validated['title'],
             'external_ref' => $validated['external_ref'] ?? null,
+            'participants' => $this->participants($request->input('participants')),
             'original_filename' => $audio->getClientOriginalName(),
             'audio_path' => $path,
             'language' => isset($validated['language']) ? strtolower($validated['language']) : 'es',
@@ -109,6 +111,62 @@ class TeamMeetingController extends Controller
         }
 
         return response()->json(['data' => $this->payload($row->fresh())]);
+    }
+
+    public function syncParticipants(Request $request, int $meeting): JsonResponse
+    {
+        $row = $this->find($request, $meeting);
+        if ($row === null)
+        {
+            return response()->json(['message' => 'La reunión no existe.'], 404);
+        }
+
+        $row->forceFill([
+            'participants' => $this->participants($request->input('participants')),
+        ])->save();
+
+        return response()->json(['data' => $this->payload($row->fresh())]);
+    }
+
+    /**
+     * @return list<array{key: string, name: string, email: string}>
+     */
+    private function participants(mixed $raw): array
+    {
+        if (is_string($raw))
+        {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : [];
+        }
+
+        if (! is_array($raw))
+        {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($raw as $row)
+        {
+            if (! is_array($row))
+            {
+                continue;
+            }
+
+            $name = trim((string) ($row['name'] ?? ''));
+            $key = trim((string) ($row['key'] ?? ''));
+            if ($name === '' || $key === '')
+            {
+                continue;
+            }
+
+            $rows[] = [
+                'key' => mb_substr($key, 0, 80),
+                'name' => mb_substr($name, 0, 160),
+                'email' => mb_substr(trim((string) ($row['email'] ?? '')), 0, 160),
+            ];
+        }
+
+        return $rows;
     }
 
     private function team(Request $request): Team

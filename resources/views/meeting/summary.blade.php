@@ -58,7 +58,7 @@
             </form>
         </div>
         <div class="card-body">
-            @include('meeting.partials.summary', ['summary' => $summary])
+            @include('meeting.partials.summary', ['summary' => $summary, 'meeting' => $meeting, 'canMarkObjectives' => true])
         </div>
     </div>
 @else

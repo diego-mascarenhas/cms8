@@ -25,13 +25,14 @@ The transcript lists each turn as speaker and text, in order. Use only what was 
 Write in the language of the transcript.
 
 Respond with ONLY a valid JSON object, no markdown:
-{"minutes":"a short synthesis","points":[{"topic":"a point that was discussed","agree":["speaker names who clearly agreed"],"disagree":["speaker names who clearly disagreed"]}],"opinions":[{"speaker":"name as given","text":"the view that person stated, in one sentence"}],"conclusions":[{"title":"what was explicitly agreed, written as a task","owner":"speaker who took it, or empty string","detail":"the agreement in one sentence"}],"opinion":"your own recommendation of what should be done next. This is your view, not a quote from the meeting.","follow_up":{"suggest":false,"reason":"why another meeting is or is not useful","after":["points that should be handled before meeting again"]}}
+{"minutes":"a short synthesis","points":[{"topic":"a point that was discussed","agree":["speaker names who clearly agreed"],"disagree":["speaker names who clearly disagreed"]}],"opinions":[{"speaker":"name as given","text":"the view that person stated, in one sentence"}],"objectives":[{"text":"an objective the group can mark done, taken from what was said","marked":false}],"conclusions":[{"title":"what was explicitly agreed, written as a task","owner":"speaker who took it, or empty string","detail":"the agreement in one sentence"}],"opinion":"your own recommendation of what should be done next. This is your view, not a quote from the meeting.","follow_up":{"suggest":false,"reason":"why another meeting is or is not useful","after":["points that should be handled before meeting again"]}}
 
 Rules:
 - minutes is a synthesis in the style of Zoom, Google Meet or Teams recaps: 2 to 4 sentences on what the meeting was about and what came out of it. Do not retell the dialogue. Do not write who asked, who answered, or who said a line. Do not quote turns. Speaker names belong in points and conclusions, not in a play-by-play inside minutes.
 - Bad minutes: "Ana preguntó la hora; Luis respondió que eran las nueve."
 - Good minutes: "Se consultó la hora y el pronóstico del tiempo. No hubo acuerdos."
 - conclusions contains only agreements that were actually reached. If nothing was agreed, use an empty array.
+- objectives are outcomes or decisions the group can tick off. Use only what was said. If none were stated, use an empty array. marked is always false.
 - opinions lists each person who stated a view, preference, or objection. One entry per person. Use only what that person said. If nobody stated a view, use an empty array. Do not put the recommendation in opinions.
 - agree and disagree list only people who clearly took that side. If it is unclear, leave the name out.
 - Do not invent a date or time for a follow-up meeting. follow_up.suggest is true only when another meeting would help after the listed points, otherwise false.
@@ -149,6 +150,7 @@ PROMPT;
             'opinions' => $this->opinions($data['opinions'] ?? []),
             'conclusions' => $conclusions,
             'opinion' => $this->line($data['opinion'] ?? ''),
+            'objectives' => $this->objectiveLines($data['objectives'] ?? []),
             'follow_up' => $this->followUp($data['follow_up'] ?? []),
             'viewpoints' => $this->viewpoints($data['viewpoints'] ?? []),
             'intention' => $this->line($data['intention'] ?? ''),
@@ -316,6 +318,34 @@ PROMPT;
             && $summary['viewpoints'] === []
             && $summary['intention'] === ''
             && $summary['items'] === [];
+    }
+
+    /**
+     * @return list<array{text: string, marked: bool}>
+     */
+    private function objectiveLines(mixed $value): array
+    {
+        if (! is_array($value))
+        {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($value as $item)
+        {
+            $text = is_array($item) ? $this->line($item['text'] ?? '') : $this->line($item);
+            if ($text === '')
+            {
+                continue;
+            }
+
+            $rows[] = [
+                'text' => $text,
+                'marked' => false,
+            ];
+        }
+
+        return $rows;
     }
 
     /**

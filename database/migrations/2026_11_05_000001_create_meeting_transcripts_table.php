@@ -15,6 +15,7 @@ return new class extends Migration
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('title');
             $table->string('external_ref')->nullable();
+            $table->json('participants')->nullable();
             $table->string('original_filename');
             $table->string('audio_path');
             $table->string('language', 8)->nullable();

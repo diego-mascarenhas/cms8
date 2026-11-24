@@ -21,6 +21,8 @@ class LinkMeetingSpeakerRequest extends FormRequest
 
         return [
             'speaker' => ['required', 'string', 'max:40'],
+            'participant' => ['nullable', 'string', 'max:80'],
+            'clear' => ['nullable', 'boolean'],
             'contact_id' => [
                 'nullable',
                 'integer',

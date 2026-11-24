@@ -19,11 +19,34 @@
         : (is_array($summary['viewpoints'] ?? null) ? $summary['viewpoints'] : []);
     $opinion = $summary['opinion'] ?? '';
     $followUp = is_array($summary['follow_up'] ?? null) ? $summary['follow_up'] : [];
+    $objectives = \App\Support\MeetingOpinionSpread::objectives(is_array($summary) ? $summary : []);
+    $spread = \App\Support\MeetingOpinionSpread::percentages(is_array($summary) ? $summary : []);
+    $canMarkObjectives = ! empty($canMarkObjectives) && isset($meeting);
 @endphp
 
 @if ($minutes !== '')
     <h6 class="mb-2">Síntesis</h6>
     <p class="mb-3">{{ $minutes }}</p>
+@endif
+
+@if ($objectives !== [])
+    <h6 class="mb-2">Objetivos</h6>
+    <ul class="list-unstyled mb-3">
+        @foreach ($objectives as $index => $objective)
+            <li class="mb-2">
+                @if ($canMarkObjectives)
+                    <form action="{{ route('meeting.objective', $meeting) }}" method="POST" class="d-flex align-items-start gap-2 mb-0">
+                        @csrf
+                        <input type="hidden" name="index" value="{{ $index }}">
+                        <input type="checkbox" class="form-check-input mt-1" name="marked" value="1" @checked($objective['marked']) onchange="this.form.submit()">
+                        <span @class(['text-decoration-line-through text-muted' => $objective['marked']])>{{ $objective['text'] }}</span>
+                    </form>
+                @else
+                    <span @class(['text-decoration-line-through text-muted' => $objective['marked']])>{{ $objective['text'] }}</span>
+                @endif
+            </li>
+        @endforeach
+    </ul>
 @endif
 
 @if ($points !== [])
@@ -82,6 +105,11 @@
             </li>
         @endforeach
     </ul>
+@endif
+
+@if (is_array($spread))
+    <h6 class="mb-2">Suma de opiniones</h6>
+    <p class="mb-3">Polarizado {{ $spread['polarized'] }}% · Atomizado {{ $spread['atomized'] }}% · Concentrado {{ $spread['concentrated'] }}%</p>
 @endif
 
 @if ($opinion !== '')
