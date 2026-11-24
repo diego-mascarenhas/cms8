@@ -843,6 +843,7 @@ Route::middleware('team.token')->prefix('team')->group(function ()
     Route::get('meetings/{meeting}', [\App\Http\Controllers\Api\TeamMeetingController::class, 'show'])->whereNumber('meeting')->name('api.team.meetings.show');
     Route::post('meetings/{meeting}/speakers', [\App\Http\Controllers\Api\TeamMeetingController::class, 'linkSpeaker'])->whereNumber('meeting')->name('api.team.meetings.speakers');
     Route::post('meetings/{meeting}/participants', [\App\Http\Controllers\Api\TeamMeetingController::class, 'syncParticipants'])->whereNumber('meeting')->name('api.team.meetings.participants');
+    Route::post('meetings/{meeting}/summary', [\App\Http\Controllers\Api\TeamMeetingController::class, 'summarize'])->whereNumber('meeting')->name('api.team.meetings.summary');
     Route::get('meet/slots', [\App\Http\Controllers\Api\MeetBookingController::class, 'slots'])->name('api.team.meet.slots');
     Route::post('meet/bookings', [\App\Http\Controllers\Api\MeetBookingController::class, 'store'])->name('api.team.meet.bookings.store');
     Route::post('meet/knocks', [\App\Http\Controllers\Api\MeetKnockController::class, 'store'])->name('api.team.meet.knocks.store');

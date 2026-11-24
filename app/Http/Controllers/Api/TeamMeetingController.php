@@ -9,10 +9,12 @@ use App\Models\Contact;
 use App\Models\MeetingTranscript;
 use App\Models\Team;
 use App\Services\MeetingCalendarSync;
+use App\Services\MeetingSummaryService;
 use App\Services\MeetingTranscriptService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use RuntimeException;
 
 class TeamMeetingController extends Controller
 {
@@ -64,6 +66,27 @@ class TeamMeetingController extends Controller
         TranscribeMeetingTranscript::dispatch($meeting->id)->afterResponse();
 
         return response()->json(['data' => $this->payload($meeting)], 201);
+    }
+
+    public function summarize(Request $request, MeetingSummaryService $summaries, int $meeting): JsonResponse
+    {
+        $row = $this->find($request, $meeting);
+        if ($row === null)
+        {
+            return response()->json(['message' => 'La reunión no existe.'], 404);
+        }
+
+        $fromColab = is_string($row->external_ref) && str_starts_with($row->external_ref, 'colab:');
+
+        try
+        {
+            $summaries->summarize($row, createTasks: ! $fromColab);
+        } catch (RuntimeException $exception)
+        {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['data' => $this->payload($row->fresh())]);
     }
 
     public function show(Request $request, int $meeting): JsonResponse
