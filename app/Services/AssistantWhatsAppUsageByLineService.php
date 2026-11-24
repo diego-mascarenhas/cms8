@@ -137,9 +137,12 @@ class AssistantWhatsAppUsageByLineService
         $tokensSaved = (int) collect($lines)->sum('tokens_saved');
         $teamUsage = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
         // Same universe as TeamBillingUsageSummaryService / invoice preview:
-        // TokenUsageLog + agent chat, scaled and priced as prompt tokens.
+        // each call is priced with the model that ran.
         $sources = $this->presentSources($teamUsage['byModule'], $from, $defaultModel);
-        $headline = $this->invoiceAlignedHeadline((int) ($teamUsage['totalBilledTokens'] ?? 0), $from, $defaultModel, alreadyBilled: true);
+        $headline = [
+            'tokens' => (int) ($teamUsage['totalBilledTokens'] ?? 0),
+            'amount_cents' => (int) ($teamUsage['totalBilledAmountCents'] ?? 0),
+        ];
         $allSaved = (int) ($teamUsage['totalBilledTokensSaved'] ?? $this->tokens->scale((int) $teamUsage['totalTokensSaved']));
         $whatsapp = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
         $prospect = TeamProspectUsageStatsService::forTeam($team, $from, $to);
@@ -566,12 +569,15 @@ class AssistantWhatsAppUsageByLineService
             $saved = array_key_exists('tokens_saved_billed', $row)
                 ? (int) $row['tokens_saved_billed']
                 : $this->tokens->scale((int) ($row['tokens_saved'] ?? 0));
+            $amount = array_key_exists('amount_cents', $row)
+                ? (int) $row['amount_cents']
+                : $this->tokens->costCents($used, 0, $defaultModel, $from);
             $sources[] = [
                 'module_name' => (string) ($row['module_name'] ?? ''),
                 'count' => (int) ($row['count'] ?? 0),
                 'tokens_used' => $used,
                 'tokens_saved' => $saved,
-                'amount_cents' => $this->tokens->costCents($used, 0, $defaultModel, $from),
+                'amount_cents' => $amount,
                 'saved_cents' => $this->tokens->costCents($saved, 0, $defaultModel, $from),
             ];
         }

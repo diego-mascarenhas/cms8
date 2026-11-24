@@ -3,14 +3,11 @@
 namespace Tests\Feature;
 
 use App\Enums\TeamBillingProduct;
-use App\Models\AgentConversation;
-use App\Models\AgentConversationMessage;
 use App\Models\TeamBillingRate;
 use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\TokenBillingRateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class BackfillBilledUsageCommandTest extends TestCase
@@ -43,63 +40,24 @@ class BackfillBilledUsageCommandTest extends TestCase
         });
         $log->forceFill(['created_at' => $when, 'updated_at' => $when])->saveQuietly();
 
-        $conversationId = (string) Str::uuid();
-        AgentConversation::query()->create([
-            'id' => $conversationId,
-            'user_id' => $user->id,
-            'team_id' => $team->id,
-            'title' => 'Histórico',
-        ]);
-        $message = AgentConversationMessage::withoutEvents(function () use ($conversationId, $user)
-        {
-            return AgentConversationMessage::query()->create([
-                'id' => (string) Str::uuid(),
-                'conversation_id' => $conversationId,
-                'user_id' => $user->id,
-                'agent' => 'chat_assistant',
-                'role' => 'assistant',
-                'content' => 'Listo',
-                'attachments' => [],
-                'tool_calls' => [],
-                'tool_results' => [],
-                'usage' => [
-                    'prompt_tokens' => 80,
-                    'completion_tokens' => 20,
-                    'total_tokens' => 100,
-                    'model' => 'claude-haiku-4-5-20251001',
-                ],
-                'meta' => [
-                    'model' => 'claude-haiku-4-5-20251001',
-                    'provider' => 'anthropic',
-                ],
-                'billed_usage' => null,
-            ]);
-        });
-        $message->forceFill(['created_at' => $when, 'updated_at' => $when])->saveQuietly();
-
         TeamBillingRate::setAmount((int) $team->id, TeamBillingProduct::TokensMultiplier, $multiplierThen + 7);
 
         $this->artisan('billing:backfill-billed-usage', ['--dry-run' => true])
             ->assertSuccessful();
 
         $this->assertNull($log->fresh()->billed_usage);
-        $this->assertNull($message->fresh()->billed_usage);
 
         $this->artisan('billing:backfill-billed-usage')
             ->assertSuccessful();
 
         $log->refresh();
-        $message->refresh();
 
         $this->assertSame((int) round(100 * $multiplierThen), (int) $log->billed_usage['prompt_tokens']);
         $this->assertSame(0, (int) $log->billed_usage['completion_tokens']);
         $this->assertSame((int) round(40 * $multiplierThen), (int) $log->billed_usage['tokens_saved']);
-        $this->assertSame((int) round(80 * $multiplierThen), (int) $message->billed_usage['prompt_tokens']);
-        $this->assertSame((int) round(20 * $multiplierThen), (int) $message->billed_usage['completion_tokens']);
-        $this->assertSame('claude-haiku-4-5-20251001', $message->billed_usage['model']);
 
         $this->artisan('billing:backfill-billed-usage')
-            ->expectsOutputToContain('Logs updated: 0 | messages updated: 0')
+            ->expectsOutputToContain('Logs updated: 0')
             ->assertSuccessful();
     }
 }

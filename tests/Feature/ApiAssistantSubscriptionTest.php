@@ -564,13 +564,24 @@ class ApiAssistantSubscriptionTest extends TestCase
             ],
             'meta' => ['model' => 'claude-haiku-4-5'],
         ]);
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'ChatAssistantReplyService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 1_000_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/assistant/subscription');
 
         $response->assertOk();
-        $response->assertJsonPath('data.token_usage.total_tokens_used', 6_000_000);
-        $response->assertJsonPath('data.token_usage.amount_due_cents', 600);
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 10_000_000);
+        $response->assertJsonPath('data.token_usage.amount_due_cents', 1000);
         $this->assertSame(
             (int) collect($response->json('data.token_usage.by_module'))->sum('tokens_used'),
             $response->json('data.token_usage.total_tokens_used'),
