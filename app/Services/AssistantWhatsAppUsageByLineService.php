@@ -137,9 +137,12 @@ class AssistantWhatsAppUsageByLineService
         $tokensSaved = (int) collect($lines)->sum('tokens_saved');
         $teamUsage = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
         // Same universe as TeamBillingUsageSummaryService / invoice preview:
-        // TokenUsageLog + agent chat, scaled and priced as prompt tokens.
+        // each call is priced with the model that ran.
         $sources = $this->presentSources($teamUsage['byModule'], $from, $defaultModel);
-        $headline = $this->invoiceAlignedHeadline((int) ($teamUsage['totalBilledTokens'] ?? 0), $from, $defaultModel, alreadyBilled: true);
+        $headline = [
+            'tokens' => (int) ($teamUsage['totalBilledTokens'] ?? 0),
+            'amount_cents' => (int) ($teamUsage['totalBilledAmountCents'] ?? 0),
+        ];
         $allSaved = (int) ($teamUsage['totalBilledTokensSaved'] ?? $this->tokens->scale((int) $teamUsage['totalTokensSaved']));
         $whatsapp = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
         $prospect = TeamProspectUsageStatsService::forTeam($team, $from, $to);
@@ -209,6 +212,11 @@ class AssistantWhatsAppUsageByLineService
                 'currency' => (string) $transcription['currency'],
             ],
             'transcriptions' => TeamTranscriptionUsageStatsService::lines($team, $from, $to),
+            'summaries' => $this->presentSummaries(
+                TeamApiUsageStatsService::summaryLines((int) $team->id, $from, $to),
+                $from,
+                $defaultModel,
+            ),
             'emails' => TeamMailerUsageStatsService::lines($team, $from, $to),
             'prospects' => TeamProspectUsageStatsService::lines($team, $from, $to),
             'storage_sources' => TeamStorageUsageStatsService::sourceLines($team, $to),
@@ -516,6 +524,36 @@ class AssistantWhatsAppUsageByLineService
     }
 
     /**
+     * @param  list<array{id?: ?int, label: string, tokens: int, prompt_tokens?: int, completion_tokens?: int, tokens_saved?: int, at: ?string}>  $rows
+     * @return list<array{id: ?int, label: string, tokens: int, prompt_tokens: int, completion_tokens: int, tokens_saved: int, amount_cents: int, at: ?string}>
+     */
+    private function presentSummaries(array $rows, Carbon $from, string $defaultModel): array
+    {
+        $summaries = [];
+        foreach ($rows as $row)
+        {
+            $tokens = (int) ($row['tokens'] ?? 0);
+            if ($tokens < 1)
+            {
+                continue;
+            }
+
+            $summaries[] = [
+                'id' => isset($row['id']) ? (int) $row['id'] : null,
+                'label' => (string) ($row['label'] ?? 'Resumen de reunión'),
+                'tokens' => $tokens,
+                'prompt_tokens' => (int) ($row['prompt_tokens'] ?? $tokens),
+                'completion_tokens' => (int) ($row['completion_tokens'] ?? 0),
+                'tokens_saved' => (int) ($row['tokens_saved'] ?? 0),
+                'amount_cents' => $this->tokens->costCents($tokens, 0, $defaultModel, $from),
+                'at' => $row['at'] ?? null,
+            ];
+        }
+
+        return $summaries;
+    }
+
+    /**
      * @param  array<int|string, array{module_name: string, count: int, tokens_used: int, tokens_saved: int}>  $byModule
      * @return list<array{module_name: string, count: int, tokens_used: int, tokens_saved: int, amount_cents: int, saved_cents: int}>
      */
@@ -531,12 +569,15 @@ class AssistantWhatsAppUsageByLineService
             $saved = array_key_exists('tokens_saved_billed', $row)
                 ? (int) $row['tokens_saved_billed']
                 : $this->tokens->scale((int) ($row['tokens_saved'] ?? 0));
+            $amount = array_key_exists('amount_cents', $row)
+                ? (int) $row['amount_cents']
+                : $this->tokens->costCents($used, 0, $defaultModel, $from);
             $sources[] = [
                 'module_name' => (string) ($row['module_name'] ?? ''),
                 'count' => (int) ($row['count'] ?? 0),
                 'tokens_used' => $used,
                 'tokens_saved' => $saved,
-                'amount_cents' => $this->tokens->costCents($used, 0, $defaultModel, $from),
+                'amount_cents' => $amount,
                 'saved_cents' => $this->tokens->costCents($saved, 0, $defaultModel, $from),
             ];
         }

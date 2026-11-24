@@ -23,6 +23,8 @@ return new class extends Migration
             $table->integer('toon_tokens')->default(0);
             $table->integer('savings_percentage')->default(0);
             $table->boolean('used_toon')->default(false);
+            $table->json('billed_usage')->nullable();
+            $table->foreignId('usage_invoice_id')->nullable();
             $table->timestamps();
 
             $table->foreign('module_id')->references('id')->on('modules')->onDelete('set null');

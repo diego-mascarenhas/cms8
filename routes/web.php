@@ -343,6 +343,7 @@ Route::middleware(['auth'])->group(function ()
     Route::put('meeting/{meeting}', [MeetingTranscriptController::class, 'update'])->name('meeting.update');
     Route::get('meeting/{meeting}/summary', [MeetingTranscriptController::class, 'summary'])->name('meeting.summary.show');
     Route::post('meeting/{meeting}/summary', [MeetingTranscriptController::class, 'summarize'])->name('meeting.summary');
+    Route::post('meeting/{meeting}/objectives', [MeetingTranscriptController::class, 'toggleObjective'])->name('meeting.objective');
     Route::get('meeting/{meeting}', [MeetingTranscriptController::class, 'show'])->name('meeting.show');
     Route::delete('meeting/{meeting}', [MeetingTranscriptController::class, 'destroy'])->name('meeting.destroy');
 

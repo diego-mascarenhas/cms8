@@ -67,10 +67,12 @@ class MeetingTranscriptService
     /**
      * @param  list<array<string, mixed>>  $turns
      */
-    public function linkSpeaker(MeetingTranscript $meeting, string $speaker, ?int $contactId): bool
+    public function linkSpeaker(MeetingTranscript $meeting, string $speaker, ?int $contactId, ?string $linkedName = null, ?string $linkedEmail = null): bool
     {
         $turns = $meeting->turns ?? [];
         $matched = false;
+        $linkedName = trim((string) $linkedName);
+        $linkedEmail = trim((string) $linkedEmail);
 
         foreach ($turns as $index => $turn)
         {
@@ -86,6 +88,15 @@ class MeetingTranscriptService
             } else
             {
                 $turns[$index]['contact_id'] = $contactId;
+            }
+
+            if ($linkedName === '')
+            {
+                unset($turns[$index]['linked_name'], $turns[$index]['linked_email']);
+            } else
+            {
+                $turns[$index]['linked_name'] = $linkedName;
+                $turns[$index]['linked_email'] = $linkedEmail;
             }
         }
 

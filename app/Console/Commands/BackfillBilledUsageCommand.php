@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\AgentConversationMessage;
 use App\Models\TokenUsageLog;
 use App\Services\Billing\BilledUsage;
 use Illuminate\Console\Command;
@@ -14,11 +13,11 @@ class BackfillBilledUsageCommand extends Command
                             {--team= : Limit to one team id}
                             {--dry-run : Preview without writing}';
 
-    protected $description = 'Fill billed_usage on past token logs and assistant messages using the multiplier in effect on each created_at';
+    protected $description = 'Fill billed_usage on past token logs using the multiplier in effect on each created_at';
 
     public function handle(): int
     {
-        if (! Schema::hasColumn('token_usage_logs', 'billed_usage') || ! Schema::hasColumn('agent_conversation_messages', 'billed_usage'))
+        if (! Schema::hasColumn('token_usage_logs', 'billed_usage'))
         {
             $this->error('billed_usage is missing. Run the migration first.');
 
@@ -29,10 +28,9 @@ class BackfillBilledUsageCommand extends Command
         $teamId = is_numeric($this->option('team')) ? (int) $this->option('team') : null;
 
         $logs = $this->backfillLogs($teamId, $dryRun);
-        $messages = $this->backfillMessages($teamId, $dryRun);
 
         $this->info(
-            "Logs updated: {$logs} | messages updated: {$messages['updated']} | messages skipped: {$messages['skipped']}".
+            "Logs updated: {$logs}".
             ($dryRun ? ' | dry-run' : ''),
         );
 
@@ -80,70 +78,5 @@ class BackfillBilledUsageCommand extends Command
             });
 
         return $updated;
-    }
-
-    /**
-     * @return array{updated: int, skipped: int}
-     */
-    private function backfillMessages(?int $teamId, bool $dryRun): array
-    {
-        $updated = 0;
-        $skipped = 0;
-
-        AgentConversationMessage::query()
-            ->where('role', 'assistant')
-            ->whereNull('billed_usage')
-            ->when($teamId !== null, function ($query) use ($teamId): void
-            {
-                $query->whereHas('conversation', fn ($conversation) => $conversation->where('team_id', $teamId));
-            })
-            ->with('conversation:id,team_id')
-            ->orderBy('id')
-            ->chunkById(200, function ($messages) use ($dryRun, &$updated, &$skipped): void
-            {
-                foreach ($messages as $message)
-                {
-                    $usage = is_array($message->usage) ? $message->usage : [];
-                    $meta = is_array($message->meta) ? $message->meta : [];
-                    $prompt = (int) ($usage['prompt_tokens'] ?? 0);
-                    $completion = (int) ($usage['completion_tokens'] ?? 0);
-                    if ($prompt + $completion <= 0)
-                    {
-                        $prompt = (int) ($usage['total_tokens'] ?? 0);
-                        $completion = 0;
-                    }
-                    if ($prompt + $completion <= 0)
-                    {
-                        $skipped++;
-
-                        continue;
-                    }
-
-                    $updated++;
-                    if ($dryRun)
-                    {
-                        continue;
-                    }
-
-                    $model = $usage['model'] ?? $meta['model'] ?? null;
-                    $team = $message->conversation?->team_id;
-
-                    $message->forceFill([
-                        'billed_usage' => BilledUsage::capture(
-                            is_numeric($team) ? (int) $team : null,
-                            $prompt,
-                            $completion,
-                            max(0, (int) ($usage['tokens_saved'] ?? 0)),
-                            is_string($model) ? $model : null,
-                            $message->created_at,
-                        ),
-                    ])->saveQuietly();
-                }
-            });
-
-        return [
-            'updated' => $updated,
-            'skipped' => $skipped,
-        ];
     }
 }

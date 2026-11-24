@@ -529,8 +529,12 @@ final class TeamBillingUsageSummaryService
         $stats = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
         $realTokens = (int) $stats['totalTokensUsed'];
         $billedTokens = (int) ($stats['totalBilledTokens'] ?? $this->tokens->scale($realTokens, $asOf));
-        $tokenCostCents = $this->tokens->costCents($realTokens, 0, null, $asOf);
-        $tokenBilledCents = $this->tokens->costCents($billedTokens, 0, null, $asOf);
+        $tokenCostCents = array_key_exists('totalCostAmountCents', $stats)
+            ? (int) $stats['totalCostAmountCents']
+            : $this->tokens->costCents($realTokens, 0, null, $asOf);
+        $tokenBilledCents = array_key_exists('totalBilledAmountCents', $stats)
+            ? (int) $stats['totalBilledAmountCents']
+            : $this->tokens->costCents($billedTokens, 0, null, $asOf);
         $tokenMarkupCents = max(0, $tokenBilledCents - $tokenCostCents);
         $tokensByModule = $this->tokensByModule($stats['byModule'] ?? [], $realTokens, $billedTokens, $asOf);
 

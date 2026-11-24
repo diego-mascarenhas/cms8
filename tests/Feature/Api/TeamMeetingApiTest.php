@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\Api;
 
+use App\Enums\MeetingTranscriptStatus;
 use App\Jobs\TranscribeMeetingTranscript;
 use App\Models\MeetingTranscript;
+use App\Models\Module;
 use App\Models\User;
+use App\Services\MeetingSummaryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
@@ -19,8 +22,19 @@ class TeamMeetingApiTest extends TestCase
     {
         Storage::fake('local');
         Queue::fake();
+        Module::query()->updateOrCreate(
+            ['key' => 'meetings'],
+            [
+                'name' => 'Meetings',
+                'icon' => 'microphone',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
+        $team->enableModule('meetings');
         $token = $team->createApiToken('Jitsi')['plain'];
 
         $store = $this->withHeader('Authorization', 'Bearer '.$token)
@@ -44,10 +58,110 @@ class TeamMeetingApiTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/team/meetings/'.$id)
             ->assertOk()
-            ->assertJsonPath('data.id', $id);
+            ->assertJsonPath('data.id', $id)
+            ->assertJsonMissingPath('data.consumption')
+            ->assertJsonMissingPath('data.summary.consumption');
 
         $this->flushHeaders()
             ->getJson('/api/team/meetings/'.$id)
             ->assertUnauthorized();
+    }
+
+    public function test_team_token_can_ask_again_for_the_summary(): void
+    {
+        Module::query()->updateOrCreate(
+            ['key' => 'meetings'],
+            [
+                'name' => 'Meetings',
+                'icon' => 'microphone',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->enableModule('meetings');
+        $token = $team->createApiToken('Jitsi')['plain'];
+        $meeting = MeetingTranscript::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'title' => 'iniciativa: Primera semana visible',
+            'external_ref' => 'colab:proposal:12',
+            'original_filename' => 'reunion.m4a',
+            'audio_path' => 'meetings/'.$team->id.'/reunion.m4a',
+            'language' => 'es',
+            'status' => MeetingTranscriptStatus::Pending,
+            'turns' => [
+                ['speaker' => 'speaker_0', 'label' => 'Persona 1', 'text' => 'Arrancamos con las pausas activas.'],
+            ],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/team/meetings/'.$meeting->id.'/summary')
+            ->assertUnprocessable()
+            ->assertJsonPath('message', 'La reunión todavía no tiene una transcripción para resumir.');
+
+        $meeting->forceFill(['status' => MeetingTranscriptStatus::Ready])->save();
+        $this->mock(MeetingSummaryService::class)
+            ->shouldReceive('summarize')
+            ->once()
+            ->withArgs(function (MeetingTranscript $row, bool $createTasks) use ($meeting): bool
+            {
+                return $row->id === $meeting->id && $createTasks === false;
+            })
+            ->andReturnUsing(function (MeetingTranscript $row): array
+            {
+                $summary = ['minutes' => 'Resumen nuevo de las pausas activas.'];
+                $row->forceFill(['summary' => $summary])->save();
+
+                return $summary;
+            });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/team/meetings/'.$meeting->id.'/summary')
+            ->assertOk()
+            ->assertJsonPath('data.summary.minutes', 'Resumen nuevo de las pausas activas.');
+    }
+
+    public function test_team_token_can_link_a_voice_to_a_participant(): void
+    {
+        Module::query()->updateOrCreate(
+            ['key' => 'meetings'],
+            [
+                'name' => 'Meetings',
+                'icon' => 'microphone',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->enableModule('meetings');
+        $token = $team->createApiToken('Jitsi')['plain'];
+        $meeting = MeetingTranscript::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'title' => 'Pausas',
+            'original_filename' => 'reunion.m4a',
+            'audio_path' => 'meetings/'.$team->id.'/reunion.m4a',
+            'language' => 'es',
+            'status' => MeetingTranscriptStatus::Ready,
+            'participants' => [
+                ['key' => 'user:4', 'name' => 'Paulina Rojas', 'email' => 'paulina@humano.test'],
+            ],
+            'turns' => [
+                ['speaker' => 'speaker_0', 'label' => 'Persona 1', 'text' => 'Arrancamos.'],
+            ],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/team/meetings/'.$meeting->id.'/speakers', [
+                'speaker' => 'speaker_0',
+                'participant' => 'user:4',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.turns.0.contact_name', 'Paulina Rojas');
     }
 }

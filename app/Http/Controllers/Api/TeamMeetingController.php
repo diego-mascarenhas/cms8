@@ -9,10 +9,12 @@ use App\Models\Contact;
 use App\Models\MeetingTranscript;
 use App\Models\Team;
 use App\Services\MeetingCalendarSync;
+use App\Services\MeetingSummaryService;
 use App\Services\MeetingTranscriptService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use RuntimeException;
 
 class TeamMeetingController extends Controller
 {
@@ -37,6 +39,7 @@ class TeamMeetingController extends Controller
             'title' => ['required', 'string', 'max:160'],
             'language' => ['nullable', 'string', 'size:2'],
             'external_ref' => ['nullable', 'string', 'max:160'],
+            'participants' => ['nullable'],
             'audio' => ['required', 'file', 'mimes:mp3,wav,m4a,mp4,webm,ogg,mpeg', 'max:512000'],
         ], [
             'title.required' => 'Indicá un título para la reunión.',
@@ -52,6 +55,7 @@ class TeamMeetingController extends Controller
             'user_id' => $team->user_id,
             'title' => $validated['title'],
             'external_ref' => $validated['external_ref'] ?? null,
+            'participants' => $this->participants($request->input('participants')),
             'original_filename' => $audio->getClientOriginalName(),
             'audio_path' => $path,
             'language' => isset($validated['language']) ? strtolower($validated['language']) : 'es',
@@ -62,6 +66,27 @@ class TeamMeetingController extends Controller
         TranscribeMeetingTranscript::dispatch($meeting->id)->afterResponse();
 
         return response()->json(['data' => $this->payload($meeting)], 201);
+    }
+
+    public function summarize(Request $request, MeetingSummaryService $summaries, int $meeting): JsonResponse
+    {
+        $row = $this->find($request, $meeting);
+        if ($row === null)
+        {
+            return response()->json(['message' => 'La reunión no existe.'], 404);
+        }
+
+        $fromColab = is_string($row->external_ref) && str_starts_with($row->external_ref, 'colab:');
+
+        try
+        {
+            $summaries->summarize($row, createTasks: ! $fromColab);
+        } catch (RuntimeException $exception)
+        {
+            return response()->json(['message' => $exception->getMessage()], 422);
+        }
+
+        return response()->json(['data' => $this->payload($row->fresh())]);
     }
 
     public function show(Request $request, int $meeting): JsonResponse
@@ -86,6 +111,8 @@ class TeamMeetingController extends Controller
 
         $validated = $request->validate([
             'speaker' => ['required', 'string', 'max:40'],
+            'participant' => ['nullable', 'string', 'max:80'],
+            'clear' => ['nullable', 'boolean'],
             'contact_id' => [
                 'nullable',
                 'integer',
@@ -99,16 +126,97 @@ class TeamMeetingController extends Controller
             'contact_id.exists' => 'Esa persona no está en el equipo.',
         ]);
 
-        $contactId = array_key_exists('contact_id', $validated) && $validated['contact_id'] !== null
-            ? (int) $validated['contact_id']
-            : null;
-        $linked = $transcripts->linkSpeaker($row, $validated['speaker'], $contactId);
+        $participant = $this->participant($row, (string) ($validated['participant'] ?? ''));
+        if ($request->filled('participant') && $participant === null)
+        {
+            return response()->json(['message' => 'Esa persona no participa de este grupo o iniciativa.'], 422);
+        }
+
+        if ($request->boolean('clear'))
+        {
+            $linked = $transcripts->linkSpeaker($row, $validated['speaker'], null);
+        } elseif ($participant !== null)
+        {
+            $email = mb_strtolower($participant['email']);
+            $contact = $email === '' ? null : Contact::withoutGlobalScope('team')
+                ->where('team_id', $row->team_id)
+                ->whereRaw('LOWER(email) = ?', [$email])
+                ->first();
+            $linked = $transcripts->linkSpeaker($row, $validated['speaker'], $contact?->id, $participant['name'], $participant['email']);
+        } else
+        {
+            $contactId = array_key_exists('contact_id', $validated) && $validated['contact_id'] !== null
+                ? (int) $validated['contact_id']
+                : null;
+            if ($contactId === null)
+            {
+                return response()->json(['message' => 'Elegí una persona.'], 422);
+            }
+
+            $linked = $transcripts->linkSpeaker($row, $validated['speaker'], $contactId);
+        }
         if (! $linked)
         {
             return response()->json(['message' => 'Esa voz no está en la reunión.'], 422);
         }
 
         return response()->json(['data' => $this->payload($row->fresh())]);
+    }
+
+    public function syncParticipants(Request $request, int $meeting): JsonResponse
+    {
+        $row = $this->find($request, $meeting);
+        if ($row === null)
+        {
+            return response()->json(['message' => 'La reunión no existe.'], 404);
+        }
+
+        $row->forceFill([
+            'participants' => $this->participants($request->input('participants')),
+        ])->save();
+
+        return response()->json(['data' => $this->payload($row->fresh())]);
+    }
+
+    /**
+     * @return list<array{key: string, name: string, email: string}>
+     */
+    private function participants(mixed $raw): array
+    {
+        if (is_string($raw))
+        {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : [];
+        }
+
+        if (! is_array($raw))
+        {
+            return [];
+        }
+
+        $rows = [];
+        foreach ($raw as $row)
+        {
+            if (! is_array($row))
+            {
+                continue;
+            }
+
+            $name = trim((string) ($row['name'] ?? ''));
+            $key = trim((string) ($row['key'] ?? ''));
+            if ($name === '' || $key === '')
+            {
+                continue;
+            }
+
+            $rows[] = [
+                'key' => mb_substr($key, 0, 80),
+                'name' => mb_substr($name, 0, 160),
+                'email' => mb_substr(trim((string) ($row['email'] ?? '')), 0, 160),
+            ];
+        }
+
+        return $rows;
     }
 
     private function team(Request $request): Team
@@ -150,12 +258,14 @@ class TeamMeetingController extends Controller
         {
             $contact = isset($turn['contact_id']) ? $contacts->get($turn['contact_id']) : null;
             $name = $contact ? trim($contact->name.' '.($contact->surname ?? '')) : '';
+            $linkedName = trim((string) ($turn['linked_name'] ?? ''));
 
             return [
                 'speaker' => $turn['speaker'] ?? '',
                 'label' => $turn['label'] ?? 'Persona',
                 'contact_id' => $contact?->id,
-                'contact_name' => $name !== '' ? $name : null,
+                'contact_name' => $name !== '' ? $name : ($linkedName !== '' ? $linkedName : null),
+                'linked_name' => $linkedName !== '' ? $linkedName : null,
                 'text' => $turn['text'] ?? '',
                 'start_seconds' => $turn['start_seconds'] ?? 0,
                 'end_seconds' => $turn['end_seconds'] ?? 0,
@@ -170,8 +280,54 @@ class TeamMeetingController extends Controller
             'language' => $meeting->language,
             'transcript' => $meeting->transcript,
             'turns' => $turns,
-            'summary' => $meeting->summary,
+            'summary' => $this->summaryForClient($meeting->summary),
             'error' => $meeting->error,
         ];
+    }
+
+    /**
+     * @return array{key: string, name: string, email: string}|null
+     */
+    private function participant(MeetingTranscript $meeting, string $key): ?array
+    {
+        $key = trim($key);
+        if ($key === '')
+        {
+            return null;
+        }
+
+        foreach (is_array($meeting->participants) ? $meeting->participants : [] as $row)
+        {
+            if (! is_array($row) || (string) ($row['key'] ?? '') !== $key)
+            {
+                continue;
+            }
+
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name === '')
+            {
+                return null;
+            }
+
+            return [
+                'key' => $key,
+                'name' => $name,
+                'email' => trim((string) ($row['email'] ?? '')),
+            ];
+        }
+
+        return null;
+    }
+
+    private function summaryForClient(mixed $summary): mixed
+    {
+        if (! is_array($summary))
+        {
+            return $summary;
+        }
+
+        unset($summary['consumption']);
+
+        return $summary;
     }
 }

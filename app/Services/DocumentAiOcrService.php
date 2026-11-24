@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Module;
 use App\Models\TokenUsageLog;
+use App\Services\Billing\BilledUsage;
 use App\Support\AiTasks;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -111,7 +112,7 @@ class DocumentAiOcrService
                 );
                 $response = $ocrAgent->prompt($prompt, $attachments, $attempt['provider'], $attempt['model']);
                 $text = trim((string) ($response->text ?? ''));
-                $this->logTokenUsage($response, $teamId, $prompt, $text);
+                $this->logTokenUsage($response, $teamId, $prompt, $text, $attempt['provider'].'/'.$attempt['model']);
                 if ($text === '')
                 {
                     continue;
@@ -253,7 +254,7 @@ class DocumentAiOcrService
         return new UploadedFile($absolutePath, $name, $mime, null, true);
     }
 
-    private function logTokenUsage(mixed $response, ?int $teamId, string $input, string $output): void
+    private function logTokenUsage(mixed $response, ?int $teamId, string $input, string $output, string $model): void
     {
         if ($teamId === null)
         {
@@ -282,6 +283,7 @@ class DocumentAiOcrService
                 'toon_tokens' => 0,
                 'savings_percentage' => 0,
                 'used_toon' => false,
+                'billed_usage' => BilledUsage::capture($teamId, $promptTokens, $completionTokens, 0, $model),
             ]);
         } catch (\Throwable $e)
         {

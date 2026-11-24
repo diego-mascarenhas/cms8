@@ -27,10 +27,20 @@ return new class extends Migration
             $table->unique(['team_id', 'period_from', 'period_to'], 'tui_team_period_unique');
             $table->index(['team_id', 'status'], 'tui_team_status_idx');
         });
+
+        Schema::table('token_usage_logs', function (Blueprint $table)
+        {
+            $table->foreign('usage_invoice_id')->references('id')->on('team_usage_invoices')->nullOnDelete();
+        });
     }
 
     public function down(): void
     {
+        Schema::table('token_usage_logs', function (Blueprint $table)
+        {
+            $table->dropForeign(['usage_invoice_id']);
+        });
+
         Schema::dropIfExists('team_usage_invoices');
     }
 };

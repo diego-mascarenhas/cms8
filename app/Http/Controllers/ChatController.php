@@ -4630,7 +4630,7 @@ class ChatController extends Controller
                 $query->where('team_id', $team->id);
             })
             ->orderByDesc('created_at')
-            ->get(['content', 'usage', 'tool_calls', 'billed_usage']);
+            ->get(['content', 'usage', 'tool_calls']);
 
         $latestByBody = [];
         foreach ($rows as $row)
@@ -4652,10 +4652,7 @@ class ChatController extends Controller
             }
 
             $toolCalls = is_array($row->tool_calls) ? count($row->tool_calls) : 0;
-            $storedBilled = BilledUsage::read(is_array($row->billed_usage) ? $row->billed_usage : null);
-            $presented = $storedBilled !== null
-                ? $this->presentStoredBilledUsage($storedBilled, $toolCalls)
-                : $this->presentWhatsAppTokenUsage($row->usage, $toolCalls);
+            $presented = $this->presentWhatsAppTokenUsage($row->usage, $toolCalls);
             if ($presented !== null)
             {
                 $byId[$id] = $presented;

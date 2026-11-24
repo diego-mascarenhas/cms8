@@ -13,6 +13,7 @@ use App\Models\MeetingTranscript;
 use App\Services\MeetingCalendarSync;
 use App\Services\MeetingSummaryService;
 use App\Services\MeetingTranscriptService;
+use App\Support\MeetingOpinionSpread;
 use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -156,8 +157,42 @@ class MeetingTranscriptController extends Controller
         $this->ensureMeetingsModule();
 
         $speaker = $request->string('speaker')->toString();
-        $contactId = $request->filled('contact_id') ? (int) $request->input('contact_id') : null;
-        $linked = $transcripts->linkSpeaker($meeting, $speaker, $contactId);
+        $participant = $this->participant($meeting, $request->string('participant')->toString());
+        if ($request->filled('participant') && $participant === null)
+        {
+            return redirect()
+                ->route('meeting.show', $meeting)
+                ->withErrors(['speaker' => 'Esa persona no participa de este grupo o iniciativa.']);
+        }
+
+        $keptAName = false;
+        if ($request->boolean('clear'))
+        {
+            $linked = $transcripts->linkSpeaker($meeting, $speaker, null);
+        } elseif ($participant !== null)
+        {
+            $contact = $this->contactForParticipant($meeting, $participant);
+            $keptAName = true;
+            $linked = $transcripts->linkSpeaker(
+                $meeting,
+                $speaker,
+                $contact?->id,
+                $participant['name'],
+                $participant['email'],
+            );
+        } else
+        {
+            $contactId = $request->filled('contact_id') ? (int) $request->input('contact_id') : null;
+            if ($contactId === null)
+            {
+                return redirect()
+                    ->route('meeting.show', $meeting)
+                    ->withErrors(['speaker' => 'Elegí una persona.']);
+            }
+
+            $keptAName = true;
+            $linked = $transcripts->linkSpeaker($meeting, $speaker, $contactId);
+        }
 
         if (! $linked)
         {
@@ -166,9 +201,7 @@ class MeetingTranscriptController extends Controller
                 ->withErrors(['speaker' => 'Esa voz no está en la reunión.']);
         }
 
-        $status = $contactId === null
-            ? 'Se quitó el vínculo de la voz.'
-            : 'La voz quedó vinculada en esta reunión. Persona 1 de otra grabación no es esta persona.';
+        $status = $keptAName ? 'La voz quedó vinculada en esta reunión. Persona 1 de otra grabación no es esta persona.' : 'Se quitó el vínculo de la voz.';
 
         return redirect()
             ->route('meeting.show', $meeting)
@@ -194,6 +227,25 @@ class MeetingTranscriptController extends Controller
             ->with('status', 'El resumen quedó guardado.');
     }
 
+    public function toggleObjective(Request $request, MeetingTranscript $meeting): RedirectResponse
+    {
+        $this->ensureMeetingsModule();
+
+        $summary = is_array($meeting->summary) ? $meeting->summary : [];
+        $objectives = MeetingOpinionSpread::objectives($summary);
+        $index = (int) $request->input('index');
+        if (! array_key_exists($index, $objectives))
+        {
+            abort(404);
+        }
+
+        $objectives[$index]['marked'] = ! $objectives[$index]['marked'];
+        $summary['objectives'] = $objectives;
+        $meeting->forceFill(['summary' => $summary])->save();
+
+        return redirect()->route('meeting.summary.show', $meeting);
+    }
+
     public function destroy(MeetingTranscript $meeting, MeetingCalendarSync $calendar): RedirectResponse
     {
         $this->ensureMeetingsModule();
@@ -209,6 +261,57 @@ class MeetingTranscriptController extends Controller
         return redirect()
             ->route('meeting.index')
             ->with('status', 'La reunión se eliminó.');
+    }
+
+    /**
+     * @return array{key: string, name: string, email: string}|null
+     */
+    private function participant(MeetingTranscript $meeting, string $key): ?array
+    {
+        $key = trim($key);
+        if ($key === '')
+        {
+            return null;
+        }
+
+        foreach (is_array($meeting->participants) ? $meeting->participants : [] as $row)
+        {
+            if (! is_array($row) || (string) ($row['key'] ?? '') !== $key)
+            {
+                continue;
+            }
+
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name === '')
+            {
+                return null;
+            }
+
+            return [
+                'key' => $key,
+                'name' => $name,
+                'email' => trim((string) ($row['email'] ?? '')),
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array{key: string, name: string, email: string}  $participant
+     */
+    private function contactForParticipant(MeetingTranscript $meeting, array $participant): ?Contact
+    {
+        $email = mb_strtolower($participant['email']);
+        if ($email === '')
+        {
+            return null;
+        }
+
+        return Contact::withoutGlobalScope('team')
+            ->where('team_id', $meeting->team_id)
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->first();
     }
 
     private function ensureMeetingsModule(): void

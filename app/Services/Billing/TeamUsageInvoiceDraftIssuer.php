@@ -3,7 +3,6 @@
 namespace App\Services\Billing;
 
 use App\Enums\TeamBillingFrequency;
-use App\Models\AgentConversationMessage;
 use App\Models\Team;
 use App\Models\TeamUsageInvoice;
 use App\Models\TeamUsageInvoiceAdjustment;
@@ -328,17 +327,6 @@ class TeamUsageInvoiceDraftIssuer
             ->whereNull('usage_invoice_id')
             ->where('created_at', '>=', $from)
             ->where('created_at', '<=', $to)
-            ->update(['usage_invoice_id' => $invoice->id]);
-
-        AgentConversationMessage::query()
-            ->where('role', 'assistant')
-            ->whereNull('usage_invoice_id')
-            ->where('created_at', '>=', $from)
-            ->where('created_at', '<=', $to)
-            ->whereHas('conversation', function ($query) use ($team): void
-            {
-                $query->where('team_id', $team->id);
-            })
             ->update(['usage_invoice_id' => $invoice->id]);
     }
 

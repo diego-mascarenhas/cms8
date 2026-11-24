@@ -44,15 +44,22 @@
     <div class="alert alert-danger">No se pudo transcribir. {{ $meeting->error }}</div>
 @endif
 
+@php
+    $participants = collect(is_array($meeting->participants) ? $meeting->participants : [])
+        ->filter(fn (mixed $row): bool => is_array($row) && trim((string) ($row['name'] ?? '')) !== '' && trim((string) ($row['key'] ?? '')) !== '')
+        ->values();
+@endphp
+
 @if ($meeting->status->value === 'ready')
     <div class="card">
         <div class="card-body d-flex flex-column gap-4">
             @forelse ($meeting->turns ?? [] as $turn)
                 @php
                     $contact = isset($turn['contact_id']) ? ($contacts[$turn['contact_id']] ?? null) : null;
+                    $linkedName = trim((string) ($turn['linked_name'] ?? ''));
                     $speakerName = $contact
                         ? trim($contact->name.' '.($contact->surname ?? ''))
-                        : ($turn['label'] ?? 'Persona');
+                        : ($linkedName !== '' ? $linkedName : ($turn['label'] ?? 'Persona'));
                     $avatar = $contact
                         ? $contact->avatarUrl(40)
                         : \App\Helpers\AvatarHelper::generate($speakerName, 40);
@@ -101,11 +108,24 @@
                     </div>
                     <div class="modal-body">
                         <label class="form-label" for="speaker-contact">Persona</label>
-                        <select id="speaker-contact" name="contact_id" class="form-select"></select>
-                        <div class="form-text">El vínculo nombra esta voz en esta reunión. Persona 1 de otra grabación no es la misma persona.</div>
+                        <select id="speaker-contact" name="{{ $participants->isNotEmpty() ? 'participant' : 'contact_id' }}" class="form-select">
+                            @if ($participants->isNotEmpty())
+                                <option value=""></option>
+                                @foreach ($participants as $person)
+                                    <option value="{{ $person['key'] }}">{{ $person['name'] }}</option>
+                                @endforeach
+                            @endif
+                        </select>
+                        <div class="form-text">
+                            @if ($participants->isNotEmpty())
+                                Elegí a alguien que participa de este grupo temático o iniciativa. El vínculo nombra esta voz solo en esta reunión.
+                            @else
+                                El vínculo nombra esta voz en esta reunión. Persona 1 de otra grabación no es la misma persona.
+                            @endif
+                        </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="submit" class="btn btn-label-secondary" name="contact_id" value="">Quitar</button>
+                        <button type="submit" class="btn btn-label-secondary" name="clear" value="1">Quitar</button>
                         <button type="submit" class="btn btn-primary">Guardar</button>
                     </div>
                 </form>
@@ -127,7 +147,13 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    select.select2({
+    var hasParticipants = @json($participants->isNotEmpty());
+    select.select2(hasParticipants ? {
+        dropdownParent: $('#link-speaker-modal'),
+        width: '100%',
+        placeholder: 'Elegí una persona',
+        allowClear: true,
+    } : {
         dropdownParent: $('#link-speaker-modal'),
         width: '100%',
         placeholder: 'Buscar persona',

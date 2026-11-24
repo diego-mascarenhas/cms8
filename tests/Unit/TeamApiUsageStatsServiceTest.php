@@ -64,15 +64,10 @@ class TeamApiUsageStatsServiceTest extends TestCase
 
         $stats = TeamApiUsageStatsService::forTeam((int) $team->id);
 
-        $this->assertSame(2, $stats['totalCalls']);
-        $this->assertSame(100, $stats['totalTokensUsed']);
-        $this->assertSame(100, $stats['totalTokensWithoutToon']);
-        $this->assertSame(1, count($stats['byModule']));
-        $chatSlice = reset($stats['byModule']);
-        $this->assertIsArray($chatSlice);
-        $this->assertSame(50, $chatSlice['tokens_used']);
-        $this->assertSame(1, $chatSlice['count']);
-        $this->assertArrayNotHasKey('chat_conversations', $stats['byModule']);
+        $this->assertSame(1, $stats['totalCalls']);
+        $this->assertSame(50, $stats['totalTokensUsed']);
+        $this->assertSame(50, $stats['totalTokensWithoutToon']);
+        $this->assertSame([], $stats['byModule']);
     }
 
     public function test_by_module_merges_chat_api_logs_and_agent_conversations_under_one_label(): void
@@ -130,8 +125,8 @@ class TeamApiUsageStatsServiceTest extends TestCase
         $this->assertSame(1, count($stats['byModule']));
         $row = reset($stats['byModule']);
         $this->assertSame('Chat', $row['module_name']);
-        $this->assertSame(80, $row['tokens_used']);
-        $this->assertSame(2, $row['count']);
+        $this->assertSame(30, $row['tokens_used']);
+        $this->assertSame(1, $row['count']);
     }
 
     public function test_excludes_assistant_chat_service_logs_in_favor_of_conversation_rows(): void
@@ -177,8 +172,10 @@ class TeamApiUsageStatsServiceTest extends TestCase
         $stats = TeamApiUsageStatsService::forTeam((int) $team->id);
 
         $this->assertSame(1, $stats['totalCalls']);
-        $this->assertSame(50, $stats['totalTokensUsed']);
-        $this->assertSame(50, $stats['totalTokensWithoutToon']);
+        $this->assertSame(999, $stats['totalTokensUsed']);
+        $this->assertSame(999, $stats['totalTokensWithoutToon']);
+        $row = reset($stats['byModule']);
+        $this->assertSame('Chat', $row['module_name']);
     }
 
     public function test_does_not_double_count_chat_reply_logs_when_conversation_rows_exist(): void
@@ -259,6 +256,63 @@ class TeamApiUsageStatsServiceTest extends TestCase
         $row = reset($stats['byModule']);
         $this->assertSame('OCR', $row['module_name']);
         $this->assertSame(120, $row['tokens_used']);
+    }
+
+    public function test_prices_ocr_at_the_ocr_model_and_other_logs_at_haiku(): void
+    {
+        config([
+            'services.openrouter.cache_store' => 'array',
+            'humano_pricing.token_billing.currency' => 'USD',
+            'humano_pricing.token_billing.client_token_multiplier' => 1,
+            'ai.ocr_model' => 'openai/gpt-4o-mini',
+        ]);
+        Http::fake([
+            'https://openrouter.ai/api/v1/models' => Http::response(['data' => []], 200),
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+
+        $ocrModule = Module::query()->firstOrCreate(
+            ['key' => 'ocr'],
+            ['name' => 'OCR', 'is_core' => false, 'order' => 8, 'status' => 1],
+        );
+        $insights = Module::query()->firstOrCreate(
+            ['key' => 'insights'],
+            ['name' => 'Insights', 'is_core' => false, 'order' => 0, 'status' => 1],
+        );
+
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => $ocrModule->id,
+            'service' => 'DocumentAiOcrService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 20_000_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => $insights->id,
+            'service' => 'PromptController',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 158_500,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+
+        $stats = TeamApiUsageStatsService::forTeam((int) $team->id);
+        $byName = collect($stats['byModule'])->keyBy('module_name');
+
+        $this->assertSame(300, $byName['OCR']['amount_cents']);
+        $this->assertSame(16, $byName['Insights']['amount_cents']);
+        $this->assertSame(316, $stats['totalBilledAmountCents']);
+        $this->assertSame(316, $stats['totalCostAmountCents']);
     }
 
     public function test_does_not_include_other_teams_data(): void
@@ -386,5 +440,38 @@ class TeamApiUsageStatsServiceTest extends TestCase
         $this->assertSame(400, $stats['totalTokensUsed']);
         $this->assertSame('Reuniones', $stats['byModule']['Reuniones']['module_name']);
         $this->assertSame(400, $stats['byModule']['Reuniones']['tokens_used']);
+    }
+
+    public function test_each_meeting_summary_is_listed_with_its_title(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'MeetingSummaryService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 1500,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+            'billed_usage' => [
+                'model' => null,
+                'prompt_tokens' => 1200,
+                'completion_tokens' => 300,
+                'tokens_saved' => 0,
+                'label' => 'iniciativa: Primera semana visible',
+            ],
+        ]);
+
+        $lines = TeamApiUsageStatsService::summaryLines((int) $team->id);
+
+        $this->assertSame('Resumen · iniciativa: Primera semana visible', $lines[0]['label']);
+        $this->assertSame(1500, $lines[0]['tokens']);
+        $this->assertSame(1200, $lines[0]['prompt_tokens']);
+        $this->assertSame(300, $lines[0]['completion_tokens']);
     }
 }

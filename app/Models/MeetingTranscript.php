@@ -15,6 +15,7 @@ class MeetingTranscript extends Model
         'user_id',
         'title',
         'external_ref',
+        'participants',
         'original_filename',
         'audio_path',
         'language',
@@ -31,6 +32,7 @@ class MeetingTranscript extends Model
         'status' => MeetingTranscriptStatus::class,
         'turns' => 'array',
         'summary' => 'array',
+        'participants' => 'array',
     ];
 
     protected static function booted(): void

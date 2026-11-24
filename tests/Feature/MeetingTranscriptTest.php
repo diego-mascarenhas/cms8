@@ -8,6 +8,7 @@ use App\Jobs\TranscribeMeetingTranscript;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\MeetingTranscript;
+use App\Models\Module;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\TokenUsageLog;
@@ -496,5 +497,102 @@ class MeetingTranscriptTest extends TestCase
         {
             return $job->meetingTranscriptId === $meeting->id;
         });
+    }
+
+    public function test_a_voice_can_be_linked_to_someone_in_the_group_or_initiative(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        Module::query()->updateOrCreate(
+            ['key' => 'meetings'],
+            ['name' => 'Meetings', 'icon' => 'microphone', 'description' => 'Test', 'is_core' => false, 'status' => 1],
+        );
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $team->enableModule('meetings');
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        \Illuminate\Support\Facades\DB::table('languages')->insertOrIgnore([
+            'code' => 'es',
+            'name' => 'Español',
+        ]);
+        \Illuminate\Support\Facades\DB::table('contact_statuses')->insertOrIgnore([
+            'id' => 1,
+            'name' => 'Lead',
+            'label_class' => 'bg-label-secondary',
+        ]);
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Paulina',
+            'surname' => 'Rojas',
+            'language' => 'es',
+            'email' => 'paulina@humano.test',
+            'phone' => '600111333',
+            'country' => null,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+
+        $meeting = MeetingTranscript::query()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'title' => 'Clientes',
+            'original_filename' => 'reunion.webm',
+            'audio_path' => 'meetings/'.$team->id.'/reunion.webm',
+            'language' => 'es',
+            'status' => MeetingTranscriptStatus::Ready,
+            'participants' => [
+                ['key' => 'user:4', 'name' => 'Paulina Rojas', 'email' => 'paulina@humano.test'],
+                ['key' => 'user:9', 'name' => 'Montse Vidal', 'email' => 'montse@humano.test'],
+            ],
+            'turns' => [[
+                'speaker' => 'speaker_0',
+                'label' => 'Persona 1',
+                'text' => 'Hola',
+                'start_seconds' => 0,
+                'end_seconds' => 1,
+            ]],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('meeting.show', $meeting))
+            ->assertOk()
+            ->assertSee('Paulina Rojas', false)
+            ->assertSee('Montse Vidal', false)
+            ->assertSee('Elegí a alguien que participa de este grupo temático o iniciativa.', false);
+
+        $this->actingAs($user)
+            ->post(route('meeting.speakers.update', $meeting), [
+                'speaker' => 'speaker_0',
+                'participant' => 'user:4',
+            ])
+            ->assertRedirect(route('meeting.show', $meeting));
+
+        $turn = $meeting->fresh()->turns[0];
+        $this->assertSame('Paulina Rojas', $turn['linked_name']);
+        $this->assertSame($contact->id, $turn['contact_id']);
+
+        $this->actingAs($user)
+            ->post(route('meeting.speakers.update', $meeting), [
+                'speaker' => 'speaker_0',
+                'participant' => 'user:9',
+            ])
+            ->assertRedirect(route('meeting.show', $meeting));
+
+        $turn = $meeting->fresh()->turns[0];
+        $this->assertSame('Montse Vidal', $turn['linked_name']);
+        $this->assertArrayNotHasKey('contact_id', $turn);
+
+        $this->actingAs($user)
+            ->followingRedirects()
+            ->post(route('meeting.speakers.update', $meeting), [
+                'speaker' => 'speaker_0',
+                'clear' => '1',
+                'participant' => 'user:9',
+            ])
+            ->assertOk()
+            ->assertSee('>Persona 1<', false);
+
+        $this->assertArrayNotHasKey('linked_name', $meeting->fresh()->turns[0]);
     }
 }
