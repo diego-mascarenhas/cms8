@@ -28,6 +28,7 @@ final class TokenUsageLogService
         ?int $completionTokens = null,
         ?string $model = null,
         ?string $label = null,
+        ?int $meetingId = null,
     ): void {
         if ($totalTokens <= 0)
         {
@@ -51,6 +52,10 @@ final class TokenUsageLogService
         if ($label !== '')
         {
             $billed['label'] = mb_substr($label, 0, 160);
+        }
+        if ($meetingId !== null && $meetingId > 0)
+        {
+            $billed['meeting_id'] = $meetingId;
         }
 
         try
@@ -94,6 +99,7 @@ final class TokenUsageLogService
         ?array $toon = null,
         ?string $model = null,
         ?string $label = null,
+        ?int $meetingId = null,
     ): void {
         $totalTokens = self::totalTokensFromUsage($usage);
         if ($totalTokens <= 0)
@@ -133,6 +139,7 @@ final class TokenUsageLogService
             completionTokens: ($promptTokens + $completionTokens) > 0 ? $completionTokens : null,
             model: $resolvedModel,
             label: $label,
+            meetingId: $meetingId,
         );
     }
 

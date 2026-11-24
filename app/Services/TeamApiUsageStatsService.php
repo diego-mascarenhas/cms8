@@ -336,7 +336,7 @@ final class TeamApiUsageStatsService
     /**
      * One row per meeting summary, with the tokens already prepared for billing.
      *
-     * @return list<array{label: string, tokens: int, at: ?string}>
+     * @return list<array{id: ?int, label: string, tokens: int, prompt_tokens: int, completion_tokens: int, tokens_saved: int, at: ?string}>
      */
     public static function summaryLines(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
     {
@@ -348,7 +348,8 @@ final class TeamApiUsageStatsService
         $rows = [];
         foreach ($logs as $log)
         {
-            $tokens = BilledUsage::used(self::billedUsageForLog($log));
+            $billed = self::billedUsageForLog($log);
+            $tokens = BilledUsage::used($billed);
             if ($tokens < 1)
             {
                 continue;
@@ -356,9 +357,14 @@ final class TeamApiUsageStatsService
 
             $stored = is_array($log->billed_usage) ? $log->billed_usage : [];
             $title = trim((string) ($stored['label'] ?? ''));
+            $meetingId = (int) ($stored['meeting_id'] ?? 0);
             $rows[] = [
+                'id' => $meetingId > 0 ? $meetingId : null,
                 'label' => $title !== '' ? 'Resumen · '.$title : 'Resumen de reunión',
                 'tokens' => $tokens,
+                'prompt_tokens' => (int) $billed['prompt_tokens'],
+                'completion_tokens' => (int) $billed['completion_tokens'],
+                'tokens_saved' => (int) $billed['tokens_saved'],
                 'at' => $log->created_at?->toIso8601String(),
             ];
         }

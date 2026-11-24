@@ -633,6 +633,7 @@ PROMPT;
                 outputSize: strlen($raw),
                 toon: $encoded,
                 label: $meeting->title,
+                meetingId: $meeting->id,
             );
 
             return;
@@ -650,6 +651,7 @@ PROMPT;
             toonTokens: (int) ($encoded['toon_tokens'] ?? 0),
             savingsPercentage: (int) ($encoded['savings_percentage'] ?? 0),
             label: $meeting->title,
+            meetingId: $meeting->id,
         );
     }
 }

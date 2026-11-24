@@ -417,5 +417,7 @@ class TeamApiUsageStatsServiceTest extends TestCase
 
         $this->assertSame('Resumen · iniciativa: Primera semana visible', $lines[0]['label']);
         $this->assertSame(1500, $lines[0]['tokens']);
+        $this->assertSame(1200, $lines[0]['prompt_tokens']);
+        $this->assertSame(300, $lines[0]['completion_tokens']);
     }
 }

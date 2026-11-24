@@ -521,8 +521,8 @@ class AssistantWhatsAppUsageByLineService
     }
 
     /**
-     * @param  list<array{label: string, tokens: int, at: ?string}>  $rows
-     * @return list<array{label: string, tokens: int, amount_cents: int, at: ?string}>
+     * @param  list<array{id?: ?int, label: string, tokens: int, prompt_tokens?: int, completion_tokens?: int, tokens_saved?: int, at: ?string}>  $rows
+     * @return list<array{id: ?int, label: string, tokens: int, prompt_tokens: int, completion_tokens: int, tokens_saved: int, amount_cents: int, at: ?string}>
      */
     private function presentSummaries(array $rows, Carbon $from, string $defaultModel): array
     {
@@ -536,8 +536,12 @@ class AssistantWhatsAppUsageByLineService
             }
 
             $summaries[] = [
+                'id' => isset($row['id']) ? (int) $row['id'] : null,
                 'label' => (string) ($row['label'] ?? 'Resumen de reunión'),
                 'tokens' => $tokens,
+                'prompt_tokens' => (int) ($row['prompt_tokens'] ?? $tokens),
+                'completion_tokens' => (int) ($row['completion_tokens'] ?? 0),
+                'tokens_saved' => (int) ($row['tokens_saved'] ?? 0),
                 'amount_cents' => $this->tokens->costCents($tokens, 0, $defaultModel, $from),
                 'at' => $row['at'] ?? null,
             ];

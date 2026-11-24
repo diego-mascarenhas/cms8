@@ -38,14 +38,14 @@ final class TeamTranscriptionUsageStatsService
     }
 
     /**
-     * @return list<array{label: string, count: int, amount_cents: int, at: ?string}>
+     * @return list<array{id: int, label: string, count: int, amount_cents: int, at: ?string}>
      */
     public static function lines(Team $team, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
     {
         $rows = [];
         $weights = [];
 
-        foreach (self::readyMeetings($team, $from, $to)->orderByDesc('created_at')->get(['title', 'turns', 'created_at']) as $meeting)
+        foreach (self::readyMeetings($team, $from, $to)->orderByDesc('created_at')->get(['id', 'title', 'turns', 'created_at']) as $meeting)
         {
             $audio = $meeting->billedAudioSeconds();
             if ($audio < 1)
@@ -56,6 +56,7 @@ final class TeamTranscriptionUsageStatsService
             $at = $meeting->created_at ?? now();
             $rate = TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::TranscriptionMinute, $at);
             $rows[] = [
+                'id' => (int) $meeting->id,
                 'label' => (string) ($meeting->title ?: 'Reunión'),
                 'count' => $audio,
                 'at' => $meeting->created_at?->toIso8601String(),
