@@ -123,4 +123,45 @@ class TeamMeetingApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.summary.minutes', 'Resumen nuevo de las pausas activas.');
     }
+
+    public function test_team_token_can_link_a_voice_to_a_participant(): void
+    {
+        Module::query()->updateOrCreate(
+            ['key' => 'meetings'],
+            [
+                'name' => 'Meetings',
+                'icon' => 'microphone',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->enableModule('meetings');
+        $token = $team->createApiToken('Jitsi')['plain'];
+        $meeting = MeetingTranscript::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'title' => 'Pausas',
+            'original_filename' => 'reunion.m4a',
+            'audio_path' => 'meetings/'.$team->id.'/reunion.m4a',
+            'language' => 'es',
+            'status' => MeetingTranscriptStatus::Ready,
+            'participants' => [
+                ['key' => 'user:4', 'name' => 'Paulina Rojas', 'email' => 'paulina@humano.test'],
+            ],
+            'turns' => [
+                ['speaker' => 'speaker_0', 'label' => 'Persona 1', 'text' => 'Arrancamos.'],
+            ],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/team/meetings/'.$meeting->id.'/speakers', [
+                'speaker' => 'speaker_0',
+                'participant' => 'user:4',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.turns.0.contact_name', 'Paulina Rojas');
+    }
 }
