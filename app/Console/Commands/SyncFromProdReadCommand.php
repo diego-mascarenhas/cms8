@@ -168,9 +168,19 @@ class SyncFromProdReadCommand extends Command
             $this->info('Mode: bulk INSERT (tables truncated). Much faster than upsert.');
         }
 
+        if ($targetDriver === 'pgsql' && ! $isDryRun)
+        {
+            $target->statement('SET session_replication_role = replica');
+        }
+
         foreach ($orderedTables as $table)
         {
             $this->syncTable(self::SOURCE_CONNECTION, $targetName, $table, $chunkSize, $isDryRun, $insertOnly, $targetDriver);
+        }
+
+        if ($targetDriver === 'pgsql' && ! $isDryRun)
+        {
+            $target->statement('SET session_replication_role = origin');
         }
 
         if ($targetDriver === 'pgsql' && ! $this->option('no-sequence-reset') && ! $isDryRun)
