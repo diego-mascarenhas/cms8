@@ -13,6 +13,7 @@ use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\Service;
 use App\Models\ServiceSync;
+use App\Services\Stripe\CustomerInvoiceDisputeReader;
 use App\Services\Stripe\CustomerPaymentMethodReader;
 use App\Services\Stripe\SubscriptionScheduleReader;
 use App\Support\ClientHeadlineMetrics;
@@ -24,6 +25,7 @@ class ClientProfileBuilder
     public function __construct(
         private CustomerPaymentMethodReader $paymentMethods,
         private SubscriptionScheduleReader $schedules,
+        private CustomerInvoiceDisputeReader $disputes,
     ) {}
 
     /**
@@ -58,6 +60,7 @@ class ClientProfileBuilder
             return $right->id <=> $left->id;
         })->values();
         $paymentCard = $this->paymentMethods->forCustomer($client->team, (string) $client->code);
+        $disputes = $this->disputes->forCustomer($client->team, (string) $client->code);
         $closed = ProjectStatus::closedStatusIds();
         $activeProjects = $client->projects
             ->filter(fn (Project $project): bool => ! in_array($project->status_id, $closed, true))
@@ -91,7 +94,7 @@ class ClientProfileBuilder
             })->all(),
             'subscriptions' => $subscriptions->map(fn (ServiceSync $sync): array => $this->subscriptionRow($sync))->all(),
             'services' => $services->map(fn (Service $service): array => $this->serviceRow($service))->all(),
-            'invoices' => $invoices->map(fn (Invoice $invoice): array => $this->invoiceRow($invoice))->all(),
+            'invoices' => $invoices->map(fn (Invoice $invoice): array => $this->invoiceRow($invoice, $disputes))->all(),
             'invoice_balance' => number_format((float) $client->invoices->sum('balance'), 2, ',', '.'),
             'projects' => [
                 'active' => $activeProjects->map(fn (Project $project): array => $this->projectRow($project, false))->all(),
@@ -325,11 +328,13 @@ class ClientProfileBuilder
     }
 
     /**
+     * @param  array<string, string>  $disputes
      * @return array<string, mixed>
      */
-    private function invoiceRow(Invoice $invoice): array
+    private function invoiceRow(Invoice $invoice, array $disputes = []): array
     {
         $status = $this->badgeParts($invoice->status_badge);
+        $externalId = trim((string) $invoice->source_reference_id);
 
         return [
             'id' => $invoice->id,
@@ -340,6 +345,7 @@ class ClientProfileBuilder
             'balance' => number_format((float) ($invoice->balance ?? 0), 2, ',', '.').' '.$invoice->currency_code,
             'status' => $status['label'],
             'status_tone' => $status['tone'],
+            'dispute' => $externalId !== '' ? ($disputes[$externalId] ?? null) : null,
             'url' => $this->hostedInvoiceUrl($invoice),
         ];
     }

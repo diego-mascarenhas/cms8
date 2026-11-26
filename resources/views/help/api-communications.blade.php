@@ -56,7 +56,7 @@
                     </div>
                     <div class="card-body">
                         <code class="d-block mb-3">{{ url('/') }}/api/team/communications</code>
-                        <p>{{ __('Queue one message to one recipient. Email requires recipient_email and subject. WhatsApp and SMS require recipient_phone (10–15 digits). Attachments are allowed on email and WhatsApp (max 5 files, 10 MB each). SMS returns 422 if files are sent. JSON cannot carry files: send attachments as multipart with attachments[].') }}</p>
+                        <p>{{ __('Queue one message to one recipient. Email requires recipient_email and subject. WhatsApp and SMS require recipient_phone (10–15 digits). Attachments are allowed on email and WhatsApp (max 50 files, 10 MB each). SMS returns 422 if files are sent. JSON cannot carry files: send attachments as multipart with attachments[].') }}</p>
 
                         <h6>{{ __('Request body') }}</h6>
                         <table class="table table-sm">

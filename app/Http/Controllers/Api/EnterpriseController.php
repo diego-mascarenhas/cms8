@@ -7,10 +7,12 @@ use App\Http\Requests\UpdateEnterpriseContactRoleRequest;
 use App\Models\Contact;
 use App\Models\ContactEnterprise;
 use App\Models\Enterprise;
+use App\Models\Invoice;
 use App\Models\Team;
 use App\Services\AssistantWhatsAppUsageByLineService;
 use App\Services\Clients\ClientProfileBuilder;
 use App\Services\Clients\ClientRoster;
+use App\Services\Finance\StripeInvoicePdfRefresher;
 use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -179,6 +181,60 @@ class EnterpriseController extends Controller
             'success' => true,
             'data' => $profiles->build($enterprise),
             'roles' => ContactEnterprise::ROLES,
+        ]);
+    }
+
+    /**
+     * A fresh Stripe PDF URL. The stored one expires, so the portal asks again on each click.
+     */
+    public function invoicePdf(Request $request, string $id, string $invoiceId, StripeInvoicePdfRefresher $pdfs): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user || ! $user->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
+
+        $enterprise = Enterprise::withTrashed()->where('id', $id)->first();
+
+        if (! $enterprise || ! $user->can('view', $enterprise))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Empresa no encontrada',
+            ], 404);
+        }
+
+        $invoice = Invoice::withoutGlobalScopes()
+            ->where('team_id', $enterprise->team_id)
+            ->where('enterprise_id', $enterprise->id)
+            ->whereKey($invoiceId)
+            ->first();
+
+        if (! $invoice instanceof Invoice)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Factura no encontrada',
+            ], 404);
+        }
+
+        $url = $pdfs->freshPdfUrl($invoice) ?: $invoice->stripeInvoicePdfUrl();
+        if (! is_string($url) || ! str_starts_with($url, 'https://'))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'El PDF no está disponible',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => ['url' => $url],
         ]);
     }
 

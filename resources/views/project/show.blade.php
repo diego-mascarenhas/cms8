@@ -5,6 +5,7 @@
 @section('vendor-style')
 	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
 	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/flatpickr/flatpickr.css') }}" />
 	<link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
 @endsection
 
@@ -37,12 +38,27 @@
 			max-height: 600px;
 			overflow-y: auto;
 		}
+		#project-collaborator-proformas .select2-container {
+			width: 100% !important;
+		}
+		#project-collaborator-proformas .select2-container .select2-selection--single {
+			height: 31px;
+			border-color: var(--bs-border-color);
+		}
+		#project-collaborator-proformas .select2-container .select2-selection--single .select2-selection__rendered {
+			line-height: 29px;
+			padding-left: 0.75rem;
+		}
+		#project-collaborator-proformas .select2-container .select2-selection--single .select2-selection__arrow {
+			height: 29px;
+		}
 	</style>
 @endsection
 
 @section('vendor-script')
 	<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 	<script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
+	<script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
 	<script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
 @endsection
 
@@ -124,28 +140,43 @@
 	</div>
 
 @if (session('success'))
-	<div class="alert alert-success alert-dismissible" role="alert">
+	<div class="alert alert-success alert-dismissible d-flex align-items-center" role="alert">
+		<span class="alert-icon text-success me-2">
+			<i class="ti ti-check ti-xs"></i>
+		</span>
 		{{ session('success') }}
 		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 	</div>
 @endif
 @if (session('error'))
-	<div class="alert alert-danger alert-dismissible" role="alert">
+	<div class="alert alert-danger alert-dismissible d-flex align-items-center" role="alert">
+		<span class="alert-icon text-danger me-2">
+			<i class="ti ti-ban ti-xs"></i>
+		</span>
 		{{ session('error') }}
 		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 	</div>
 @endif
 
-@if (! empty($depositInvoicePreview)
-	&& (int) $project->status_id !== \App\Models\ProjectStatus::STATUS_INVOICED
-	&& (($depositInvoicePreview['already_invoiced'] ?? false) || empty($balanceInvoicePreview)))
+@php
+	$depositAlreadyInvoiced = ! empty($depositInvoicePreview) && (bool) ($depositInvoicePreview['already_invoiced'] ?? false);
+	$depositCtaStatuses = [
+		\App\Models\ProjectStatus::STATUS_APPROVED,
+		\App\Models\ProjectStatus::STATUS_IN_PROGRESS,
+	];
+	$showDepositAlreadyBanner = $depositAlreadyInvoiced
+		&& (int) $project->status_id !== \App\Models\ProjectStatus::STATUS_INVOICED;
+	$showDepositCta = ! empty($depositInvoicePreview)
+		&& ! $depositAlreadyInvoiced
+		&& in_array((int) $project->status_id, $depositCtaStatuses, true);
+@endphp
+@if ($showDepositAlreadyBanner || $showDepositCta)
 	@php
 		$formatDepositMoney = fn ($amount) => number_format((float) $amount, 2, ',', '.').' €';
-		$depositAlreadyInvoiced = (bool) ($depositInvoicePreview['already_invoiced'] ?? false);
 	@endphp
 	<div class="row mb-4">
 		<div class="col-12">
-			@if ($depositAlreadyInvoiced)
+			@if ($showDepositAlreadyBanner)
 				<div class="alert alert-success mb-0" role="alert">
 					<div class="d-flex align-items-center flex-wrap gap-2">
 						<i class="ti ti-file-check ti-lg me-2 flex-shrink-0"></i>
@@ -260,7 +291,7 @@
 						<div class="d-flex align-items-start flex-wrap gap-2 mb-2">
 							<i class="ti ti-receipt ti-lg me-2 flex-shrink-0 mt-1"></i>
 							<div class="flex-grow-1 min-w-0">
-								<span class="fw-medium d-block">{{ __('Finished project — invoice the balance') }}</span>
+								<span class="fw-medium d-block">{{ __('Invoice the total or schedule payments') }}</span>
 								<span class="small d-block mt-1">
 									@if (($balanceInvoicePreview['deposit_base'] ?? 0) > 0)
 										{{ __('Balance') }}: {{ $formatBalanceMoney($balanceInvoicePreview['remaining_base']) }}
@@ -294,8 +325,8 @@
 									<input type="number" id="balance-installments" name="installments" class="form-control form-control-sm bg-white w-px-100" min="1" max="12" value="{{ old('installments', 1) }}">
 								</div>
 								<div class="col-md-3">
-									<label for="balance-start-date" class="form-label mb-1">{{ __('Start date') }}</label>
-									<input type="date" id="balance-start-date" name="start_date" class="form-control form-control-sm bg-white" value="{{ old('start_date', now()->toDateString()) }}" min="{{ now()->toDateString() }}">
+									<label for="balance-start-date" class="form-label mb-1">{{ __('Fecha de inicio') }}</label>
+									<input type="text" id="balance-start-date" name="start_date" class="form-control form-control-sm bg-white" value="{{ old('start_date', now()->toDateString()) }}" placeholder="dd/mm/aaaa" autocomplete="off">
 								</div>
 								<div class="col-auto">
 									<button type="submit" name="billing_mode" value="installments" class="btn btn-outline-info btn-sm waves-effect waves-light"
@@ -350,6 +381,13 @@
 									var partial = linesRoot.getAttribute('data-partial') === '1';
 									var money = function (amount) {
 										return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+									};
+									var formatDisplayDate = function (iso) {
+										var parts = String(iso || '').split('-');
+										if (parts.length !== 3) {
+											return iso || '';
+										}
+										return parts[2] + '/' + parts[1] + '/' + parts[0];
 									};
 									var shiftMonth = function (iso, months) {
 										var parts = iso.split('-').map(function (value) { return parseInt(value, 10); });
@@ -414,7 +452,7 @@
 												+ '</div>'
 												+ '<div class="col-md-3">'
 												+ '<label class="form-label mb-1">' + (linesRoot.getAttribute('data-label-date') || '') + '</label>'
-												+ '<input type="date" class="form-control form-control-sm" readonly tabindex="-1">'
+												+ '<input type="text" class="form-control form-control-sm" readonly tabindex="-1">'
 												+ '</div>'
 												+ '<div class="col-md-3">'
 												+ '<label class="form-label mb-1">' + (linesRoot.getAttribute('data-label-amount') || '') + '</label>'
@@ -422,7 +460,7 @@
 												+ '</div>';
 											var fields = row.querySelectorAll('input');
 											fields[0].value = label;
-											fields[1].value = shiftMonth(startIso, index);
+											fields[1].value = formatDisplayDate(shiftMonth(startIso, index));
 											fields[2].value = money(amount);
 											fields[0].addEventListener('input', syncDescription);
 											linesRoot.appendChild(row);
@@ -923,6 +961,236 @@
 </div>
 @endif
 
+@if (! empty($collaboratorProformaPreview))
+	@php
+		$formatProformaMoney = fn ($amount) => number_format((float) $amount, 2, ',', '.').' €';
+		$proformaPayable = (int) ($collaboratorProformaPreview['payable_total'] ?? 0);
+		$proformaDefaultPercent = (float) ($collaboratorProformaPreview['default_percent'] ?? 30);
+		$proformaRows = $collaboratorProformaPreview['collaborators'] ?? [];
+		$hasProformaRows = $proformaRows !== [];
+	@endphp
+	<div class="row mb-4">
+		<div class="col-12">
+			<div class="card mb-0" id="project-collaborator-proformas">
+				<div class="card-header d-flex flex-wrap justify-content-between align-items-start gap-2">
+					<div class="d-flex align-items-start gap-2 min-w-0">
+						<span class="avatar avatar-sm">
+							<span class="avatar-initial rounded bg-label-primary">
+								<i class="ti ti-file-invoice ti-sm"></i>
+							</span>
+						</span>
+						<div class="min-w-0">
+							<h5 class="card-title mb-1">{{ __('Proformas de compra por colaborador') }}</h5>
+							@if ($hasProformaRows)
+								<p class="card-subtitle text-muted mb-0">
+									{{ __('Total del proyecto') }}: {{ $formatProformaMoney($proformaPayable) }}
+									· {{ __('Por defecto') }}: {{ rtrim(rtrim(number_format($proformaDefaultPercent, 2, ',', ''), '0'), ',') }}%
+								</p>
+								@if ($proformaPayable <= 0)
+									<p class="text-danger small mb-0 mt-1">{{ __('El presupuesto del proyecto debe ser mayor que cero.') }}</p>
+								@endif
+							@else
+								<p class="card-subtitle text-muted mb-0">
+									{{ __('Agregá un responsable o participantes con el botón Colaboradores para crear una proforma de compra por persona.') }}
+								</p>
+							@endif
+						</div>
+					</div>
+					@can('update', $project)
+						@if (! $hasProformaRows)
+							<button type="button" class="btn btn-primary btn-sm waves-effect waves-light flex-shrink-0" data-bs-toggle="modal" data-bs-target="#projectParticipantsModal">
+								<i class="ti ti-user-plus ti-sm me-1"></i>{{ __('Colaboradores') }}
+							</button>
+						@else
+							<button type="submit" form="collaborator-proformas-form" class="btn btn-primary btn-sm waves-effect waves-light flex-shrink-0"
+								{{ $proformaPayable <= 0 ? 'disabled' : '' }}>
+								<i class="ti ti-files ti-sm me-1"></i>{{ __('Crear proformas seleccionadas') }}
+							</button>
+						@endif
+					@endcan
+				</div>
+				@if ($hasProformaRows)
+					<div class="card-body pt-0">
+						<form method="POST" action="{{ route('project.collaborator-proformas', $project->id) }}" id="collaborator-proformas-form">
+							@csrf
+							<div class="table-responsive border rounded">
+								<table class="table table-hover mb-0 align-middle">
+									<thead class="table-light">
+										<tr>
+											<th class="text-center" style="width: 2.75rem;"></th>
+											<th>{{ __('Colaborador') }}</th>
+											<th>{{ __('Proveedor') }}</th>
+											<th style="width: 10rem;">{{ __('Modo') }}</th>
+											<th style="width: 8rem;">{{ __('Valor') }}</th>
+											<th class="text-end" style="width: 10rem;">{{ __('Importe') }}</th>
+										</tr>
+									</thead>
+									<tbody>
+										@foreach ($proformaRows as $index => $row)
+											@php
+												$rowMode = old("collaborators.$index.mode", 'percent');
+												$rowValue = old("collaborators.$index.value", $proformaDefaultPercent);
+												$rowSelected = old("collaborators.$index.selected", $row['already_issued'] ? '0' : '1');
+												$previewAmount = $row['already_issued']
+													? (float) ($row['amount'] ?? 0)
+													: ($rowMode === 'amount'
+														? (float) $rowValue
+														: round($proformaPayable * (((float) $rowValue) / 100), 2));
+											@endphp
+											<tr @if ($row['already_issued']) class="table-success" @endif>
+												<td class="text-center">
+													@if ($row['already_issued'])
+														<i class="ti ti-check text-success"></i>
+													@else
+														<input type="checkbox"
+															class="form-check-input collaborator-proforma-selected"
+															name="collaborators[{{ $index }}][selected]"
+															value="1"
+															{{ $rowSelected === '1' || $rowSelected === 1 ? 'checked' : '' }}
+															{{ empty($row['enterprise_id']) || $proformaPayable <= 0 ? 'disabled' : '' }}>
+														<input type="hidden" name="collaborators[{{ $index }}][user_id]" value="{{ $row['user_id'] }}">
+													@endif
+												</td>
+												<td class="fw-medium">{{ $row['name'] }}</td>
+												<td>
+													@if (! empty($row['enterprise_name']))
+														{{ $row['enterprise_name'] }}
+													@else
+														<span class="badge bg-label-danger">{{ __('Sin empresa') }}</span>
+													@endif
+												</td>
+												<td>
+													@if ($row['already_issued'])
+														{{ ($row['mode'] ?? '') === 'amount' ? __('Importe fijo') : __('Porcentaje') }}
+													@else
+														<div class="position-relative">
+															<select name="collaborators[{{ $index }}][mode]" class="form-select form-select-sm select2 collaborator-proforma-mode" data-index="{{ $index }}" data-placeholder="{{ __('Modo') }}">
+																<option value="percent" @selected($rowMode === 'percent')>{{ __('Porcentaje') }}</option>
+																<option value="amount" @selected($rowMode === 'amount')>{{ __('Importe fijo') }}</option>
+															</select>
+														</div>
+													@endif
+												</td>
+												<td>
+													@if ($row['already_issued'])
+														{{ ($row['mode'] ?? '') === 'amount'
+															? $formatProformaMoney($row['value'] ?? 0)
+															: rtrim(rtrim(number_format((float) ($row['value'] ?? 0), 2, ',', ''), '0'), ',').'%' }}
+													@else
+														<div class="input-group input-group-sm">
+															<input type="number"
+																name="collaborators[{{ $index }}][value]"
+																class="form-control collaborator-proforma-value"
+																data-index="{{ $index }}"
+																step="0.01"
+																min="0.01"
+																value="{{ $rowValue }}">
+															<span class="input-group-text collaborator-proforma-unit" data-index="{{ $index }}">{{ $rowMode === 'amount' ? '€' : '%' }}</span>
+														</div>
+													@endif
+												</td>
+												<td class="text-end fw-medium">
+													<span class="collaborator-proforma-amount" data-index="{{ $index }}">{{ $formatProformaMoney($previewAmount) }}</span>
+													@if (! empty($row['invoice_id']))
+														<a href="{{ route('expense.edit', $row['invoice_id']) }}" class="btn btn-sm btn-icon btn-outline-success ms-1" title="{{ __('Ver') }}">
+															<i class="ti ti-eye ti-xs"></i>
+														</a>
+													@endif
+												</td>
+											</tr>
+										@endforeach
+									</tbody>
+								</table>
+							</div>
+						</form>
+						<script>
+							(function () {
+								var form = document.getElementById('collaborator-proformas-form');
+								if (!form) {
+									return;
+								}
+								var payable = {{ (int) $proformaPayable }};
+								var money = function (amount) {
+									return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+								};
+								var syncRow = function (index) {
+									var mode = form.querySelector('.collaborator-proforma-mode[data-index="' + index + '"]');
+									var value = form.querySelector('.collaborator-proforma-value[data-index="' + index + '"]');
+									var amount = form.querySelector('.collaborator-proforma-amount[data-index="' + index + '"]');
+									var unit = form.querySelector('.collaborator-proforma-unit[data-index="' + index + '"]');
+									if (!mode || !value || !amount) {
+										return;
+									}
+									if (unit) {
+										unit.textContent = mode.value === 'amount' ? '€' : '%';
+									}
+									var raw = parseFloat(value.value);
+									if (!raw || raw < 0) {
+										raw = 0;
+									}
+									var total = mode.value === 'amount' ? raw : (payable * (raw / 100));
+									amount.textContent = money(Math.round(total * 100) / 100);
+								};
+								form.querySelectorAll('.collaborator-proforma-value').forEach(function (el) {
+									el.addEventListener('change', function () { syncRow(el.getAttribute('data-index')); });
+									el.addEventListener('input', function () { syncRow(el.getAttribute('data-index')); });
+								});
+								var initModeSelects = function () {
+									if (!window.jQuery || !jQuery.fn.select2) {
+										form.querySelectorAll('.collaborator-proforma-mode').forEach(function (el) {
+											el.addEventListener('change', function () { syncRow(el.getAttribute('data-index')); });
+										});
+										return;
+									}
+									var $form = jQuery(form);
+									$form.find('.collaborator-proforma-mode').each(function () {
+										var $el = jQuery(this);
+										if ($el.hasClass('select2-hidden-accessible')) {
+											$el.select2('destroy');
+										}
+										$el.select2({
+											dropdownParent: jQuery(document.body),
+											width: '100%',
+											minimumResultsForSearch: Infinity,
+											placeholder: $el.data('placeholder') || ''
+										});
+										$el.off('change.collaboratorProforma').on('change.collaboratorProforma', function () {
+											syncRow(String($el.data('index')));
+										});
+									});
+								};
+								if (document.readyState === 'loading') {
+									document.addEventListener('DOMContentLoaded', initModeSelects);
+								} else {
+									initModeSelects();
+								}
+								form.addEventListener('submit', function (event) {
+									var selected = form.querySelectorAll('.collaborator-proforma-selected:checked');
+									if (!selected.length) {
+										event.preventDefault();
+										alert(@json(__('Seleccioná al menos un colaborador.')));
+										return;
+									}
+									form.querySelectorAll('tr').forEach(function (tr) {
+										var checkbox = tr.querySelector('.collaborator-proforma-selected');
+										if (checkbox && !checkbox.checked) {
+											tr.querySelectorAll('input, select').forEach(function (input) {
+												if (input !== checkbox) {
+													input.disabled = true;
+												}
+											});
+										}
+									});
+								});
+							})();
+						</script>
+					</div>
+				@endif
+			</div>
+		</div>
+	</div>
+@endif
+
 <!-- Collaborators Section (Floating Cards) -->
 @if($project->allCollaborators && $project->allCollaborators->count() > 0)
 <div class="row mb-4" style="align-items: stretch;">
@@ -1139,6 +1407,39 @@
 		var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
 			return new bootstrap.Tooltip(tooltipTriggerEl);
 		});
+
+		var spanishLocale = {
+			firstDayOfWeek: 1,
+			weekdays: {
+				shorthand: ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa'],
+				longhand: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+			},
+			months: {
+				shorthand: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+				longhand: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+			},
+			ordinal: function () { return 'º'; },
+			rangeSeparator: ' a ',
+			weekAbbreviation: 'Sem',
+			scrollTitle: 'Desplázate para aumentar',
+			toggleTitle: 'Haz clic para alternar'
+		};
+
+		var balanceStartDate = document.getElementById('balance-start-date');
+		if (balanceStartDate && typeof flatpickr !== 'undefined') {
+			flatpickr(balanceStartDate, {
+				dateFormat: 'Y-m-d',
+				altInput: true,
+				altFormat: 'd/m/Y',
+				locale: spanishLocale,
+				minDate: 'today',
+				allowInput: true,
+				altInputClass: 'form-control form-control-sm bg-white',
+				onChange: function () {
+					balanceStartDate.dispatchEvent(new Event('change', { bubbles: true }));
+				}
+			});
+		}
 
 		var $timeModal = $('#projectTimeModal');
 		if ($timeModal.length && $.fn.select2) {

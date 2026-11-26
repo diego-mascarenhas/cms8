@@ -48,7 +48,7 @@ class StoreCommunicationRequest extends FormRequest
                 Rule::exists('contacts', 'id')->where(fn ($query) => $query->where('team_id', $teamId)),
             ],
             'metadata' => ['nullable', 'array'],
-            'attachments' => ['nullable', 'array', 'max:5'],
+            'attachments' => ['nullable', 'array', 'max:50'],
             'attachments.*' => array_values(array_filter([
                 'file',
                 'max:10240',
@@ -69,7 +69,7 @@ class StoreCommunicationRequest extends FormRequest
             'channel.enum' => __('El canal no es válido.'),
             'message.required' => __('El mensaje es obligatorio.'),
             'recipient_email.email' => __('Ingresá un email válido.'),
-            'attachments.max' => __('Podés adjuntar hasta 5 archivos.'),
+            'attachments.max' => __('Podés adjuntar hasta 50 archivos.'),
             'attachments.*.max' => __('Cada archivo puede pesar hasta 10 MB.'),
             'attachments.*.mimes' => __('Documento no permitido.'),
         ];

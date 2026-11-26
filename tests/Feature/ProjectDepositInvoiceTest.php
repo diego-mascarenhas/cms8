@@ -79,7 +79,7 @@ class ProjectDepositInvoiceTest extends TestCase
     }
 
     #[Test]
-    public function approved_project_show_offers_deposit_invoice_banner(): void
+    public function approved_project_show_offers_deposit_and_balance_invoice_banners(): void
     {
         [$user, $project] = $this->createApprovedProject();
 
@@ -90,10 +90,39 @@ class ProjectDepositInvoiceTest extends TestCase
             ->assertSee('Dashboard Innovación — 4 secciones', false)
             ->assertSee(__('Invoice deposit'), false)
             ->assertSee(__('Approved budget — invoice the 30% deposit'), false)
-            ->assertDontSee(__('Finished project — invoice the balance'), false)
+            ->assertSee(__('Invoice the total or schedule payments'), false)
+            ->assertSee(__('Invoice the total'), false)
             ->assertSee('deposit-invoice-description', false)
             ->assertSee(__('Invoice description'), false)
             ->assertDontSee('projectDepositInvoiceModal', false);
+    }
+
+    #[Test]
+    public function deposit_and_balance_previews_use_manual_quote_amount_without_tasks(): void
+    {
+        [$user, $project] = $this->createApprovedProject();
+        $project->forceFill([
+            'price' => null,
+            'discount' => null,
+            'data' => array_merge($project->data ?? [], [
+                'quote_amount' => '50',
+                'suggested_tasks' => [],
+            ]),
+        ])->save();
+
+        $deposit = app(ProjectDepositInvoiceService::class)->preview($project->fresh());
+        $balance = app(ProjectBalanceInvoiceService::class)->preview($project->fresh());
+
+        $this->assertSame(50, $deposit['payable_total']);
+        $this->assertSame(15, $deposit['deposit_base']);
+        $this->assertSame(50, $balance['payable_total']);
+        $this->assertSame(50, $balance['remaining_base']);
+
+        $this->actingAs($user)
+            ->get(route('project.show', $project->id))
+            ->assertOk()
+            ->assertSee('15,00 €', false)
+            ->assertSee('data-remaining="50"', false);
     }
 
     #[Test]
@@ -107,12 +136,64 @@ class ProjectDepositInvoiceTest extends TestCase
             ->assertOk()
             ->assertDontSee(__('Approved budget — invoice the 30% deposit'), false)
             ->assertDontSee(__('Invoice deposit'), false)
-            ->assertSee(__('Finished project — invoice the balance'), false)
+            ->assertSee(__('Invoice the total or schedule payments'), false)
             ->assertSee('id="balance-installments" name="installments" class="form-control form-control-sm bg-white w-px-100" min="1" max="12" value="1"', false)
             ->assertSee('id="balance-payment-lines"', false)
             ->assertSee('data-partial="0"', false)
             ->assertSee('>'.$project->real_name.'</textarea>', false)
             ->assertDontSee('id="balance-installment-preview"', false);
+    }
+
+    #[Test]
+    public function finished_project_without_client_acceptance_still_shows_balance_banner(): void
+    {
+        [$user, $project] = $this->createApprovedProject();
+        $data = $project->data ?? [];
+        unset($data['budget_client_response']);
+        $project->forceFill([
+            'status_id' => ProjectStatus::STATUS_FINISHED,
+            'data' => $data,
+        ])->save();
+
+        $this->assertTrue($project->fresh()->isBudgetApproved());
+
+        $this->actingAs($user)
+            ->get(route('project.show', $project->id))
+            ->assertOk()
+            ->assertSee(__('Invoice the total or schedule payments'), false)
+            ->assertDontSee(__('Approved budget — invoice the 30% deposit'), false);
+    }
+
+    #[Test]
+    public function balance_invoice_is_allowed_while_project_is_still_approved(): void
+    {
+        [$user, $project] = $this->createApprovedProject();
+        $service = app(ProjectBalanceInvoiceService::class);
+
+        $this->assertTrue($service->projectCanInvoiceBalance($project));
+
+        $project->forceFill(['status_id' => ProjectStatus::STATUS_IN_PROGRESS])->save();
+        $this->assertTrue($service->projectCanInvoiceBalance($project->fresh()));
+
+        $project->forceFill(['status_id' => ProjectStatus::STATUS_APPROVED])->save();
+
+        $balance = $this->mock(ProjectBalanceInvoiceService::class);
+        $balance->shouldReceive('issue')->once()->andReturn([
+            'invoices' => [],
+            'charged' => true,
+            'scheduled' => false,
+            'hosted_invoice_url' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('project.invoice-balance', $project->id), [
+                'billing_mode' => 'total',
+                'description' => 'Total del proyecto',
+            ])
+            ->assertRedirect(route('project.show', $project->id))
+            ->assertSessionHas('success');
+
+        $this->assertSame(ProjectStatus::STATUS_INVOICED, (int) $project->fresh()->status_id);
     }
 
     #[Test]

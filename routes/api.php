@@ -598,6 +598,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('enterprises/roster', [\App\Http\Controllers\Api\EnterpriseController::class, 'roster']);
     Route::get('enterprises/{id}/subscriptions', [ApiSubscriptionController::class, 'forEnterprise'])->whereNumber('id');
     Route::get('enterprises/{id}/profile', [\App\Http\Controllers\Api\EnterpriseController::class, 'profile'])->whereNumber('id');
+    Route::get('enterprises/{id}/invoices/{invoice}/pdf', [\App\Http\Controllers\Api\EnterpriseController::class, 'invoicePdf'])->whereNumber(['id', 'invoice']);
     Route::get('enterprises/{id}/usage', [\App\Http\Controllers\Api\EnterpriseController::class, 'usage'])->whereNumber('id');
     Route::get('enterprises/{id}/billing', [\App\Http\Controllers\Api\EnterpriseBillingController::class, 'show'])->whereNumber('id');
     Route::post('enterprises/{id}/billing/setup', [\App\Http\Controllers\Api\EnterpriseBillingController::class, 'setup'])->whereNumber('id');

@@ -100,7 +100,7 @@ class ProjectBalanceInvoiceService
         if (! $this->projectCanInvoiceBalance($project))
         {
             throw ValidationException::withMessages([
-                'project' => __('Only a finished project can invoice the remaining balance.'),
+                'project' => __('Only an approved or finished project can invoice the remaining balance.'),
             ]);
         }
 
@@ -216,6 +216,8 @@ class ProjectBalanceInvoiceService
         }
 
         return in_array((int) $project->status_id, [
+            ProjectStatus::STATUS_APPROVED,
+            ProjectStatus::STATUS_IN_PROGRESS,
             ProjectStatus::STATUS_FINISHED,
             ProjectStatus::STATUS_TO_INVOICE,
         ], true);
