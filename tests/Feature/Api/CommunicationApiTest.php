@@ -441,6 +441,33 @@ class CommunicationApiTest extends TestCase
             ->assertJsonValidationErrors(['attachments']);
     }
 
+    public function test_rejects_more_than_fifty_attachments(): void
+    {
+        Queue::fake();
+        Storage::fake('public');
+        [, , $token] = $this->adminWithToken();
+
+        $files = [];
+        for ($i = 0; $i < 51; $i++)
+        {
+            $files[] = UploadedFile::fake()->create("file-{$i}.pdf", 10, 'application/pdf');
+        }
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/communications', [
+                'channel' => CommunicationChannel::Email->value,
+                'recipient_email' => 'ada@example.test',
+                'subject' => 'Too many files',
+                'message' => 'See attachments',
+                'attachments' => $files,
+            ], [
+                'Authorization' => 'Bearer '.$token,
+                'Accept' => 'application/json',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['attachments']);
+    }
+
     public function test_docs_token_requires_authentication(): void
     {
         $this->getJson('/api/communications/docs-token')->assertUnauthorized();

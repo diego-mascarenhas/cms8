@@ -117,6 +117,7 @@ class ClientProfileApiTest extends TestCase
             ->assertJsonPath('data.billing.0.name', 'Norte Studio SL')
             ->assertJsonPath('data.subscriptions.0.name', 'Hosting anual')
             ->assertJsonPath('data.invoices.0.number', '0005-1')
+            ->assertJsonPath('data.invoices.0.dispute', null)
             ->assertJsonPath('data.invoices.0.url', 'https://invoice.stripe.com/i/acct_profile/test');
     }
 
