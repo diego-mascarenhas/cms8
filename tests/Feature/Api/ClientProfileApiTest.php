@@ -9,6 +9,7 @@ use App\Models\Enterprise;
 use App\Models\EnterpriseBillingAddress;
 use App\Models\Invoice;
 use App\Models\InvoiceSync;
+use App\Services\Finance\StripeInvoicePdfRefresher;
 use App\Models\ServiceSync;
 use App\Models\StripeSubscription;
 use App\Models\Team;
@@ -230,5 +231,63 @@ class ClientProfileApiTest extends TestCase
             ->assertNotFound()
             ->assertJsonPath('success', false)
             ->assertJsonPath('linked', false);
+    }
+
+    public function test_invoice_pdf_returns_a_fresh_stripe_url_for_that_company(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $eur = Currency::query()->where('code', 'EUR')->firstOrFail();
+
+        $client = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Norte Studio',
+            'code' => 'cus_pdf',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+        $other = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Otra',
+            'code' => 'cus_other',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+        $invoice = Invoice::query()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'operation' => 'sell',
+            'number' => '0005-9',
+            'date' => '2026-09-01',
+            'gross_amount' => 10,
+            'total_amount' => 10,
+            'balance' => 0,
+            'status' => 1,
+            'type_id' => 1,
+            'currency_id' => $eur->id,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_fresh',
+        ]);
+
+        $this->mock(StripeInvoicePdfRefresher::class, function ($mock) use ($invoice): void
+        {
+            $mock->shouldReceive('freshPdfUrl')
+                ->once()
+                ->withArgs(fn (Invoice $given): bool => $given->is($invoice))
+                ->andReturn('https://pay.stripe.com/invoice/fresh.pdf');
+        });
+
+        $token = $user->createToken('invoice-pdf')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/'.$client->id.'/invoices/'.$invoice->id.'/pdf')
+            ->assertOk()
+            ->assertJsonPath('data.url', 'https://pay.stripe.com/invoice/fresh.pdf');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/enterprises/'.$other->id.'/invoices/'.$invoice->id.'/pdf')
+            ->assertNotFound();
     }
 }
