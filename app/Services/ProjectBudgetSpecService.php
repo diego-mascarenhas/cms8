@@ -1360,22 +1360,41 @@ class ProjectBudgetSpecService
         }
 
         $productsTotal = $this->quoteProductsTotal($data);
-        $grandTotal = (int) round($totalLabor + $totalTokenBillable + $productsTotal);
-        $usedPriceFallback = false;
+        $servicesTotal = (int) round($totalLabor + $totalTokenBillable);
+        $manualAmount = data_get($data, 'quote_amount');
+        $hasManualAmount = is_numeric($manualAmount) && (string) $manualAmount !== '';
+        $usedAmountOverride = false;
 
-        if ($grandTotal <= 0 && is_numeric($project->price) && (float) $project->price > 0)
+        // Same client-facing amount as the public budget preview (manual quote_amount,
+        // notes cap, then project.price). Products stay on top of the services total.
+        if ($hasManualAmount)
         {
-            $grandTotal = (int) round((float) $project->price);
-            $usedPriceFallback = true;
+            $servicesTotal = (int) round((float) $manualAmount);
+            $usedAmountOverride = true;
+        } else
+        {
+            $displayed = (int) round($this->resolveDisplayedQuoteAmount($project, $servicesTotal));
+            if ($servicesTotal <= 0 && is_numeric($project->price) && (float) $project->price > 0)
+            {
+                $servicesTotal = (int) round((float) $project->price);
+                $usedAmountOverride = true;
+            } elseif (abs($displayed - $servicesTotal) >= 1)
+            {
+                $servicesTotal = $displayed;
+                $usedAmountOverride = true;
+            }
         }
+
+        $grandTotal = (int) round($servicesTotal + $productsTotal);
 
         $discountPercent = is_numeric($project->discount)
             ? max(0.0, min(100.0, (float) $project->discount))
             : 0.0;
 
-        if ($usedPriceFallback)
+        if ($usedAmountOverride)
         {
-            $discountedTotal = (int) round($grandTotal * (1 - ($discountPercent / 100)));
+            $discountedServices = (int) round($servicesTotal * (1 - ($discountPercent / 100)));
+            $discountedTotal = (int) round($discountedServices + $productsTotal);
         } else
         {
             // Commercial discount applies to labor only; tokens stay full price.

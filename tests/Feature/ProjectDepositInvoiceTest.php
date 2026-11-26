@@ -98,6 +98,34 @@ class ProjectDepositInvoiceTest extends TestCase
     }
 
     #[Test]
+    public function deposit_and_balance_previews_use_manual_quote_amount_without_tasks(): void
+    {
+        [$user, $project] = $this->createApprovedProject();
+        $project->forceFill([
+            'price' => null,
+            'discount' => null,
+            'data' => array_merge($project->data ?? [], [
+                'quote_amount' => '50',
+                'suggested_tasks' => [],
+            ]),
+        ])->save();
+
+        $deposit = app(ProjectDepositInvoiceService::class)->preview($project->fresh());
+        $balance = app(ProjectBalanceInvoiceService::class)->preview($project->fresh());
+
+        $this->assertSame(50, $deposit['payable_total']);
+        $this->assertSame(15, $deposit['deposit_base']);
+        $this->assertSame(50, $balance['payable_total']);
+        $this->assertSame(50, $balance['remaining_base']);
+
+        $this->actingAs($user)
+            ->get(route('project.show', $project->id))
+            ->assertOk()
+            ->assertSee('15,00 €', false)
+            ->assertSee('data-remaining="50"', false);
+    }
+
+    #[Test]
     public function finished_project_hides_deposit_banner_and_previews_one_payment(): void
     {
         [$user, $project] = $this->createApprovedProject();
