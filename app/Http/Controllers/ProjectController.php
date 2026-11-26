@@ -6,6 +6,7 @@ use App\DataTables\ProjectDataTable;
 use App\Http\Requests\AcceptProjectBudgetPreviewRequest;
 use App\Http\Requests\ReformulateProjectBudgetPreviewRequest;
 use App\Http\Requests\StoreProjectBalanceInvoiceRequest;
+use App\Http\Requests\StoreProjectCollaboratorProformasRequest;
 use App\Http\Requests\StoreProjectDepositInvoiceRequest;
 use App\Http\Requests\StoreProjectRequest;
 use App\Models\Category;
@@ -22,6 +23,7 @@ use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
 use App\Services\Finance\ProjectBalanceInvoiceService;
+use App\Services\Finance\ProjectCollaboratorProformaService;
 use App\Services\Finance\ProjectDepositInvoiceService;
 use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
@@ -966,6 +968,7 @@ class ProjectController extends Controller
 
         $depositInvoicePreview = null;
         $balanceInvoicePreview = null;
+        $collaboratorProformaPreview = null;
         if (
             $project->isBudgetApproved()
             && auth()->user()->can('access-billing-modules')
@@ -976,6 +979,7 @@ class ProjectController extends Controller
             {
                 $balanceInvoicePreview = app(ProjectBalanceInvoiceService::class)->preview($project);
             }
+            $collaboratorProformaPreview = app(ProjectCollaboratorProformaService::class)->preview($project);
         }
 
         return view('project.show', compact(
@@ -990,6 +994,7 @@ class ProjectController extends Controller
             'runningTimer',
             'depositInvoicePreview',
             'balanceInvoicePreview',
+            'collaboratorProformaPreview',
         ));
     }
 
@@ -1178,7 +1183,37 @@ class ProjectController extends Controller
     }
 
     /**
-     * Invoice the remaining budget once the project is finished, in full or in installments.
+     * Create draft purchase proformas for project collaborators (percent or fixed amount).
+     */
+    public function issueCollaboratorProformas(
+        StoreProjectCollaboratorProformasRequest $request,
+        string $id,
+        ProjectCollaboratorProformaService $proformaService,
+    ) {
+        $project = Project::findOrFail($id);
+        $this->authorize('update', $project);
+        $this->authorize('access-billing-modules');
+
+        $result = $proformaService->issue(
+            $project,
+            auth()->user()->currentTeam,
+            $request->collaboratorLines(),
+        );
+
+        $count = count($result['created']);
+
+        return redirect()
+            ->route('project.show', $project->id)
+            ->with('success', trans_choice(
+                '{1} Se creó 1 proforma de colaborador.|[2,*] Se crearon :count proformas de colaborador.',
+                $count,
+                ['count' => $count],
+            ));
+    }
+
+    /**
+     * Invoice the remaining budget (or the full amount if no deposit) in full or in installments.
+     * Available from Approved onward — deposit is optional.
      */
     public function invoiceBalance(StoreProjectBalanceInvoiceRequest $request, string $id, ProjectBalanceInvoiceService $balanceInvoiceService)
     {

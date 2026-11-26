@@ -399,10 +399,19 @@ class Project extends Model
 
     /**
      * Budget was accepted by the client and/or marked as approved.
+     * Post-approval workflow statuses also count so billing banners stay available
+     * after the project leaves Approved (e.g. Finished without a stored client response).
      */
     public function isBudgetApproved(): bool
     {
-        if ((int) $this->status_id === ProjectStatus::STATUS_APPROVED)
+        if (in_array((int) $this->status_id, [
+            ProjectStatus::STATUS_APPROVED,
+            ProjectStatus::STATUS_IN_PROGRESS,
+            ProjectStatus::STATUS_FINISHED,
+            ProjectStatus::STATUS_TO_INVOICE,
+            ProjectStatus::STATUS_INVOICED,
+            ProjectStatus::STATUS_BONIFIED,
+        ], true))
         {
             return true;
         }
