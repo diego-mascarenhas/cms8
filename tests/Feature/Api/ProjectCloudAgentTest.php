@@ -91,6 +91,24 @@ class ProjectCloudAgentTest extends TestCase
         );
     }
 
+    public function test_project_edit_saves_the_repository_url(): void
+    {
+        [, $token, $project] = $this->project();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/projects/'.$project->id, [
+                'name' => 'Board Project',
+                'repository_url' => 'https://github.com/diego-mascarenhas/mi.actibiz/',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.repository_url', 'https://github.com/diego-mascarenhas/mi.actibiz');
+
+        $this->assertSame(
+            'https://github.com/diego-mascarenhas/mi.actibiz',
+            data_get($project->fresh()->data, 'cursor_repository'),
+        );
+    }
+
     public function test_cloud_agent_shows_the_cursor_error(): void
     {
         [, $token, $project] = $this->project();

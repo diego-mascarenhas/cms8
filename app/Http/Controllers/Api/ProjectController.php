@@ -21,6 +21,7 @@ use App\Models\TaskCommunication;
 use App\Models\TaskStatus;
 use App\Models\Time;
 use App\Models\User;
+use App\Services\CursorCloudAgentService;
 use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
 use App\Support\SearchNormalizer;
@@ -401,6 +402,7 @@ class ProjectController extends Controller
 
             $data = array_merge($project->toArray(), [
                 'quote_contact' => $project->quoteRecipientSummary(),
+                'repository_url' => data_get($project->data, 'cursor_repository'),
                 'tasks' => $tasks,
                 'tasks_count' => count($tasks),
             ]);
@@ -461,6 +463,12 @@ class ProjectController extends Controller
         $this->authorize('update', $project);
 
         $validated = $request->validated();
+        $repositoryError = $this->storeCursorRepository($project, $validated);
+        if ($repositoryError instanceof JsonResponse)
+        {
+            return $repositoryError;
+        }
+        unset($validated['repository_url']);
 
         if ($project->isBudgetContentLocked())
         {
@@ -1392,12 +1400,48 @@ class ProjectController extends Controller
     }
 
     /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function storeCursorRepository(Project $project, array $validated): ?JsonResponse
+    {
+        if (! array_key_exists('repository_url', $validated))
+        {
+            return null;
+        }
+
+        $url = app(CursorCloudAgentService::class)->normalizeRepositoryUrl((string) ($validated['repository_url'] ?? ''));
+
+        if ($url !== '' && filter_var($url, FILTER_VALIDATE_URL) === false)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'La URL del repositorio no es válida.',
+            ], 422);
+        }
+
+        $data = is_array($project->data) ? $project->data : [];
+
+        if ($url === '')
+        {
+            unset($data['cursor_repository']);
+        } else
+        {
+            $data['cursor_repository'] = $url;
+        }
+
+        $project->data = $data;
+
+        return null;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function projectBudgetResponse(Project $project, ProjectBudgetSpecService $budgetService, string $message): array
     {
         $payload = $project->toArray();
         $payload['quote_contact'] = $project->quoteRecipientSummary();
+        $payload['repository_url'] = data_get($project->data, 'cursor_repository');
 
         return array_merge([
             'success' => true,

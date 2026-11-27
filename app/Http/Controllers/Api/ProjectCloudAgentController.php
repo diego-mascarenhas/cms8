@@ -41,7 +41,6 @@ class ProjectCloudAgentController extends Controller
         ]);
 
         $repository = $agents->normalizeRepositoryUrl((string) ($validated['repository_url'] ?? data_get($project->data, 'cursor_repository') ?? ''));
-        $repository = app(CursorCloudAgentService::class)->normalizeRepositoryUrl($repository);
 
         if ($repository === '' || filter_var($repository, FILTER_VALIDATE_URL) === false)
         {
