@@ -46,6 +46,7 @@ use App\Http\Controllers\Api\PaidAdCreativeAssetController as ApiPaidAdCreativeA
 use App\Http\Controllers\Api\PaidAdDashboardController as ApiPaidAdDashboardController;
 use App\Http\Controllers\Api\PaymentAccountStatementController;
 use App\Http\Controllers\Api\PaymentController as ApiPaymentController;
+use App\Http\Controllers\Api\ProjectCloudAgentController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectFunnelController;
 use App\Http\Controllers\Api\PublicAutomationEmbedController;
@@ -658,6 +659,7 @@ Route::middleware('auth.api')->group(function ()
     Route::patch('projects/{id}', [ProjectController::class, 'update']);
     Route::delete('projects/{id}', [ProjectController::class, 'destroy']);
     Route::get('projects/{id}/board', [ProjectController::class, 'board']);
+    Route::post('projects/{id}/cloud-agent', [ProjectCloudAgentController::class, 'store']);
     Route::put('projects/{id}/board/reorder', [ProjectController::class, 'reorderBoard']);
 
     // Services - for user-based authentication (Sanctum tokens)

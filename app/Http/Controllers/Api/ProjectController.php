@@ -912,6 +912,7 @@ class ProjectController extends Controller
                     'responsible_id' => $project->responsible_id,
                     'date_end' => $project->date_end?->format('Y-m-d'),
                     'description' => $project->description,
+                    'repository_url' => data_get($project->data, 'cursor_repository'),
                     'client' => $project->enterprise ? [
                         'id' => $project->enterprise->id,
                         'name' => $project->enterprise->name,
