@@ -98,4 +98,96 @@ class CursorCloudAgentService
             'branch' => $branch,
         ];
     }
+
+    /**
+     * @return array{id: string, url: string, branch: string, phase: string}|null
+     */
+    public function status(Project $project): ?array
+    {
+        $stored = data_get($project->data, 'cursor_agent');
+        if (! is_array($stored) || ! filled($stored['id'] ?? null))
+        {
+            return null;
+        }
+
+        $phase = (string) ($stored['phase'] ?? 'processing');
+        if ($phase === 'processing')
+        {
+            $phase = $this->livePhase((string) $stored['id']);
+            if ($phase !== 'processing')
+            {
+                $data = is_array($project->data) ? $project->data : [];
+                $agent = is_array($data['cursor_agent'] ?? null) ? $data['cursor_agent'] : [];
+                $agent['phase'] = $phase;
+                $data['cursor_agent'] = $agent;
+                $project->update(['data' => $data]);
+            }
+        }
+
+        return [
+            'id' => (string) $stored['id'],
+            'url' => (string) ($stored['url'] ?? 'https://cursor.com/agents/'.$stored['id']),
+            'branch' => (string) ($stored['branch'] ?? $this->branchName($project)),
+            'phase' => $phase,
+        ];
+    }
+
+    private function livePhase(string $agentId): string
+    {
+        $key = trim((string) config('services.cursor.api_key'));
+        if ($key === '' || preg_match('/\A[A-Za-z0-9_-]+\z/', $agentId) !== 1)
+        {
+            return 'processing';
+        }
+
+        $response = Http::withBasicAuth($key, '')
+            ->acceptJson()
+            ->timeout(15)
+            ->get('https://api.cursor.com/v1/agents/'.$agentId);
+
+        if (! $response->successful())
+        {
+            return 'processing';
+        }
+
+        $agentStatus = (string) $response->json('status');
+        if ($agentStatus === 'ACTIVE')
+        {
+            return 'processing';
+        }
+
+        if ($agentStatus !== 'IDLE')
+        {
+            return 'done';
+        }
+
+        $runId = $response->json('latestRunId');
+        if (! is_string($runId) || preg_match('/\A[A-Za-z0-9_-]+\z/', $runId) !== 1)
+        {
+            return 'done';
+        }
+
+        $run = Http::withBasicAuth($key, '')
+            ->acceptJson()
+            ->timeout(15)
+            ->get('https://api.cursor.com/v1/agents/'.$agentId.'/runs/'.$runId);
+
+        if (! $run->successful())
+        {
+            return 'done';
+        }
+
+        $runStatus = (string) $run->json('status');
+        if (in_array($runStatus, ['CREATING', 'RUNNING', 'WAITING_FOR_BACKGROUND_WORK'], true))
+        {
+            return 'processing';
+        }
+
+        if (in_array($runStatus, ['ERROR', 'CANCELLED', 'EXPIRED'], true))
+        {
+            return 'error';
+        }
+
+        return 'done';
+    }
 }

@@ -659,6 +659,7 @@ Route::middleware('auth.api')->group(function ()
     Route::patch('projects/{id}', [ProjectController::class, 'update']);
     Route::delete('projects/{id}', [ProjectController::class, 'destroy']);
     Route::get('projects/{id}/board', [ProjectController::class, 'board']);
+    Route::get('projects/{id}/cloud-agent', [ProjectCloudAgentController::class, 'show']);
     Route::post('projects/{id}/cloud-agent', [ProjectCloudAgentController::class, 'store']);
     Route::put('projects/{id}/board/reorder', [ProjectController::class, 'reorderBoard']);
 

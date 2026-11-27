@@ -160,6 +160,69 @@ class ProjectCloudAgentTest extends TestCase
             ->assertJsonPath('error', 'Esa clave no sirve para los agentes de Cursor. Crea una clave de usuario en cursor.com/dashboard, en API Keys. Las que empiezan por grok_ no están admitidas.');
     }
 
+    public function test_cloud_agent_status_reports_processing_and_then_done(): void
+    {
+        [, $token, $project] = $this->project();
+        config(['services.cursor.api_key' => 'test-key']);
+
+        Http::fake([
+            'https://api.cursor.com/v1/agents' => Http::response([
+                'agent' => [
+                    'id' => 'bc-test',
+                    'url' => 'https://cursor.com/agents/bc-test',
+                ],
+            ], 200),
+            'https://api.cursor.com/v1/agents/bc-test' => Http::sequence()
+                ->push([
+                    'id' => 'bc-test',
+                    'status' => 'ACTIVE',
+                    'url' => 'https://cursor.com/agents/bc-test',
+                    'latestRunId' => 'run-test',
+                ], 200)
+                ->push([
+                    'id' => 'bc-test',
+                    'status' => 'IDLE',
+                    'url' => 'https://cursor.com/agents/bc-test',
+                    'latestRunId' => 'run-test',
+                ], 200),
+            'https://api.cursor.com/v1/agents/bc-test/runs/run-test' => Http::response([
+                'id' => 'run-test',
+                'status' => 'FINISHED',
+            ], 200),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects/'.$project->id.'/cloud-agent', [
+                'prompt' => 'Cambia el botón.',
+                'repository_url' => 'https://github.com/acme/web',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.phase', 'processing');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id.'/cloud-agent')
+            ->assertOk()
+            ->assertJsonPath('data.phase', 'processing')
+            ->assertJsonPath('data.branch', 'idoneo/board-project');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id.'/cloud-agent')
+            ->assertOk()
+            ->assertJsonPath('data.phase', 'done');
+
+        $this->assertSame('done', data_get($project->fresh()->data, 'cursor_agent.phase'));
+    }
+
+    public function test_cloud_agent_status_is_empty_before_launch(): void
+    {
+        [, $token, $project] = $this->project();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id.'/cloud-agent')
+            ->assertOk()
+            ->assertJsonPath('data', null);
+    }
+
     public function test_cloud_agent_reports_a_missing_api_key(): void
     {
         [, $token, $project] = $this->project();
