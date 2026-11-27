@@ -80,6 +80,11 @@ class Task extends Model implements HasMedia
         return $this->hasMany(Time::class);
     }
 
+    public function communications()
+    {
+        return $this->hasMany(TaskCommunication::class)->orderBy('created_at');
+    }
+
     public function getStatusLabelAttribute()
     {
         if ($this->status)

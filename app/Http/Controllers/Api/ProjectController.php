@@ -26,6 +26,7 @@ use App\Services\ProjectBudgetSpecService;
 use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -333,13 +334,12 @@ class ProjectController extends Controller
                     ->get()
                     ->groupBy('task_id');
 
-                $notesByTask = $clientView
-                    ? TaskCommunication::query()
-                        ->whereIn('task_id', $projectTasks->pluck('id'))
-                        ->orderBy('created_at')
-                        ->get()
-                        ->groupBy('task_id')
-                    : collect();
+                $notesByTask = TaskCommunication::query()
+                    ->with('user')
+                    ->whereIn('task_id', $projectTasks->pluck('id'))
+                    ->orderBy('created_at')
+                    ->get()
+                    ->groupBy('task_id');
 
                 $tasks = $projectTasks->map(function ($task) use (&$totalSeconds, $clientView, $timesByTask, $notesByTask, $user)
                 {
@@ -358,17 +358,7 @@ class ProjectController extends Controller
                             'title' => $task->title,
                             'order' => $task->order,
                             'attachment' => $task->attachmentUrl(),
-                            'notes' => $notesByTask->get($task->id, collect())->map(function (TaskCommunication $note) use ($user)
-                            {
-                                return [
-                                    'id' => $note->id,
-                                    'subject' => $note->subject,
-                                    'message' => $note->message,
-                                    'response' => $note->response,
-                                    'sender_name' => (int) $note->user_id === (int) $user->id ? 'Tú' : 'Equipo',
-                                    'created_at' => $note->created_at?->toIso8601String(),
-                                ];
-                            })->values()->all(),
+                            'notes' => $this->mapTaskNotes($notesByTask->get($task->id, collect()), $user, true),
                             'status' => $status,
                         ];
                     }
@@ -404,6 +394,7 @@ class ProjectController extends Controller
                         'time_seconds' => $taskTime,
                         'time_formatted' => gmdate('H:i:s', $taskTime),
                         'running_timers' => $runningTimers,
+                        'notes' => $this->mapTaskNotes($notesByTask->get($task->id, collect()), $user, false),
                     ];
                 });
             }
@@ -881,6 +872,7 @@ class ProjectController extends Controller
                 'responsible',
                 'category',
                 'media',
+                'communications.user',
                 'times' => function ($query)
                 {
                     $query->with('user');
@@ -919,6 +911,7 @@ class ProjectController extends Controller
                     'board_id' => $project->board_id,
                     'responsible_id' => $project->responsible_id,
                     'date_end' => $project->date_end?->format('Y-m-d'),
+                    'description' => $project->description,
                     'client' => $project->enterprise ? [
                         'id' => $project->enterprise->id,
                         'name' => $project->enterprise->name,
@@ -1064,7 +1057,7 @@ class ProjectController extends Controller
      */
     private function mapBoardTask(Task $task): array
     {
-        return [
+        $payload = [
             'id' => $task->id,
             'title' => $task->title,
             'description' => $task->description,
@@ -1104,6 +1097,45 @@ class ProjectController extends Controller
                 ? $task->times->filter(fn (Time $time) => $time->end_time === null && $time->start_time)->count()
                 : 0,
         ];
+
+        if ($task->relationLoaded('communications'))
+        {
+            $viewer = auth()->user();
+            $payload['notes'] = $this->mapTaskNotes(
+                $task->communications,
+                $viewer instanceof User ? $viewer : null,
+                false,
+            );
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  Collection<int, TaskCommunication>  $notes
+     * @return list<array<string, mixed>>
+     */
+    private function mapTaskNotes(Collection $notes, ?User $viewer, bool $asClient): array
+    {
+        return $notes->map(function (TaskCommunication $note) use ($viewer, $asClient)
+        {
+            $sender = $note->user?->name ?? 'Cliente';
+
+            if ($asClient)
+            {
+                $sender = $viewer && (int) $note->user_id === (int) $viewer->id ? 'Tú' : 'Equipo';
+            }
+
+            return [
+                'id' => $note->id,
+                'subject' => $note->subject,
+                'message' => $note->message,
+                'response' => $note->response,
+                'recipients' => $note->recipients ?? [],
+                'sender_name' => $sender,
+                'created_at' => $note->created_at?->toIso8601String(),
+            ];
+        })->values()->all();
     }
 
     /**
