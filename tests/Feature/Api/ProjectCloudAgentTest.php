@@ -91,6 +91,57 @@ class ProjectCloudAgentTest extends TestCase
         );
     }
 
+    public function test_cloud_agent_shows_the_cursor_error(): void
+    {
+        [, $token, $project] = $this->project();
+        config(['services.cursor.api_key' => 'test-key']);
+
+        Http::fake([
+            'https://api.cursor.com/v1/agents' => Http::response([
+                'error' => [
+                    'code' => 'repository_access',
+                    'message' => 'Repository not found',
+                ],
+            ], 400),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects/'.$project->id.'/cloud-agent', [
+                'prompt' => 'Cambia el botón.',
+                'repository_url' => 'https://github.com/diego-mascarenhas/mi.actibiz/',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('error', 'Cursor no puede leer ese repositorio. Revisa la URL y que la cuenta de la clave tenga GitHub conectado con acceso a él.');
+
+        Http::assertSent(function ($request): bool
+        {
+            return $request->data()['repos'][0]['url'] === 'https://github.com/diego-mascarenhas/mi.actibiz';
+        });
+    }
+
+    public function test_cloud_agent_rejects_a_grok_key_response(): void
+    {
+        [, $token, $project] = $this->project();
+        config(['services.cursor.api_key' => 'test-key']);
+
+        Http::fake([
+            'https://api.cursor.com/v1/agents' => Http::response([
+                'error' => [
+                    'code' => 'key_not_supported',
+                    'message' => 'This API key is not supported.',
+                ],
+            ], 403),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects/'.$project->id.'/cloud-agent', [
+                'prompt' => 'Cambia el botón.',
+                'repository_url' => 'https://github.com/acme/web',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('error', 'Esa clave no sirve para los agentes de Cursor. Crea una clave de usuario en cursor.com/dashboard, en API Keys. Las que empiezan por grok_ no están admitidas.');
+    }
+
     public function test_cloud_agent_reports_a_missing_api_key(): void
     {
         [, $token, $project] = $this->project();

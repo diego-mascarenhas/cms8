@@ -17,6 +17,43 @@ class CursorCloudAgentService
         return 'idoneo/'.Str::limit($slug, 60, '');
     }
 
+    public function normalizeRepositoryUrl(string $url): string
+    {
+        $url = trim($url);
+        $url = rtrim($url, '/');
+
+        if (str_ends_with(strtolower($url), '.git'))
+        {
+            $url = substr($url, 0, -4);
+        }
+
+        return $url;
+    }
+
+    public function failureMessage(mixed $body): string
+    {
+        $error = is_array($body) ? ($body['error'] ?? null) : null;
+        $code = is_array($error) ? ($error['code'] ?? null) : null;
+        $message = is_array($error) ? ($error['message'] ?? null) : (is_string($error) ? $error : null);
+
+        if ($code === 'key_not_supported')
+        {
+            return 'Esa clave no sirve para los agentes de Cursor. Crea una clave de usuario en cursor.com/dashboard, en API Keys. Las que empiezan por grok_ no están admitidas.';
+        }
+
+        if ($code === 'repository_access')
+        {
+            return 'Cursor no puede leer ese repositorio. Revisa la URL y que la cuenta de la clave tenga GitHub conectado con acceso a él.';
+        }
+
+        if (is_string($message) && $message !== '')
+        {
+            return $message;
+        }
+
+        return 'Cursor no pudo crear el agente.';
+    }
+
     /**
      * @return array{id: string, url: string, branch: string}
      */
@@ -28,6 +65,7 @@ class CursorCloudAgentService
             throw new RuntimeException('Falta la clave de Cursor en el servidor.');
         }
 
+        $repositoryUrl = $this->normalizeRepositoryUrl($repositoryUrl);
         $branch = $this->branchName($project);
         $response = Http::withBasicAuth($key, '')
             ->acceptJson()
@@ -45,9 +83,7 @@ class CursorCloudAgentService
 
         if (! $response->successful())
         {
-            $message = $response->json('error') ?? $response->json('message') ?? 'Cursor no pudo crear el agente.';
-
-            throw new RuntimeException(is_string($message) ? $message : 'Cursor no pudo crear el agente.');
+            throw new RuntimeException($this->failureMessage($response->json()));
         }
 
         $agent = $response->json('agent');
