@@ -13,6 +13,8 @@ use RuntimeException;
 
 class CursorCloudAgentService
 {
+    public const AGENT_MARK = "[[agent]]\n";
+
     public function branchName(Project $project): string
     {
         $slug = Str::slug($project->name);
@@ -121,7 +123,10 @@ class CursorCloudAgentService
             $live = $this->liveOutcome((string) $stored['id']);
             $phase = $live['phase'];
             $result = $live['result'];
-            if ($phase !== 'processing')
+            if ($phase === 'processing')
+            {
+                $this->rememberProgress($project, (string) $stored['id'], $live['run_id'] ?? null);
+            } else
             {
                 $data = is_array($project->data) ? $project->data : [];
                 $agent = is_array($data['cursor_agent'] ?? null) ? $data['cursor_agent'] : [];
@@ -145,6 +150,7 @@ class CursorCloudAgentService
             'branch' => (string) ($stored['branch'] ?? $this->branchName($project)),
             'phase' => $phase,
             'result' => $result !== '' ? $result : null,
+            'task_ids' => array_values(array_map('intval', is_array($stored['task_ids'] ?? null) ? $stored['task_ids'] : [])),
         ];
     }
 
@@ -187,6 +193,7 @@ class CursorCloudAgentService
                 'team_id' => $project->team_id,
                 'user_id' => $user->id,
                 'task_id' => $task->id,
+                'description' => self::AGENT_MARK,
                 'start_time' => now(),
             ]);
             $tracked[] = (int) $task->id;
@@ -208,7 +215,7 @@ class CursorCloudAgentService
         {
             $note = $phase === 'error' ? 'El agente se detuvo.' : 'El agente terminó.';
         }
-        $note = "Agente de Cursor\n\n".$note;
+        $note = self::AGENT_MARK.$note;
 
         if ($phase === 'done' && $taskIds !== [] && $project->board_id)
         {
@@ -234,11 +241,11 @@ class CursorCloudAgentService
     }
 
     /**
-     * @return array{phase: string, result: string|null}
+     * @return array{phase: string, result: string|null, run_id: string|null}
      */
     private function liveOutcome(string $agentId): array
     {
-        $pending = ['phase' => 'processing', 'result' => null];
+        $pending = ['phase' => 'processing', 'result' => null, 'run_id' => null];
         $key = trim((string) config('services.cursor.api_key'));
         if ($key === '' || preg_match('/\A[A-Za-z0-9_-]+\z/', $agentId) !== 1)
         {
@@ -255,21 +262,21 @@ class CursorCloudAgentService
             return $pending;
         }
 
+        $runId = $this->runId($response->json('latestRunId'));
         $agentStatus = (string) $response->json('status');
         if ($agentStatus === 'ACTIVE')
         {
-            return $pending;
+            return ['phase' => 'processing', 'result' => null, 'run_id' => $runId];
         }
 
         if ($agentStatus !== 'IDLE')
         {
-            return ['phase' => 'done', 'result' => null];
+            return ['phase' => 'done', 'result' => null, 'run_id' => $runId];
         }
 
-        $runId = $response->json('latestRunId');
-        if (! is_string($runId) || preg_match('/\A[A-Za-z0-9_-]+\z/', $runId) !== 1)
+        if ($runId === null)
         {
-            return ['phase' => 'done', 'result' => null];
+            return ['phase' => 'done', 'result' => null, 'run_id' => null];
         }
 
         $run = Http::withBasicAuth($key, '')
@@ -279,7 +286,7 @@ class CursorCloudAgentService
 
         if (! $run->successful())
         {
-            return ['phase' => 'done', 'result' => null];
+            return ['phase' => 'done', 'result' => null, 'run_id' => $runId];
         }
 
         $runStatus = (string) $run->json('status');
@@ -287,14 +294,206 @@ class CursorCloudAgentService
         $text = is_string($result) ? Str::limit(trim($result), 20000, '') : null;
         if (in_array($runStatus, ['CREATING', 'RUNNING', 'WAITING_FOR_BACKGROUND_WORK'], true))
         {
-            return $pending;
+            return ['phase' => 'processing', 'result' => null, 'run_id' => $runId];
         }
 
         if (in_array($runStatus, ['ERROR', 'CANCELLED', 'EXPIRED'], true))
         {
-            return ['phase' => 'error', 'result' => $text !== '' ? $text : null];
+            return ['phase' => 'error', 'result' => $text !== '' ? $text : null, 'run_id' => $runId];
         }
 
-        return ['phase' => 'done', 'result' => $text !== '' ? $text : null];
+        return ['phase' => 'done', 'result' => $text !== '' ? $text : null, 'run_id' => $runId];
+    }
+
+    public function syncRunningNote(Project $project): void
+    {
+        $stored = data_get($project->data, 'cursor_agent');
+        if (! is_array($stored) || ($stored['phase'] ?? null) !== 'processing' || ! filled($stored['id'] ?? null))
+        {
+            return;
+        }
+
+        $runId = $this->runId($stored['run_id'] ?? null);
+        if ($runId === null)
+        {
+            $live = $this->liveOutcome((string) $stored['id']);
+            if ($live['phase'] !== 'processing')
+            {
+                return;
+            }
+            $runId = $live['run_id'] ?? null;
+        }
+
+        $this->rememberProgress($project, (string) $stored['id'], $runId);
+    }
+
+    public static function isAgentNote(?string $description): bool
+    {
+        return is_string($description) && str_starts_with($description, self::AGENT_MARK);
+    }
+
+    public static function visibleAgentNote(?string $description): ?string
+    {
+        if (! self::isAgentNote($description))
+        {
+            return null;
+        }
+
+        $text = trim(substr((string) $description, strlen(self::AGENT_MARK)));
+
+        return $text !== '' ? $text : null;
+    }
+
+    public function noteFromStream(string $body): ?string
+    {
+        $assistant = '';
+        $tool = null;
+        $event = null;
+        $data = '';
+
+        foreach (preg_split("/\r\n|\n|\r/", $body) ?: [] as $line)
+        {
+            if (str_starts_with($line, 'event:'))
+            {
+                $event = trim(substr($line, 6));
+            } elseif (str_starts_with($line, 'data:'))
+            {
+                $data .= ltrim(substr($line, 5));
+            } elseif ($line === '')
+            {
+                $this->consumeStreamEvent($event, $data, $assistant, $tool);
+                $event = null;
+                $data = '';
+            }
+        }
+
+        $this->consumeStreamEvent($event, $data, $assistant, $tool);
+        $text = trim($assistant);
+        if (is_string($tool) && $tool !== '')
+        {
+            $text = trim($text."\n".$tool);
+        }
+
+        $text = trim($text);
+
+        return $text !== '' ? Str::limit($text, 4000, '') : null;
+    }
+
+    private function rememberProgress(Project $project, string $agentId, ?string $runId): void
+    {
+        $data = is_array($project->data) ? $project->data : [];
+        $agent = is_array($data['cursor_agent'] ?? null) ? $data['cursor_agent'] : [];
+        $runId ??= $this->runId($agent['run_id'] ?? null);
+        if ($runId === null)
+        {
+            return;
+        }
+
+        $progressAt = $agent['progress_at'] ?? null;
+        if (is_string($progressAt) && now()->parse($progressAt)->gt(now()->subSeconds(3)))
+        {
+            return;
+        }
+
+        $note = $this->pullRunNote($agentId, $runId);
+        $agent['run_id'] = $runId;
+        $agent['progress_at'] = now()->toIso8601String();
+        $data['cursor_agent'] = $agent;
+        $project->update(['data' => $data]);
+
+        if ($note === null)
+        {
+            return;
+        }
+
+        Time::query()
+            ->whereIn('id', collect($agent['time_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->all())
+            ->whereNull('end_time')
+            ->update(['description' => self::AGENT_MARK.$note]);
+    }
+
+    private function pullRunNote(string $agentId, string $runId): ?string
+    {
+        $key = trim((string) config('services.cursor.api_key'));
+        if ($key === '')
+        {
+            return null;
+        }
+
+        try
+        {
+            $response = Http::withBasicAuth($key, '')
+                ->withHeaders(['Accept' => 'text/event-stream'])
+                ->timeout(2)
+                ->get('https://api.cursor.com/v1/agents/'.$agentId.'/runs/'.$runId.'/stream');
+        } catch (\Throwable)
+        {
+            return null;
+        }
+
+        if (! $response->successful())
+        {
+            return null;
+        }
+
+        return $this->noteFromStream($response->body());
+    }
+
+    private function runId(mixed $value): ?string
+    {
+        return is_string($value) && preg_match('/\A[A-Za-z0-9_-]+\z/', $value) === 1 ? $value : null;
+    }
+
+    private function consumeStreamEvent(?string $event, string $data, string &$assistant, ?string &$tool): void
+    {
+        if ($event === null || $data === '')
+        {
+            return;
+        }
+
+        $payload = json_decode($data, true);
+        if (! is_array($payload))
+        {
+            return;
+        }
+
+        if ($event === 'assistant' && is_string($payload['text'] ?? null))
+        {
+            $assistant .= $payload['text'];
+            $tool = null;
+        }
+
+        if ($event === 'tool_call' && is_string($payload['name'] ?? null))
+        {
+            $tool = $this->toolLine($payload['name'], $payload['args'] ?? null);
+        }
+    }
+
+    private function toolLine(string $name, mixed $args): string
+    {
+        $path = '';
+        if (is_array($args))
+        {
+            $file = $args['path'] ?? $args['file'] ?? $args['target_file'] ?? '';
+            $path = is_string($file) && $file !== '' ? ' '.basename($file) : '';
+        }
+
+        $normalized = strtolower($name);
+        if (str_contains($normalized, 'read') || str_contains($normalized, 'grep') || str_contains($normalized, 'search'))
+        {
+            return 'Leyendo'.$path;
+        }
+
+        if (str_contains($normalized, 'edit') || str_contains($normalized, 'write') || str_contains($normalized, 'replace'))
+        {
+            return 'Editando'.$path;
+        }
+
+        if (str_contains($normalized, 'terminal') || str_contains($normalized, 'shell'))
+        {
+            return 'Ejecutando un comando';
+        }
+
+        return 'Trabajando'.$path;
     }
 }

@@ -88,6 +88,7 @@ class ProjectCloudAgentController extends Controller
                 'branch' => $agent['branch'],
                 'phase' => 'processing',
                 'repository_url' => $repository,
+                'task_ids' => $tracked['task_ids'],
             ],
         ]);
     }

@@ -12,6 +12,7 @@ use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\Time;
 use App\Models\User;
+use App\Services\CursorCloudAgentService;
 use App\Support\TaskImageOptimizer;
 use App\Support\TaskTimeBudget;
 use Illuminate\Http\JsonResponse;
@@ -1661,6 +1662,7 @@ class TaskController extends Controller
     public function activities($id)
     {
         $task = Task::findOrFail($id);
+        $agentTimeIds = $this->agentTimeIds($task);
 
         $times = Time::where('task_id', $task->id)
             ->with('user')
@@ -1668,7 +1670,7 @@ class TaskController extends Controller
             ->get();
 
         $totalSeconds = 0;
-        $entries = $times->map(function (Time $time) use (&$totalSeconds)
+        $entries = $times->map(function (Time $time) use (&$totalSeconds, $agentTimeIds)
         {
             $seconds = $time->duration_seconds;
             if ((! $seconds || $seconds < 0) && $time->start_time && $time->end_time)
@@ -1685,10 +1687,15 @@ class TaskController extends Controller
             $hours = intdiv($seconds, 3600);
             $minutes = intdiv($seconds % 3600, 60);
 
+            $isAgent = in_array((int) $time->id, $agentTimeIds, true) || CursorCloudAgentService::isAgentNote($time->description);
+
             return [
                 'id' => $time->id,
-                'user_name' => $time->user?->name ?? 'Sistema',
-                'description' => $time->description ?: null,
+                'actor' => $isAgent ? 'agent' : 'user',
+                'user_name' => $isAgent ? null : ($time->user?->name ?? 'Sistema'),
+                'description' => $isAgent
+                    ? CursorCloudAgentService::visibleAgentNote($time->description)
+                    : ($time->description ?: null),
                 'duration_formatted' => $hours > 0 ? sprintf('%dh %dm', $hours, $minutes) : sprintf('%dm', $minutes),
                 'start_time' => $time->start_time?->toIso8601String(),
                 'end_time' => $time->end_time?->toIso8601String(),
@@ -1710,6 +1717,31 @@ class TaskController extends Controller
                 'times' => $entries->values()->all(),
             ],
         ]);
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function agentTimeIds(Task $task): array
+    {
+        if (! $task->board_id)
+        {
+            return [];
+        }
+
+        $project = Project::query()->where('board_id', $task->board_id)->first();
+        if (! $project)
+        {
+            return [];
+        }
+
+        app(CursorCloudAgentService::class)->syncRunningNote($project);
+
+        return collect(data_get($project->fresh()->data, 'cursor_agent.time_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /**

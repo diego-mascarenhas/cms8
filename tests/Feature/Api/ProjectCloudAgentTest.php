@@ -236,6 +236,7 @@ class ProjectCloudAgentTest extends TestCase
                 'status' => 'FINISHED',
                 'result' => 'El botón ya está. No cambié ningún archivo.',
             ], 200),
+            'https://api.cursor.com/v1/agents/bc-test/runs/run-test/stream' => Http::response('', 200),
         ]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
@@ -299,6 +300,7 @@ class ProjectCloudAgentTest extends TestCase
                 'status' => 'FINISHED',
                 'result' => 'El botón ya está. No cambié ningún archivo.',
             ], 200),
+            'https://api.cursor.com/v1/agents/bc-test/runs/run-test/stream' => Http::response('', 200),
         ]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
@@ -318,7 +320,8 @@ class ProjectCloudAgentTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/projects/'.$project->id.'/cloud-agent')
             ->assertOk()
-            ->assertJsonPath('data.phase', 'processing');
+            ->assertJsonPath('data.phase', 'processing')
+            ->assertJsonPath('data.task_ids', [$task->id]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/projects/'.$project->id.'/cloud-agent')
@@ -331,6 +334,89 @@ class ProjectCloudAgentTest extends TestCase
         $time = Time::withoutGlobalScopes()->where('task_id', $task->id)->first();
         $this->assertNotNull($time?->end_time);
         $this->assertStringContainsString('El botón ya está. No cambié ningún archivo.', (string) $time->description);
+    }
+
+    public function test_agent_activity_writes_the_run_and_hides_the_user_name(): void
+    {
+        $this->seed(TaskStatusSeeder::class);
+        [$user, $token, $project] = $this->project();
+        config(['services.cursor.api_key' => 'test-key']);
+
+        $todo = TaskStatus::query()->where('name', 'TO_DO')->firstOrFail();
+        $task = Task::withoutGlobalScopes()->create([
+            'team_id' => $project->team_id,
+            'board_id' => $project->board_id,
+            'responsible_id' => $user->id,
+            'title' => 'Whatsapp',
+            'description' => 'Ver el botón.',
+            'status_id' => $todo->id,
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addWeek()->toDateString(),
+            'order' => 1,
+        ]);
+
+        $stream = implode("\n", [
+            'event: assistant',
+            'data: {"text":"Reviso el botón."}',
+            '',
+            'event: tool_call',
+            'data: {"callId":"call-1","name":"read_file","status":"running","args":{"path":"resources/views/invite.blade.php"}}',
+            '',
+        ]);
+
+        Http::fake([
+            'https://api.cursor.com/v1/agents' => Http::response([
+                'agent' => [
+                    'id' => 'bc-test',
+                    'url' => 'https://cursor.com/agents/bc-test',
+                ],
+            ], 200),
+            'https://api.cursor.com/v1/agents/bc-test' => Http::sequence()
+                ->push(['id' => 'bc-test', 'status' => 'ACTIVE', 'latestRunId' => 'run-test'], 200)
+                ->push(['id' => 'bc-test', 'status' => 'IDLE', 'latestRunId' => 'run-test'], 200),
+            'https://api.cursor.com/v1/agents/bc-test/runs/run-test' => Http::response([
+                'id' => 'run-test',
+                'status' => 'FINISHED',
+                'result' => 'El botón ya está.',
+            ], 200),
+            'https://api.cursor.com/v1/agents/bc-test/runs/run-test/stream' => Http::response($stream, 200),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects/'.$project->id.'/cloud-agent', [
+                'prompt' => 'Implementa las tareas.',
+                'repository_url' => 'https://github.com/acme/web',
+                'task_ids' => [$task->id],
+            ])
+            ->assertOk();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/tasks/'.$task->id.'/activities')
+            ->assertOk()
+            ->assertJsonPath('data.times.0.actor', 'agent')
+            ->assertJsonPath('data.times.0.user_name', null)
+            ->assertJsonPath('data.times.0.is_running', true)
+            ->assertJsonPath('data.times.0.description', "Reviso el botón.\nLeyendo invite.blade.php");
+
+        $this->assertStringNotContainsString($user->name, (string) json_encode(
+            $this->withHeader('Authorization', 'Bearer '.$token)
+                ->getJson('/api/tasks/'.$task->id.'/activities')
+                ->json('data.times.0'),
+        ));
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id.'/cloud-agent')
+            ->assertOk()
+            ->assertJsonPath('data.phase', 'done')
+            ->assertJsonPath('data.result', 'El botón ya está.');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/tasks/'.$task->id.'/activities')
+            ->assertOk()
+            ->assertJsonPath('data.times.0.actor', 'agent')
+            ->assertJsonPath('data.times.0.user_name', null)
+            ->assertJsonPath('data.times.0.is_running', false)
+            ->assertJsonPath('data.times.0.description', 'El botón ya está.');
     }
 
     public function test_cloud_agent_status_is_empty_before_launch(): void
