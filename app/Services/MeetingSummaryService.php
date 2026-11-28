@@ -104,9 +104,10 @@ PROMPT;
             }
 
             $contact = isset($turn['contact_id']) ? $contacts->get($turn['contact_id']) : null;
+            $linkedName = trim((string) ($turn['linked_name'] ?? ''));
             $speaker = $contact
                 ? trim($contact->name.' '.($contact->surname ?? ''))
-                : trim((string) ($turn['label'] ?? 'Persona'));
+                : ($linkedName !== '' ? $linkedName : trim((string) ($turn['label'] ?? 'Persona')));
 
             $rows[] = [
                 'speaker' => $speaker !== '' ? $speaker : 'Persona',

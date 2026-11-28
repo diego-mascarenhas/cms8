@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Enums\MeetingTranscriptStatus;
+use App\Models\Contact;
 use App\Models\MeetingTranscript;
 use App\Models\MeetingVoiceProfile;
+use App\Models\User;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -13,7 +15,10 @@ use Throwable;
 
 class MeetingTranscriptService
 {
-    public function __construct(private MeetingCalendarSync $calendar) {}
+    public function __construct(
+        private MeetingCalendarSync $calendar,
+        private VoiceRecognitionUsageRecorder $voices,
+    ) {}
 
     public function transcribe(MeetingTranscript $meeting): void
     {
@@ -54,6 +59,7 @@ class MeetingTranscriptService
                 'turns' => $this->applyKnownSpeakers($meeting, $turns),
                 'error' => null,
             ])->save();
+            $this->voices->recordMeeting($meeting);
             $this->calendar->sync($meeting);
         } catch (Throwable $exception)
         {
@@ -135,6 +141,60 @@ class MeetingTranscriptService
             }
 
             $turns[$index]['contact_id'] = $profile->contact_id;
+        }
+
+        return $this->applyUserVoiceSamples($meeting, $turns);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $turns
+     * @return list<array<string, mixed>>
+     */
+    private function applyUserVoiceSamples(MeetingTranscript $meeting, array $turns): array
+    {
+        $voices = User::query()
+            ->whereNotNull('voice_speaker_id')
+            ->where(function ($query) use ($meeting): void
+            {
+                $query->whereHas('teams', function ($teams) use ($meeting): void
+                {
+                    $teams->where('teams.id', $meeting->team_id);
+                })->orWhereHas('ownedTeams', function ($teams) use ($meeting): void
+                {
+                    $teams->where('teams.id', $meeting->team_id);
+                });
+            })
+            ->get()
+            ->keyBy('voice_speaker_id');
+
+        if ($voices->isEmpty())
+        {
+            return $turns;
+        }
+
+        $contactsByUser = Contact::withoutGlobalScope('team')
+            ->withoutGlobalScope('ownership')
+            ->where('team_id', $meeting->team_id)
+            ->whereIn('user_id', $voices->pluck('id'))
+            ->pluck('id', 'user_id');
+
+        foreach ($turns as $index => $turn)
+        {
+            $speaker = (string) ($turn['speaker'] ?? '');
+            $user = $voices->get($speaker);
+            if (! $user instanceof User || $this->isTemporarySpeaker($speaker))
+            {
+                continue;
+            }
+
+            $turns[$index]['user_id'] = $user->id;
+            $turns[$index]['linked_name'] = $user->name;
+            $turns[$index]['linked_email'] = (string) $user->email;
+            $contactId = $contactsByUser->get($user->id);
+            if ($contactId !== null)
+            {
+                $turns[$index]['contact_id'] = (int) $contactId;
+            }
         }
 
         return $turns;

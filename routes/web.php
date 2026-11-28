@@ -334,6 +334,7 @@ Route::get('/notification/{notification}/stats', [NotificationTrackingController
 // Authenticated routes
 Route::middleware(['auth'])->group(function ()
 {
+    Route::get('profile/voice-sample', [\App\Http\Controllers\AuthController::class, 'showVoiceSample'])->name('profile.voice-sample');
     Route::get('meeting', [MeetingTranscriptController::class, 'index'])->name('meeting.index');
     Route::get('meeting/create', [MeetingTranscriptController::class, 'create'])->name('meeting.create');
     Route::get('meeting/contacts', [MeetingTranscriptController::class, 'contacts'])->name('meeting.contacts');

@@ -1,4 +1,4 @@
-<x-action-section>
+<x-action-section icon="ti-devices">
   <x-slot name="title">
     {{ __('Browser Sessions') }}
   </x-slot>

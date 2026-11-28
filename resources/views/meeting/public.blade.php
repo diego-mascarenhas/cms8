@@ -24,12 +24,14 @@
             @forelse ($meeting->turns ?? [] as $turn)
                 @php
                     $contact = isset($turn['contact_id']) ? ($contacts[$turn['contact_id']] ?? null) : null;
+                    $speakerUser = isset($turn['user_id']) ? ($users[$turn['user_id']] ?? null) : null;
+                    $linkedName = trim((string) ($turn['linked_name'] ?? ''));
                     $speakerName = $contact
                         ? trim($contact->name.' '.($contact->surname ?? ''))
-                        : ($turn['label'] ?? 'Persona');
+                        : ($speakerUser?->name ?: ($linkedName !== '' ? $linkedName : ($turn['label'] ?? 'Persona')));
                     $avatar = $contact
                         ? $contact->avatarUrl(40)
-                        : \App\Helpers\AvatarHelper::generate($speakerName, 40);
+                        : ($speakerUser ? $speakerUser->profile_photo_url : \App\Helpers\AvatarHelper::generate($speakerName, 40));
                 @endphp
                 <div class="d-flex gap-3">
                     <span class="position-relative d-inline-flex flex-shrink-0">

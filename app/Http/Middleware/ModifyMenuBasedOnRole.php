@@ -129,6 +129,7 @@ class ModifyMenuBasedOnRole
         return $request->routeIs([
             'error-without-team',
             'logout',
+            'profile.voice-sample',
             'teams.create',
             'teams.invitations.confirm',
         ]);

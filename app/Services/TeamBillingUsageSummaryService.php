@@ -471,6 +471,14 @@ final class TeamBillingUsageSummaryService
             'formatted_amount' => $usage['formatted']['transcription_billed'] ?? $this->formatCents(0, (string) ($usage['currency'] ?? 'USD')),
         ];
         $lines[] = [
+            'kind' => 'recognition',
+            'description' => 'Reconocimiento de voz · '.$periodLabel,
+            'detail' => (string) ($usage['formatted']['recognition_duration'] ?? '0 s'),
+            'quantity' => max(1, (int) ($usage['recognition_seconds'] ?? 0)),
+            'amount_cents' => (int) ($usage['recognition_billed_cents'] ?? 0),
+            'formatted_amount' => $usage['formatted']['recognition_billed'] ?? $this->formatCents(0, (string) ($usage['currency'] ?? 'USD')),
+        ];
+        $lines[] = [
             'kind' => 'voice',
             'description' => 'Voz ElevenLabs · '.$periodLabel,
             'detail' => $this->formatCount((int) ($usage['voice_characters'] ?? 0)).' caracteres',
@@ -543,6 +551,7 @@ final class TeamBillingUsageSummaryService
         $prospect = TeamProspectUsageStatsService::forTeam($team, $from, $to);
         $storage = TeamStorageUsageStatsService::forTeam($team, $to, $billStorage);
         $transcription = TeamTranscriptionUsageStatsService::forTeam($team, $from, $to);
+        $recognition = TeamVoiceRecognitionUsageStatsService::forTeam($team, $from, $to);
         $paidAds = TeamPaidAdUsageStatsService::forTeam($team, $from, $to);
         $currency = TokenBillingRateService::displayCurrency();
         $multiplier = TokenBillingRateService::clientTokenMultiplier($team, $asOf);
@@ -551,6 +560,7 @@ final class TeamBillingUsageSummaryService
         $prospectCents = TokenBillingRateService::toDisplayCents((int) $prospect['our_amount_cents'], (string) ($prospect['currency'] ?? $currency), $asOf);
         $storageCents = TokenBillingRateService::toDisplayCents((int) $storage['our_amount_cents'], (string) ($storage['currency'] ?? $currency), $asOf);
         $transcriptionCents = TokenBillingRateService::toDisplayCents((int) $transcription['our_amount_cents'], (string) ($transcription['currency'] ?? $currency), $asOf);
+        $recognitionCents = TokenBillingRateService::toDisplayCents((int) $recognition['our_amount_cents'], (string) ($recognition['currency'] ?? $currency), $asOf);
         $voiceCents = TokenBillingRateService::toDisplayCents((int) $paidAds['voice_amount_cents'], (string) ($paidAds['currency'] ?? $currency), $asOf);
         $videoCents = TokenBillingRateService::toDisplayCents((int) $paidAds['video_amount_cents'], (string) ($paidAds['currency'] ?? $currency), $asOf);
 
@@ -561,6 +571,7 @@ final class TeamBillingUsageSummaryService
             + $prospectCents
             + $storageCents
             + $transcriptionCents
+            + $recognitionCents
             + $voiceCents
             + $videoCents;
         $markupCents = $tokenMarkupCents;
@@ -591,6 +602,8 @@ final class TeamBillingUsageSummaryService
             'storage_billed_cents' => $storageCents,
             'transcription_seconds' => (int) $transcription['audio_seconds'],
             'transcription_billed_cents' => $transcriptionCents,
+            'recognition_seconds' => (int) $recognition['seconds'],
+            'recognition_billed_cents' => $recognitionCents,
             'voice_characters' => (int) $paidAds['characters'],
             'voice_billed_cents' => $voiceCents,
             'videos' => (int) $paidAds['videos'],
@@ -612,6 +625,8 @@ final class TeamBillingUsageSummaryService
                 'storage_size' => $storage['formatted_size'],
                 'transcription' => $transcription['formatted_duration'].' / '.$this->formatCents($transcriptionCents, $currency),
                 'transcription_duration' => $transcription['formatted_duration'],
+                'recognition' => $recognition['formatted_duration'].' / '.$this->formatCents($recognitionCents, $currency),
+                'recognition_duration' => $recognition['formatted_duration'],
                 'voice' => $this->formatCount((int) $paidAds['characters']).' / '.$this->formatCents($voiceCents, $currency),
                 'video' => $this->formatCount((int) $paidAds['videos']).' / '.$this->formatCents($videoCents, $currency),
                 'cost' => $this->formatCents($costCents, $currency),
@@ -625,6 +640,7 @@ final class TeamBillingUsageSummaryService
                 'prospect_billed' => $this->formatCents($prospectCents, $currency),
                 'storage_billed' => $this->formatCents($storageCents, $currency),
                 'transcription_billed' => $this->formatCents($transcriptionCents, $currency),
+                'recognition_billed' => $this->formatCents($recognitionCents, $currency),
                 'voice_billed' => $this->formatCents($voiceCents, $currency),
                 'video_billed' => $this->formatCents($videoCents, $currency),
             ],
@@ -715,6 +731,7 @@ final class TeamBillingUsageSummaryService
             || (int) ($row['prospect_credits'] ?? 0) > 0
             || (int) ($row['storage_bytes'] ?? 0) > 0
             || (int) ($row['transcription_seconds'] ?? 0) > 0
+            || (int) ($row['recognition_seconds'] ?? 0) > 0
             || (int) ($row['voice_characters'] ?? 0) > 0
             || (int) ($row['videos'] ?? 0) > 0
             || $row['billed_cents'] > 0;

@@ -56,14 +56,16 @@
             @forelse ($meeting->turns ?? [] as $turn)
                 @php
                     $contact = isset($turn['contact_id']) ? ($contacts[$turn['contact_id']] ?? null) : null;
+                    $speakerUser = isset($turn['user_id']) ? ($users[$turn['user_id']] ?? null) : null;
                     $linkedName = trim((string) ($turn['linked_name'] ?? ''));
                     $speakerName = $contact
                         ? trim($contact->name.' '.($contact->surname ?? ''))
-                        : ($linkedName !== '' ? $linkedName : ($turn['label'] ?? 'Persona'));
+                        : ($speakerUser?->name ?: ($linkedName !== '' ? $linkedName : ($turn['label'] ?? 'Persona')));
                     $avatar = $contact
                         ? $contact->avatarUrl(40)
-                        : \App\Helpers\AvatarHelper::generate($speakerName, 40);
-                    $linkLabel = $contact ? 'Cambiar' : 'Vincular';
+                        : ($speakerUser ? $speakerUser->profile_photo_url : \App\Helpers\AvatarHelper::generate($speakerName, 40));
+                    $named = $contact || $speakerUser || $linkedName !== '';
+                    $linkLabel = $named ? 'Cambiar' : 'Vincular';
                 @endphp
                 <div class="d-flex gap-3">
                     <span class="position-relative d-inline-flex flex-shrink-0">
@@ -82,7 +84,7 @@
                                     data-bs-target="#link-speaker-modal"
                                     data-speaker="{{ $turn['speaker'] ?? '' }}"
                                 >
-                                    <i class="ti {{ $contact ? 'ti-replace' : 'ti-link' }} ti-sm"></i>
+                                    <i class="ti {{ $named ? 'ti-replace' : 'ti-link' }} ti-sm"></i>
                                 </a>
                                 <span class="text-muted">{{ gmdate('i:s', (int) ($turn['start_seconds'] ?? 0)) }}</span>
                             </div>

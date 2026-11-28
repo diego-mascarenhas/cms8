@@ -1,4 +1,4 @@
-<x-action-section>
+<x-action-section icon="ti-trash">
   <x-slot name="title">
     {{ __('Delete Account') }}
   </x-slot>
