@@ -3,6 +3,10 @@
 namespace App\Services;
 
 use App\Models\Project;
+use App\Models\Task;
+use App\Models\TaskStatus;
+use App\Models\Time;
+use App\Models\User;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -123,6 +127,11 @@ class CursorCloudAgentService
                 $agent = is_array($data['cursor_agent'] ?? null) ? $data['cursor_agent'] : [];
                 $agent['phase'] = $phase;
                 $agent['result'] = $result ?? '';
+                if (empty($agent['settled']))
+                {
+                    $this->finishTasks($project, $agent, $phase, $result);
+                    $agent['settled'] = true;
+                }
                 $data['cursor_agent'] = $agent;
                 $project->update(['data' => $data]);
             }
@@ -137,6 +146,91 @@ class CursorCloudAgentService
             'phase' => $phase,
             'result' => $result !== '' ? $result : null,
         ];
+    }
+
+    /**
+     * @param  list<int>  $taskIds
+     * @return array{task_ids: list<int>, time_ids: list<int>}
+     */
+    public function beginTasks(Project $project, User $user, array $taskIds): array
+    {
+        $ids = collect($taskIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn (int $id) => $id > 0)
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty() || ! $project->board_id)
+        {
+            return ['task_ids' => [], 'time_ids' => []];
+        }
+
+        $todo = TaskStatus::query()->where('name', 'TO_DO')->first();
+        $inProgress = TaskStatus::query()->where('name', 'IN_PROGRESS')->first();
+        if (! $todo || ! $inProgress)
+        {
+            return ['task_ids' => [], 'time_ids' => []];
+        }
+
+        $tasks = Task::query()
+            ->where('board_id', $project->board_id)
+            ->whereIn('id', $ids)
+            ->where('status_id', $todo->id)
+            ->get();
+
+        $tracked = [];
+        $times = [];
+        foreach ($tasks as $task)
+        {
+            $task->update(['status_id' => $inProgress->id]);
+            $time = Time::query()->create([
+                'team_id' => $project->team_id,
+                'user_id' => $user->id,
+                'task_id' => $task->id,
+                'start_time' => now(),
+            ]);
+            $tracked[] = (int) $task->id;
+            $times[] = (int) $time->id;
+        }
+
+        return ['task_ids' => $tracked, 'time_ids' => $times];
+    }
+
+    /**
+     * @param  array<string, mixed>  $agent
+     */
+    private function finishTasks(Project $project, array $agent, string $phase, ?string $result): void
+    {
+        $taskIds = collect($agent['task_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->all();
+        $timeIds = collect($agent['time_ids'] ?? [])->map(fn ($id) => (int) $id)->filter()->all();
+        $note = trim((string) ($result ?? ''));
+        if ($note === '')
+        {
+            $note = $phase === 'error' ? 'El agente se detuvo.' : 'El agente terminó.';
+        }
+        $note = "Agente de Cursor\n\n".$note;
+
+        if ($phase === 'done' && $taskIds !== [] && $project->board_id)
+        {
+            $review = TaskStatus::query()->where('name', 'REVIEW')->first();
+            $inProgress = TaskStatus::query()->where('name', 'IN_PROGRESS')->first();
+            if ($review && $inProgress)
+            {
+                Task::query()
+                    ->where('board_id', $project->board_id)
+                    ->whereIn('id', $taskIds)
+                    ->where('status_id', $inProgress->id)
+                    ->update(['status_id' => $review->id]);
+            }
+        }
+
+        $times = Time::query()->whereIn('id', $timeIds)->whereNull('end_time')->get();
+        foreach ($times as $time)
+        {
+            $time->description = $note;
+            $time->end_time = now();
+            $time->calculateDuration();
+        }
     }
 
     /**

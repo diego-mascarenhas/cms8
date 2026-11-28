@@ -14,7 +14,7 @@ return new class extends Migration
             $table->unsignedBigInteger('team_id');
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('task_id')->nullable();
-            $table->string('description')->nullable();
+            $table->text('description')->nullable();
             $table->dateTime('start_time');
             $table->dateTime('end_time')->nullable();
             $table->integer('duration_seconds')->nullable();

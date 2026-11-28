@@ -36,6 +36,8 @@ class ProjectCloudAgentController extends Controller
         $validated = $request->validate([
             'prompt' => ['required', 'string', 'max:200000'],
             'repository_url' => ['nullable', 'url', 'max:500'],
+            'task_ids' => ['nullable', 'array', 'max:100'],
+            'task_ids.*' => ['integer'],
         ]);
 
         $repository = $agents->normalizeRepositoryUrl((string) ($validated['repository_url'] ?? data_get($project->data, 'cursor_repository') ?? ''));
@@ -64,6 +66,7 @@ class ProjectCloudAgentController extends Controller
             ], 422);
         }
 
+        $tracked = $agents->beginTasks($project, $request->user(), $validated['task_ids'] ?? []);
         $data = is_array($project->data) ? $project->data : [];
         $data['cursor_repository'] = $repository;
         $data['cursor_agent'] = [
@@ -71,6 +74,9 @@ class ProjectCloudAgentController extends Controller
             'url' => $agent['url'],
             'branch' => $agent['branch'],
             'phase' => 'processing',
+            'task_ids' => $tracked['task_ids'],
+            'time_ids' => $tracked['time_ids'],
+            'settled' => false,
         ];
         $project->update(['data' => $data]);
 

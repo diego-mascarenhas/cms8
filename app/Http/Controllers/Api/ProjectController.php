@@ -874,6 +874,12 @@ class ProjectController extends Controller
             $project->setRelation('board', $board);
         }
 
+        if (is_array(data_get($project->data, 'cursor_agent')))
+        {
+            app(CursorCloudAgentService::class)->status($project);
+            $project->refresh();
+        }
+
         $tasks = Task::where('board_id', $project->board_id)
             ->with([
                 'status',

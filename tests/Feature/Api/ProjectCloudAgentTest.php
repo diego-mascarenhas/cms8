@@ -4,11 +4,15 @@ namespace Tests\Feature\Api;
 
 use App\Models\Enterprise;
 use App\Models\Project;
+use App\Models\Task;
 use App\Models\TaskBoard;
+use App\Models\TaskStatus;
+use App\Models\Time;
 use App\Models\User;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\ProjectStatusSeeder;
+use Database\Seeders\TaskStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Jetstream\Features;
@@ -217,6 +221,74 @@ class ProjectCloudAgentTest extends TestCase
             'El botón ya está. No cambié ningún archivo.',
             data_get($project->fresh()->data, 'cursor_agent.result'),
         );
+    }
+
+    public function test_cloud_agent_moves_todo_tasks_and_records_the_result(): void
+    {
+        $this->seed(TaskStatusSeeder::class);
+        [$user, $token, $project] = $this->project();
+        config(['services.cursor.api_key' => 'test-key']);
+
+        $todo = TaskStatus::query()->where('name', 'TO_DO')->firstOrFail();
+        $task = Task::withoutGlobalScopes()->create([
+            'team_id' => $project->team_id,
+            'board_id' => $project->board_id,
+            'responsible_id' => $user->id,
+            'title' => 'Whatsapp',
+            'description' => 'Ver el botón de invitación.',
+            'status_id' => $todo->id,
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addWeek()->toDateString(),
+            'order' => 1,
+        ]);
+
+        Http::fake([
+            'https://api.cursor.com/v1/agents' => Http::response([
+                'agent' => [
+                    'id' => 'bc-test',
+                    'url' => 'https://cursor.com/agents/bc-test',
+                ],
+            ], 200),
+            'https://api.cursor.com/v1/agents/bc-test' => Http::sequence()
+                ->push(['id' => 'bc-test', 'status' => 'ACTIVE', 'latestRunId' => 'run-test'], 200)
+                ->push(['id' => 'bc-test', 'status' => 'IDLE', 'latestRunId' => 'run-test'], 200),
+            'https://api.cursor.com/v1/agents/bc-test/runs/run-test' => Http::response([
+                'id' => 'run-test',
+                'status' => 'FINISHED',
+                'result' => 'El botón ya está. No cambié ningún archivo.',
+            ], 200),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects/'.$project->id.'/cloud-agent', [
+                'prompt' => 'Implementa las tareas.',
+                'repository_url' => 'https://github.com/acme/web',
+                'task_ids' => [$task->id],
+            ])
+            ->assertOk();
+
+        $inProgress = TaskStatus::query()->where('name', 'IN_PROGRESS')->firstOrFail();
+        $this->assertSame($inProgress->id, $task->fresh()->status_id);
+        $this->assertTrue(
+            Time::withoutGlobalScopes()->where('task_id', $task->id)->whereNull('end_time')->exists(),
+        );
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id.'/cloud-agent')
+            ->assertOk()
+            ->assertJsonPath('data.phase', 'processing');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id.'/cloud-agent')
+            ->assertOk()
+            ->assertJsonPath('data.phase', 'done')
+            ->assertJsonPath('data.result', 'El botón ya está. No cambié ningún archivo.');
+
+        $review = TaskStatus::query()->where('name', 'REVIEW')->firstOrFail();
+        $this->assertSame($review->id, $task->fresh()->status_id);
+        $time = Time::withoutGlobalScopes()->where('task_id', $task->id)->first();
+        $this->assertNotNull($time?->end_time);
+        $this->assertStringContainsString('El botón ya está. No cambié ningún archivo.', (string) $time->description);
     }
 
     public function test_cloud_agent_status_is_empty_before_launch(): void
