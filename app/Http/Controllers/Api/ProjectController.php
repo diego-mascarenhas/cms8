@@ -472,41 +472,23 @@ class ProjectController extends Controller
 
         if ($project->isBudgetContentLocked())
         {
-            $contentKeys = array_values(array_diff(array_keys($validated), ['status_id']));
+            $budgetKeys = array_values(array_intersect(array_keys($validated), ['price', 'discount', 'data']));
 
-            if ($contentKeys !== [])
+            if ($budgetKeys !== [])
             {
                 return response()->json([
                     'success' => false,
-                    'error' => 'This approved budget can no longer be edited. Only status changes are allowed.',
+                    'error' => 'Este presupuesto aprobado ya no se puede editar. El importe y el detalle del presupuesto quedan fijos.',
                 ], 422);
             }
 
-            if (! array_key_exists('status_id', $validated))
+            if (array_key_exists('status_id', $validated) && ! $project->canTransitionToStatus((int) $validated['status_id']))
             {
                 return response()->json([
                     'success' => false,
-                    'error' => 'This approved budget can no longer be edited. Only status changes are allowed.',
+                    'error' => 'Ese estado no está permitido después de aprobar el presupuesto.',
                 ], 422);
             }
-
-            $newStatusId = (int) $validated['status_id'];
-            if (! $project->canTransitionToStatus($newStatusId))
-            {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'That status is not allowed after the budget has been approved.',
-                ], 422);
-            }
-
-            $project->update(['status_id' => $newStatusId]);
-            $project->load(['client', 'responsible', 'status', 'board']);
-
-            return response()->json($this->projectBudgetResponse(
-                $project,
-                app(ProjectBudgetSpecService::class),
-                __('Project status updated successfully.'),
-            ));
         }
 
         if (array_key_exists('status_id', $validated) && ! $user->hasRole('admin'))

@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\Enterprise;
 use App\Models\Project;
+use App\Models\ProjectStatus;
 use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
@@ -111,6 +112,47 @@ class ProjectCloudAgentTest extends TestCase
             'https://github.com/diego-mascarenhas/mi.actibiz',
             data_get($project->fresh()->data, 'cursor_repository'),
         );
+    }
+
+    public function test_approved_project_can_save_the_repository_without_changing_the_budget(): void
+    {
+        [, $token, $project] = $this->project();
+        $project->forceFill([
+            'status_id' => ProjectStatus::STATUS_APPROVED,
+            'price' => 1200,
+            'data' => [
+                'budget_given' => 'Landing',
+                'quote_amount' => 1200,
+                'budget_client_response' => ['status' => 'accepted'],
+            ],
+        ])->save();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/projects/'.$project->id, [
+                'name' => 'Board Project',
+                'description' => 'Proyecto en curso',
+                'enterprise_id' => $project->enterprise_id,
+                'responsible_id' => $project->responsible_id,
+                'repository_url' => 'https://github.com/diego-mascarenhas/app.fanyion.git',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.repository_url', 'https://github.com/diego-mascarenhas/app.fanyion')
+            ->assertJsonPath('data.description', 'Proyecto en curso');
+
+        $fresh = $project->fresh();
+        $this->assertSame('https://github.com/diego-mascarenhas/app.fanyion', data_get($fresh->data, 'cursor_repository'));
+        $this->assertSame('accepted', data_get($fresh->data, 'budget_client_response.status'));
+        $this->assertSame(1200, data_get($fresh->data, 'quote_amount'));
+        $this->assertSame(1200.0, (float) $fresh->price);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/projects/'.$project->id, [
+                'data' => ['quote_amount' => 1],
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('error', 'Este presupuesto aprobado ya no se puede editar. El importe y el detalle del presupuesto quedan fijos.');
+
+        $this->assertSame(1200, data_get($project->fresh()->data, 'quote_amount'));
     }
 
     public function test_cloud_agent_shows_the_cursor_error(): void
