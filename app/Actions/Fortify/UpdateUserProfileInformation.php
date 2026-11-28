@@ -2,6 +2,7 @@
 
 namespace App\Actions\Fortify;
 
+use App\Jobs\EnrollUserVoiceSample;
 use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Support\Facades\Validator;
@@ -22,11 +23,18 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'phone' => ['nullable', 'string', 'max:50', 'regex:/^[+\-\d\s()]*$/'],
             'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:1024'],
+            'voice_sample' => ['nullable', 'file', 'mimes:mp3,wav,m4a,mp4,webm,ogg,mpeg', 'max:10240'],
         ])->validateWithBag('updateProfileInformation');
 
         if (isset($input['photo']))
         {
             $user->updateProfilePhoto($input['photo']);
+        }
+
+        if (isset($input['voice_sample']))
+        {
+            $user->updateVoiceSample($input['voice_sample']);
+            EnrollUserVoiceSample::dispatch($user->id);
         }
 
         $phoneDigits = $this->normalizePhoneDigits($input['phone'] ?? null);

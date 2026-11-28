@@ -46,6 +46,7 @@ use App\Http\Controllers\Api\PaidAdCreativeAssetController as ApiPaidAdCreativeA
 use App\Http\Controllers\Api\PaidAdDashboardController as ApiPaidAdDashboardController;
 use App\Http\Controllers\Api\PaymentAccountStatementController;
 use App\Http\Controllers\Api\PaymentController as ApiPaymentController;
+use App\Http\Controllers\Api\ProjectCloudAgentController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectFunnelController;
 use App\Http\Controllers\Api\PublicAutomationEmbedController;
@@ -240,6 +241,9 @@ Route::group(['prefix' => 'auth'], function ()
         Route::get('profile-photo', [AuthController::class, 'showProfilePhoto'])->name('api.auth.profile-photo.show');
         Route::post('profile-photo', [AuthController::class, 'updateProfilePhoto'])->name('api.auth.profile-photo.update');
         Route::delete('profile-photo', [AuthController::class, 'deleteProfilePhoto'])->name('api.auth.profile-photo.destroy');
+        Route::get('voice-sample', [AuthController::class, 'showVoiceSample'])->name('api.auth.voice-sample.show');
+        Route::post('voice-sample', [AuthController::class, 'updateVoiceSample'])->name('api.auth.voice-sample.update');
+        Route::delete('voice-sample', [AuthController::class, 'deleteVoiceSample'])->name('api.auth.voice-sample.destroy');
         Route::get('cover-photo', [AuthController::class, 'showCoverPhoto'])->name('api.auth.cover-photo.show');
         Route::post('cover-photo', [AuthController::class, 'updateCoverPhoto'])->name('api.auth.cover-photo.update');
         Route::delete('cover-photo', [AuthController::class, 'deleteCoverPhoto'])->name('api.auth.cover-photo.destroy');
@@ -322,6 +326,9 @@ Route::middleware('auth.api')->group(function ()
     Route::post('assistant/follow-up/finish', [AssistantFollowUpController::class, 'finish'])->name('api.assistant.follow-up.finish');
     Route::post('assistant/follow-up/summarize', [AssistantFollowUpController::class, 'summarize'])->name('api.assistant.follow-up.summarize');
     Route::get('assistant/usage', [AssistantUsageController::class, 'show'])->name('api.assistant.usage.show');
+    Route::get('voices', [\App\Http\Controllers\Api\VoiceRecognitionController::class, 'index'])->name('api.voices.index');
+    Route::get('voices/usage', [\App\Http\Controllers\Api\VoiceRecognitionController::class, 'usage'])->name('api.voices.usage');
+    Route::post('voices/usage', [\App\Http\Controllers\Api\VoiceRecognitionController::class, 'storeUsage'])->name('api.voices.usage.store');
     Route::get('assistant/categories', [AssistantCategoryController::class, 'index'])->name('api.assistant.categories.index');
     Route::post('assistant/categories', [AssistantCategoryController::class, 'store'])->name('api.assistant.categories.store');
     Route::patch('assistant/categories/sort', [AssistantCategoryController::class, 'updateSort'])->name('api.assistant.categories.sort');
@@ -658,6 +665,8 @@ Route::middleware('auth.api')->group(function ()
     Route::patch('projects/{id}', [ProjectController::class, 'update']);
     Route::delete('projects/{id}', [ProjectController::class, 'destroy']);
     Route::get('projects/{id}/board', [ProjectController::class, 'board']);
+    Route::get('projects/{id}/cloud-agent', [ProjectCloudAgentController::class, 'show']);
+    Route::post('projects/{id}/cloud-agent', [ProjectCloudAgentController::class, 'store']);
     Route::put('projects/{id}/board/reorder', [ProjectController::class, 'reorderBoard']);
 
     // Services - for user-based authentication (Sanctum tokens)
@@ -839,6 +848,9 @@ Route::middleware('team.token')->prefix('team')->group(function ()
     Route::post('communications', [CommunicationController::class, 'store'])->name('api.team.communications.store');
     Route::get('communications/{id}', [CommunicationController::class, 'show'])->whereNumber('id')->name('api.team.communications.show');
     Route::get('/settings', [TeamController::class, 'settings']);
+    Route::get('voices', [\App\Http\Controllers\Api\VoiceRecognitionController::class, 'index'])->name('api.team.voices.index');
+    Route::get('voices/usage', [\App\Http\Controllers\Api\VoiceRecognitionController::class, 'usage'])->name('api.team.voices.usage');
+    Route::post('voices/usage', [\App\Http\Controllers\Api\VoiceRecognitionController::class, 'storeUsage'])->name('api.team.voices.usage.store');
     Route::get('meetings', [\App\Http\Controllers\Api\TeamMeetingController::class, 'index'])->name('api.team.meetings.index');
     Route::post('meetings', [\App\Http\Controllers\Api\TeamMeetingController::class, 'store'])->name('api.team.meetings.store');
     Route::get('meetings/{meeting}', [\App\Http\Controllers\Api\TeamMeetingController::class, 'show'])->whereNumber('meeting')->name('api.team.meetings.show');

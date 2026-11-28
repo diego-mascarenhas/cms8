@@ -1,7 +1,10 @@
-@props(['submit', 'id' => null])
+@props(['submit', 'id' => null, 'icon' => null])
 
-<div class="card" @if($id) id="{{ $id }}" @endif>
+<div {{ $attributes->merge(['class' => 'card']) }} @if($id) id="{{ $id }}" @endif>
   <h5 class="card-header">
+    @if ($icon)
+      <i class="ti {{ $icon }} me-2"></i>
+    @endif
     {{ $title }}
   </h5>
   <div class="card-body">

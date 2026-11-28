@@ -29,6 +29,7 @@ use App\Services\ExpenseDuplicateDocumentService;
 use App\Services\ExpenseSupplierService;
 use App\Services\Finance\EnterpriseVatRateResolver;
 use App\Services\Finance\InvoiceCreditNoteService;
+use App\Services\Finance\InvoiceDeletionService;
 use App\Services\Finance\InvoiceDisplayLineItemService;
 use App\Services\Finance\InvoiceElectronicPaymentLinkService;
 use App\Services\Finance\InvoicePaymentDetailService;
@@ -66,6 +67,7 @@ class InvoiceController extends Controller
         private readonly StripeInvoiceCreditNoteService $stripeInvoiceCreditNoteService,
         private readonly MercadoPagoPaymentImportService $mercadoPagoPaymentImportService,
         private readonly StripeInvoiceDraftDiscardService $stripeInvoiceDraftDiscardService,
+        private readonly InvoiceDeletionService $invoiceDeletionService,
     ) {
         // Note: Manual authorization in each method due to non-standard route parameter names
         // Laravel's authorizeResource() expects {invoice} parameter, but routes use {id}
@@ -511,7 +513,7 @@ class InvoiceController extends Controller
         }
     }
 
-    public function show($id): View
+    public function show($id): View|RedirectResponse
     {
         $invoice = Invoice::with([
             'enterprise.enterpriseBillingAddresses.taxStatusType',
@@ -523,6 +525,11 @@ class InvoiceController extends Controller
         ])->findOrFail($id);
 
         $this->authorize('view', $invoice);
+
+        if ($invoice->isBuyOperation())
+        {
+            return redirect()->route('expense.edit', $invoice);
+        }
 
         $fiscalPlatform = app(FiscalExportRouter::class)->resolvePlatform($invoice);
         if ($fiscalPlatform === NullFiscalExportAdapter::PLATFORM)
@@ -644,6 +651,30 @@ class InvoiceController extends Controller
             $invoice,
             inline: $request->boolean('inline'),
         );
+    }
+
+    public function destroy(string $id): JsonResponse
+    {
+        $invoice = Invoice::query()->findOrFail($id);
+        $this->authorize('delete', $invoice);
+
+        try
+        {
+            $this->invoiceDeletionService->delete(auth()->user(), $invoice);
+        } catch (ValidationException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => collect($exception->errors())->flatten()->first() ?: __('Could not delete the invoice.'),
+            ], 422);
+        }
+
+        $message = __('Invoice deleted successfully.');
+
+        return response()->json([
+            'success' => $message,
+            'message' => $message,
+        ]);
     }
 
     public function discardDraft(Invoice $invoice): RedirectResponse

@@ -1,4 +1,4 @@
-<x-action-section>
+<x-action-section icon="ti-shield-lock">
   <x-slot name="title">
     {{ __('Two Factor Authentication') }}
   </x-slot>

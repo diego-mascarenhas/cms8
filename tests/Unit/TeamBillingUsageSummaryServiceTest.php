@@ -293,8 +293,9 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
         $this->assertSame('10,00 EUR', $preview['invoice_lines'][0]['formatted_amount']);
         $this->assertSame('storage', $preview['invoice_lines'][4]['kind']);
         $this->assertSame('transcription', $preview['invoice_lines'][5]['kind']);
-        $this->assertSame('Tokens IA · Semana del 23 al 30 de septiembre 2026', $preview['invoice_lines'][8]['description']);
-        $this->assertSame('5,00 EUR', $preview['invoice_lines'][8]['formatted_amount']);
+        $this->assertSame('recognition', $preview['invoice_lines'][6]['kind']);
+        $this->assertSame('Tokens IA · Semana del 23 al 30 de septiembre 2026', $preview['invoice_lines'][9]['description']);
+        $this->assertSame('5,00 EUR', $preview['invoice_lines'][9]['formatted_amount']);
         $this->assertSame('prospect', $preview['invoice_lines'][3]['kind']);
         $this->assertSame('15.000.000', $preview['formatted']['total_tokens']);
 
@@ -334,7 +335,8 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
         $this->assertSame(15, TeamUsageInvoiceFrequency::anchorDay($team));
         $this->assertSame('storage', $preview['invoice_lines'][4]['kind']);
         $this->assertSame('transcription', $preview['invoice_lines'][5]['kind']);
-        $this->assertSame('Tokens IA · 15 de septiembre al 15 de octubre 2026', $preview['invoice_lines'][8]['description']);
+        $this->assertSame('recognition', $preview['invoice_lines'][6]['kind']);
+        $this->assertSame('Tokens IA · 15 de septiembre al 15 de octubre 2026', $preview['invoice_lines'][9]['description']);
         $this->assertSame('prospect', $preview['invoice_lines'][3]['kind']);
 
         Carbon::setTestNow();

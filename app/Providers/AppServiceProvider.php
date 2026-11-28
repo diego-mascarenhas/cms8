@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Contracts\CheckoutSessionRetriever;
 use App\Contracts\WhatsAppGateway;
 use App\Http\Controllers\TeamInvitationAcceptController;
+use App\Livewire\Profile\UpdateProfileInformationForm;
 use App\Livewire\Teams\TeamMemberManager;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
@@ -148,5 +149,6 @@ class AppServiceProvider extends ServiceProvider
     private function registerLivewireComponentOverrides(): void
     {
         Livewire::component('teams.team-member-manager', TeamMemberManager::class);
+        Livewire::component('profile.update-profile-information-form', UpdateProfileInformationForm::class);
     }
 }

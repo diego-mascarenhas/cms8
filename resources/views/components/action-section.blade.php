@@ -1,6 +1,9 @@
-@props(['id' => null])
-<div class="card" @if($id) id="{{ $id }}" @endif>
+@props(['id' => null, 'icon' => null])
+<div {{ $attributes->merge(['class' => 'card']) }} @if($id) id="{{ $id }}" @endif>
   <h5 class="card-header">
+    @if ($icon)
+      <i class="ti {{ $icon }} me-2"></i>
+    @endif
     {{ $title }}
   </h5>
   <div class="card-body">

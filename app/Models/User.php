@@ -65,6 +65,8 @@ class User extends Authenticatable
         'remember_token',
         'two_factor_recovery_codes',
         'two_factor_secret',
+        'voice_sample_path',
+        'voice_speaker_id',
     ];
 
     /**
@@ -242,6 +244,43 @@ class User extends Authenticatable
         {
             @unlink($croppedPath);
         }
+    }
+
+    public function updateVoiceSample(UploadedFile $sample): void
+    {
+        $extension = strtolower($sample->getClientOriginalExtension() ?: 'mp3');
+
+        tap($this->voice_sample_path, function ($previous) use ($sample, $extension)
+        {
+            $stored = $sample->storeAs(
+                'voice-samples/'.$this->id,
+                'sample.'.$extension,
+                'local',
+            );
+
+            $this->forceFill([
+                'voice_sample_path' => $stored,
+                'voice_speaker_id' => null,
+            ])->save();
+
+            if (is_string($previous) && $previous !== '' && $previous !== $stored)
+            {
+                Storage::disk('local')->delete($previous);
+            }
+        });
+    }
+
+    public function deleteVoiceSample(): void
+    {
+        if (is_string($this->voice_sample_path) && $this->voice_sample_path !== '')
+        {
+            Storage::disk('local')->delete($this->voice_sample_path);
+        }
+
+        $this->forceFill([
+            'voice_sample_path' => null,
+            'voice_speaker_id' => null,
+        ])->save();
     }
 
     public function updateCoverPhoto(UploadedFile $photo): void

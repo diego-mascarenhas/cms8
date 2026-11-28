@@ -10,6 +10,7 @@ use App\Http\Requests\UpdateMeetingTranscriptRequest;
 use App\Jobs\TranscribeMeetingTranscript;
 use App\Models\Contact;
 use App\Models\MeetingTranscript;
+use App\Models\User;
 use App\Services\MeetingCalendarSync;
 use App\Services\MeetingSummaryService;
 use App\Services\MeetingTranscriptService;
@@ -74,6 +75,7 @@ class MeetingTranscriptController extends Controller
         return view('meeting.show', [
             'meeting' => $meeting,
             'contacts' => $this->contactsFor($meeting),
+            'users' => $this->usersFor($meeting),
         ]);
     }
 
@@ -119,6 +121,7 @@ class MeetingTranscriptController extends Controller
         return view('meeting.public', [
             'meeting' => $meeting,
             'contacts' => $this->contactsFor($meeting),
+            'users' => $this->usersFor($meeting),
         ]);
     }
 
@@ -336,6 +339,23 @@ class MeetingTranscriptController extends Controller
         return Contact::withoutGlobalScope('team')
             ->where('team_id', $meeting->team_id)
             ->whereIn('id', $contactIds)
+            ->get()
+            ->keyBy('id');
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    private function usersFor(MeetingTranscript $meeting): Collection
+    {
+        $userIds = collect($meeting->turns ?? [])
+            ->pluck('user_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        return User::query()
+            ->whereIn('id', $userIds)
             ->get()
             ->keyBy('id');
     }

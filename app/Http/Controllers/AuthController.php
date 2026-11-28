@@ -6,10 +6,13 @@ use App\Actions\Fortify\PasswordValidationRules;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Helpers\TokenHelper;
 use App\Http\Requests\UpdateUserProfilePhotoRequest;
+use App\Http\Requests\UpdateUserVoiceSampleRequest;
+use App\Jobs\EnrollUserVoiceSample;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\Billing\TeamDefaultPaymentMethodStatus;
+use App\Services\MeetingSpeakerLibrary;
 use App\Services\TeamClientContextActivator;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use App\Services\TeamSiteAssistantPromptService;
@@ -510,6 +513,54 @@ class AuthController extends Controller
         ]);
     }
 
+    public function showVoiceSample(Request $request)
+    {
+        $path = $request->user()?->voice_sample_path;
+        if (! is_string($path) || $path === '')
+        {
+            abort(404);
+        }
+
+        $disk = Storage::disk('local');
+        if (! $disk->exists($path))
+        {
+            abort(404);
+        }
+
+        return $disk->response($path);
+    }
+
+    public function updateVoiceSample(UpdateUserVoiceSampleRequest $request)
+    {
+        $user = $request->user();
+        $user->updateVoiceSample($request->file('voice_sample'));
+        EnrollUserVoiceSample::dispatch($user->id);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Voice sample saved.'),
+            'user' => $this->profilePayload($user->fresh(['currentTeam', 'roles'])),
+        ]);
+    }
+
+    public function deleteVoiceSample(Request $request, MeetingSpeakerLibrary $library)
+    {
+        $user = $request->user();
+        if (! $user)
+        {
+            return response()->json(['success' => false], 401);
+        }
+
+        $library->forgetUser($user);
+        $user->deleteVoiceSample();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Voice sample removed.'),
+            'user' => $this->profilePayload($user->fresh(['currentTeam', 'roles'])),
+        ]);
+    }
+
     public function deleteProfilePhoto(Request $request)
     {
         $user = $request->user();
@@ -631,6 +682,8 @@ class AuthController extends Controller
             'role' => $user->actsAsClientOnTeam($team) ? 'Client' : $this->formatUserRoleLabel($user),
             'membership_role' => $team ? $user->teamRole($team)?->key : null,
             'profile_photo_url' => ChatMessageAvatar::forUser($user)['photo_url'] ?? null,
+            'has_voice_sample' => filled($user->voice_sample_path),
+            'voice_sample_ready' => filled($user->voice_speaker_id),
             'cover_photo_url' => filled($user->cover_photo_path)
                 ? Storage::disk((string) config('jetstream.profile_photo_disk', 'public'))->url($user->cover_photo_path)
                 : null,

@@ -232,6 +232,11 @@ class Invoice extends Model
         return str_starts_with((string) $this->source_reference_id, 'cn_');
     }
 
+    public function isBuyOperation(): bool
+    {
+        return strtolower(trim((string) $this->operation)) === 'buy';
+    }
+
     /**
      * Exclude credit notes from cash-flow / category analytics (they are not inflow).
      */
@@ -435,7 +440,7 @@ class Invoice extends Model
         {
             'Vencida' => 'danger',
             'Pendiente', 'Emitiendo' => 'warning',
-            'Cobrada', 'Bonificada', 'Bonificada (Nota de Crédito)' => 'success',
+            'Cobrada', 'Pagada', 'Bonificada', 'Bonificada (Nota de Crédito)' => 'success',
             'Anulada' => 'danger',
             'Incobrable' => 'warning',
             'Nota de Crédito' => 'info',
@@ -450,7 +455,7 @@ class Invoice extends Model
     {
         if ((float) $this->balance <= 0)
         {
-            return 'Cobrada';
+            return $this->isBuyOperation() ? 'Pagada' : 'Cobrada';
         }
 
         if ($this->isOverdue())

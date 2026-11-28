@@ -434,7 +434,7 @@
         </a>
         @endcan
         @if (! ($canDiscardDraft ?? false))
-        @can('invoice.destroy')
+        @can('delete', $invoice)
         <button class="btn btn-danger d-grid w-100" onclick="deleteInvoice({{ $invoice->id }})">
           <i class="ti ti-trash ti-xs me-2"></i>
           {{ __('Delete Invoice') }}
@@ -746,11 +746,17 @@ function deleteInvoice(id) {
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
             }
-        }).then(response => {
+        }).then(async (response) => {
+            const body = await response.json().catch(() => ({}));
             if (response.ok) {
                 window.location.href = '{{ route("invoice.index") }}';
+                return;
             }
+            alert(body.message || '{{ __("Could not delete the invoice.") }}');
+        }).catch(() => {
+            alert('{{ __("Could not delete the invoice.") }}');
         });
     }
 }

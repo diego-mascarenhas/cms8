@@ -21,7 +21,12 @@ class InvoiceStatusLabelTest extends TestCase
 
         $invoice->status = 2;
         $invoice->balance = 0;
+        $invoice->operation = 'sell';
         $this->assertSame('Cobrada', $invoice->status_label);
+
+        $invoice->operation = 'buy';
+        $this->assertSame('Pagada', $invoice->status_label);
+        $this->assertStringContainsString('Pagada', $invoice->status_badge);
 
         $invoice->status = 9;
         $invoice->balance = 100;

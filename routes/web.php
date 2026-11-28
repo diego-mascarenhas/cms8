@@ -334,6 +334,7 @@ Route::get('/notification/{notification}/stats', [NotificationTrackingController
 // Authenticated routes
 Route::middleware(['auth'])->group(function ()
 {
+    Route::get('profile/voice-sample', [\App\Http\Controllers\AuthController::class, 'showVoiceSample'])->name('profile.voice-sample');
     Route::get('meeting', [MeetingTranscriptController::class, 'index'])->name('meeting.index');
     Route::get('meeting/create', [MeetingTranscriptController::class, 'create'])->name('meeting.create');
     Route::get('meeting/contacts', [MeetingTranscriptController::class, 'contacts'])->name('meeting.contacts');
@@ -1022,10 +1023,7 @@ Route::middleware(['auth'])->group(function ()
         Route::post('/check-document-duplicate', [InvoiceController::class, 'checkDocumentDuplicate'])->name('invoice.check-document-duplicate');
         Route::get('/suggested-categories', [InvoiceController::class, 'suggestedCategories'])->name('invoice.suggested-categories');
 
-        Route::delete('/destroy/{id}', function ($id)
-        {
-            return redirect()->route('invoice.index');
-        })->name('invoice.destroy');
+        Route::delete('/destroy/{id}', [InvoiceController::class, 'destroy'])->name('invoice.destroy');
 
         Route::get('/edit/{id}', [InvoiceController::class, 'show'])->name('invoice.edit');
     });

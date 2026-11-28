@@ -27,6 +27,7 @@ class UpdateProjectApiRequest extends FormRequest
             'date_end' => ['sometimes', 'nullable', 'date', 'after_or_equal:date_start'],
             'date_material' => ['sometimes', 'nullable', 'date'],
             'description' => ['sometimes', 'nullable', 'string'],
+            'repository_url' => ['sometimes', 'nullable', 'string', 'max:500'],
             'price' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'discount' => ['sometimes', 'nullable', 'numeric', 'min:0', 'max:100'],
             'data' => ['sometimes', 'nullable', 'array'],

@@ -127,6 +127,49 @@ class ProjectBoardApiTest extends TestCase
         $this->assertContains($task->id, $allTaskIds);
     }
 
+    public function test_board_includes_the_project_brief_and_client_notes(): void
+    {
+        [$user, $token, $project, $task] = $this->projectWithTask();
+        $project->update(['description' => 'Quiere una web para el catering.']);
+
+        $done = TaskStatus::where('name', 'DONE')->firstOrFail();
+        Task::withoutGlobalScopes()->create([
+            'team_id' => $project->team_id,
+            'board_id' => $project->board_id,
+            'title' => 'Logo aprobado',
+            'description' => 'El logo ya quedó.',
+            'responsible_id' => $user->id,
+            'status_id' => $done->id,
+            'order' => 2,
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addDay()->toDateString(),
+        ]);
+
+        TaskCommunication::create([
+            'task_id' => $task->id,
+            'user_id' => $user->id,
+            'recipients' => ['responsible'],
+            'method' => 'internal',
+            'subject' => 'Sugerencia de cambios',
+            'message' => 'El botón no se ve en el móvil.',
+            'sent_at' => now(),
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id.'/board')
+            ->assertOk()
+            ->assertJsonPath('data.project.description', 'Quiere una web para el catering.');
+
+        $open = collect($response->json('data.columns'))
+            ->flatMap(fn ($column) => $column['tasks'])
+            ->firstWhere('id', $task->id);
+
+        $this->assertSame('El botón no se ve en el móvil.', $open['notes'][0]['message']);
+        $this->assertSame('Sugerencia de cambios', $open['notes'][0]['subject']);
+        $this->assertSame($user->name, $open['notes'][0]['sender_name']);
+        $this->assertContains('responsible', $open['notes'][0]['recipients']);
+    }
+
     public function test_can_reorder_task_on_board(): void
     {
         [, $token, $project, $task] = $this->projectWithTask();

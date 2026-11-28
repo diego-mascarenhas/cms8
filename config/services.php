@@ -245,6 +245,10 @@ return [
         'font' => env('FFMPEG_FONT'),
     ],
 
+    'cursor' => [
+        'api_key' => env('CURSOR_API_KEY'),
+    ],
+
     'prospect_search' => [
         'team_id' => env('PROSPECT_SEARCH_TEAM_ID'),
         // URL of the Prospection frontend (React app). The email link must point here so users land on the frontend.

@@ -95,7 +95,12 @@ class ClientShowInvoicesOrderTest extends TestCase
         $response->assertOk();
         $response->assertSee('id="clientInvoicesTableSearch"', false);
         $response->assertSee('dom: \'rtip\'', false);
+        $response->assertSee('modalInvoiceOperationChoice', false);
+        $response->assertSee('ti ti-file-invoice me-1', false);
+        $response->assertSee('ti ti-receipt me-1', false);
+        $response->assertSee('d-flex gap-2', false);
         $response->assertSee(route('invoice.create', ['enterprise_id' => $client->id]), false);
+        $response->assertSee(route('expense.create', ['enterprise_id' => $client->id]), false);
         $response->assertSee('Ingresar factura', false);
         $response->assertSee('order: [[6, \'asc\'], [1, \'desc\']]', false);
         $response->assertSeeInOrder([

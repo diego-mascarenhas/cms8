@@ -21,11 +21,13 @@ use App\Models\TaskCommunication;
 use App\Models\TaskStatus;
 use App\Models\Time;
 use App\Models\User;
+use App\Services\CursorCloudAgentService;
 use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
 use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -333,13 +335,12 @@ class ProjectController extends Controller
                     ->get()
                     ->groupBy('task_id');
 
-                $notesByTask = $clientView
-                    ? TaskCommunication::query()
-                        ->whereIn('task_id', $projectTasks->pluck('id'))
-                        ->orderBy('created_at')
-                        ->get()
-                        ->groupBy('task_id')
-                    : collect();
+                $notesByTask = TaskCommunication::query()
+                    ->with('user')
+                    ->whereIn('task_id', $projectTasks->pluck('id'))
+                    ->orderBy('created_at')
+                    ->get()
+                    ->groupBy('task_id');
 
                 $tasks = $projectTasks->map(function ($task) use (&$totalSeconds, $clientView, $timesByTask, $notesByTask, $user)
                 {
@@ -358,17 +359,7 @@ class ProjectController extends Controller
                             'title' => $task->title,
                             'order' => $task->order,
                             'attachment' => $task->attachmentUrl(),
-                            'notes' => $notesByTask->get($task->id, collect())->map(function (TaskCommunication $note) use ($user)
-                            {
-                                return [
-                                    'id' => $note->id,
-                                    'subject' => $note->subject,
-                                    'message' => $note->message,
-                                    'response' => $note->response,
-                                    'sender_name' => (int) $note->user_id === (int) $user->id ? 'Tú' : 'Equipo',
-                                    'created_at' => $note->created_at?->toIso8601String(),
-                                ];
-                            })->values()->all(),
+                            'notes' => $this->mapTaskNotes($notesByTask->get($task->id, collect()), $user, true),
                             'status' => $status,
                         ];
                     }
@@ -404,12 +395,14 @@ class ProjectController extends Controller
                         'time_seconds' => $taskTime,
                         'time_formatted' => gmdate('H:i:s', $taskTime),
                         'running_timers' => $runningTimers,
+                        'notes' => $this->mapTaskNotes($notesByTask->get($task->id, collect()), $user, false),
                     ];
                 });
             }
 
             $data = array_merge($project->toArray(), [
                 'quote_contact' => $project->quoteRecipientSummary(),
+                'repository_url' => data_get($project->data, 'cursor_repository'),
                 'tasks' => $tasks,
                 'tasks_count' => count($tasks),
             ]);
@@ -470,6 +463,12 @@ class ProjectController extends Controller
         $this->authorize('update', $project);
 
         $validated = $request->validated();
+        $repositoryError = $this->storeCursorRepository($project, $validated);
+        if ($repositoryError instanceof JsonResponse)
+        {
+            return $repositoryError;
+        }
+        unset($validated['repository_url']);
 
         if ($project->isBudgetContentLocked())
         {
@@ -881,6 +880,7 @@ class ProjectController extends Controller
                 'responsible',
                 'category',
                 'media',
+                'communications.user',
                 'times' => function ($query)
                 {
                     $query->with('user');
@@ -919,6 +919,8 @@ class ProjectController extends Controller
                     'board_id' => $project->board_id,
                     'responsible_id' => $project->responsible_id,
                     'date_end' => $project->date_end?->format('Y-m-d'),
+                    'description' => $project->description,
+                    'repository_url' => data_get($project->data, 'cursor_repository'),
                     'client' => $project->enterprise ? [
                         'id' => $project->enterprise->id,
                         'name' => $project->enterprise->name,
@@ -1064,7 +1066,7 @@ class ProjectController extends Controller
      */
     private function mapBoardTask(Task $task): array
     {
-        return [
+        $payload = [
             'id' => $task->id,
             'title' => $task->title,
             'description' => $task->description,
@@ -1104,6 +1106,45 @@ class ProjectController extends Controller
                 ? $task->times->filter(fn (Time $time) => $time->end_time === null && $time->start_time)->count()
                 : 0,
         ];
+
+        if ($task->relationLoaded('communications'))
+        {
+            $viewer = auth()->user();
+            $payload['notes'] = $this->mapTaskNotes(
+                $task->communications,
+                $viewer instanceof User ? $viewer : null,
+                false,
+            );
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  Collection<int, TaskCommunication>  $notes
+     * @return list<array<string, mixed>>
+     */
+    private function mapTaskNotes(Collection $notes, ?User $viewer, bool $asClient): array
+    {
+        return $notes->map(function (TaskCommunication $note) use ($viewer, $asClient)
+        {
+            $sender = $note->user?->name ?? 'Cliente';
+
+            if ($asClient)
+            {
+                $sender = $viewer && (int) $note->user_id === (int) $viewer->id ? 'Tú' : 'Equipo';
+            }
+
+            return [
+                'id' => $note->id,
+                'subject' => $note->subject,
+                'message' => $note->message,
+                'response' => $note->response,
+                'recipients' => $note->recipients ?? [],
+                'sender_name' => $sender,
+                'created_at' => $note->created_at?->toIso8601String(),
+            ];
+        })->values()->all();
     }
 
     /**
@@ -1359,12 +1400,48 @@ class ProjectController extends Controller
     }
 
     /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function storeCursorRepository(Project $project, array $validated): ?JsonResponse
+    {
+        if (! array_key_exists('repository_url', $validated))
+        {
+            return null;
+        }
+
+        $url = app(CursorCloudAgentService::class)->normalizeRepositoryUrl((string) ($validated['repository_url'] ?? ''));
+
+        if ($url !== '' && filter_var($url, FILTER_VALIDATE_URL) === false)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'La URL del repositorio no es válida.',
+            ], 422);
+        }
+
+        $data = is_array($project->data) ? $project->data : [];
+
+        if ($url === '')
+        {
+            unset($data['cursor_repository']);
+        } else
+        {
+            $data['cursor_repository'] = $url;
+        }
+
+        $project->data = $data;
+
+        return null;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function projectBudgetResponse(Project $project, ProjectBudgetSpecService $budgetService, string $message): array
     {
         $payload = $project->toArray();
         $payload['quote_contact'] = $project->quoteRecipientSummary();
+        $payload['repository_url'] = data_get($project->data, 'cursor_repository');
 
         return array_merge([
             'success' => true,

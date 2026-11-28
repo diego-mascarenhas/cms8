@@ -329,6 +329,59 @@ class MeetingTranscriptTest extends TestCase
         $this->assertSame($contact->id, $meeting->fresh()->turns[0]['contact_id']);
     }
 
+    public function test_an_enrolled_user_voice_is_named_in_the_meeting(): void
+    {
+        Storage::fake('local');
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create(['name' => 'Ada Lovelace']);
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill([
+            'current_team_id' => $team->id,
+            'voice_speaker_id' => 'spk_ada',
+        ])->save();
+        $this->enableTeamModules($team, ['meetings']);
+        $outsider = User::factory()->withPersonalTeam()->create(['name' => 'Grace Hopper']);
+        $outsider->forceFill(['voice_speaker_id' => 'spk_grace'])->save();
+        Storage::disk('local')->put('meetings/'.$team->id.'/reunion.mp3', 'audio');
+        $meeting = MeetingTranscript::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'title' => 'Weekly',
+            'original_filename' => 'reunion.mp3',
+            'audio_path' => 'meetings/'.$team->id.'/reunion.mp3',
+            'language' => 'es',
+            'status' => MeetingTranscriptStatus::Pending,
+        ]);
+        Http::fake([
+            'api.elevenlabs.io/*' => Http::response([
+                'text' => 'Hola equipo',
+                'words' => [
+                    ['text' => 'Hola', 'type' => 'word', 'speaker_id' => 'spk_ada', 'start' => 0, 'end' => 1],
+                    ['text' => 'equipo', 'type' => 'word', 'speaker_id' => 'spk_grace', 'start' => 1, 'end' => 2],
+                ],
+            ]),
+        ]);
+
+        (new TranscribeMeetingTranscript($meeting->id))->handle(app(MeetingTranscriptService::class));
+
+        $turns = $meeting->fresh()->turns;
+        $this->assertSame($user->id, $turns[0]['user_id']);
+        $this->assertSame('Ada Lovelace', $turns[0]['linked_name']);
+        $this->assertArrayNotHasKey('user_id', $turns[1]);
+        $this->assertDatabaseHas('voice_recognition_usage_logs', [
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'source' => 'meetings',
+            'seconds' => 1,
+        ]);
+        $this->actingAs($user)
+            ->get(route('meeting.show', $meeting))
+            ->assertOk()
+            ->assertSee('Ada Lovelace', false)
+            ->assertDontSee('Grace Hopper', false);
+    }
+
     public function test_summary_is_stored_and_counted_for_the_team(): void
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
