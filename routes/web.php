@@ -1022,10 +1022,7 @@ Route::middleware(['auth'])->group(function ()
         Route::post('/check-document-duplicate', [InvoiceController::class, 'checkDocumentDuplicate'])->name('invoice.check-document-duplicate');
         Route::get('/suggested-categories', [InvoiceController::class, 'suggestedCategories'])->name('invoice.suggested-categories');
 
-        Route::delete('/destroy/{id}', function ($id)
-        {
-            return redirect()->route('invoice.index');
-        })->name('invoice.destroy');
+        Route::delete('/destroy/{id}', [InvoiceController::class, 'destroy'])->name('invoice.destroy');
 
         Route::get('/edit/{id}', [InvoiceController::class, 'show'])->name('invoice.edit');
     });

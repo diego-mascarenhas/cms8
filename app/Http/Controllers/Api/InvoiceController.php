@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Invoice;
 use App\Policies\InvoicePolicy;
+use App\Services\Finance\InvoiceDeletionService;
 use App\Support\SearchNormalizer;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class InvoiceController extends Controller
 {
@@ -223,7 +225,7 @@ class InvoiceController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(string $id, InvoiceDeletionService $invoiceDeletionService)
     {
         $user = auth()->user();
         $invoice = Invoice::find($id);
@@ -246,11 +248,11 @@ class InvoiceController extends Controller
 
         try
         {
-            $invoice->delete();
+            $invoiceDeletionService->delete($user, $invoice);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Invoice deleted successfully',
+                'message' => __('Invoice deleted successfully.'),
                 'user_info' => [
                     'id' => $user->id,
                     'name' => $user->name,
@@ -258,6 +260,12 @@ class InvoiceController extends Controller
                     'role' => $user->roles->first()->name ?? 'No role',
                 ],
             ]);
+        } catch (ValidationException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first() ?: __('Could not delete the invoice.'),
+            ], 422);
         } catch (\Exception $e)
         {
             return response()->json([

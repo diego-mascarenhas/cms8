@@ -188,6 +188,7 @@ class ProjectCloudAgentTest extends TestCase
             'https://api.cursor.com/v1/agents/bc-test/runs/run-test' => Http::response([
                 'id' => 'run-test',
                 'status' => 'FINISHED',
+                'result' => 'El botón ya está. No cambié ningún archivo.',
             ], 200),
         ]);
 
@@ -208,9 +209,14 @@ class ProjectCloudAgentTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/projects/'.$project->id.'/cloud-agent')
             ->assertOk()
-            ->assertJsonPath('data.phase', 'done');
+            ->assertJsonPath('data.phase', 'done')
+            ->assertJsonPath('data.result', 'El botón ya está. No cambié ningún archivo.');
 
         $this->assertSame('done', data_get($project->fresh()->data, 'cursor_agent.phase'));
+        $this->assertSame(
+            'El botón ya está. No cambié ningún archivo.',
+            data_get($project->fresh()->data, 'cursor_agent.result'),
+        );
     }
 
     public function test_cloud_agent_status_is_empty_before_launch(): void

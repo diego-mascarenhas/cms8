@@ -243,6 +243,37 @@
             </div>
         </div>
 
+        @if (auth()->user()->can('create', \App\Models\Invoice::class) || auth()->user()->can('create', \App\Models\Payment::class))
+            <div class="modal fade" id="modalInvoiceOperationChoice" tabindex="-1" aria-labelledby="modalInvoiceOperationChoiceLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalInvoiceOperationChoiceLabel">Ingresar factura</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="mb-3 text-muted">¿Qué tipo de factura querés registrar?</p>
+                            <div class="d-flex gap-2">
+                                @can('create', \App\Models\Invoice::class)
+                                    <a href="{{ route('invoice.create', ['enterprise_id' => $client->id]) }}" class="btn btn-success waves-effect waves-light flex-fill">
+                                        <i class="ti ti-file-invoice me-1"></i>Factura de venta
+                                    </a>
+                                @endcan
+                                @can('create', \App\Models\Payment::class)
+                                    <a href="{{ route('expense.create', ['enterprise_id' => $client->id]) }}" class="btn btn-danger waves-effect waves-light flex-fill">
+                                        <i class="ti ti-receipt me-1"></i>Factura de compra
+                                    </a>
+                                @endcan
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         @can('update', $client)
             <div class="modal fade" id="modalLinkExistingContact" tabindex="-1" aria-labelledby="modalLinkExistingContactLabel" aria-hidden="true"
                 data-link-url="{{ route('client.linkable-contacts', $client->id) }}"
@@ -593,11 +624,11 @@
                         </div>
                     @endif
                     <div class="d-flex flex-nowrap align-items-center gap-2 flex-shrink-0">
-                        @can('create', \App\Models\Invoice::class)
-                            <a href="{{ route('invoice.create', ['enterprise_id' => $client->id]) }}" class="btn btn-sm btn-primary text-nowrap">
+                        @if (auth()->user()->can('create', \App\Models\Invoice::class) || auth()->user()->can('create', \App\Models\Payment::class))
+                            <button type="button" class="btn btn-sm btn-primary text-nowrap" data-bs-toggle="modal" data-bs-target="#modalInvoiceOperationChoice">
                                 <i class="ti ti-plus me-1"></i>Ingresar factura
-                            </a>
-                        @endcan
+                            </button>
+                        @endif
                         @can('invoice.index')
                             <a href="{{ route('invoice.index') }}" class="btn btn-sm btn-outline-primary text-nowrap">
                                 <i class="ti ti-list me-1"></i>Listado
@@ -624,14 +655,23 @@
                                 </thead>
                                 <tbody>
                                     @foreach($invoices as $invoice)
+                                        @php
+                                            $isBuyInvoice = $invoice->isBuyOperation();
+                                            $invoiceShowUrl = $isBuyInvoice
+                                                ? route('expense.edit', $invoice->id)
+                                                : route('invoice.show', $invoice->id);
+                                        @endphp
                                         <tr>
                                             <td class="d-none">{{ $invoice->id }}</td>
                                             <td data-order="{{ $invoice->number ?? '' }}">
-                                                @can('view', $invoice)
-                                                    <a href="{{ route('invoice.show', $invoice->id) }}" class="text-decoration-none">{{ $invoice->number ?: '—' }}</a>
-                                                @else
-                                                    {{ $invoice->number ?: '—' }}
-                                                @endcan
+                                                <span class="d-inline-flex align-items-center gap-2">
+                                                    <span class="rounded-circle flex-shrink-0 {{ $isBuyInvoice ? 'bg-danger' : 'bg-success' }}" style="width: 0.5rem; height: 0.5rem;" title="{{ $isBuyInvoice ? __('Compra') : __('Venta') }}" aria-hidden="true"></span>
+                                                    @can('view', $invoice)
+                                                        <a href="{{ $invoiceShowUrl }}" class="text-decoration-none">{{ $invoice->number ?: '—' }}</a>
+                                                    @else
+                                                        {{ $invoice->number ?: '—' }}
+                                                    @endcan
+                                                </span>
                                             </td>
                                             <td data-order="{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('Y-m-d') : '' }}">{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('d/m/Y') : '—' }}</td>
                                             <td @if($invoice->due_date) data-order="{{ \Carbon\Carbon::parse($invoice->due_date)->format('Y-m-d') }}" @endif>{{ $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('d/m/Y') : '' }}</td>

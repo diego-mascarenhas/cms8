@@ -100,7 +100,7 @@ class CursorCloudAgentService
     }
 
     /**
-     * @return array{id: string, url: string, branch: string, phase: string}|null
+     * @return array{id: string, url: string, branch: string, phase: string, result: string|null}|null
      */
     public function status(Project $project): ?array
     {
@@ -111,33 +111,44 @@ class CursorCloudAgentService
         }
 
         $phase = (string) ($stored['phase'] ?? 'processing');
-        if ($phase === 'processing')
+        $result = is_string($stored['result'] ?? null) ? $stored['result'] : null;
+        if ($phase === 'processing' || ! array_key_exists('result', $stored))
         {
-            $phase = $this->livePhase((string) $stored['id']);
+            $live = $this->liveOutcome((string) $stored['id']);
+            $phase = $live['phase'];
+            $result = $live['result'];
             if ($phase !== 'processing')
             {
                 $data = is_array($project->data) ? $project->data : [];
                 $agent = is_array($data['cursor_agent'] ?? null) ? $data['cursor_agent'] : [];
                 $agent['phase'] = $phase;
+                $agent['result'] = $result ?? '';
                 $data['cursor_agent'] = $agent;
                 $project->update(['data' => $data]);
             }
         }
+
+        $result = is_string($result) ? trim($result) : '';
 
         return [
             'id' => (string) $stored['id'],
             'url' => (string) ($stored['url'] ?? 'https://cursor.com/agents/'.$stored['id']),
             'branch' => (string) ($stored['branch'] ?? $this->branchName($project)),
             'phase' => $phase,
+            'result' => $result !== '' ? $result : null,
         ];
     }
 
-    private function livePhase(string $agentId): string
+    /**
+     * @return array{phase: string, result: string|null}
+     */
+    private function liveOutcome(string $agentId): array
     {
+        $pending = ['phase' => 'processing', 'result' => null];
         $key = trim((string) config('services.cursor.api_key'));
         if ($key === '' || preg_match('/\A[A-Za-z0-9_-]+\z/', $agentId) !== 1)
         {
-            return 'processing';
+            return $pending;
         }
 
         $response = Http::withBasicAuth($key, '')
@@ -147,24 +158,24 @@ class CursorCloudAgentService
 
         if (! $response->successful())
         {
-            return 'processing';
+            return $pending;
         }
 
         $agentStatus = (string) $response->json('status');
         if ($agentStatus === 'ACTIVE')
         {
-            return 'processing';
+            return $pending;
         }
 
         if ($agentStatus !== 'IDLE')
         {
-            return 'done';
+            return ['phase' => 'done', 'result' => null];
         }
 
         $runId = $response->json('latestRunId');
         if (! is_string($runId) || preg_match('/\A[A-Za-z0-9_-]+\z/', $runId) !== 1)
         {
-            return 'done';
+            return ['phase' => 'done', 'result' => null];
         }
 
         $run = Http::withBasicAuth($key, '')
@@ -174,20 +185,22 @@ class CursorCloudAgentService
 
         if (! $run->successful())
         {
-            return 'done';
+            return ['phase' => 'done', 'result' => null];
         }
 
         $runStatus = (string) $run->json('status');
+        $result = $run->json('result');
+        $text = is_string($result) ? Str::limit(trim($result), 20000, '') : null;
         if (in_array($runStatus, ['CREATING', 'RUNNING', 'WAITING_FOR_BACKGROUND_WORK'], true))
         {
-            return 'processing';
+            return $pending;
         }
 
         if (in_array($runStatus, ['ERROR', 'CANCELLED', 'EXPIRED'], true))
         {
-            return 'error';
+            return ['phase' => 'error', 'result' => $text !== '' ? $text : null];
         }
 
-        return 'done';
+        return ['phase' => 'done', 'result' => $text !== '' ? $text : null];
     }
 }

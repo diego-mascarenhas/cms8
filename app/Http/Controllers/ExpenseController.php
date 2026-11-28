@@ -206,7 +206,7 @@ class ExpenseController extends Controller
     public function edit(Request $request, Invoice $invoice): View
     {
         $this->resolveBuyInvoiceForCurrentTeam($request, $invoice);
-        $this->authorize('update', $invoice);
+        $this->authorize('view', $invoice);
 
         $invoice->load(['items.category:id,name']);
         $data = $this->creationFormData();

@@ -100,7 +100,7 @@
         <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ $documentFlow['breadcrumb'] }}/</span> Crear</h4>
         <p class="text-muted">{{ $documentFlow['subtitle'] }}</p>
     </div>
-    <div class="mt-3 mt-md-0">
+    <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
         @if ($lockedClientId !== '')
             <a href="{{ route('client.show', $lockedClientId) }}" class="btn btn-label-secondary waves-effect">
                 <i class="ti ti-building me-1"></i> Empresa
@@ -109,6 +109,13 @@
             <a href="{{ $documentFlow['back_route'] }}" class="btn btn-label-secondary waves-effect">
                 <i class="ti ti-arrow-left me-1"></i> Volver
             </a>
+        @endif
+        @if (! empty($editingInvoice))
+            @can('delete', $editingInvoice)
+                <button type="button" class="btn btn-danger waves-effect" onclick="deleteExpenseInvoice({{ $editingInvoice->id }})">
+                    <i class="ti ti-trash me-1"></i>{{ __('Delete Invoice') }}
+                </button>
+            @endcan
         @endif
     </div>
 </div>
@@ -852,6 +859,34 @@
     $expenseCategoryOptionsJs = collect($expenseCategoryOptions ?? [])->values();
 @endphp
 <script>
+    function deleteExpenseInvoice(id) {
+        if (! confirm(@json(__('Are you sure you want to delete this invoice?')))) {
+            return;
+        }
+
+        fetch(@json(route('invoice.destroy', ['id' => '__ID__'])).replace('__ID__', id), {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': @json(csrf_token()),
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        }).then(async (response) => {
+            const body = await response.json().catch(() => ({}));
+            if (response.ok) {
+                window.location.href = @json(
+                    ! empty($editingInvoice?->enterprise_id)
+                        ? route('client.show', $editingInvoice->enterprise_id)
+                        : route('expense.index')
+                );
+                return;
+            }
+            alert(body.message || @json(__('Could not delete the invoice.')));
+        }).catch(() => {
+            alert(@json(__('Could not delete the invoice.')));
+        });
+    }
+
     $(function () {
         var documentFlow = @json($documentFlow);
         var clientTaxProfiles = @json($clientTaxProfiles ?? []);
